@@ -43,6 +43,9 @@ if (-not (Test-Path $shortcut)) { throw 'Shortcut hilang' }
 if (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk')) { throw 'Desktop launcher shortcut should no longer exist' }
 $virtualShortcut = Join-Path $programs 'XyDesk Host Test\XyDesk Virtual720.lnk'
 if (-not (Test-Path $virtualShortcut)) { throw 'Virtual720 Start Menu shortcut missing' }
+
+$manualScripts = Get-ChildItem -LiteralPath $install -Filter '*.ps1' -File -ErrorAction SilentlyContinue
+if (($manualScripts | Get-Content -Raw) -match 'runneradmin') { throw 'Manual host must not default to the lab account runneradmin' }
 if (Test-Path (Join-Path $desktop 'XyDesk Virtual720.lnk')) { throw 'Virtual720 desktop shortcut should no longer exist' }
 $shell = New-Object -ComObject WScript.Shell
 $virtualLink = $shell.CreateShortcut($virtualShortcut)

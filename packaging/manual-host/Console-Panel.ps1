@@ -188,5 +188,5 @@ $timer.Interval=15000
 $timer.Add_Tick({ Invoke-Action 'Status' $true })
 $autoChk.Add_CheckedChanged({ if ($autoChk.Checked) { Invoke-Action 'Status' $true; $timer.Start() } else { $timer.Stop() } })
 
-$form.Add_Shown({ Write-Log "Panel siap. Host akan berjalan sebagai akun Windows '$ConsoleUser'; tidak ada fallback ke runneradmin."; Invoke-Action 'Status' $true })
+$form.Add_Shown({ Write-Log "Panel siap. Host akan berjalan sebagai akun Windows '$ConsoleUser'; tanpa ganti akun diam-diam."; Invoke-Action 'Status' $true })
 [System.Windows.Forms.Application]::Run($form)
