@@ -6,7 +6,7 @@
 # manajer menolak dijalankan tanpa admin (kebijakan tanpa elevasi otomatis
 # di dalam manajer itu sendiri).
 param(
- [string]$ConsoleUser='runneradmin'
+ [string]$ConsoleUser=$env:USERNAME
 )
 $ErrorActionPreference='Stop'
 $admin=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -47,7 +47,7 @@ $form.Controls.Add($statusLabel)
 $userLabel=New-Object System.Windows.Forms.Label
 $userLabel.Location=New-Object System.Drawing.Point(420,16)
 $userLabel.AutoSize=$true
-$userLabel.Text='Akun console:'
+$userLabel.Text='Akun Windows host:'
 $form.Controls.Add($userLabel)
 
 $userBox=New-Object System.Windows.Forms.TextBox
@@ -115,7 +115,7 @@ function Invoke-Action([string]$action,[bool]$quiet=$false) {
  if ($script:busy) {return}
  $script:busy=$true
  $user=$userBox.Text.Trim()
- if (!$user) {$user='runneradmin'}
+ if (!$user) {$user=$env:USERNAME}
  try {
   $form.Cursor=[System.Windows.Forms.Cursors]::WaitCursor
   if (!$quiet) {Write-Log "Menjalankan $action ..."}
@@ -142,7 +142,7 @@ function Invoke-Action([string]$action,[bool]$quiet=$false) {
  }
 }
 function Show-StatusLog {
- $user=$userBox.Text.Trim();if (!$user) {$user='runneradmin'}
+ $user=$userBox.Text.Trim();if (!$user) {$user=$env:USERNAME}
  try {
   $state=Get-StateDir $user
   if (!$state) {Write-LogBlock 'Log' "Profil akun console '$user' tidak ditemukan."}
@@ -188,5 +188,5 @@ $timer.Interval=15000
 $timer.Add_Tick({ Invoke-Action 'Status' $true })
 $autoChk.Add_CheckedChanged({ if ($autoChk.Checked) { Invoke-Action 'Status' $true; $timer.Start() } else { $timer.Stop() } })
 
-$form.Add_Shown({ Write-Log 'Panel siap. Semua aksi berjalan lewat Console-Virtual720.ps1 (jalur scheduled task yang sama seperti manual).'; Invoke-Action 'Status' $true })
+$form.Add_Shown({ Write-Log "Panel siap. Host akan berjalan sebagai akun Windows '$ConsoleUser'; tidak ada fallback ke runneradmin."; Invoke-Action 'Status' $true })
 [System.Windows.Forms.Application]::Run($form)

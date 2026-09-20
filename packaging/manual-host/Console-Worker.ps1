@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([switch]$CheckOnly)
+param([switch]$CheckOnly, [switch]$VirtualDisplay720p)
 $ErrorActionPreference = 'Stop'
 if (-not ('XyDeskConsoleLifetime' -as [type])) {
 Add-Type -TypeDefinition @'
@@ -28,9 +28,17 @@ public static class XyDeskConsoleLifetime {
 '@
 }
 if ($CheckOnly) { Write-Host 'Console job helper compiled; no task/process changes.'; return }
-$session = [Diagnostics.Process]::GetCurrentProcess().SessionId
-if ($session -ne [XyDeskConsoleLifetime]::WTSGetActiveConsoleSessionId()) { throw 'Not in the active console session. No host launched.' }
+if ($VirtualDisplay720p) {
+ $session = [Diagnostics.Process]::GetCurrentProcess().SessionId
+ if ($session -ne [XyDeskConsoleLifetime]::WTSGetActiveConsoleSessionId()) { throw 'Virtual720 membutuhkan active console session. Tidak ada fallback ke desktop RDP.' }
+}
 [XyDeskConsoleLifetime]::OwnChildren()
 $state = Join-Path $env:LOCALAPPDATA 'XyDesk-RemoteCore-Test'
 New-Item -ItemType Directory -Path $state -Force | Out-Null
-& (Join-Path $PSScriptRoot 'Start-TestHost.ps1') -VirtualDisplay720p -Supervise -LogPath (Join-Path $state 'console-status.log')
+if ($VirtualDisplay720p) {
+ & (Join-Path $PSScriptRoot 'Start-TestHost.ps1') -VirtualDisplay720p -Supervise -LogPath (Join-Path $state 'console-status.log')
+} else {
+ # StarDesk-like default: capture the logged-in owner's desktop in this task's
+ # interactive session; the VDD is an optional headless/Virtual720 mode.
+ & (Join-Path $PSScriptRoot 'Start-TestHost.ps1') -KeepDesktopResolution -Supervise -LogPath (Join-Path $state 'console-status.log')
+}

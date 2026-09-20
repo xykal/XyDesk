@@ -1,8 +1,11 @@
 #requires -Version 5.1
+# Default Start is the logged-in owner's desktop, matching the normal remote-host
+# model. Pass -VirtualDisplay720p only for the explicit strict VDD path.
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
  [ValidateSet('Start','Stop','Status','Credentials','RevokeAccess','Fit')][string]$Action='Status',
- [string]$ConsoleUser='runneradmin',
+ [switch]$VirtualDisplay720p,
+ [string]$ConsoleUser=$env:USERNAME,
  [string]$HostDirectory=$PSScriptRoot
 )
 $ErrorActionPreference='Stop'
@@ -19,9 +22,11 @@ if (-not ('XyDeskConsoleSession' -as [type])) {
  Add-Type 'using System.Runtime.InteropServices; public static class XyDeskConsoleSession { [DllImport("kernel32.dll")] public static extern uint WTSGetActiveConsoleSessionId(); }'
 }
 $consoleSession=[XyDeskConsoleSession]::WTSGetActiveConsoleSessionId()
+$requireConsoleSession=$VirtualDisplay720p
 function Get-OwnedHost {
  @(Get-CimInstance Win32_Process -Filter "Name='xydesk-host.exe'" | Where-Object {
-   if ($_.ExecutablePath -ine $engine -or $_.SessionId -ne $consoleSession) {return $false}
+   if ($_.ExecutablePath -ine $engine) {return $false}
+   if ($requireConsoleSession -and $_.SessionId -ne $consoleSession) {return $false}
    $owner=Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid
    $owner.ReturnValue -eq 0 -and $owner.Sid -eq $sid
  })
@@ -89,7 +94,9 @@ if ($Action -eq 'Start') {
  } else {
  $worker=Join-Path $HostDirectory 'Console-Worker.ps1'
  if (!(Test-Path -LiteralPath $worker)) {throw 'Console worker missing.'}
- $actionSpec=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$worker+'"') -WorkingDirectory $HostDirectory
+ $workerArgs='-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$worker+'"'
+ if ($VirtualDisplay720p) {$workerArgs+=' -VirtualDisplay720p'}
+ $actionSpec=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $workerArgs -WorkingDirectory $HostDirectory
  $principal=New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$ConsoleUser" -LogonType Interactive -RunLevel Highest
  $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
  Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description 'XyDesk console Virtual720; explicit manual start, owned process tree' -Force | Out-Null

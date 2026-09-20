@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding(SupportsShouldProcess=$true)]
-param([Parameter(Mandatory=$true)][string]$AppPath,[string]$Arguments='',[string]$ConsoleUser='runneradmin')
+param([Parameter(Mandatory=$true)][string]$AppPath,[string]$Arguments='',[string]$ConsoleUser=$env:USERNAME)
 $ErrorActionPreference='Stop'
 $admin=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (!$admin) {throw 'Administrator PowerShell required. No automatic elevation.'}
