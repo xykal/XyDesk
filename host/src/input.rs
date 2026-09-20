@@ -794,6 +794,7 @@ mod lease_tests {
 }
 
 /// Pixel-center mapping avoids edge rounding and supports negative monitor origins.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn absolute_mouse_point(
     x: i32,
     y: i32,

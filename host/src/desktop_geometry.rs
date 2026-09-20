@@ -135,6 +135,33 @@ pub fn virtual_rect() -> Option<CaptureRect> {
     })
 }
 
+/// Posisi cursor yang dibaca dari Windows; None when capture is not active.
+#[cfg(target_os = "windows")]
+pub fn cursor_feedback() -> Option<serde_json::Value> {
+    use windows::Win32::UI::WindowsAndMessaging::{GetCursorInfo, CURSORINFO, CURSOR_SHOWING};
+    init_thread_dpi();
+    let rect = active()?;
+    let mut info = CURSORINFO {
+        cbSize: std::mem::size_of::<CURSORINFO>() as u32,
+        ..Default::default()
+    };
+    unsafe { GetCursorInfo(&mut info) }.ok()?;
+    let x = i64::from(info.ptScreenPos.x) - i64::from(rect.left);
+    let y = i64::from(info.ptScreenPos.y) - i64::from(rect.top);
+    let visible = info.flags == CURSOR_SHOWING
+        && x >= 0
+        && y >= 0
+        && x < i64::from(rect.width)
+        && y < i64::from(rect.height);
+    Some(
+        serde_json::json!({"type":"cursor","x":x.max(0).min(i64::from(rect.width.saturating_sub(1))) as f64/rect.width.saturating_sub(1).max(1) as f64,"y":y.max(0).min(i64::from(rect.height.saturating_sub(1))) as f64/rect.height.saturating_sub(1).max(1) as f64,"visible":visible}),
+    )
+}
+#[cfg(not(target_os = "windows"))]
+pub fn cursor_feedback() -> Option<serde_json::Value> {
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,31 +225,4 @@ mod tests {
             );
         }
     }
-}
-
-/// Posisi cursor yang dibaca dari Windows; None when capture is not active.
-#[cfg(target_os = "windows")]
-pub fn cursor_feedback() -> Option<serde_json::Value> {
-    use windows::Win32::UI::WindowsAndMessaging::{GetCursorInfo, CURSORINFO, CURSOR_SHOWING};
-    init_thread_dpi();
-    let rect = active()?;
-    let mut info = CURSORINFO {
-        cbSize: std::mem::size_of::<CURSORINFO>() as u32,
-        ..Default::default()
-    };
-    unsafe { GetCursorInfo(&mut info) }.ok()?;
-    let x = i64::from(info.ptScreenPos.x) - i64::from(rect.left);
-    let y = i64::from(info.ptScreenPos.y) - i64::from(rect.top);
-    let visible = info.flags == CURSOR_SHOWING
-        && x >= 0
-        && y >= 0
-        && x < i64::from(rect.width)
-        && y < i64::from(rect.height);
-    Some(
-        serde_json::json!({"type":"cursor","x":x.max(0).min(i64::from(rect.width.saturating_sub(1))) as f64/rect.width.saturating_sub(1).max(1) as f64,"y":y.max(0).min(i64::from(rect.height.saturating_sub(1))) as f64/rect.height.saturating_sub(1).max(1) as f64,"visible":visible}),
-    )
-}
-#[cfg(not(target_os = "windows"))]
-pub fn cursor_feedback() -> Option<serde_json::Value> {
-    None
 }

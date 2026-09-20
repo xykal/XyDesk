@@ -853,7 +853,7 @@ async fn main() -> Result<()> {
                                                 break;
                                             }
                                             ticks += 1;
-                                            if ticks % 20 == 0 {
+                                            if ticks.is_multiple_of(20) {
                                                 let mut meta = base_meta.clone();
                                                 meta["video"] =
                                                     xydesk_host::video_policy::telemetry();

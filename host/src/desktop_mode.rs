@@ -19,6 +19,7 @@ pub fn requested_size(level: u8) -> [u32; 2] {
         [1280, 720]
     }
 }
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn outcome(
     supported: bool,
     accepted: bool,
@@ -44,6 +45,7 @@ pub fn request(device: String, level: u8) -> Report {
     report
 }
 pub fn telemetry() -> Option<Report> {
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut report = LAST
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)

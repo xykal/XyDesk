@@ -10,8 +10,8 @@ bersama aplikasi, beserta lisensinya — diambil langsung dari lockfile dan
 teks lisensi paket yang benar-benar terpasang, bukan dari daftar ketik
 tangan yang bisa ketinggalan zaman.
 
-**Total komponen: 527**
-(Dart/Flutter 125 · Rust 332 · npm 59 · aset & layanan 11)
+**Total komponen: 518**
+(Dart/Flutter 115 · Rust 332 · npm 59 · aset & layanan 12)
 
 ## Ringkasan lisensi
 
@@ -19,12 +19,11 @@ tangan yang bisa ketinggalan zaman.
 |---|---|
 | MIT OR Apache-2.0 | 199 |
 | BSD-3-Clause | 93 |
-| MIT | 81 |
+| MIT | 82 |
 | Apache-2.0 OR MIT | 30 |
 | Apache-2.0 | 21 |
 | Unicode-3.0 | 18 |
 | MIT/Apache-2.0 | 17 |
-| lihat berkas LICENSE paket | 10 |
 | LGPL-3.0-or-later | 8 |
 | ISC | 6 |
 | Unlicense OR MIT | 5 |
@@ -130,6 +129,12 @@ Capture layar Windows.Graphics.Capture dan binding Win32.
 
 *Ekosistem: Binding Windows · Versi: lihat Cargo.lock*
 
+### Virtual Display Driver (VirtualDrivers / MikeTheTech) — MIT
+
+Setup-VirtualDisplay.ps1 memvalidasi paket resmi dari rilis GitHub VirtualDrivers/Virtual-Display-Driver, pinned SHA256 e24210692b442b39af763536330ce78b423f19342b7a7792c26de3944e418b3a. Arsip resmi dibundel tanpa perubahan; teks lisensi MIT disertakan sebagai LICENSE-VirtualDisplayDriver.txt. Windows memverifikasi signatur katalog — tidak ada bypass sertifikat/kebijakan keamanan. Skrip XyDesk bukan installer vendor dan tidak mengklaim kompatibilitas RDP. Instalasi yang sudah ada tidak ditimpa. Lihat packaging/manual-host/VIRTUAL720.md.
+
+*Ekosistem: Driver tampilan virtual (opsional, dibundel installer host) · Versi: 25.7.23 AMD64*
+
 ### OneSignal SDK — Modified MIT (ketentuan layanan OneSignal)
 
 SDK klien Android; pengiriman memakai REST API OneSignal.
@@ -156,7 +161,7 @@ Login opsional dengan akun Google.
 
 ---
 
-## 2. Paket Dart / Flutter (125)
+## 2. Paket Dart / Flutter (115)
 
 Termasuk dependensi transitif yang ikut ter-bundle di APK.
 
@@ -164,7 +169,6 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 |---|---|---|
 | `args` | 2.7.0 | BSD-3-Clause |
 | `async` | 2.11.0 | BSD-3-Clause |
-| `boolean_selector` | 2.1.2 | lihat berkas LICENSE paket |
 | `characters` | 1.4.1 | BSD-3-Clause |
 | `clock` | 1.1.2 | Apache-2.0 |
 | `code_assets` | 1.2.1 | BSD-3-Clause |
@@ -172,7 +176,6 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `cross_file` | 0.3.5+5 | BSD-3-Clause |
 | `crypto` | 3.0.7 | BSD-3-Clause |
 | `dart_webrtc` | 1.8.1 | MIT |
-| `fake_async` | 1.3.3 | lihat berkas LICENSE paket |
 | `ffi` | 2.2.0 | BSD-3-Clause |
 | `ffi_leak_tracker` | 0.1.2 | BSD-3-Clause |
 | `file` | 7.0.1 | BSD-3-Clause |
@@ -180,7 +183,6 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `file_selector_macos` | 0.9.5+1 | BSD-3-Clause |
 | `file_selector_platform_interface` | 2.7.0 | BSD-3-Clause |
 | `file_selector_windows` | 0.9.3+6 | BSD-3-Clause |
-| `flutter_lints` | 4.0.0 | lihat berkas LICENSE paket |
 | `flutter_plugin_android_lifecycle` | 2.0.35 | BSD-3-Clause |
 | `flutter_riverpod` | 2.6.1 | MIT |
 | `flutter_secure_storage` | 11.0.0 | BSD-3-Clause |
@@ -213,14 +215,9 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `jni_flutter` | 1.0.2 | BSD-3-Clause |
 | `jni_util` | 1.0.0 | BSD-3-Clause |
 | `js` | 0.7.2 | BSD-3-Clause |
-| `leak_tracker` | 11.0.2 | lihat berkas LICENSE paket |
-| `leak_tracker_flutter_testing` | 3.0.10 | lihat berkas LICENSE paket |
-| `leak_tracker_testing` | 3.0.2 | lihat berkas LICENSE paket |
-| `lints` | 4.0.0 | lihat berkas LICENSE paket |
 | `logger` | 2.7.0 | MIT |
 | `logging` | 1.3.0 | BSD-3-Clause |
 | `lucide_icons_flutter` | 3.1.15 | MIT |
-| `matcher` | 0.12.19 | lihat berkas LICENSE paket |
 | `material_color_utilities` | 0.13.0 | Apache-2.0 |
 | `meta` | 1.18.0 | BSD-3-Clause |
 | `mime` | 2.1.0 | BSD-3-Clause |
@@ -264,7 +261,6 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `string_scanner` | 1.3.0 | BSD-3-Clause |
 | `synchronized` | 3.4.1+2 | MIT |
 | `term_glyph` | 1.2.1 | BSD-3-Clause |
-| `test_api` | 0.7.11 | lihat berkas LICENSE paket |
 | `typed_data` | 1.4.0 | BSD-3-Clause |
 | `url_launcher` | 6.3.2 | BSD-3-Clause |
 | `url_launcher_android` | 6.3.17 | BSD-3-Clause |
@@ -278,7 +274,6 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `vector_graphics_codec` | 1.1.13 | BSD-3-Clause |
 | `vector_graphics_compiler` | 1.3.0 | BSD-3-Clause |
 | `vector_math` | 2.2.0 | BSD-3-Clause |
-| `vm_service` | 15.3.0 | lihat berkas LICENSE paket |
 | `web` | 1.1.1 | BSD-3-Clause |
 | `web_socket` | 1.0.1 | BSD-3-Clause |
 | `web_socket_channel` | 3.0.3 | BSD-3-Clause |
@@ -711,14 +706,3 @@ Teks penuh setiap lisensi tersedia di dalam paketnya masing-masing:
 Di aplikasi Android, **Pengaturan → Tentang → Lisensi → Lisensi pihak ketiga
 lengkap** membuka registry lisensi bawaan Flutter yang memuat teks penuh
 setiap paket Dart secara langsung dari biner yang sedang berjalan.
-
-## Optional virtual display provisioning (2026-09-18)
-
-`Setup-VirtualDisplay.ps1` validates the bundled (or optionally downloaded) VirtualDrivers /
-MikeTheTech Virtual Display Driver25.7.23 AMD64 package from its official GitHub
-release, pinned SHA256e24210692b442b39af763536330ce78b423f19342b7a7792c26de3944e418b3a.
-The official archive is bundled unchanged. MIT license text is shipped as LICENSE-VirtualDisplayDriver.txt. Source/license:
-https://github.com/VirtualDrivers/Virtual-Display-Driver . Windows verifies the
-catalog signature before provisioning; no certificate/security-policy bypass.
-The XyDesk script is not the vendor's installer and makes no RDP compatibility
-claim. Existing installations are not overwritten. See packaging/manual-host/VIRTUAL720.md.

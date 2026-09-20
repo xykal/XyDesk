@@ -61,6 +61,7 @@ fn fetch(id: &str) -> Result<String, String> {
     fs::rename(tmp, path).map_err(|_| "refresh replace failed")?;
     Ok(token.to_owned())
 }
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 fn valid_ticket(token: &str, id: &str) -> bool {
     let p: Vec<_> = token.split('.').collect();
     p.len() == 3

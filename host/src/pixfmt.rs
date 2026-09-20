@@ -104,7 +104,9 @@ pub fn bgra_to_rgba(bgra: &[u8], out: &mut Vec<u8>) {
 /// Diagnostik lokal saja: tidak menyimpan atau mengirim isi layar.
 pub fn rgb_nonzero_pixels(pixels: &[u8]) -> usize {
     pixels
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .filter(|p| p[0] != 0 || p[1] != 0 || p[2] != 0)
         .count()
 }

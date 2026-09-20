@@ -313,6 +313,21 @@ const MANUAL = [
     note: 'Capture layar Windows.Graphics.Capture dan binding Win32.',
   },
   {
+    name: 'Virtual Display Driver (VirtualDrivers / MikeTheTech)',
+    version: '25.7.23 AMD64',
+    license: 'MIT',
+    ecosystem: 'Driver tampilan virtual (opsional, dibundel installer host)',
+    note:
+      'Setup-VirtualDisplay.ps1 memvalidasi paket resmi dari rilis GitHub ' +
+      'VirtualDrivers/Virtual-Display-Driver, pinned SHA256 ' +
+      'e24210692b442b39af763536330ce78b423f19342b7a7792c26de3944e418b3a. ' +
+      'Arsip resmi dibundel tanpa perubahan; teks lisensi MIT disertakan sebagai ' +
+      'LICENSE-VirtualDisplayDriver.txt. Windows memverifikasi signatur katalog — ' +
+      'tidak ada bypass sertifikat/kebijakan keamanan. Skrip XyDesk bukan ' +
+      'installer vendor dan tidak mengklaim kompatibilitas RDP. Instalasi yang ' +
+      'sudah ada tidak ditimpa. Lihat packaging/manual-host/VIRTUAL720.md.',
+  },
+  {
     name: 'OneSignal SDK',
     version: '5.x',
     license: 'Modified MIT (ketentuan layanan OneSignal)',
