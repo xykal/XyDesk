@@ -2075,3 +2075,10 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - BUKAN rilis: versi tetap 6.8.5, tanpa berita, tanpa release non-prerelease (larangan operator "gas aja kecuali rilis").
 - Status lapangan: belum diuji di Windows user; host VM user masih STOP sejak uxhd3. Langkah user: install uxhd5 → Console-Virtual720.ps1 -Action Start → Status harus Running tanpa WARNING.
 - a4ec6fd (2026-09-20): gate Build penuh dihijaukan — clippy host bersih di Linux (allow tergate cfg untuk kode khusus-Windows, as_chunks, is_multiple_of, mod tests dipindah) dan inventaris lisensi diregenerasi dengan Flutter 3.44.9 (Dart closure runtime 115, total 518; catatan Virtual Display Driver dipindah ke MANUAL generator). Build run 35521043781 SUCCESS → deploy-web 35521983697 SUCCESS; app.xydesk.my.id menyajikan index-T4AXvB6I.js (panel encoder + teks crop tanpa pita). Tidak mengubah isi installer uxhd5 (9387095) yang sudah dipublikasikan.
+
+## Paket uji uxhd6 (panel klik-klik) — Operator, 2026-09-20
+
+- d72a18f: Windows 35523856018 + NSIS 35524200373 SUCCESS; prerelease uxhd6-d72a18f (release 392504666), installer 4.861.845 byte SHA256 d76e10a3…79c386. Menggantikan uxhd5-9387095. releases/latest tetap v6.8.5.
+- Baru: Console-Panel.ps1 (WinForms, PS 5.1, self-elevate sekali lewat UAC) + shortcut desktop "XyDesk Control Panel". Panel hanya membungkus Console-Virtual720.ps1 (Start/Stop/Status/Fit/Credentials + tail log) — tidak ada jalur eksekusi baru; kebijakan admin-tanpa-elevasi-otomatis di manajer tetap, panel minta izin lewat UAC standar.
+- Referensi stardesk.net ditinjau atas permintaan operator: kelas arsitektur sama (WebRTC SRTP/DTLS + WSS signaling + relay); tidak ada kode/aset yang disalin. Ide yang dicatat untuk backlog: privacy mode (blackout lokal saat sesi), persetujuan fitur sensitif default-off.
+- Status lapangan: belum diuji di Windows user. Alur user: install uxhd6 → double-click "XyDesk Control Panel" di desktop →izinkan UAC → klik Start Host → indikator hijau + Status.
