@@ -2090,3 +2090,12 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - Perbaikan lapangan dari laporan uxhd6: layar console runneradmin kosong (tanpa taskbar/cursor) karena Console-Primary memilih monitor virtual berdasarkan resolusi 1280x720 saat ini — padahal skrip berjalan sebelum engine menyetel mode, jadi tidak ketemu dan baris [primary] di log kosong tanpa pesan. Fix: pilih berdasarkan identitas driver (MTTVDD/Virtual Display Driver), warning tercatat di log ([primary] DILEWATI: …). console-fit.log kosong → redirect *>&1. Start duplikat tidak lagi throw error merah, tampilkan status. Mojibake → di log quality diganti '->'.
 - Tes: host 185 pass + clippy -D warnings + fmt bersih; web 90 pass + tsc; 10 skrip manual-host parse OK & ASCII. Build (web deploy) di-dispatch setelah publish.
 - Status lapangan: BELUM diuji user. Alur: install uxhd7 → panel "XyDesk Control Panel" → Start Host → cek log [primary] harus berisi pesan monitor virtual jadi primary → stream dari HP: desktop utuh, tanpa pita, tanpa terpotong.
+
+## Paket uji uxhd8 (fix kursor + UX) — Operator, 2026-09-20 malam
+
+- e8d9551: Windows 35532220203 + NSIS 35532908193 + Build 35532221134 + Deploy Web SUCCESS; prerelease uxhd8-e8d9551 (release 392551223), installer 4.863.378 byte SHA256 c75dd6a9…52b8a. Menggantikan uxhd7-a873c1e. releases/latest tetap v6.8.5. Live web index-DP9EoeZn.js.
+- FIX KRITIS: laporan user "cursor diem ke pojok kiri atas" = bug nyata regresi uxhd7 — desktop_point (piksel) diberi ke CaptureRect::point (fraksi 0..65535) di input.rs MouseMoveAbs, semua target kolaps ke origin. Solusi: CaptureRect::pixel translasi 1:1 + tes regresi. INI WAJIB DICEK ULANG DI LAPANGAN.
+- Keluhan "banyak app": desktop kini hanya "XyDesk Control Panel"; launcher manual + Virtual720 → Start Menu; installer hapus shortcut desktop lama saat upgrade.
+- Web UX: HUD mouse + mapping default bulat penuh (panel & keyboard tetap kotak); keyboard virtual putih ala HP nempel dasar layar tanpa transisi; riwayat → halaman detail (wallpaper besar + spesifikasi + durasi) + tombol Hubungkan eksplisit.
+- Permintaan user belum dikerjakan (dicatat sebagai backlog): "driver screen bukan display" (bedah teknik capture stardesk / driver kelas lain) dan "harus ada file .dll" — perlu riset & keputusan arsitektur, jangan asal tempel DLL. Lihat bagian backlog.
+- Pengaturan Gambar (kualitas/FPS/bitrate/resolusi) semuanya tersambung end-to-end di kode + CI, tapi klaim "berfungsi" di mesin user tetap butuh uji lapangan.
