@@ -36,8 +36,14 @@ for($i=0;;$i++){
  if(-not [XyDeskDisplayLayout]::Current($dev.DeviceName,[ref]$mode)){continue}
  $displays+=[pscustomobject]@{Name=$dev.DeviceName;Label=$dev.DeviceString;DeviceId=$dev.DeviceID;Primary=(($dev.StateFlags -band [XyDeskDisplayLayout]::PRIMARY) -eq [XyDeskDisplayLayout]::PRIMARY);Width=$mode.dmPelsWidth;Height=$mode.dmPelsHeight;Mode=$mode}
 }
-$target=$displays | Where-Object { ($_.Label -like '*Virtual Display Driver*' -or $_.DeviceId -like '*MTTVDD*') -and $_.Width -eq $Width -and $_.Height -eq $Height } | Select-Object -First 1
-if (-not $target) { Write-Warning "Virtual display ${Width}x${Height} tidak ditemukan di sesi ini. Tidak ada yang diubah."; return }
+# Pilih monitor virtual berdasarkan identitas driver, BUKAN resolusi saat ini:
+# skrip ini bisa berjalan sebelum engine menyetel 1280x720, dan monitor virtual
+# yang masih di resolusi lain tetap harus dijadikan primary. Bila ada beberapa,
+# yang sudah pas WxH diprioritaskan.
+$virtuals=@($displays | Where-Object { $_.Label -like '*Virtual Display Driver*' -or $_.DeviceId -like '*MTTVDD*' })
+$target=$virtuals | Where-Object { $_.Width -eq $Width -and $_.Height -eq $Height } | Select-Object -First 1
+if (-not $target) { $target=$virtuals | Select-Object -First 1 }
+if (-not $target) { Write-Warning "Virtual display tidak ditemukan di sesi ini. Tidak ada yang diubah."; return }
 if ($target.Primary) { Write-Host "Virtual display sudah primary di sesi ini. Tidak ada yang diubah."; return }
 if (-not $PSCmdlet.ShouldProcess("Sesi ini: $($displays | ForEach-Object { $_.Name })",'Jadikan monitor virtual 720p layar primary')) { return }
 $x=0

@@ -95,7 +95,7 @@ function Set-Indicator([string]$output) {
  } elseif ($output -match 'State\s*:\s*(\S+)') {
   $dot.BackColor=[System.Drawing.Color]::Orange
   $statusLabel.Text='Host: '+$Matches[1]
- } elseif ($output -match 'already running') {
+ } elseif ($output -match 'already running' -or $output -match 'sudah berjalan') {
   $dot.BackColor=[System.Drawing.Color]::LimeGreen
   $statusLabel.Text='Host: Running (proses; bukan bukti streaming)'
  } else {

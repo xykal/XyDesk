@@ -588,7 +588,7 @@ export function SessionPanel({
               </button>
             ))}
           </div>
-          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: kanvas 16:9 tanpa pita: crop desktop 1280×720 atau 1920×1080 (desktop kecil memakai crop natif, tanpa upscale). Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Mode asli maksimum 15 fps untuk mengutamakan detail; browser lama dapat dibatasi 720p.</p>
+          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: desktop dikirim utuh pada rasio aslinya — tanpa pita hitam, tanpa crop; host otomatis meminta mode desktop 16:9 yang didukung. Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Mode asli maksimum 15 fps untuk mengutamakan detail; browser lama dapat dibatasi 720p.</p>
 
           <p className="spanel-section">Yang sedang berjalan</p>
           <div className="spanel-card">

@@ -39,10 +39,15 @@ try {
     # Jendela aplikasi baru harus terbuka di layar yang di-stream, jadi monitor
     # virtual 720p dijadikan primary pada sesi console sebelum engine berjalan.
     try {
-      $primaryMsg = & (Join-Path $PSScriptRoot 'Console-Primary.ps1')
+      # *>&1: peringatan (mis. "virtual display tidak ditemukan") ikut tercatat
+      # di log, bukan hilang tanpa jejak sebagai baris [primary] kosong.
+      $primaryMsg = & (Join-Path $PSScriptRoot 'Console-Primary.ps1') *>&1
       if ($LogPath) { Add-Content -LiteralPath $LogPath -Value (([DateTime]::UtcNow.ToString('o')) + ' [primary] ' + (($primaryMsg | ForEach-Object { $_.ToString() }) -join ' ')) }
       else { $primaryMsg | Out-Host }
-    } catch { Write-Warning "Penataan layar primary dilewati: $($_.Exception.Message)" }
+    } catch {
+      if ($LogPath) { Add-Content -LiteralPath $LogPath -Value (([DateTime]::UtcNow.ToString('o')) + ' [primary] DILEWATI: ' + $_.Exception.Message) }
+      Write-Warning "Penataan layar primary dilewati: $($_.Exception.Message)"
+    }
     Write-Host 'Saat tersambung, host meminta mode desktop 16:9 yang didukung. Gunakan -KeepDesktopResolution untuk menonaktifkan.'
     $delay = 1
     do {

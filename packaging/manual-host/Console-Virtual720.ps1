@@ -53,7 +53,9 @@ if ($Action -eq 'Fit') {
  $fitLog=Join-Path $state 'console-fit.log'
  $fitTask='XyDesk-Console-Fit'
  Unregister-ScheduledTask -TaskName $fitTask -Confirm:$false -ErrorAction SilentlyContinue
- $fitArgs='-NoProfile -ExecutionPolicy Bypass -Command "& ''FITSCRIPT'' | Out-File -LiteralPath ''FITLOG'' -Encoding utf8"'
+ # *>&1: Write-Host/Write-Warning dari Console-Fit.ps1 ada di stream lain,
+ # tanpa redirect ini log fit selalu kosong dan pengguna tidak melihat hasil.
+ $fitArgs='-NoProfile -ExecutionPolicy Bypass -Command "& ''FITSCRIPT'' *>&1 | Out-File -LiteralPath ''FITLOG'' -Encoding utf8"'
  $fitArgs=$fitArgs.Replace('FITSCRIPT',$fitScript).Replace('FITLOG',$fitLog)
  $fitAction=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $fitArgs
  $fitPrincipal=New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$ConsoleUser" -LogonType Interactive
@@ -80,7 +82,11 @@ if ($Action -eq 'Start') {
  if (!$PSCmdlet.ShouldProcess("Existing logged-in $ConsoleUser console",'Start Virtual720 without RDP disconnect')) {return}
  & (Join-Path $HostDirectory 'Start-TestHost.ps1') -CheckOnly
  $owned=Get-OwnedHost
- if ($owned.Count -gt 0 -or ($task -and $task.State -eq 'Running')) {throw 'Console host/task already running. Use Status, or Stop before replacing it. No duplicate started.'}
+ if ($owned.Count -gt 0 -or ($task -and $task.State -eq 'Running')) {
+  # Bukan kegagalan: host memang sudah berjalan. Tampilkan status, jangan
+  # melempar error merah yang membingungkan pengguna panel.
+  Write-Host 'Host sudah berjalan; tidak ada duplikat yang dibuat. Gunakan Stop dahulu bila ingin memulai ulang.'
+ } else {
  $worker=Join-Path $HostDirectory 'Console-Worker.ps1'
  if (!(Test-Path -LiteralPath $worker)) {throw 'Console worker missing.'}
  $actionSpec=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument ('-NoProfile -NonInteractive -WindowStyle Hidden -File "'+$worker+'"') -WorkingDirectory $HostDirectory
@@ -89,6 +95,7 @@ if ($Action -eq 'Start') {
  Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description 'XyDesk console Virtual720; explicit manual start, owned process tree' -Force | Out-Null
  Start-ScheduledTask -TaskName $name
  Start-Sleep -Seconds 8
+ }
 }
 Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue | Format-List TaskName,State
 Get-ScheduledTaskInfo -TaskName $name -ErrorAction SilentlyContinue | Format-List LastRunTime,LastTaskResult

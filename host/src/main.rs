@@ -1099,7 +1099,7 @@ async fn main() -> Result<()> {
                                                             bps,
                                                         );
                                                     }
-                                                    println!("[xydesk-host] quality dari client: {} → {} bps", q, bps);
+                                                    println!("[xydesk-host] quality dari client: {} -> {} bps", q, bps);
                                                     continue;
                                                 }
                                                 xydesk_host::input::InputEvent::VideoBitrate(

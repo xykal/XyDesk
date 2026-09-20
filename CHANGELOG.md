@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Revisi keputusan operator (2026-09-20): tanpa pita DAN tanpa crop.** Kebijakan crop 16:9 (2026-09-19) dicabut karena memotong konten di lapangan. Sekarang: host otomatis meminta mode desktop 16:9 yang didukung (bila target persis 1920×1080/1280×720 tidak ada, mode 16:9 lain yang didukung dipilih otomatis; desktop yang sudah 16:9 dibiarkan); frame selalu memuat SELURUH desktop pada rasio aslinya, diperkecil proporsional tanpa upscale. Virtual720 tetap wajib persis 1280×720. Perbaikan paket manual: log fit tidak lagi kosong (redirect `*>&1`), baris `[primary]` kosong kini mencatat peringatan sebenarnya, Console-Primary memilih monitor virtual berdasarkan identitas driver (bukan resolusi saat ini), dan Start saat host sudah berjalan menampilkan status alih-alih error merah. Tidak ada rilis versi pada perubahan ini.
+
 - Panel kontrol GUI sementara (Console-Panel.ps1 + shortcut desktop "XyDesk Control Panel"): Start/Stop/Status/Fit/Kredensial/Log lewat klik, membungkus Console-Virtual720.ps1 (satu prompt UAC, jalur scheduled task tidak berubah). Referensi engine stardesk.net ditinjau; tidak ada kode/aset yang disalin. Tetap tanpa rilis versi.
 
 - **Keputusan mutlak operator (2026-09-19): tanpa driver virtual, stream wajib 16:9 tanpa pita.** Letterbox diganti crop 16:9 (center horizontal, anchor bawah agar taskbar terlihat), tanpa upscale; pemetaan input mengikuti crop sehingga klik tetap presisi; telemetri menambah cropRect dan label encoder (nvenc/openh264) yang juga tampil di panel Statistik web. Manajer console mendapat -Action Fit untuk menarik jendela nyasar ke layar stream dalam satu perintah. Tidak ada rilis versi pada perubahan ini.

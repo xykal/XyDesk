@@ -31,7 +31,8 @@ pub fn choose(
 }
 pub fn prepare(name: Option<&str>) -> Result<(), String> {
     let selected = choose(&crate::virtual_display::visible_virtual_displays(), name)?;
-    let report = crate::desktop_mode::request(selected.name.clone(), 31);
+    // Wajib persis 1280x720: virtual720 tidak boleh diam-diam memakai mode lain.
+    let report = crate::desktop_mode::request_exact(selected.name.clone(), [1280, 720]);
     if !matches!(report.status, "applied" | "already") || report.observed != Some([1280, 720]) {
         return Err(format!("Virtual720 belum siap: {report:?}"));
     }

@@ -164,7 +164,7 @@ impl SoftwareEncoder {
         if self.logged_size != Some((width, height)) {
             if let Some([profile, constraints, level]) = sps_profile_level(&data) {
                 let fps = self.fps;
-                println!("[xydesk-host] video software: capture {width}x{height} crop {crw}x{crh}+{crx}+{cry} -> kirim {cw}x{ch} tanpa pita, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
+                println!("[xydesk-host] video software: capture {width}x{height} -> kirim {cw}x{ch} utuh rasio asli tanpa pita tanpa crop, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
                 self.logged_size = Some((width, height));
             }
         }
@@ -207,14 +207,15 @@ mod tests {
         assert_eq!(level, 31, "SPS harus sesuai batas Level3.1, bukan 5.1");
         let mut decoder = openh264::decoder::Decoder::new().unwrap();
         let decoded = decoder.decode(&data).unwrap().expect("IDR harus terdecode");
-        assert_eq!(decoded.dimensions(), (1280, 720));
+        // Rasio asli 2336x1080 dipertahankan: 1280x592, bukan crop 1280x720.
+        assert_eq!(decoded.dimensions(), (1280, 592));
     }
     #[test]
     fn negotiated_hd_and_native_are_real_decodable_pixels() {
         for (mode, level, w, h, expected) in [
             (1, 40, 1920, 1080, (1920, 1080)),
-            // Mode asli kini juga 16:9 tanpa pita: crop 1920x1080, bukan desktop utuh + letterbox.
-            (2, 51, 2336, 1080, (1920, 1080)),
+            // Mode asli: desktop utuh pada dimensi natif — tanpa pita, tanpa crop.
+            (2, 51, 2336, 1080, (2336, 1080)),
             (0, 51, 1920, 1080, (1280, 720)),
         ] {
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
@@ -226,12 +227,18 @@ mod tests {
         }
     }
     #[test]
-    fn odd_aspect_desktop_crop_169_without_bars_or_upscale() {
-        for (mode, level) in [(0, 31), (1, 40), (1, 51)] {
+    fn odd_aspect_desktop_kept_whole_without_bars_or_crop() {
+        for (mode, level, expected) in [
+            (0, 31, (1280usize, 592usize)),
+            (1, 40, (1920, 888)),
+            (1, 51, (1920, 888)),
+        ] {
             let (w, h) = (2336, 1080);
             let layout = crate::video_layout::VideoLayout::new(w, h, mode, level).unwrap();
             assert_eq!(layout.content, [0, 0, layout.canvas[0], layout.canvas[1]]);
-            assert_eq!(layout.crop, [208, 0, 1920, 1080]);
+            // Tanpa crop: sumber adalah seluruh desktop.
+            assert_eq!(layout.crop, [0, 0, w, h]);
+            assert_eq!((layout.canvas[0], layout.canvas[1]), expected);
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
             let bytes = encoder.encode(&vec![220; w * h * 4], w, h).unwrap();
             let mut decoder = openh264::decoder::Decoder::new().unwrap();
@@ -246,23 +253,29 @@ mod tests {
             assert!(pixel(layout.canvas[0] - 6, 6) > 190);
             assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);
         }
-        // Desktop tinggi: baris atas yang gelap ter-crop, taskbar bawah bertahan.
+        // Desktop tinggi: seluruh tinggi ikut terkirim — baris atas TIDAK dibuang.
         let (w, h) = (1920, 1200);
-        let mut pixels = vec![230u8; w * h * 4];
-        for y in 0..118 {
-            pixels[y * w * 4..(y + 1) * w * 4].fill(0);
+        let mut pixels = vec![40u8; w * h * 4];
+        for y in 0..120 {
+            pixels[y * w * 4..(y + 1) * w * 4].fill(230);
         }
         let layout = crate::video_layout::VideoLayout::new(w, h, 1, 40).unwrap();
-        assert_eq!(layout.crop, [0, 120, 1920, 1080]);
+        assert_eq!(layout.crop, [0, 0, 1920, 1200]);
+        assert_eq!(layout.canvas, [1728, 1080]);
         let mut encoder = SoftwareEncoder::with_policy(1, 40).unwrap();
         let bytes = encoder.encode(&pixels, w, h).unwrap();
         let mut decoder = openh264::decoder::Decoder::new().unwrap();
         let frame = decoder.decode(&bytes).unwrap().unwrap();
-        let mut rgb = vec![0; 1920 * 1080 * 3];
+        assert_eq!(frame.dimensions(), (1728, 1080));
+        let mut rgb = vec![0; 1728 * 1080 * 3];
         frame.write_rgb8(&mut rgb);
         assert!(
             rgb[0] > 190,
-            "baris pertama frame harus isi desktop, bukan pita"
+            "baris atas desktop harus tetap ada di frame, tidak di-crop"
+        );
+        assert!(
+            rgb[(1000 * 1728) * 3] < 90,
+            "isi desktop bagian bawah juga tetap ada"
         );
     }
     #[test]
