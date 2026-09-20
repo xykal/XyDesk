@@ -478,9 +478,11 @@ export function SessionPanel({
   onBitrate,
   onFps,
   fpsLimit,
+  encoder,
 }: {
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
+  encoder?:string;
   prefs: SessionPrefs;
   onChange: (next: SessionPrefs) => void;
   onClose: () => void;
@@ -563,7 +565,7 @@ export function SessionPanel({
 
           <p className="spanel-section">Frame per detik</p>
           <div className="display-chips">{([30,60] as const).map(fps=><button type="button" key={fps} className={prefs.fps===fps?'active':''} onClick={()=>{onChange({...prefs,fps});onFps?.(fps);}}>{fps} FPS</button>)}</div>
-          <p className="spanel-note">Batas host: {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
+          <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
           <p className="spanel-section">Resolusi maksimal</p>
           <div className="display-chips">{(['720p','1080p','native'] as const).map(resolution=><button key={resolution} type="button" className={(prefs.resolution||'1080p')===resolution?'active':''} onClick={()=>{onChange({...prefs,resolution});onResolution?.(resolution);}}>{resolution==='native'?'Asli (maks. 4K)':resolution}</button>)}</div>
           <p className="spanel-note">Seluruh desktop dipertahankan tanpa zoom/crop. Layar ultrawide tetap ultrawide; angka di bawah adalah ukuran yang benar-benar diterima, bukan upscale.</p>
@@ -586,7 +588,7 @@ export function SessionPanel({
               </button>
             ))}
           </div>
-          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: kanvas 1280×720, 1920×1080 (desktop utuh + pita hitam), atau asli hingga 4096×2160. Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Mode asli maksimum 15 fps untuk mengutamakan detail; browser lama dapat dibatasi 720p.</p>
+          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: kanvas 16:9 tanpa pita: crop desktop 1280×720 atau 1920×1080 (desktop kecil memakai crop natif, tanpa upscale). Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Mode asli maksimum 15 fps untuk mengutamakan detail; browser lama dapat dibatasi 720p.</p>
 
           <p className="spanel-section">Yang sedang berjalan</p>
           <div className="spanel-card">

@@ -1,7 +1,7 @@
 #requires -Version 5.1
 [CmdletBinding(SupportsShouldProcess=$true)]
 param(
- [ValidateSet('Start','Stop','Status','Credentials','RevokeAccess')][string]$Action='Status',
+ [ValidateSet('Start','Stop','Status','Credentials','RevokeAccess','Fit')][string]$Action='Status',
  [string]$ConsoleUser='runneradmin',
  [string]$HostDirectory=$PSScriptRoot
 )
@@ -45,6 +45,22 @@ if ($Action -eq 'Stop') {
   if ($now -and $now.CreationDate -eq $p.CreationDate -and $now.ExecutablePath -ieq $engine) {Stop-Process -Id $p.ProcessId -Force}
  }
  Write-Host 'Console host stopped. Task disabled until Start. Identity, driver, Windows and RDP preserved.'
+ return
+}
+if ($Action -eq 'Fit') {
+ $fitScript=Join-Path $HostDirectory 'Console-Fit.ps1'
+ if (!(Test-Path -LiteralPath $fitScript)) {throw 'Console-Fit.ps1 missing from install directory.'}
+ $fitLog=Join-Path $state 'console-fit.log'
+ $fitTask='XyDesk-Console-Fit'
+ Unregister-ScheduledTask -TaskName $fitTask -Confirm:$false -ErrorAction SilentlyContinue
+ $fitArgs='-NoProfile -ExecutionPolicy Bypass -Command "& ''FITSCRIPT'' | Out-File -LiteralPath ''FITLOG'' -Encoding utf8"'
+ $fitArgs=$fitArgs.Replace('FITSCRIPT',$fitScript).Replace('FITLOG',$fitLog)
+ $fitAction=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $fitArgs
+ $fitPrincipal=New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$ConsoleUser" -LogonType Interactive
+ Register-ScheduledTask -TaskName $fitTask -Action $fitAction -Principal $fitPrincipal -Description 'One-shot window fit into the streamed desktop' -Force | Out-Null
+ Start-ScheduledTask -TaskName $fitTask
+ Start-Sleep -Seconds 3
+ if (Test-Path -LiteralPath $fitLog) {Get-Content -LiteralPath $fitLog -Tail 5} else {Write-Warning 'Log fit belum terbaca; tugas mungkin masih berjalan di sesi console.'}
  return
 }
 if ($Action -eq 'Credentials') {

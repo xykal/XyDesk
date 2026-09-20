@@ -65,10 +65,11 @@ pub fn fps() -> u32 {
     fps_limit(requested(), level(), FPS.load(Ordering::Relaxed))
 }
 pub fn record(size: Option<(usize, usize)>) {
-    record_layout(size.map(|(w, h)| crate::video_layout::VideoLayout {
-        canvas: [w, h],
-        content: [0, 0, w, h],
-    }));
+    record_layout(
+        size.and_then(|(w, h)| {
+            crate::video_layout::VideoLayout::new(w, h, requested(), level()).ok()
+        }),
+    );
 }
 pub fn record_layout(layout: Option<crate::video_layout::VideoLayout>) {
     *APPLIED
@@ -82,7 +83,7 @@ pub fn layout() -> Option<crate::video_layout::VideoLayout> {
 }
 pub fn telemetry() -> serde_json::Value {
     let layout = layout();
-    serde_json::json!({"level":level(),"requested":requested(),"applied":layout.map(|r|r.canvas),"contentRect":layout.map(|r|r.content),"fpsLimit":fps(),"fpsRequested":FPS.load(Ordering::Relaxed),"fpsControl":true})
+    serde_json::json!({"level":level(),"requested":requested(),"applied":layout.map(|r|r.canvas),"contentRect":layout.map(|r|r.content),"fpsLimit":fps(),"fpsRequested":FPS.load(Ordering::Relaxed),"fpsControl":true,"cropRect":layout.map(|r|r.crop)})
 }
 pub fn output_size(w: usize, h: usize, mode: u8, level: u8) -> Result<(usize, usize), String> {
     if w < 2 || h < 2 {

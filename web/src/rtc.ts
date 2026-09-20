@@ -219,6 +219,7 @@ export interface HostDisplay {
 }
 
 export interface HostMeta {
+  encoder?:string;
   desktopMode?: {device:string;requested:[number,number];observed:[number,number]|null;status:string}|null;
   cursorEmbedded?: boolean;
   inputGeometry?: {left:number;top:number;width:number;height:number}|null;

@@ -135,24 +135,24 @@ impl SoftwareEncoder {
             return Err("panjang RGBA tidak cocok dengan dimensi capture".into());
         }
         let layout = crate::video_layout::VideoLayout::new(width, height, self.mode, self.level)?;
-        let [left, top, w, h] = layout.content;
-        let pixels = if (w, h) == (width, height) {
+        let [crx, cry, crw, crh] = layout.crop;
+        let src: &[u8] = if (crx, cry, crw, crh) == (0, 0, width, height) {
             rgba
         } else {
-            self.resize_plan
-                .resize(rgba, width, height, w, h, &mut self.resized);
+            self.resized.resize(crw * crh * 4, 0);
+            for y in 0..crh {
+                let s = ((cry + y) * width + crx) * 4;
+                self.resized[y * crw * 4..(y + 1) * crw * 4].copy_from_slice(&rgba[s..s + crw * 4]);
+            }
             &self.resized
         };
         let [cw, ch] = layout.canvas;
-        let pixels = if (cw, ch) == (w, h) {
-            pixels
+        let pixels = if (crw, crh) == (cw, ch) {
+            src
         } else {
             self.canvas.resize(cw * ch * 4, 0);
-            self.canvas.fill(0);
-            for y in 0..h {
-                self.canvas[((top + y) * cw + left) * 4..((top + y) * cw + left + w) * 4]
-                    .copy_from_slice(&pixels[y * w * 4..(y + 1) * w * 4]);
-            }
+            self.resize_plan
+                .resize(src, crw, crh, cw, ch, &mut self.canvas);
             &self.canvas
         };
         let yuv = YUVBuffer::from_rgb_source(RgbaSliceU8::new(pixels, (cw, ch)));
@@ -164,7 +164,7 @@ impl SoftwareEncoder {
         if self.logged_size != Some((width, height)) {
             if let Some([profile, constraints, level]) = sps_profile_level(&data) {
                 let fps = self.fps;
-                println!("[xydesk-host] video software: capture {width}x{height} -> kirim {cw}x{ch} (desktop {w}x{h}), filter bilinear, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
+                println!("[xydesk-host] video software: capture {width}x{height} crop {crw}x{crh}+{crx}+{cry} -> kirim {cw}x{ch} tanpa pita, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
                 self.logged_size = Some((width, height));
             }
         }
@@ -213,7 +213,8 @@ mod tests {
     fn negotiated_hd_and_native_are_real_decodable_pixels() {
         for (mode, level, w, h, expected) in [
             (1, 40, 1920, 1080, (1920, 1080)),
-            (2, 51, 2336, 1080, (2336, 1080)),
+            // Mode asli kini juga 16:9 tanpa pita: crop 1920x1080, bukan desktop utuh + letterbox.
+            (2, 51, 2336, 1080, (1920, 1080)),
             (0, 51, 1920, 1080, (1280, 720)),
         ] {
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
@@ -225,10 +226,12 @@ mod tests {
         }
     }
     #[test]
-    fn odd_aspect_desktop_encodes_black_bars_not_crop_or_stretch() {
+    fn odd_aspect_desktop_crop_169_without_bars_or_upscale() {
         for (mode, level) in [(0, 31), (1, 40), (1, 51)] {
             let (w, h) = (2336, 1080);
             let layout = crate::video_layout::VideoLayout::new(w, h, mode, level).unwrap();
+            assert_eq!(layout.content, [0, 0, layout.canvas[0], layout.canvas[1]]);
+            assert_eq!(layout.crop, [208, 0, 1920, 1080]);
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
             let bytes = encoder.encode(&vec![220; w * h * 4], w, h).unwrap();
             let mut decoder = openh264::decoder::Decoder::new().unwrap();
@@ -237,11 +240,30 @@ mod tests {
             let mut rgb = vec![0; layout.canvas[0] * layout.canvas[1] * 3];
             frame.write_rgb8(&mut rgb);
             let pixel = |x: usize, y: usize| rgb[(y * layout.canvas[0] + x) * 3];
-            assert!(pixel(10, 10) < 20);
-            assert!(pixel(10, layout.canvas[1] - 10) < 20);
-            assert!(pixel(10, layout.content[1] + 10) > 190);
-            assert!(pixel(layout.canvas[0] - 10, layout.content[1] + 10) > 190);
+            // Tanpa pita: keempat sudut frame memuat piksel desktop, bukan hitam.
+            assert!(pixel(6, 6) > 190);
+            assert!(pixel(6, layout.canvas[1] - 6) > 190);
+            assert!(pixel(layout.canvas[0] - 6, 6) > 190);
+            assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);
         }
+        // Desktop tinggi: baris atas yang gelap ter-crop, taskbar bawah bertahan.
+        let (w, h) = (1920, 1200);
+        let mut pixels = vec![230u8; w * h * 4];
+        for y in 0..118 {
+            pixels[y * w * 4..(y + 1) * w * 4].fill(0);
+        }
+        let layout = crate::video_layout::VideoLayout::new(w, h, 1, 40).unwrap();
+        assert_eq!(layout.crop, [0, 120, 1920, 1080]);
+        let mut encoder = SoftwareEncoder::with_policy(1, 40).unwrap();
+        let bytes = encoder.encode(&pixels, w, h).unwrap();
+        let mut decoder = openh264::decoder::Decoder::new().unwrap();
+        let frame = decoder.decode(&bytes).unwrap().unwrap();
+        let mut rgb = vec![0; 1920 * 1080 * 3];
+        frame.write_rgb8(&mut rgb);
+        assert!(
+            rgb[0] > 190,
+            "baris pertama frame harus isi desktop, bukan pita"
+        );
     }
     #[test]
     fn bilinear_mencampur_detail_bukan_memilih_satu_pixel() {

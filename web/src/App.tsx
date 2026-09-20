@@ -2763,6 +2763,7 @@ function ConnectScreen({
             onChange={setPrefs}
             onFps={fps=>sessionRef.current?.setFps(fps)}
             fpsLimit={hostMeta?.video?.fpsLimit}
+            encoder={hostMeta?.encoder}
             onClose={() => setPanelOpen(false)}
             hostId={hostId}
             onDisconnect={disconnect}

@@ -209,9 +209,9 @@ impl NvEnc {
             crate::video_policy::level(),
         )?;
         if layout.canvas != [width as usize, height as usize]
-            || layout.content != [0, 0, width as usize, height as usize]
+            || layout.crop != [0, 0, width as usize, height as usize]
         {
-            return Err("letterbox/resize diperlukan; gunakan software".into());
+            return Err("crop/resize diperlukan; gunakan software".into());
         }
         let fns = load_api()?;
         if !width.is_multiple_of(2) || !height.is_multiple_of(2) {

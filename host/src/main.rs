@@ -234,6 +234,7 @@ fn meta_json() -> serde_json::Value {
         "desktopMode": xydesk_host::desktop_mode::telemetry(),
         "cursorEmbedded": xydesk_host::screen::cursor_embedded(),
         "video": xydesk_host::video_policy::telemetry(),
+        "encoder": xydesk_host::screen::encoder_label(),
         "inputGeometry": xydesk_host::desktop_geometry::active(),
         "audio": {
             "available": xydesk_host::audio::capture_available(),
