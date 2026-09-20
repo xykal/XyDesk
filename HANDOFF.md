@@ -2068,3 +2068,9 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 
 - 7ccebef: Windows 35439050512 + NSIS 35439383518 SUCCESS; installer di deliverables/uxhd4-7ccebef menggantikan uxhd3 (dihapus). Memperbaiki Console-Primary di PowerShell 5.1 (SizeOf dipindah ke C#) sehingga penataan layar primary benar-benar jalan dari manager Start; semua skrip console + log diagnostik + driver pinned tetap terbundel.
 - Status lapangan: host VM RDP user sempat STOP setelah percobaan shortcut Virtual720 di RDP (penolakan by design); pemulihan = install uxhd4 atau overwrite Console-Primary lalu manager Start. Bukti kehalusan/NVENC menunggu tes user (RDP untuk fungsi, VM GPU untuk performa).
+## Paket uji uxhd5 — Operator, 2026-09-20
+
+- 9387095: Windows 35517238606 + NSIS 35519015096 SUCCESS; installer dipublikasikan sebagai GitHub PRERELEASE tag uxhd5-9387095 (release 392473706) — releases/latest tetap v6.8.5 sehingga updater APK aman. SHA256 dfff9891…32240e, 4.857.441 byte. Menggantikan uxhd4-7ccebef.
+- Isi: keputusan mutlak operator — tanpa driver virtual, stream 16:9 tanpa pita (crop center-horizontal; desktop tinggi di-crop dari atas agar taskbar terlihat; tanpa upscale, desktop kecil memakai crop natif); input dipetakan ke crop; telemetri menambah cropRect; meta host menambah encoder (nvenc/openh264) yang tampil di panel Statistik web; manager console mendapat -Action Fit.
+- BUKAN rilis: versi tetap 6.8.5, tanpa berita, tanpa release non-prerelease (larangan operator "gas aja kecuali rilis").
+- Status lapangan: belum diuji di Windows user; host VM user masih STOP sejak uxhd3. Langkah user: install uxhd5 → Console-Virtual720.ps1 -Action Start → Status harus Running tanpa WARNING.
