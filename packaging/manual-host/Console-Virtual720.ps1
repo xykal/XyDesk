@@ -13,6 +13,22 @@ $admin=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity
 if (!$admin) {throw 'Administrator PowerShell required. No automatic elevation.'}
 $name=if ($VirtualDisplay720p) {'XyDesk-Virtual720-Console'} else {'XyDesk-UserHost'}
 $engine=[IO.Path]::GetFullPath((Join-Path $HostDirectory 'xydesk-host.exe'))
+# Upgrade cleanup: old uxhd8 used this task name for the lab-account workaround.
+# Remove it only when its action points to this exact install and worker; never
+# touch an unrelated task or process owned by another installation.
+if (-not $VirtualDisplay720p) {
+ $legacy=Get-ScheduledTask -TaskName 'XyDesk-Virtual720-Console' -ErrorAction SilentlyContinue
+ if ($legacy) {
+  $legacyArgs=(($legacy.Actions | Select-Object -First 1).Arguments)
+  $sameWorker=$legacyArgs -and $legacyArgs -match [regex]::Escape($HostDirectory) -and $legacyArgs -match 'Console-Worker\.ps1'
+  if ($sameWorker) {
+   Disable-ScheduledTask -TaskName 'XyDesk-Virtual720-Console' -ErrorAction SilentlyContinue | Out-Null
+   Stop-ScheduledTask -TaskName 'XyDesk-Virtual720-Console' -ErrorAction SilentlyContinue
+   Unregister-ScheduledTask -TaskName 'XyDesk-Virtual720-Console' -Confirm:$false -ErrorAction SilentlyContinue
+   Write-Host 'Legacy console task from this install removed; host will run as the selected Windows user.'
+  }
+ }
+}
 $account=New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$ConsoleUser")
 $sid=$account.Translate([Security.Principal.SecurityIdentifier]).Value
 $profile=Get-CimInstance Win32_UserProfile | Where-Object {$_.SID -eq $sid}
