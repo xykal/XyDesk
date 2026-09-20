@@ -34,9 +34,11 @@ export async function saveSessionHistory(item:HistoryItem, accountToken:string|n
 const status:Record<HistoryState,string>={ended:'Sesi selesai',interrupted:'Koneksi terputus',failed:'Gagal terhubung',cancelled:'Dibatalkan'};
 export function SessionHistoryPage({renderReconnect}:{renderReconnect?:(item:HistoryItem)=>ReactNode}={}){
  const [reconnect,setReconnect]=useState<HistoryItem|null>(null),[deleteTarget,setDeleteTarget]=useState<string|null|undefined>(undefined);
+ // Halaman detail dulu; koneksi hanya setelah tombol Hubungkan ditekan.
+ const [connecting,setConnecting]=useState(false);
  const reconnectDialog=useRef<HTMLDialogElement|null>(null),deleteDialog=useRef<HTMLDialogElement|null>(null);
  const reconnectTrigger=useRef<HTMLButtonElement|null>(null);
- const closeReconnect=()=>{setReconnect(null);setRefresh(x=>x+1);requestAnimationFrame(()=>reconnectTrigger.current?.focus());};
+ const closeReconnect=()=>{setReconnect(null);setConnecting(false);setRefresh(x=>x+1);requestAnimationFrame(()=>reconnectTrigger.current?.focus());};
  useEffect(()=>{if(reconnect)reconnectDialog.current?.showModal();},[reconnect]);
  useEffect(()=>{if(deleteTarget!==undefined)deleteDialog.current?.showModal();},[deleteTarget]);
  const [token,setToken]=useState(accountHistoryToken);const [items,setItems]=useState<HistoryItem[]>([]);const [error,setError]=useState('');const [loading,setLoading]=useState(true);const [refresh,setRefresh]=useState(0);
@@ -47,14 +49,25 @@ export function SessionHistoryPage({renderReconnect}:{renderReconnect?:(item:His
  <div className="history-actions"><button className="btn ghost" onClick={()=>setRefresh(x=>x+1)}>Muat ulang</button><button className="btn ghost" disabled={!items.length} onClick={()=>setDeleteTarget(null)}>Hapus semua</button></div>
  {error&&<p role="alert">{error}</p>}{loading?<p role="status">Memuat riwayat…</p>:!items.length&&!error?<div className="history-empty"><h2>Belum ada sesi tersimpan</h2><p>Setelah sesi selesai atau terputus, detail PC muncul di sini. Wallpaper HD diambil otomatis tanpa menangkap aplikasi terbuka dan dipakai ulang untuk ID yang sama.</p></div>:null}
  <div className="history-grid">{items.map(item=><article className="history-card" key={item.id}>
- <button className="history-device" type="button" aria-label={`Hubungkan lagi ${item.name}`} onClick={e=>{reconnectTrigger.current=e.currentTarget;setReconnect(item);}}>
+ <button className="history-device" type="button" aria-label={`Detail ${item.name}`} onClick={e=>{reconnectTrigger.current=e.currentTarget;setConnecting(false);setReconnect(item);}}>
  <span className="history-banner">{item.preview?<img src={item.preview} alt={`Wallpaper ${item.name}`} loading="lazy"/>:<span className="history-no-preview">Belum ada wallpaper</span>}</span>
  <span className="history-device-name"><h2>{item.name}</h2><small>ID {item.deviceId}</small><small>{status[item.state]||'Sesi terakhir'}</small></span><span className="history-chevron" aria-hidden="true">›</span></button>
- <div className="history-content"><details><summary>Spesifikasi & detail</summary><p>{new Date(item.endedAt).toLocaleString('id-ID')} · Durasi {Math.max(0,Math.round((item.endedAt-item.startedAt)/1000))} detik</p><dl>{Object.entries(item.specs||{}).map(([key,value])=><div key={key}><dt>{key.toUpperCase()}</dt><dd>{String(value)}</dd></div>)}</dl>{!Object.keys(item.specs||{}).length&&<p>Host belum mengirim spesifikasi.</p>}<p>Status PC belum diperiksa. Wallpaper tersimpan, bukan layar langsung.</p><button className="text-action" onClick={()=>setDeleteTarget(item.deviceId)}>Hapus perangkat & preview</button></details></div>
  </article>)}</div>
- {reconnect&&<dialog className="history-reconnect" ref={reconnectDialog} onCancel={e=>{e.preventDefault();closeReconnect();}} aria-label={`Hubungkan lagi ${reconnect.name}`}>
- <header><div><h2>{reconnect.name}</h2><p>ID {reconnect.deviceId} · Izin browser yang tersimpan dipakai untuk reconnect; jika belum ada, masukkan password pairing. Password tidak disimpan di riwayat.</p></div><button className="btn ghost" type="button" aria-label="Tutup hubungkan lagi" onClick={closeReconnect}>×</button></header>
- {renderReconnect?renderReconnect(reconnect):<p>Kontrol koneksi belum tersedia pada tampilan ini.</p>}
+ {reconnect&&<dialog className="history-reconnect" ref={reconnectDialog} onCancel={e=>{e.preventDefault();closeReconnect();}} aria-label={`Detail ${reconnect.name}`}>
+ <header><div><h2>{reconnect.name}</h2><p>ID {reconnect.deviceId} · {status[reconnect.state]||'Sesi terakhir'}</p></div><button className="btn ghost" type="button" aria-label="Tutup detail" onClick={closeReconnect}>×</button></header>
+ {connecting?(renderReconnect?renderReconnect(reconnect):<p>Kontrol koneksi belum tersedia pada tampilan ini.</p>):<div className="history-detail">
+  <div className="history-detail-preview">{reconnect.preview?<img src={reconnect.preview} alt={`Wallpaper ${reconnect.name}`}/>:<span className="history-no-preview">Belum ada wallpaper tersimpan</span>}</div>
+  <div className="history-detail-info">
+   <p>{new Date(reconnect.endedAt).toLocaleString('id-ID')} · Durasi {Math.max(0,Math.round((reconnect.endedAt-reconnect.startedAt)/1000))} detik</p>
+   <h3>Spesifikasi</h3>
+   {Object.keys(reconnect.specs||{}).length?<dl>{Object.entries(reconnect.specs||{}).map(([key,value])=><div key={key}><dt>{key.toUpperCase()}</dt><dd>{String(value)}</dd></div>)}</dl>:<p>Host belum mengirim spesifikasi.</p>}
+   <p className="history-detail-note">Wallpaper adalah preview tersimpan, bukan layar langsung. Izin browser yang tersimpan dipakai untuk reconnect; jika belum ada, masukkan password pairing. Password tidak disimpan di riwayat.</p>
+   <div className="history-detail-actions">
+    <button className="btn primary" type="button" onClick={()=>setConnecting(true)}>Hubungkan</button>
+    <button className="text-action" type="button" onClick={()=>{const id=reconnect.deviceId;closeReconnect();setDeleteTarget(id);}}>Hapus perangkat & preview</button>
+   </div>
+  </div>
+ </div>}
  </dialog>}
  {deleteTarget!==undefined&&<dialog className="history-confirm" ref={deleteDialog} onCancel={()=>setDeleteTarget(undefined)} aria-label="Hapus riwayat"><h2>Hapus {deleteTarget?'perangkat ini':'semua riwayat'}?</h2><p>Preview tersimpan juga akan dihapus. Sesi yang berjalan tidak diputus.</p><button className="btn ghost" onClick={()=>setDeleteTarget(undefined)}>Batal</button><button className="btn primary" onClick={()=>void remove(deleteTarget??undefined)}>Hapus</button></dialog>}
  </main>;

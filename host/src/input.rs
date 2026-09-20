@@ -323,10 +323,13 @@ mod windows_inject {
                 ok
             }
             InputEvent::MouseMoveAbs { x, y } => {
+                // desktop_point menghasilkan PIKSEL desktop; jangan pernah
+                // memberi piksel ke CaptureRect::point (yang menerima fraksi
+                // 0..65535) — itulah bug kursor terkunci pojok kiri atas.
                 let point = crate::video_policy::layout()
                     .and_then(|layout| layout.desktop_point(x, y))
                     .and_then(|(x, y)| {
-                        crate::desktop_geometry::active().and_then(|r| r.point(x, y))
+                        crate::desktop_geometry::active().and_then(|r| r.pixel(x, y))
                     });
                 POINTER_TARGET_VALID.store(false, std::sync::atomic::Ordering::Relaxed);
                 let Some((px, py)) = point else {

@@ -1,14 +1,18 @@
-PANEL KLIK-KLIK (SEMENTARA): XYDESK CONTROL PANEL
-Shortcut desktop "XyDesk Control Panel" membuka GUI kecil untuk Start/Stop/
-Status/Fit/Kredensial/Log tanpa mengetik PowerShell manual. Panel meminta satu
-prompt UAC (Administrator) lalu membungkus Console-Virtual720.ps1 yang sama
-persis dengan jalur manual; tidak ada jalur baru, tidak ada proses tambahan
-selain yang dibuat manajer. Status "Running" adalah status proses, bukan bukti
-streaming.
+SATU PINTU: XYDESK CONTROL PANEL
+Desktop hanya berisi satu shortcut: "XyDesk Control Panel" — GUI kecil untuk
+Start/Stop/Status/Fit/Kredensial/Log tanpa mengetik PowerShell manual. Panel
+meminta satu prompt UAC (Administrator) lalu membungkus Console-Virtual720.ps1
+yang sama persis dengan jalur manual; tidak ada jalur baru, tidak ada proses
+tambahan selain yang dibuat manajer. Status "Running" adalah status proses,
+bukan bukti streaming.
 
-MODE BARU: XYDESK VIRTUAL720 (OPT-IN)
-Gunakan shortcut desktop "XyDesk Virtual720" untuk sumber virtual1280x720.
-Shortcut "XyDesk Host Test" tetap mode biasa, bukan kunci virtual.
+Entri teknis lain (launcher manual "XyDesk Host Test", "XyDesk Virtual720",
+panduan, uninstall) ada di Start Menu > XyDesk Host Test. Untuk pemakaian
+normal cukup Control Panel.
+
+MODE: XYDESK VIRTUAL720 (OPT-IN)
+Gunakan shortcut Start Menu "XyDesk Virtual720" untuk sumber virtual1280x720.
+Shortcut "XyDesk Host Test" (Start Menu) tetap mode biasa, bukan kunci virtual.
 
 Jika belum ada driver, buka PowerShell Administrator di folder instalasi:
   .\Setup-VirtualDisplay.ps1 -VerifyOnly

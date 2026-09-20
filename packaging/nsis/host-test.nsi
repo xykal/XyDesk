@@ -126,12 +126,16 @@ safe:
   WriteRegDWORD HKCU "${UNKEY}" "NoRepair" 1
   WriteRegDWORD HKCU "${UNKEY}" "EstimatedSize" ${ESTIMATED_KB}
   CreateDirectory "$SMPROGRAMS\${PRODUCT}"
-  CreateShortcut "$DESKTOP\XyDesk Virtual720.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-Virtual720.ps1$\"' "$INSTDIR\xydesk.ico"
+  ; Satu pintu untuk pengguna: hanya Control Panel di desktop. Entri lanjutan
+  ; (launcher manual, Virtual720) tetap ada di Start Menu untuk kebutuhan teknis.
+  ; Bersihkan shortcut desktop paket lama saat upgrade tanpa uninstall.
+  Delete "$DESKTOP\XyDesk Virtual720.lnk"
+  Delete "$DESKTOP\${PRODUCT}.lnk"
+  CreateShortcut "$SMPROGRAMS\${PRODUCT}\XyDesk Virtual720.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-Virtual720.ps1$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$DESKTOP\XyDesk Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
 
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\${PRODUCT}.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-TestHost.ps1$\"' "$INSTDIR\xydesk.ico"
-  CreateShortcut "$DESKTOP\${PRODUCT}.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-TestHost.ps1$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\Panduan Uji Manual.lnk" "$WINDIR\System32\notepad.exe" '$\"$INSTDIR\README-INSTALLER.txt$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk-Host-Test.exe"
   IfErrors failed
@@ -166,6 +170,7 @@ Section "Uninstall"
   Delete "$DESKTOP\XyDesk Virtual720.lnk"
   Delete "$DESKTOP\XyDesk Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\XyDesk Virtual720.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\${PRODUCT}.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Panduan Uji Manual.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk"

@@ -9,6 +9,14 @@ pub struct CaptureRect {
     pub height: u32,
 }
 impl CaptureRect {
+    /// Piksel capture (kolom, baris) -> koordinat fisik virtual screen.
+    /// BERBEDA dari [`CaptureRect::point`]: argumen di sini adalah PIKSEL,
+    /// bukan fraksi 0..65535. Salah pilih fungsi = kursor terkunci di pojok
+    /// kiri atas (regresi lapangan 2026-09-20).
+    pub fn pixel(self, x: u16, y: u16) -> Option<(i32, i32)> {
+        (u32::from(x) < self.width && u32::from(y) < self.height)
+            .then(|| (self.left + i32::from(x), self.top + i32::from(y)))
+    }
     pub fn point(self, x: u16, y: u16) -> Option<(i32, i32)> {
         if self.width == 0 || self.height == 0 {
             return None;
@@ -176,6 +184,32 @@ mod tests {
         assert_eq!(r.point(0, 0), Some((-1920, -200)));
         assert_eq!(r.point(65535, 65535), Some((-1, 879)));
         assert_eq!(r.point(32768, 32768), Some((-960, 340)));
+    }
+    #[test]
+    fn pixel_maps_desktop_pixels_not_fractions() {
+        // Regresi kursor pojok kiri atas: desktop_point menghasilkan piksel;
+        // bila piksel diberi ke point() (fraksi), semua koordinat kecil
+        // menempel di origin. pixel() harus translasi 1:1 plus offset monitor.
+        let r = CaptureRect {
+            left: -1920,
+            top: -200,
+            width: 1920,
+            height: 1080,
+        };
+        assert_eq!(r.pixel(0, 0), Some((-1920, -200)));
+        assert_eq!(r.pixel(1919, 1079), Some((-1, 879)));
+        assert_eq!(r.pixel(960, 540), Some((-960, 340)));
+        assert_eq!(r.pixel(1920, 0), None);
+        assert_eq!(r.pixel(0, 1080), None);
+        let primary = CaptureRect {
+            left: 0,
+            top: 0,
+            width: 1280,
+            height: 720,
+        };
+        // Tengah layar harus jatuh di tengah, bukan (0,0)/pojok.
+        assert_eq!(primary.pixel(640, 360), Some((640, 360)));
+        assert_ne!(primary.pixel(640, 360), Some((0, 0)));
     }
     #[test]
     fn one_pixel_invalid_and_overflow() {

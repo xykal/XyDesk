@@ -38,9 +38,12 @@ if ($props.InstallLocation -ne $installed -or $props.DisplayVersion -ne '6.8.5')
 $desktop = [Environment]::GetFolderPath('Desktop')
 $programs = [Environment]::GetFolderPath('Programs')
 $shortcut = Join-Path $programs 'XyDesk Host Test\XyDesk Host Test.lnk'
-if (-not (Test-Path $shortcut) -or -not (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk'))) { throw 'Shortcut hilang' }
-$virtualShortcut = Join-Path $desktop 'XyDesk Virtual720.lnk'
-if (-not (Test-Path $virtualShortcut)) { throw 'Virtual720 shortcut missing' }
+if (-not (Test-Path $shortcut)) { throw 'Shortcut hilang' }
+# Desktop bersih: hanya Control Panel. Launcher manual/Virtual720 pindah ke Start Menu.
+if (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk')) { throw 'Desktop launcher shortcut should no longer exist' }
+$virtualShortcut = Join-Path $programs 'XyDesk Host Test\XyDesk Virtual720.lnk'
+if (-not (Test-Path $virtualShortcut)) { throw 'Virtual720 Start Menu shortcut missing' }
+if (Test-Path (Join-Path $desktop 'XyDesk Virtual720.lnk')) { throw 'Virtual720 desktop shortcut should no longer exist' }
 $shell = New-Object -ComObject WScript.Shell
 $virtualLink = $shell.CreateShortcut($virtualShortcut)
 if ($virtualLink.Arguments -notlike '*Start-Virtual720.ps1*') { throw 'Virtual720 shortcut target incorrect' }
@@ -51,7 +54,7 @@ if (-not (Test-Path $panelShortcut)) { throw 'Control Panel shortcut missing' }
 if (-not (Test-Path (Join-Path $installed 'Console-Panel.ps1'))) { throw 'Console-Panel.ps1 not installed' }
 $panelLink = $shell.CreateShortcut($panelShortcut)
 if ($panelLink.Arguments -notlike '*Console-Panel.ps1*') { throw 'Control Panel shortcut target incorrect' }
-$checks.Add('GUI control panel script installed and desktop shortcut verified')
+$checks.Add('GUI control panel script installed and desktop shortcut verified; desktop has single entry point')
 # Uji perintah shortcut dengan CheckOnly, tanpa NoExit, tanpa meminta token/stream.
 $argsCheck = $link.Arguments.Replace('-NoExit ', '') + ' -CheckOnly'
 Write-Host ('CheckOnly target: ' + $link.TargetPath)
