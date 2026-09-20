@@ -2099,3 +2099,12 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - Web UX: HUD mouse + mapping default bulat penuh (panel & keyboard tetap kotak); keyboard virtual putih ala HP nempel dasar layar tanpa transisi; riwayat → halaman detail (wallpaper besar + spesifikasi + durasi) + tombol Hubungkan eksplisit.
 - Permintaan user belum dikerjakan (dicatat sebagai backlog): "driver screen bukan display" (bedah teknik capture stardesk / driver kelas lain) dan "harus ada file .dll" — perlu riset & keputusan arsitektur, jangan asal tempel DLL. Lihat bagian backlog.
 - Pengaturan Gambar (kualitas/FPS/bitrate/resolusi) semuanya tersambung end-to-end di kode + CI, tapi klaim "berfungsi" di mesin user tetap butuh uji lapangan.
+
+## uxhd9 — host mengikuti user `kall`, 2026-09-20
+
+- Perbaikan inti setelah operator melaporkan host memakai `runneradmin`: `Console-Panel.ps1`, `Console-Virtual720.ps1`, dan `Console-Launch.ps1` sekarang mengambil akun Windows aktif (`$env:USERNAME`), bukan akun lab hardcode.
+- Start dari Control Panel memakai desktop user interaktif (`-KeepDesktopResolution`) dan scheduled task `XyDesk-UserHost`. Mode `Start-Virtual720.ps1` tetap jalur teknis opt-in strict yang membutuhkan virtual display terlihat di active console; tidak ada fallback diam-diam ke RDP atau user lain.
+- Saat upgrade, task legacy `XyDesk-Virtual720-Console` hanya dibersihkan jika action-nya menunjuk ke `Console-Worker.ps1` pada instalasi yang sama. Tidak ada global taskkill.
+- Commit source final: `c0ede5b8a2a01ee0295c584ad90e422221aa896c`. CI Windows `35535618245` dan NSIS `35536000419` SUCCESS; NSIS validation PASS.
+- Prerelease final: `uxhd9-4f6230e` (release 392566338), installer SHA256 `a24e3f88723065c09011522c85317e3016db5d82e92b1425aef5f2ece6172162`, 4.862.834 byte. Direct link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd9-4f6230e/XyDesk-Host-Test-Setup-x64.exe
+- `releases/latest` tetap `v6.8.5`; production release/deploy tidak dilakukan. Hardware/session validation masih harus dilakukan user: pastikan desktop yang tampil adalah desktop `kall`.
