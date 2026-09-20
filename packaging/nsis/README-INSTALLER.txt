@@ -1,16 +1,16 @@
 SATU PINTU: XYDESK CONTROL PANEL
 Desktop hanya berisi satu shortcut: "XyDesk Control Panel" — GUI kecil untuk
 Start/Stop/Status/Fit/Kredensial/Log tanpa mengetik PowerShell manual. Panel
-meminta satu prompt UAC (Administrator) lalu membungkus Console-Virtual720.ps1
-yang sama persis dengan jalur manual; tidak ada jalur baru, tidak ada proses
-tambahan selain yang dibuat manajer. Status "Running" adalah status proses,
-bukan bukti streaming.
+meminta satu prompt UAC (Administrator) lalu menjalankan host sebagai akun
+Windows yang sedang dipilih (default: user yang membuka panel). Tidak ada
+pemindahan ke akun lab atau desktop user lain. Status "Running" adalah status
+proses, bukan bukti streaming.
 
 Entri teknis lain (launcher manual "XyDesk Host Test", "XyDesk Virtual720",
 panduan, uninstall) ada di Start Menu > XyDesk Host Test. Untuk pemakaian
 normal cukup Control Panel.
 
-MODE: XYDESK VIRTUAL720 (OPT-IN)
+MODE: XYDESK VIRTUAL720 (OPT-IN / TEKNIS)
 Gunakan shortcut Start Menu "XyDesk Virtual720" untuk sumber virtual1280x720.
 Shortcut "XyDesk Host Test" (Start Menu) tetap mode biasa, bukan kunci virtual.
 

@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference='Stop'
 $admin=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (!$admin) {throw 'Administrator PowerShell required. No automatic elevation.'}
-$name='XyDesk-Virtual720-Console'
+$name=if ($VirtualDisplay720p) {'XyDesk-Virtual720-Console'} else {'XyDesk-UserHost'}
 $engine=[IO.Path]::GetFullPath((Join-Path $HostDirectory 'xydesk-host.exe'))
 $account=New-Object Security.Principal.NTAccount("$env:COMPUTERNAME\$ConsoleUser")
 $sid=$account.Translate([Security.Principal.SecurityIdentifier]).Value
@@ -99,7 +99,7 @@ if ($Action -eq 'Start') {
  $actionSpec=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $workerArgs -WorkingDirectory $HostDirectory
  $principal=New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$ConsoleUser" -LogonType Interactive -RunLevel Highest
  $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
- Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description 'XyDesk console Virtual720; explicit manual start, owned process tree' -Force | Out-Null
+ Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description (if ($VirtualDisplay720p) {'XyDesk strict Virtual720 console host'} else {'XyDesk host for the logged-in Windows user'}) -Force | Out-Null
  Start-ScheduledTask -TaskName $name
  Start-Sleep -Seconds 8
  }
