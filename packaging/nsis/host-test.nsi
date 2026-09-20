@@ -127,6 +127,8 @@ safe:
   WriteRegDWORD HKCU "${UNKEY}" "EstimatedSize" ${ESTIMATED_KB}
   CreateDirectory "$SMPROGRAMS\${PRODUCT}"
   CreateShortcut "$DESKTOP\XyDesk Virtual720.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-Virtual720.ps1$\"' "$INSTDIR\xydesk.ico"
+  CreateShortcut "$DESKTOP\XyDesk Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
+  CreateShortcut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
 
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\${PRODUCT}.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-TestHost.ps1$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$DESKTOP\${PRODUCT}.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-TestHost.ps1$\"' "$INSTDIR\xydesk.ico"
@@ -162,6 +164,8 @@ Section "Uninstall"
   IfFileExists "$INSTDIR\xydesk-host.exe" blocked
   Delete "$DESKTOP\${PRODUCT}.lnk"
   Delete "$DESKTOP\XyDesk Virtual720.lnk"
+  Delete "$DESKTOP\XyDesk Control Panel.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\${PRODUCT}.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Panduan Uji Manual.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk"

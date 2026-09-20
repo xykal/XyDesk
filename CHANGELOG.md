@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- Panel kontrol GUI sementara (Console-Panel.ps1 + shortcut desktop "XyDesk Control Panel"): Start/Stop/Status/Fit/Kredensial/Log lewat klik, membungkus Console-Virtual720.ps1 (satu prompt UAC, jalur scheduled task tidak berubah). Referensi engine stardesk.net ditinjau; tidak ada kode/aset yang disalin. Tetap tanpa rilis versi.
+
 - **Keputusan mutlak operator (2026-09-19): tanpa driver virtual, stream wajib 16:9 tanpa pita.** Letterbox diganti crop 16:9 (center horizontal, anchor bawah agar taskbar terlihat), tanpa upscale; pemetaan input mengikuti crop sehingga klik tetap presisi; telemetri menambah cropRect dan label encoder (nvenc/openh264) yang juga tampil di panel Statistik web. Manajer console mendapat -Action Fit untuk menarik jendela nyasar ke layar stream dalam satu perintah. Tidak ada rilis versi pada perubahan ini.
 
 - **Perbaikan lapangan UXHD:** rail kontrol kembali kolom kanan; checkbox izin preview dihapus (izin mengingat otomatis, tetap bisa dilupakan/dicabut); tombol pointer mapping dipisah dari rail dan diberi tint terlihat; layout lama sekali dimigrasi menambah tombol mouse/scroll yang hilang; monitor virtual 720p dijadikan primary di sesi console supaya jendela aplikasi terbuka di layar yang di-stream; thread encoder software 4 untuk latensi encode lebih rendah. Paket baru menyusul dengan hash terpisah.

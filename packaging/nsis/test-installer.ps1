@@ -46,6 +46,12 @@ $virtualLink = $shell.CreateShortcut($virtualShortcut)
 if ($virtualLink.Arguments -notlike '*Start-Virtual720.ps1*') { throw 'Virtual720 shortcut target incorrect' }
 $link = $shell.CreateShortcut($shortcut)
 if ($link.Arguments -notlike '*Start-TestHost.ps1*') { throw 'Target shortcut salah' }
+$panelShortcut = Join-Path $desktop 'XyDesk Control Panel.lnk'
+if (-not (Test-Path $panelShortcut)) { throw 'Control Panel shortcut missing' }
+if (-not (Test-Path (Join-Path $installed 'Console-Panel.ps1'))) { throw 'Console-Panel.ps1 not installed' }
+$panelLink = $shell.CreateShortcut($panelShortcut)
+if ($panelLink.Arguments -notlike '*Console-Panel.ps1*') { throw 'Control Panel shortcut target incorrect' }
+$checks.Add('GUI control panel script installed and desktop shortcut verified')
 # Uji perintah shortcut dengan CheckOnly, tanpa NoExit, tanpa meminta token/stream.
 $argsCheck = $link.Arguments.Replace('-NoExit ', '') + ' -CheckOnly'
 Write-Host ('CheckOnly target: ' + $link.TargetPath)
@@ -73,7 +79,7 @@ Set-Content $sentinel 'identity-preservation-fixture'
 $uninstaller = Join-Path $installed 'Uninstall-XyDesk-Host-Test.exe'
 $p = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
 if ($p.ExitCode -ne 0) { throw 'Uninstall gagal' }
-if ((Test-Path $virtualShortcut) -or (Test-Path $engine) -or (Test-Path $key) -or (Test-Path $shortcut) -or (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk'))) { throw 'Uninstall meninggalkan engine/registrasi/shortcut' }
+if ((Test-Path $virtualShortcut) -or (Test-Path $panelShortcut) -or (Test-Path $engine) -or (Test-Path $key) -or (Test-Path $shortcut) -or (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk'))) { throw 'Uninstall meninggalkan engine/registrasi/shortcut' }
 if (-not (Test-Path $sentinel) -or -not (Test-Path (Join-Path $installed 'keep-user.txt'))) { throw 'Uninstall menghapus data yang harus dipertahankan' }
 $checks.Add('silent uninstall removes engine/registration/shortcuts but preserves identity and extra files')
 $defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\XyDesk Host Test'

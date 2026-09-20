@@ -1,3 +1,11 @@
+PANEL KLIK-KLIK (SEMENTARA): XYDESK CONTROL PANEL
+Shortcut desktop "XyDesk Control Panel" membuka GUI kecil untuk Start/Stop/
+Status/Fit/Kredensial/Log tanpa mengetik PowerShell manual. Panel meminta satu
+prompt UAC (Administrator) lalu membungkus Console-Virtual720.ps1 yang sama
+persis dengan jalur manual; tidak ada jalur baru, tidak ada proses tambahan
+selain yang dibuat manajer. Status "Running" adalah status proses, bukan bukti
+streaming.
+
 MODE BARU: XYDESK VIRTUAL720 (OPT-IN)
 Gunakan shortcut desktop "XyDesk Virtual720" untuk sumber virtual1280x720.
 Shortcut "XyDesk Host Test" tetap mode biasa, bukan kunci virtual.
