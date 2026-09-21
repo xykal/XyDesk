@@ -37,6 +37,12 @@ const defaults=()=>normalizeMappings([
  {id:'right',kind:'mouse',code:1,x:78,y:64,size:52},{id:'up',kind:'scroll',code:120,x:62,y:82,size:52},{id:'down',kind:'scroll',code:-120,x:78,y:82,size:52},{id:'win',kind:'key',code:91,x:14,y:84,size:52},
  {id:'left',label:'Klik kiri',kind:'mouse',code:0,x:62,y:64,size:52},{id:'space',label:'Spasi',kind:'key',code:32,x:85,y:48,size:60},
 ]);
+const fpsDefaults=()=>normalizeMappings([
+ {id:'w',label:'W',kind:'key',code:87,x:14,y:44,size:52},{id:'a',label:'A',kind:'key',code:65,x:7,y:60,size:52},{id:'s',label:'S',kind:'key',code:83,x:14,y:60,size:52},{id:'d',label:'D',kind:'key',code:68,x:21,y:60,size:52},
+ {id:'shift',label:'Shift',kind:'key',code:16,x:8,y:82,size:56},{id:'ctrl',label:'Ctrl',kind:'key',code:17,x:22,y:82,size:56},{id:'space',label:'Spasi',kind:'key',code:32,x:83,y:78,size:64},
+ {id:'e',label:'E',kind:'key',code:69,x:86,y:38,size:48},{id:'r',label:'R',kind:'key',code:82,x:94,y:38,size:48},
+ {id:'left',label:'Klik kiri',kind:'mouse',code:0,x:68,y:54,size:56},{id:'right',label:'Klik kanan',kind:'mouse',code:1,x:84,y:54,size:56},
+]);
 export function withPointerDefaults(items:Mapping[]):Mapping[]{
  if(localStorage.getItem('xydesk.mapping.pointer.v1'))return items;
  localStorage.setItem('xydesk.mapping.pointer.v1','1');
@@ -77,6 +83,6 @@ export function CustomControlMapping({send}:{send:(b:Uint8Array)=>void}){
  {selectedItem.kind==='key'?<MappingPicker label="Tombol" options={KEY_OPTIONS} values={[selectedItem.code]} onChange={([code])=>update({code:Number(code),label:String(KEY_OPTIONS.find(x=>x[0]===code)?.[1]||code)})}/>:selectedItem.kind==='chord'?<MappingPicker label="Kombinasi" multiple options={KEY_OPTIONS} values={selectedItem.keys||[]} onChange={keys=>update({keys:chordKeys(keys)})}/>:<MappingPicker label="Tombol mouse / scroll" options={selectedItem.kind==='mouse'?[[0,'Kiri'],[1,'Kanan'],[2,'Tengah'],[3,'Samping kembali'],[4,'Samping maju']]:selectedItem.kind==='scrollX'?[[120,'Ke kanan'],[-120,'Ke kiri']]:[[120,'Ke atas'],[-120,'Ke bawah']]} values={[selectedItem.code]} onChange={([code])=>update({code:Number(code)})}/>}
 
  <label>Ukuran {selectedItem.size}px<input type="range" min="36" max="160" value={selectedItem.size} onChange={e=>update({size:Number(e.target.value)})}/></label><label>Radius {selectedItem.radius??Math.round(selectedItem.size/2)}px<input type="range" min="0" max="80" value={selectedItem.radius??Math.round(selectedItem.size/2)} onChange={e=>update({radius:Number(e.target.value)})}/></label><button type="button" onClick={()=>{setItems(old=>old.filter(x=>x.id!==selected));setSelected('');}}>Hapus tombol</button></>}
- <button type="button" onClick={()=>{holds.current!.reset();setItems(defaults());setSelected('');}}>Preset D-pad WASD + mouse</button><p>Untuk shortcut, tahan tombol Ctrl/Shift/Alt sambil menekan tombol lain. Layout tersimpan di browser ini, terpisah portrait/landscape.</p><button type="button" onClick={()=>{holds.current!.reset();setItems(defaults());setSelected('');}}>Pulihkan layout bawaan</button></aside>}
+ <div className="mapping-presets"><button type="button" onClick={()=>{holds.current!.reset();setItems(defaults());setSelected('');}}>Preset D-pad</button><button type="button" onClick={()=>{holds.current!.reset();setItems(fpsDefaults());setSelected('');}}>Preset FPS</button></div><p>Tahan tombol untuk gerak/drag; lepas untuk key-up yang aman. Preset FPS berisi WASD, Shift, Ctrl, Space, E/R, serta klik kiri/kanan. Layout tersimpan di browser ini, terpisah portrait/landscape.</p><button type="button" onClick={()=>{holds.current!.reset();setItems(defaults());setSelected('');}}>Pulihkan layout bawaan</button></aside>}
  </>;
 }

@@ -33,16 +33,20 @@ installer-source.json mengikat installer ke engine yang dibangun/diuji.
 PASANG DAN MULAI
 1. Jalankan installer. Untuk instalasi baru pilih folder kosong; untuk versi
    uji sebelumnya gunakan lokasi yang sama. Identitas uji dipertahankan.
-2. Buka "XyDesk Control Panel" dari Desktop atau Start Menu.
-3. Tekan "Mulai host". Tidak ada jendela terminal yang dibuka.
+2. Buka "XyDesk Control Panel" dari Desktop atau Start Menu. Host otomatis
+   mulai saat panel dibuka; tidak perlu menekan tombol kedua.
+3. Jika panel ditutup dengan tombol X, host tetap berjalan di system tray.
+   Klik kanan ikon XyDesk untuk Buka Control Panel, Mulai/Hentikan host,
+   Buka XyDesk Web, atau Keluar XyDesk.
 4. Gunakan https://app.xydesk.my.id dan salin Device ID/kode pairing dari panel.
    Jangan membagikan kode pairing, token, atau file identitas.
 5. Uji suara PC, keyboard, pointer/klik di tengah dan empat sudut, serta
    pelepasan tombol ketika sesi ditutup.
 
 Panel native menjalankan xydesk-host.exe langsung sebagai user Windows aktif,
-memakai pengawas proses Windows (Job Object), dan menghentikannya dengan tombol
-Hentikan. Installer tidak mengubah execution policy atau membuka PowerShell.
+memakai pengawas proses Windows (Job Object), menyalakan host otomatis saat
+panel terbuka, dan menyediakan kontrol yang sama dari ikon tray. Installer tidak
+mengubah execution policy atau membuka PowerShell.
 
 DESKTOP16:9 — PERUBAHAN PERILAKU
 Saat sesi yang terotorisasi dimulai, host meminta1920x1080 atau1280x720 sesuai
@@ -90,7 +94,7 @@ UNINSTALL DAN BATAS
 Gunakan Settings > Apps atau Start Menu > XyDesk Host Test > Uninstall.
 Hentikan host sendiri dahulu. Uninstaller tidak membunuh proses dan menjaga
 identitas uji serta file pribadi tambahan dalam folder instalasi.
-Tidak ada service, autostart, firewall rule, atau konfigurasi RDP yang dipasang.
+Tidak ada service, autostart saat login Windows, firewall rule, atau konfigurasi RDP yang dipasang. Host otomatis hanya ketika Control Panel dibuka.
 Installer tidak memperbarui APK/web/server; web diperbarui terpisah.
 
 Installer/engine belum ditandatangani Authenticode. Verifikasi SHA-256 dan asal

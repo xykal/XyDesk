@@ -29,6 +29,8 @@
 //! 0x09 CLIPBOARD_REQ   (tanpa payload)         (minta lawan membalas 0x08)
 //! 0x0A VIDEO_QUALITY   quality:u8             (0=auto 1=medium 2=high 3=ultra)
 //! 0x0B VIDEO_BITRATE   mbps:u16 le            (0=auto 1..50 Mbps)
+//! 0x0C VIDEO_RESOLUTION mode:u8                (0=720p, 1=1080p)
+//! 0x0F VIDEO_FPS       fps:u8                  (30 atau 60)
 //! ```
 //!
 //! Parser lintas platform; injeksi nyata hanya di Windows via `SendInput` —

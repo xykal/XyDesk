@@ -351,7 +351,7 @@ export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: st
 export function normalizeResolution(value: unknown): ResolutionMode {
   // Migrasi native/480p dari preferensi lama ke Full HD; UI tidak menawarkan
   // target di bawah HD dan tidak melakukan upscale palsu pada sumber kecil.
-  return value === '720p' ? '720p' : '1080p';
+  return value === '1080p' ? '1080p' : '720p';
 }
 
 export type SessionPrefs = {
@@ -389,7 +389,7 @@ export const DEFAULT_PREFS: SessionPrefs = {
   cursorInVideo: false,
   tapClick: true,
   reverseScroll: false,
-  resolution: '1080p',
+  resolution: '720p',
   quality: 'auto',
   bitrateMbps: 0,
   fps:30,
@@ -490,10 +490,12 @@ export function SessionPanel({
   onFps,
   fpsLimit,
   encoder,
+  videoApplied,
 }: {
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
   encoder?:string;
+  videoApplied?: [number, number] | null;
   prefs: SessionPrefs;
   onChange: (next: SessionPrefs) => void;
   onClose: () => void;
@@ -579,7 +581,7 @@ export function SessionPanel({
           <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
           <p className="spanel-section">Resolusi maksimal</p>
           <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'1080p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
-          <p className="spanel-note">Seluruh desktop dipertahankan tanpa zoom/crop. Layar ultrawide tetap ultrawide; angka di bawah adalah ukuran yang benar-benar diterima, bukan upscale.</p>
+          <p className="spanel-note">Mode 720p menjaga output HD 1280×720, termasuk saat desktop RDP lebih kecil; sumber akan diskalakan halus agar tidak berhenti di tinggi 529. Mode 1080p memakai ukuran yang tersedia tanpa mengarang detail.</p>
           <p className="spanel-section">Bitrate</p>
           <div className="display-chips bitrate-chips">
             {BITRATE_OPTIONS.map((opt) => (
@@ -599,7 +601,7 @@ export function SessionPanel({
               </button>
             ))}
           </div>
-          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: desktop dikirim utuh pada rasio aslinya — tanpa pita hitam, tanpa crop; host otomatis meminta mode desktop 16:9 yang didukung. Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Target resolusi hanya HD (720p) atau Full HD (1080p); sumber kecil tidak di-upscale agar tetap jujur dan tidak buram.</p>
+          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host. Mode 720p mengirim kanvas HD; mode 1080p dipakai bila capture dan encoder mendukung. RTT bukan latensi layar-ke-layar.</p>
 
           <p className="spanel-section">Yang sedang berjalan</p>
           <div className="spanel-card">
@@ -633,6 +635,7 @@ export function SessionPanel({
               <p className="spanel-note">Angka kualitas muncul begitu koneksi mengalir.</p>
             )}
           </div>
+          {videoApplied && <p className="spanel-note" role="status">Output video host: {videoApplied.join('×')} · ukuran pemutar: {stats?.playerSize || 'menunggu decode'}.</p>}
           {desktopMode && <p className="spanel-note" role="status">
             Desktop diminta {desktopMode.requested.join('×')} · terbaca {desktopMode.observed?.join('×') || 'belum tersedia'}.
             {' '}{({applied:'Mode 16:9 terverifikasi.',already:'Desktop sudah sesuai.',unsupported:'Mode tidak tersedia dari Windows/RDP.',rejected:'Windows/RDP menolak perubahan.',unverified:'Perubahan belum terverifikasi.',overridden:'Resolusi diubah kembali oleh Windows/RDP.',unavailable:'Mode desktop tidak dapat diperiksa.'} as Record<string,string>)[desktopMode.status] || 'Status belum diketahui.'}

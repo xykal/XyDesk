@@ -5,7 +5,7 @@ use std::sync::{
 };
 static FPS: AtomicU8 = AtomicU8::new(30);
 static LEVEL: AtomicU8 = AtomicU8::new(31);
-static REQUESTED: AtomicU8 = AtomicU8::new(1);
+static REQUESTED: AtomicU8 = AtomicU8::new(0);
 static APPLIED: Mutex<Option<crate::video_layout::VideoLayout>> = Mutex::new(None);
 fn effective_mode(locked720: bool, requested: u8) -> u8 {
     if locked720 {
@@ -35,7 +35,8 @@ pub fn configure(level: u8) {
         Ordering::Relaxed,
     );
     FPS.store(30, Ordering::Relaxed);
-    REQUESTED.store(1, Ordering::Relaxed);
+    // Mulai pada HD 1280x720; client tetap boleh memilih 1080p setelah meta.
+    REQUESTED.store(0, Ordering::Relaxed);
     record(None);
 }
 pub fn request(mode: u8) -> bool {
@@ -96,7 +97,8 @@ pub fn output_size(w: usize, h: usize, mode: u8, level: u8) -> Result<(usize, us
     } else {
         (1920, 1080)
     };
-    let scale = (mw as f64 / w as f64).min(mh as f64 / h as f64).min(1.0);
+    let scale = (mw as f64 / w as f64).min(mh as f64 / h as f64);
+    let scale = if mode == 0 { scale } else { scale.min(1.0) };
     Ok((
         ((w as f64 * scale).round() as usize & !1).max(2),
         ((h as f64 * scale).round() as usize & !1).max(2),
@@ -169,6 +171,7 @@ mod tests {
         assert_eq!(output_size(2336, 1080, 2, 51).unwrap(), (2336, 1080));
         assert_eq!(output_size(1920, 1080, 1, 40).unwrap(), (1920, 1080));
         assert_eq!(output_size(640, 360, 1, 51).unwrap(), (640, 360));
+        assert_eq!(output_size(940, 529, 0, 31).unwrap(), (1280, 720));
         for level in [31, 40, 51] {
             for mode in 0..=2 {
                 for (w, h) in [(3840, 2160), (2336, 1080), (2160, 3840), (7680, 4320)] {

@@ -217,6 +217,8 @@ mod tests {
             // Mode asli: desktop utuh pada dimensi natif — tanpa pita, tanpa crop.
             (2, 51, 2336, 1080, (2336, 1080)),
             (0, 51, 1920, 1080, (1280, 720)),
+            // RDP kecil harus tetap keluar sebagai HD 720p pada mode HD.
+            (0, 31, 940, 529, (1280, 720)),
         ] {
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
             let bytes = encoder.encode(&vec![100; w * h * 4], w, h).unwrap();

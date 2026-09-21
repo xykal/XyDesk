@@ -2905,6 +2905,8 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .mapping-button.selected { background:transparent;box-shadow:none;border-color:#bd9cff; }
 .mapping-editor { width:min(380px,calc(100% - 30px));left:max(12px,env(safe-area-inset-left));overscroll-behavior:contain; }
 .mapping-editor .mapping-picker { border:0;padding:0;margin:14px 0;min-width:0; }
+.mapping-presets { display:flex;gap:6px;flex-wrap:wrap;margin-top:10px; }
+.mapping-presets button { flex:1;min-width:110px; }
 .mapping-picker legend { font-weight:700;font-size:12px;margin-bottom:8px; }
 .mapping-options { display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:6px;max-height:180px;overflow:auto;overscroll-behavior:contain; }
 .mapping-options button { padding:10px 6px;min-height:40px;border:1px solid #cec5df;border-radius:9px;background:transparent;color:#332446;font-size:12px;touch-action:manipulation; }

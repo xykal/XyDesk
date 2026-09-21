@@ -4,8 +4,9 @@
 //! frame tidak boleh memuat pita hitam dan tidak boleh memotong desktop.
 //! Host meminta mode desktop 16:9 yang didukung secara otomatis (lihat
 //! desktop_mode.rs); bila desktop tetap bukan 16:9, frame dikirim pada rasio
-//! asli desktop, diperkecil proporsional ke batas mode/level. Tidak ada
-//! upscale: desktop kecil dikirim pada ukuran natifnya.
+//! asli desktop, diperkecil proporsional ke batas mode/level. Mode HD
+//! (720p) boleh melakukan upscale terkontrol pada sumber RDP yang lebih kecil
+//! agar kontrak output 1280x720 tetap dipenuhi; mode lain tidak mengarang detail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct VideoLayout {
     pub canvas: [usize; 2],
@@ -28,9 +29,12 @@ impl VideoLayout {
         } else {
             (1920, 1080)
         };
-        let scale = (mw as f64 / width as f64)
-            .min(mh as f64 / height as f64)
-            .min(1.0);
+        // Mode HD adalah kontrak output 1280x720. Upscale hanya dipakai
+        // bila capture RDP/virtual desktop lebih kecil (mis. 940x529),
+        // supaya client tidak lagi menerima tinggi 529. Mode lain tetap
+        // tidak meng-upscale sumber kecil.
+        let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
+        let scale = if mode == 0 { scale } else { scale.min(1.0) };
         let cw = (((width as f64 * scale).round() as usize) & !1).max(2);
         let ch = (((height as f64 * scale).round() as usize) & !1).max(2);
         Ok(Self {
@@ -83,7 +87,8 @@ mod tests {
                 crop: [0, 0, 1920, 1200]
             }
         );
-        // Desktop kecil: canvas natif, bukan upscale ke 720p.
+        // Mode 1080 tetap jujur untuk sumber kecil; mode 720 memenuhi
+        // kontrak HD agar RDP kecil seperti 940x529 tidak berhenti di 529p.
         assert_eq!(
             VideoLayout::new(640, 360, 1, 51).unwrap(),
             VideoLayout {
@@ -92,6 +97,7 @@ mod tests {
                 crop: [0, 0, 640, 360]
             }
         );
+        assert_eq!(VideoLayout::new(940, 529, 0, 31).unwrap().canvas, [1280, 720]);
         // Desktop 16:9 murni tetap pas tanpa perubahan bentuk.
         assert_eq!(
             VideoLayout::new(1920, 1080, 1, 31).unwrap().canvas,

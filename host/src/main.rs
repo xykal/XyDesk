@@ -946,7 +946,33 @@ async fn main() -> Result<()> {
                                             continue;
                                         }
                                         if data.len() == 2 && data[0] == 0x0c {
-                                            if xydesk_host::video_policy::request(data[1]) {
+                                            let mode = data[1];
+                                            if xydesk_host::video_policy::request(mode) {
+                                                // Terapkan target desktop setelah preferensi
+                                                // client benar-benar diketahui. Sebelumnya host
+                                                // selalu meminta ukuran berdasarkan SDP saja, lalu
+                                                // RDP dapat bertahan di 940x529 walau UI memilih
+                                                // 720p. Mode HD meminta 1280x720; bila Windows/
+                                                // RDP menolak, encoder software tetap menjamin
+                                                // output 1280x720 lewat resize.
+                                                let level = if mode == 0 {
+                                                    31
+                                                } else {
+                                                    xydesk_host::video_policy::level().max(40)
+                                                };
+                                                let wanted = xydesk_host::screen::wanted_display();
+                                                if let Some(display) = xydesk_host::screen::list_displays()
+                                                    .into_iter()
+                                                    .find(|d| d.index == wanted)
+                                                {
+                                                    let report = tokio::task::spawn_blocking(move || {
+                                                        xydesk_host::desktop_mode::request(display.name, level)
+                                                    })
+                                                    .await;
+                                                    if let Ok(report) = report {
+                                                        eprintln!("[xydesk-host] resolusi client {mode}: {report:?}");
+                                                    }
+                                                }
                                                 xydesk_host::screen::set_target_bitrate_bps(
                                                     xydesk_host::screen::target_bitrate_bps(),
                                                 );

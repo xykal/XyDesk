@@ -2075,18 +2075,24 @@ function ConnectScreen({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
-  const [videoMessage, setVideoMessage] = useState('');
+  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | 0>(0);
   const resumeVideo = useCallback(() => {
     const video = videoRef.current;
     if (!video || !remoteVideoStream) return;
-    setVideoMessage('Menunggu pemutar video');
-    void playRemoteVideo(video, remoteVideoStream).then(() => {
-      if (video.srcObject === remoteVideoStream) setVideoMessage('');
-    }).catch((error: unknown) => {
-      if (video.srcObject !== remoteVideoStream) return;
-      const name = error instanceof Error ? error.name : 'Error';
-      setVideoMessage(`Pemutaran tertahan (${name}). Ketuk Putar video.`);
-    });
+    if (videoRetryTimer.current) clearTimeout(videoRetryTimer.current);
+    let attempt = 0;
+    const play = () => {
+      if (!videoRef.current || video.srcObject !== remoteVideoStream) return;
+      void playRemoteVideo(video, remoteVideoStream).catch(() => {
+        // Video remote selalu muted dan seharusnya boleh autoplay. Bila browser
+        // terlambat memasang track, retry otomatis; UI tidak meminta pengguna
+        // menekan tombol manual.
+        if (attempt++ < 12 && video.srcObject === remoteVideoStream) {
+          videoRetryTimer.current = setTimeout(play, 500);
+        }
+      });
+    };
+    play();
   }, [remoteVideoStream]);
   useEffect(() => {
     if (phase === 'connected' && remoteVideoStream) resumeVideo();
@@ -2392,7 +2398,6 @@ function ConnectScreen({
     if (videoRef.current) videoRef.current.srcObject = null;
     if (audioRef.current) audioRef.current.srcObject = null;
     setRemoteVideoStream(null);
-    setVideoMessage('');
     setAudioMessage('');
     setKbOpen(false);
     setPadOpen(false);
@@ -2681,25 +2686,7 @@ function ConnectScreen({
           <span>{audioMessage}</span>
           <button type="button" onClick={() => { audioOnRef.current = true; setAudioOn(true); void sessionRef.current?.setAudioEnabled(true); resumeAudio(); }}>Aktifkan suara</button>
         </div>}
-        {connected && (stats?.noFrameWarning || videoMessage) && (
-          <div className="sesi-noframe-banner" role="alert"
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >
-            <div className="sesi-noframe-text">
-              <strong>Video belum tampil</strong>
-              <span>{videoMessage || stats?.videoState || 'Menunggu video dari host.'}</span>
-            </div>
-            <button
-              type="button"
-              className="btn primary"
-              style={{ padding: '6px 14px', fontSize: '12px' }}
-              onClick={resumeVideo}
-            >
-              Putar video
-            </button>
-          </div>
-        )}
+
         {connected && (
           <div
             className={`sesi-waktu${sisaDetik !== null && sisaDetik <= 300 ? ' kritis' : ''}`}
@@ -2764,6 +2751,7 @@ function ConnectScreen({
             onFps={fps=>sessionRef.current?.setFps(fps)}
             fpsLimit={hostMeta?.video?.fpsLimit}
             encoder={hostMeta?.encoder}
+            videoApplied={hostMeta?.video?.applied}
             onClose={() => setPanelOpen(false)}
             hostId={hostId}
             onDisconnect={disconnect}

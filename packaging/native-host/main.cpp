@@ -28,6 +28,14 @@ constexpr int kStop = 1002;
 constexpr int kCopyId = 1003;
 constexpr int kCopyPassword = 1004;
 constexpr int kOpenWeb = 1005;
+constexpr int kTrayOpen = 1010;
+constexpr int kTrayStart = 1011;
+constexpr int kTrayStop = 1012;
+constexpr int kTrayWeb = 1013;
+constexpr int kTrayQuit = 1014;
+constexpr UINT kTrayMessage = WM_APP + 11;
+constexpr UINT kAutoStartMessage = WM_APP + 12;
+constexpr UINT kTrayId = 1;
 constexpr int kTimer = 7;
 
 constexpr COLORREF kBackground = RGB(14, 16, 22);
@@ -64,6 +72,9 @@ struct AppState {
 };
 
 AppState g;
+
+void removeTrayIcon();
+void showTrayMenu(HWND hwnd);
 
 std::wstring moduleDirectory() {
     wchar_t path[MAX_PATH]{};
@@ -209,7 +220,7 @@ bool startHost() {
         setStatus(g.lastError, kBad);
         return false;
     }
-    if (!readIdentity()) {
+    if ((g.deviceId.empty() || g.pairingCode.empty()) && !readIdentity()) {
         g.lastError = L"Identitas host tidak dapat dibaca.";
         setStatus(g.lastError, kBad);
         updateIdentityControls();
@@ -274,6 +285,53 @@ void copyText(HWND owner, HWND source) {
     CloseClipboard();
 }
 
+void addTrayIcon(HWND hwnd) {
+    NOTIFYICONDATAW data{};
+    data.cbSize = sizeof(data);
+    data.hWnd = hwnd;
+    data.uID = kTrayId;
+    data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    data.uCallbackMessage = kTrayMessage;
+    data.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    lstrcpynW(data.szTip, L"XyDesk Host — klik kanan untuk kontrol", ARRAYSIZE(data.szTip));
+    Shell_NotifyIconW(NIM_ADD, &data);
+    data.uVersion = NOTIFYICON_VERSION_4;
+    Shell_NotifyIconW(NIM_SETVERSION, &data);
+}
+
+void removeTrayIcon() {
+    if (!g.window) return;
+    NOTIFYICONDATAW data{};
+    data.cbSize = sizeof(data);
+    data.hWnd = g.window;
+    data.uID = kTrayId;
+    Shell_NotifyIconW(NIM_DELETE, &data);
+}
+
+void openPanel(HWND hwnd) {
+    ShowWindow(hwnd, SW_SHOW);
+    ShowWindow(hwnd, SW_RESTORE);
+    SetForegroundWindow(hwnd);
+}
+
+void showTrayMenu(HWND hwnd) {
+    HMENU menu = CreatePopupMenu();
+    if (!menu) return;
+    AppendMenuW(menu, MF_STRING, kTrayOpen, L"Buka Control Panel");
+    AppendMenuW(menu, g.running ? MF_GRAYED : MF_STRING, kTrayStart, L"Mulai host");
+    AppendMenuW(menu, g.running ? MF_STRING : MF_GRAYED, kTrayStop, L"Hentikan host");
+    AppendMenuW(menu, MF_STRING, kTrayWeb, L"Buka XyDesk Web");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+    AppendMenuW(menu, MF_STRING, kTrayQuit, L"Keluar XyDesk");
+    POINT point{};
+    GetCursorPos(&point);
+    SetForegroundWindow(hwnd);
+    TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+        point.x, point.y, 0, hwnd, nullptr);
+    DestroyMenu(menu);
+    PostMessageW(hwnd, WM_NULL, 0, 0);
+}
+
 HFONT makeFont(int height, int weight) {
     return CreateFontW(height, 0, 0, 0, weight, FALSE, FALSE, FALSE,
         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
@@ -315,10 +373,26 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         SendMessageW(g.status, WM_SETFONT, reinterpret_cast<WPARAM>(g.bodyFont), TRUE);
         EnableWindow(g.stop, FALSE);
+        addTrayIcon(hwnd);
         readIdentity();
         updateIdentityControls();
-        setStatus(L"Siap — belum dijalankan", kMuted);
+        setStatus(L"Menyalakan host…", kMuted);
         SetTimer(hwnd, kTimer, 1000, nullptr);
+        // Panel adalah satu pintu: ketika dibuka, host langsung hidup tanpa
+        // tombol kedua. Post agar window selesai dibuat dan tetap responsif.
+        PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        return 0;
+
+    case kAutoStartMessage:
+        if (!g.running) startHost();
+        return 0;
+
+    case kTrayMessage:
+        if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
+            openPanel(hwnd);
+        } else if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
+            showTrayMenu(hwnd);
+        }
         return 0;
 
     case WM_TIMER:
@@ -351,6 +425,22 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             return 0;
         case kOpenWeb:
             ShellExecuteW(hwnd, L"open", L"https://app.xydesk.my.id", nullptr, nullptr, SW_SHOWNORMAL);
+            return 0;
+        case kTrayOpen:
+            openPanel(hwnd);
+            return 0;
+        case kTrayStart:
+            startHost();
+            return 0;
+        case kTrayStop:
+            stopHost();
+            return 0;
+        case kTrayWeb:
+            ShellExecuteW(hwnd, L"open", L"https://app.xydesk.my.id", nullptr, nullptr, SW_SHOWNORMAL);
+            return 0;
+        case kTrayQuit:
+            removeTrayIcon();
+            DestroyWindow(hwnd);
             return 0;
         default:
             break;
@@ -397,6 +487,22 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return TRUE;
     }
 
+    case WM_CLOSE:
+        // Tombol X menyembunyikan panel, bukan mematikan host. Kontrol penuh
+        // tetap tersedia dari ikon tray; menu Keluar menghentikan host.
+        ShowWindow(hwnd, SW_HIDE);
+        return 0;
+
+    case WM_QUERYENDSESSION:
+        return TRUE;
+
+    case WM_ENDSESSION:
+        if (wParam) {
+            removeTrayIcon();
+            stopHost();
+        }
+        return 0;
+
     case WM_PAINT: {
         PAINTSTRUCT ps{};
         HDC dc = BeginPaint(hwnd, &ps);
@@ -422,6 +528,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_DESTROY:
         KillTimer(hwnd, kTimer);
+        removeTrayIcon();
         stopHost();
         if (g.titleFont) DeleteObject(g.titleFont);
         if (g.bodyFont) DeleteObject(g.bodyFont);
