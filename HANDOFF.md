@@ -2115,3 +2115,10 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - Fix `ab9d77c`: Stop men-disable task dulu, menghentikan scheduled action, mencari worker PowerShell exact path+user+install, lalu menghentikan worker dan engine. Worker memiliki kill-on-close Job Object sehingga child ikut selesai; sweep kedua exact-path menangani race restart. Tidak ada global taskkill.
 - Prerelease: `uxhd10-ab9d77c`, release 392622744, installer 4.864.403 byte SHA256 `ec7b183751e2b500a446e3bbf5674af4aff612026673309a43ae491167d3e9ab`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd10-ab9d77c/XyDesk-Host-Test-Setup-x64.exe
 - CI Windows `35546782004` + NSIS `35547229121` SUCCESS; NSIS validation PASS; latest tetap v6.8.5; hardware user belum tervalidasi.
+
+## uxhd11 — syntax PowerShell 5.1, 2026-09-21
+
+- Laporan lapangan menunjukkan `The term 'if' is not recognized` dari `Console-Virtual720.ps1`. Akar masalah: PowerShell 5.1 tidak menerima ` $name=if (...)` atau `-Description (if (...))` sebagai expression assignment.
+- `9869711` mengganti seluruh pola itu dengan blok `if` biasa, termasuk pemilihan SID task. Parser PS1 + Windows CI + NSIS PASS.
+- Prerelease final: `uxhd11-9869711`, release 392654807, installer 4.868.173 byte SHA256 `1dbd815338f251969b60ac5df4ac9d255bc93d2fc2034021893bae35df0e6d34`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd11-9869711/XyDesk-Host-Test-Setup-x64.exe
+- `releases/latest` tetap v6.8.5; hardware/session user belum tervalidasi.

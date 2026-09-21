@@ -1,0 +1,31 @@
+{
+  "package": "uxhd11-powershell-syntax-fix",
+  "date": "2026-09-21",
+  "sourceSha": "986971158045aa957fcc9effdf12bf2ecafbbdcb",
+  "version": "6.8.5",
+  "prerelease": {
+    "tag": "uxhd11-9869711",
+    "releaseId": 392654807,
+    "installer": "XyDesk-Host-Test-Setup-x64.exe",
+    "sha256": "1dbd815338f251969b60ac5df4ac9d255bc93d2fc2034021893bae35df0e6d34",
+    "bytes": 4868173,
+    "downloadUrl": "https://github.com/xykalnotkel/XyDesk/releases/download/uxhd11-9869711/XyDesk-Host-Test-Setup-x64.exe",
+    "sha256Url": "https://github.com/xykalnotkel/XyDesk/releases/download/uxhd11-9869711/XyDesk-Host-Test-Setup-x64.exe.sha256",
+    "publicDownloadVerified": true,
+    "latestUnchanged": "v6.8.5"
+  },
+  "ci": {
+    "prepareHostWindows": 35553040223,
+    "prepareHostNsis": 35553462108,
+    "windowsConclusion": "success",
+    "nsisConclusion": "success",
+    "nsisValidation": "PASS",
+    "hardwareTested": false
+  },
+  "fix": [
+    "PowerShell 5.1 tidak mendukung assignment langsung dari statement if; $name=if dan -Description (if ...) diganti dengan blok if biasa.",
+    "Pemilihan SID task juga dibuat kompatibel dengan blok if.",
+    "Fix Stop Host dari uxhd10 tetap termasuk: task disable sebelum stop, worker dan engine dihentikan bersama."
+  ],
+  "fieldStatus": "Belum diuji user; paket ini khusus untuk mengatasi error Console-Virtual720.ps1 yang tampil pada panel."
+}
