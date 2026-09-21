@@ -65,14 +65,13 @@ class BuilderTests(unittest.TestCase):
         commands = '\n'.join(line for line in source.splitlines() if not line.lstrip().startswith(';'))
         self.assertNotIn('RMDir /r', commands)
         self.assertNotIn('ExecWait', commands)
-        self.assertEqual(commands.count('ExecShell'), 1)
-        self.assertIn('ExecShell "runas"', commands.split('Function SetupVirtualDisplay')[1])
-        self.assertNotIn('ExecShell', commands.split('Function SetupVirtualDisplay')[0])
+        self.assertEqual(commands.count('ExecShell'), 0)
+        self.assertNotIn('Function SetupVirtualDisplay', commands)
+        self.assertNotIn('powershell.exe', commands.lower())
+        self.assertIn('XyDesk Control Panel.exe', commands)
         self.assertNotIn('Exec ', commands)
         self.assertNotIn('DeleteRegKey HKLM', commands)
         self.assertIn('RequestExecutionLevel user', commands)
-        self.assertIn('${DisableX64FSRedirection}', commands.split('Function SetupVirtualDisplay')[1])
-        self.assertIn('${EnableX64FSRedirection}', commands.split('Function SetupVirtualDisplay')[1])
         self.assertIn('MUI_PAGE_FINISH', commands)
 
 
