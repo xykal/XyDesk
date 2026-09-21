@@ -961,14 +961,19 @@ async fn main() -> Result<()> {
                                                     xydesk_host::video_policy::level().max(40)
                                                 };
                                                 let wanted = xydesk_host::screen::wanted_display();
-                                                if let Some(display) = xydesk_host::screen::list_displays()
-                                                    .into_iter()
-                                                    .find(|d| d.index == wanted)
+                                                if let Some(display) =
+                                                    xydesk_host::screen::list_displays()
+                                                        .into_iter()
+                                                        .find(|d| d.index == wanted)
                                                 {
-                                                    let report = tokio::task::spawn_blocking(move || {
-                                                        xydesk_host::desktop_mode::request(display.name, level)
-                                                    })
-                                                    .await;
+                                                    let report =
+                                                        tokio::task::spawn_blocking(move || {
+                                                            xydesk_host::desktop_mode::request(
+                                                                display.name,
+                                                                level,
+                                                            )
+                                                        })
+                                                        .await;
                                                     if let Ok(report) = report {
                                                         eprintln!("[xydesk-host] resolusi client {mode}: {report:?}");
                                                     }

@@ -97,7 +97,10 @@ mod tests {
                 crop: [0, 0, 640, 360]
             }
         );
-        assert_eq!(VideoLayout::new(940, 529, 0, 31).unwrap().canvas, [1280, 720]);
+        assert_eq!(
+            VideoLayout::new(940, 529, 0, 31).unwrap().canvas,
+            [1280, 720]
+        );
         // Desktop 16:9 murni tetap pas tanpa perubahan bentuk.
         assert_eq!(
             VideoLayout::new(1920, 1080, 1, 31).unwrap().canvas,
