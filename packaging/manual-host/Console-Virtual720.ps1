@@ -47,6 +47,16 @@ function Get-OwnedHost {
    $owner.ReturnValue -eq 0 -and $owner.Sid -eq $sid
  })
 }
+function Get-OwnedWorker {
+ $powershell=[IO.Path]::GetFullPath("$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe")
+ $hostPattern=[regex]::Escape($HostDirectory)
+ @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where-Object {
+   if ($_.ExecutablePath -ine $powershell) {return $false}
+   if (!$_.CommandLine -or $_.CommandLine -notmatch 'Console-Worker\.ps1' -or $_.CommandLine -notmatch $hostPattern) {return $false}
+   $owner=Invoke-CimMethod -InputObject $_ -MethodName GetOwnerSid
+   $owner.ReturnValue -eq 0 -and $owner.Sid -eq $sid
+ })
+}
 $task=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
 if ($task) {
  $registeredSid=if ($task.Principal.UserId -match '^S-1-') {$task.Principal.UserId} else {(New-Object Security.Principal.NTAccount($task.Principal.UserId)).Translate([Security.Principal.SecurityIdentifier]).Value}
@@ -60,12 +70,27 @@ if ($task) {
 if ($Action -eq 'Stop') {
  if (!$PSCmdlet.ShouldProcess('Only the XyDesk console task and its owned engine','Stop (RDP remains connected)')) {return}
  $owned=Get-OwnedHost
- if ($task) {Disable-ScheduledTask -TaskName $name | Out-Null; Stop-ScheduledTask -TaskName $name; Start-Sleep -Seconds 2}
- foreach ($p in $owned) {
-  $now=Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ProcessId)"
-  if ($now -and $now.CreationDate -eq $p.CreationDate -and $now.ExecutablePath -ieq $engine) {Stop-Process -Id $p.ProcessId -Force}
+ $workers=Get-OwnedWorker
+ if ($task) {
+  # Disable BEFORE stopping the action. Otherwise Task Scheduler's restart
+  # policy races the manual Stop and launches the supervisor again.
+  Disable-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue | Out-Null
+  Stop-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
  }
- Write-Host 'Console host stopped. Task disabled until Start. Identity, driver, Windows and RDP preserved.'
+ Start-Sleep -Seconds 1
+ # Stop the worker as well as xydesk-host.exe. The worker owns the child via a
+ # kill-on-close Job Object; killing only the engine makes -Supervise respawn it.
+ foreach ($p in $workers + $owned) {
+  $now=Get-CimInstance Win32_Process -Filter "ProcessId=$($p.ProcessId)" -ErrorAction SilentlyContinue
+  if ($now -and $now.CreationDate -eq $p.CreationDate) {Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue}
+ }
+ Start-Sleep -Seconds 1
+ # A restart already queued before Disable can survive the first snapshot; do
+ # one exact-path sweep, never a global taskkill.
+ foreach ($p in (Get-OwnedHost)) {
+  Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+ }
+ Write-Host 'Console host stopped. Task disabled and supervisor/engine terminated. Identity, driver, Windows and RDP preserved.'
  return
 }
 if ($Action -eq 'Fit') {
