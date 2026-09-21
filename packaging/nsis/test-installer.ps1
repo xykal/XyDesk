@@ -51,6 +51,11 @@ if (-not (Test-Path $panelShortcut)) { throw 'Control Panel shortcut missing' }
 $panelLink = $shell.CreateShortcut($panelShortcut)
 if ($panelLink.TargetPath -notlike '*XyDesk Control Panel.exe') { throw 'Control Panel shortcut target must be native' }
 $checks.Add('native C++ Control Panel installed and desktop shortcut verified; desktop has single entry point')
+Set-Content (Join-Path $installed 'keep-user.txt') 'user-file'
+if ((RunSetup $installed) -ne 0) { throw 'Reinstall di lokasi sendiri gagal' }
+if ((Get-Content (Join-Path $installed 'keep-user.txt') -Raw).Trim() -ne 'user-file') { throw 'Reinstall mengubah file tambahan' }
+if ((RunSetup $occupied) -eq 0) { throw 'Install kedua memindahkan registrasi ke folder lain' }
+if ((Get-ItemProperty $key).InstallLocation -ne $installed) { throw 'Registrasi instalasi pertama berubah' }
 $checks.Add('reinstall preserves extra files; different install location cannot hijack registration')
 $dataDir = Join-Path $env:LOCALAPPDATA 'XyDesk-RemoteCore-Test'
 New-Item -ItemType Directory $dataDir -Force | Out-Null
