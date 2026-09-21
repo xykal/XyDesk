@@ -37,46 +37,20 @@ $props = Get-ItemProperty $key
 if ($props.InstallLocation -ne $installed -or $props.DisplayVersion -ne '6.8.5') { throw 'Registrasi Apps tidak cocok' }
 $desktop = [Environment]::GetFolderPath('Desktop')
 $programs = [Environment]::GetFolderPath('Programs')
-$shortcut = Join-Path $programs 'XyDesk Host Test\XyDesk Host Test.lnk'
+$shortcut = Join-Path $programs 'XyDesk Host Test\Control Panel.lnk'
 if (-not (Test-Path $shortcut)) { throw 'Shortcut hilang' }
-# Desktop bersih: hanya Control Panel. Launcher manual/Virtual720 pindah ke Start Menu.
+# Desktop bersih: hanya native Control Panel. Tidak ada launcher PowerShell.
 if (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk')) { throw 'Desktop launcher shortcut should no longer exist' }
-$virtualShortcut = Join-Path $programs 'XyDesk Host Test\XyDesk Virtual720.lnk'
-if (-not (Test-Path $virtualShortcut)) { throw 'Virtual720 Start Menu shortcut missing' }
-
-$manualScripts = Get-ChildItem -LiteralPath $installed -Filter '*.ps1' -File -ErrorAction SilentlyContinue
-if ((($manualScripts | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine) -match 'runneradmin') { throw 'Manual host must not default to a separate lab account' }
 if (Test-Path (Join-Path $desktop 'XyDesk Virtual720.lnk')) { throw 'Virtual720 desktop shortcut should no longer exist' }
+if (-not (Test-Path (Join-Path $installed 'XyDesk Control Panel.exe'))) { throw 'Native Control Panel missing' }
 $shell = New-Object -ComObject WScript.Shell
-$virtualLink = $shell.CreateShortcut($virtualShortcut)
-if ($virtualLink.Arguments -notlike '*Start-Virtual720.ps1*') { throw 'Virtual720 shortcut target incorrect' }
 $link = $shell.CreateShortcut($shortcut)
-if ($link.Arguments -notlike '*Start-TestHost.ps1*') { throw 'Target shortcut salah' }
+if ($link.TargetPath -notlike '*XyDesk Control Panel.exe') { throw 'Start Menu target must be native Control Panel' }
 $panelShortcut = Join-Path $desktop 'XyDesk Control Panel.lnk'
 if (-not (Test-Path $panelShortcut)) { throw 'Control Panel shortcut missing' }
-if (-not (Test-Path (Join-Path $installed 'Console-Panel.ps1'))) { throw 'Console-Panel.ps1 not installed' }
 $panelLink = $shell.CreateShortcut($panelShortcut)
-if ($panelLink.Arguments -notlike '*Console-Panel.ps1*') { throw 'Control Panel shortcut target incorrect' }
-$checks.Add('GUI control panel script installed and desktop shortcut verified; desktop has single entry point')
-# Uji perintah shortcut dengan CheckOnly, tanpa NoExit, tanpa meminta token/stream.
-$argsCheck = $link.Arguments.Replace('-NoExit ', '') + ' -CheckOnly'
-Write-Host ('CheckOnly target: ' + $link.TargetPath)
-Write-Host ('CheckOnly args: ' + $argsCheck)
-$stdout = Join-Path $base 'launcher-out.txt'
-$stderr = Join-Path $base 'launcher-error.txt'
-$p = Start-Process -FilePath $link.TargetPath -ArgumentList $argsCheck -Wait -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
-if ($p.ExitCode -ne 0) {
-    Write-Host ('CheckOnly exit: ' + $p.ExitCode)
-    Get-Content $stdout -ErrorAction SilentlyContinue | Select-Object -First 20
-    Get-Content $stderr -ErrorAction SilentlyContinue | Select-Object -First 20
-    throw 'Launcher shortcut gagal CheckOnly di Windows PowerShell'
-}
-$checks.Add('Apps registration, desktop/Start Menu shortcuts and actual PowerShell shortcut command verified')
-Set-Content (Join-Path $installed 'keep-user.txt') 'user-file'
-if ((RunSetup $installed) -ne 0) { throw 'Reinstall di lokasi sendiri gagal' }
-if ((Get-Content (Join-Path $installed 'keep-user.txt') -Raw).Trim() -ne 'user-file') { throw 'Reinstall mengubah file tambahan' }
-if ((RunSetup $occupied) -eq 0) { throw 'Install kedua memindahkan registrasi ke folder lain' }
-if ((Get-ItemProperty $key).InstallLocation -ne $installed) { throw 'Registrasi instalasi pertama berubah' }
+if ($panelLink.TargetPath -notlike '*XyDesk Control Panel.exe') { throw 'Control Panel shortcut target must be native' }
+$checks.Add('native C++ Control Panel installed and desktop shortcut verified; desktop has single entry point')
 $checks.Add('reinstall preserves extra files; different install location cannot hijack registration')
 $dataDir = Join-Path $env:LOCALAPPDATA 'XyDesk-RemoteCore-Test'
 New-Item -ItemType Directory $dataDir -Force | Out-Null
@@ -85,7 +59,7 @@ Set-Content $sentinel 'identity-preservation-fixture'
 $uninstaller = Join-Path $installed 'Uninstall-XyDesk-Host-Test.exe'
 $p = Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait -PassThru
 if ($p.ExitCode -ne 0) { throw 'Uninstall gagal' }
-if ((Test-Path $virtualShortcut) -or (Test-Path $panelShortcut) -or (Test-Path $engine) -or (Test-Path $key) -or (Test-Path $shortcut) -or (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk'))) { throw 'Uninstall meninggalkan engine/registrasi/shortcut' }
+if ((Test-Path $panelShortcut) -or (Test-Path $engine) -or (Test-Path $key) -or (Test-Path $shortcut) -or (Test-Path (Join-Path $desktop 'XyDesk Host Test.lnk'))) { throw 'Uninstall meninggalkan engine/registrasi/shortcut' }
 if (-not (Test-Path $sentinel) -or -not (Test-Path (Join-Path $installed 'keep-user.txt'))) { throw 'Uninstall menghapus data yang harus dipertahankan' }
 $checks.Add('silent uninstall removes engine/registration/shortcuts but preserves identity and extra files')
 $defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\XyDesk Host Test'

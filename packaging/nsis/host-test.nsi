@@ -32,15 +32,12 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright 2026 XySpace Tech"
 !define MUI_ICON "..\windows\xydesk.ico"
 !define MUI_UNICON "..\windows\xydesk.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TEXT "Memasang paket uji engine Windows x64 yang terpisah dari XyDesk lama.$\r$\n$\r$\nDriver layar dibundel. Penyiapan opsional di halaman akhir meminta izin Administrator; driver yang sudah ada dipertahankan. Tidak membuka RDP. Host hanya dimulai lewat shortcut setelah Anda memilih menjalankannya.$\r$\n$\r$\nIdentitas uji disimpan terpisah dan tetap ada setelah uninstall."
-!define MUI_FINISHPAGE_TEXT "Paket uji berhasil dipasang.$\r$\n$\r$\nJalankan XyDesk Host Test dari Desktop atau Start Menu. Biarkan RDP terbuka pada pengujian pertama.$\r$\n$\r$\nBaca Panduan Uji Manual sebelum menguji capture dan input."
+!define MUI_WELCOMEPAGE_TEXT "Memasang paket uji engine Windows x64 yang terpisah dari XyDesk lama.$\r$\n$\r$\nDriver layar dibundel. Control Panel native berjalan tanpa terminal atau PowerShell; driver yang sudah ada dipertahankan. Tidak membuka RDP. Host hanya dimulai setelah Anda menekan Mulai host.$\r$\n$\r$\nIdentitas uji disimpan terpisah dan tetap ada setelah uninstall."
+!define MUI_FINISHPAGE_TEXT "Paket uji berhasil dipasang.$\r$\n$\r$\nJalankan XyDesk Control Panel dari Desktop atau Start Menu. Biarkan RDP terbuka pada pengujian pertama.$\r$\n$\r$\nBaca Panduan Uji Manual sebelum menguji capture dan input."
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${PAYLOAD}\LICENSE-XyDesk.txt"
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_TEXT "Siapkan layar virtual 720p (izin Administrator; tanpa restart otomatis)"
-!define MUI_FINISHPAGE_RUN_FUNCTION SetupVirtualDisplay
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
 !insertmacro MUI_UNPAGE_INSTFILES
@@ -126,16 +123,12 @@ safe:
   WriteRegDWORD HKCU "${UNKEY}" "NoRepair" 1
   WriteRegDWORD HKCU "${UNKEY}" "EstimatedSize" ${ESTIMATED_KB}
   CreateDirectory "$SMPROGRAMS\${PRODUCT}"
-  ; Satu pintu untuk pengguna: hanya Control Panel di desktop. Entri lanjutan
-  ; (launcher manual, Virtual720) tetap ada di Start Menu untuk kebutuhan teknis.
-  ; Bersihkan shortcut desktop paket lama saat upgrade tanpa uninstall.
+  ; Satu pintu untuk pengguna: native C++ Control Panel, tanpa terminal.
+  ; Bersihkan shortcut desktop lama saat upgrade tanpa uninstall.
   Delete "$DESKTOP\XyDesk Virtual720.lnk"
   Delete "$DESKTOP\${PRODUCT}.lnk"
-  CreateShortcut "$SMPROGRAMS\${PRODUCT}\XyDesk Virtual720.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-Virtual720.ps1$\"' "$INSTDIR\xydesk.ico"
-  CreateShortcut "$DESKTOP\XyDesk Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
-  CreateShortcut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-sta -NoLogo -NoProfile -WindowStyle Hidden -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Console-Panel.ps1$\"' "$INSTDIR\xydesk.ico"
-
-  CreateShortcut "$SMPROGRAMS\${PRODUCT}\${PRODUCT}.lnk" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" '-NoLogo -NoProfile -NoExit -ExecutionPolicy RemoteSigned -File $\"$INSTDIR\Start-TestHost.ps1$\"' "$INSTDIR\xydesk.ico"
+  CreateShortcut "$DESKTOP\XyDesk Control Panel.lnk" "$INSTDIR\XyDesk Control Panel.exe" "" "$INSTDIR\xydesk.ico"
+  CreateShortcut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$INSTDIR\XyDesk Control Panel.exe" "" "$INSTDIR\xydesk.ico"
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\Panduan Uji Manual.lnk" "$WINDIR\System32\notepad.exe" '$\"$INSTDIR\README-INSTALLER.txt$\"' "$INSTDIR\xydesk.ico"
   CreateShortcut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk-Host-Test.exe"
   IfErrors failed
@@ -186,16 +179,3 @@ blocked:
   Abort
 done:
 SectionEnd
-
-Function SetupVirtualDisplay
-  ${DisableX64FSRedirection}
-  ClearErrors
-  ExecShell "runas" "$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" '-NoProfile -ExecutionPolicy RemoteSigned -File "$INSTDIR\Configure-Display.ps1"'
-  IfErrors display_declined display_started
-display_declined:
-  ${EnableX64FSRedirection}
-  MessageBox MB_OK "Penyiapan layar belum dimulai. Host tetap terpasang; jalankan Configure-Display.ps1 dengan izin Administrator bila diperlukan."
-  Return
-display_started:
-  ${EnableX64FSRedirection}
-FunctionEnd

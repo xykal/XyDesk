@@ -1,14 +1,12 @@
 SATU PINTU: XYDESK CONTROL PANEL
-Desktop hanya berisi satu shortcut: "XyDesk Control Panel" — GUI kecil untuk
-Start/Stop/Status/Fit/Kredensial/Log tanpa mengetik PowerShell manual. Panel
-meminta satu prompt UAC (Administrator) lalu menjalankan host sebagai akun
-Windows yang sedang dipilih (default: user yang membuka panel). Tidak ada
-pemindahan ke akun lab atau desktop user lain. Status "Running" adalah status
-proses, bukan bukti streaming.
+Desktop hanya berisi satu shortcut: "XyDesk Control Panel" — aplikasi native C++
+dengan surface gelap yang tenang untuk Start/Stop/status/ID/kode pairing. Tidak
+ada terminal dan tidak ada PowerShell untuk pemakaian normal. Host berjalan
+sebagai user Windows yang membuka panel; tidak ada pemindahan ke akun lain.
+Status aktif tetap bukan bukti streaming; statistik live terlihat di web.
 
-Entri teknis lain (launcher manual "XyDesk Host Test", "XyDesk Virtual720",
-panduan, uninstall) ada di Start Menu > XyDesk Host Test. Untuk pemakaian
-normal cukup Control Panel.
+Start Menu hanya menyediakan Control Panel, panduan, dan uninstall. Untuk
+pemakaian normal cukup Control Panel; skrip teknis internal tidak perlu dibuka.
 
 MODE: XYDESK VIRTUAL720 (OPT-IN / TEKNIS)
 Gunakan shortcut Start Menu "XyDesk Virtual720" untuk sumber virtual1280x720.
@@ -42,26 +40,23 @@ host tidak menghapus driver/config. Lihat VIRTUAL720.md untuk rollback driver.
 XyDesk Host Test — installer NSIS Windows x64
 
 Engine uji 6.8.5 dengan perbaikan audio, antrean keyboard/mouse, serta
-permintaan otomatis desktop16:9. Bukan aplikasi desktop lengkap atau rilis
-bertanda tangan. Source SHA dan checksum ada di manifest.json;
+permintaan otomatis desktop16:9. Control Panel native C++ menjadi satu-satunya
+entrypoint user. Bukan rilis bertanda tangan. Source SHA dan checksum ada di manifest.json;
 installer-source.json mengikat installer ke engine yang dibangun/diuji.
 
 PASANG DAN MULAI
-Jika host uji sebelumnya masih berjalan, putuskan sesi web lalu tekan Ctrl+C
-di konsol XyDesk Host Test milik Anda. Jangan putuskan RDP untuk langkah ini.
 1. Jalankan installer. Untuk instalasi baru pilih folder kosong; untuk versi
    uji sebelumnya gunakan lokasi yang sama. Identitas uji dipertahankan.
-2. Buka shortcut "XyDesk Host Test" di Desktop atau Start Menu.
-3. Gunakan https://app.xydesk.my.id dan ID/password dari konsol host.
-   Jangan membagikan password, token, file identitas, atau screenshot konsol.
-4. Uji suara PC, keyboard, pointer/klik di tengah dan empat sudut, serta
-   pelepasan tombol ketika sesi ditutup. Jaga sesi Windows tetap aktif.
+2. Buka "XyDesk Control Panel" dari Desktop atau Start Menu.
+3. Tekan "Mulai host". Tidak ada jendela terminal yang dibuka.
+4. Gunakan https://app.xydesk.my.id dan salin Device ID/kode pairing dari panel.
+   Jangan membagikan kode pairing, token, atau file identitas.
+5. Uji suara PC, keyboard, pointer/klik di tengah dan empat sudut, serta
+   pelepasan tombol ketika sesi ditutup.
 
-Shortcut membuka konsol PowerShell; ini memang antarmuka engine uji.
-RemoteSigned berlaku hanya pada proses launcher dan tunduk pada Group Policy.
-Installer tidak menjalankan host otomatis atau mengubah execution policy mesin.
-Ctrl+C menghentikan host. Launcher memakai identitas uji terpisah di
-%LOCALAPPDATA%\XyDesk-RemoteCore-Test, bukan identitas instalasi produk lama.
+Panel native menjalankan xydesk-host.exe langsung sebagai user Windows aktif,
+memakai pengawas proses Windows (Job Object), dan menghentikannya dengan tombol
+Hentikan. Installer tidak mengubah execution policy atau membuka PowerShell.
 
 DESKTOP16:9 — PERUBAHAN PERILAKU
 Saat sesi yang terotorisasi dimulai, host meminta1920x1080 atau1280x720 sesuai
