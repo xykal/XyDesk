@@ -99,6 +99,9 @@ pub fn output_size(w: usize, h: usize, mode: u8, level: u8) -> Result<(usize, us
     };
     let scale = (mw as f64 / w as f64).min(mh as f64 / h as f64);
     let scale = if mode == 0 { scale } else { scale.min(1.0) };
+    if mode == 0 && w <= mw && h <= mh {
+        return Ok((mw, mh));
+    }
     Ok((
         ((w as f64 * scale).round() as usize & !1).max(2),
         ((h as f64 * scale).round() as usize & !1).max(2),

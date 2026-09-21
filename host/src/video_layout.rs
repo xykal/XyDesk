@@ -29,14 +29,21 @@ impl VideoLayout {
         } else {
             (1920, 1080)
         };
-        // Mode HD adalah kontrak output 1280x720. Upscale hanya dipakai
-        // bila capture RDP/virtual desktop lebih kecil (mis. 940x529),
-        // supaya client tidak lagi menerima tinggi 529. Mode lain tetap
-        // tidak meng-upscale sumber kecil.
+        // Mode HD adalah kontrak output 1280x720. Capture RDP/virtual desktop
+        // yang lebih kecil diregangkan ke canvas kontrak (mis. 940x529),
+        // supaya client tidak lagi menerima tinggi 529. Tidak ada crop atau
+        // pita; sumber yang lebih besar tetap diperkecil proporsional. Mode
+        // lain tetap jujur dan tidak meng-upscale sumber kecil.
         let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
         let scale = if mode == 0 { scale } else { scale.min(1.0) };
-        let cw = (((width as f64 * scale).round() as usize) & !1).max(2);
-        let ch = (((height as f64 * scale).round() as usize) & !1).max(2);
+        let (cw, ch) = if mode == 0 && width <= mw && height <= mh {
+            (mw, mh)
+        } else {
+            (
+                (((width as f64 * scale).round() as usize) & !1).max(2),
+                (((height as f64 * scale).round() as usize) & !1).max(2),
+            )
+        };
         Ok(Self {
             canvas: [cw, ch],
             content: [0, 0, cw, ch],

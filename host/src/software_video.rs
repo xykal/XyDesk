@@ -12,6 +12,9 @@ pub fn output_size(width: usize, height: usize) -> Result<(usize, usize), String
     if width < 2 || height < 2 {
         return Err("capture lebih kecil dari 2x2".into());
     }
+    if width <= MAX_WIDTH && height <= MAX_HEIGHT {
+        return Ok((MAX_WIDTH, MAX_HEIGHT));
+    }
     let scale = (MAX_WIDTH as f64 / width as f64)
         .min(MAX_HEIGHT as f64 / height as f64)
         .min(1.0);
