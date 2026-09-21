@@ -2864,7 +2864,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .remote-control-cursor[hidden],.remote-input-area[hidden]{display:none!important}
 .mapping-tools { position:absolute;left:12px;top:60px;z-index:12;display:flex;flex-direction:column;gap:5px;max-width:200px;color:white;font-size:12px; }
 .mapping-tools button,.mapping-editor button { background:#6d28d9;color:white;border-radius:8px;padding:9px 12px; }
-.mapping-button { position:absolute;z-index:9;transform:translate(-50%,-50%);border-radius:16px;background:#211833b8;border:1px solid #b68cff8c;color:#fff;font-weight:700;touch-action:none;user-select:none;overflow:hidden;font-size:12px; }
+.mapping-button { position:absolute;z-index:9;transform:translate(-50%,-50%);border-radius:50%;background:#211833b8;border:1px solid #b68cff8c;color:#fff;font-weight:700;touch-action:none;user-select:none;overflow:hidden;font-size:12px; }
 .mapping-button:active { background:#7540c8; }
 .mapping-button.editing { border:2px dashed #bea0ff;cursor:move; }
 .mapping-button.selected { box-shadow:0 0 0 3px #8b5cf660; }
@@ -2899,7 +2899,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .remote-session .vkb{z-index:10}
 
 /* Mapping tidak menutup detail desktop: hanya garis dan label. */
-.mapping-button,.mapping-button:active,.mapping-button:hover { background:transparent;box-shadow:none;border:2px solid #ffffffb8;border-radius:16px;color:#fff;font-size:15px;text-shadow:0 1px 3px #000;transition:none;-webkit-tap-highlight-color:transparent; }
+.mapping-button,.mapping-button:active,.mapping-button:hover { background:transparent;box-shadow:none;border:2px solid #ffffffb8;border-radius:50%;color:#fff;font-size:15px;text-shadow:0 1px 3px #000;transition:none;-webkit-tap-highlight-color:transparent; }
 .mapping-button:active { border-color:#bda1ff;color:#d8c7ff;border-width:3px; }
 .mapping-button.editing { background:transparent;border-style:dashed; }
 .mapping-button.selected { background:transparent;box-shadow:none;border-color:#bd9cff; }

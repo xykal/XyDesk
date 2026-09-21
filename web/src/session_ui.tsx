@@ -343,6 +343,17 @@ export function GamingPad({ send }: { send: Send }) {
 export type StreamQuality = 'auto' | 'medium' | 'high' | 'ultra';
 export type BitrateMbps = 0 | 8 | 15 | 25 | 50;
 
+export type ResolutionMode = '720p'|'1080p';
+export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: string; hint: string}> = [
+  {value:'720p', label:'720p', hint:'HD minimum — tidak di bawah 720p'},
+  {value:'1080p', label:'1080p', hint:'Full HD — detail lebih tajam bila host/browser mendukung'},
+];
+export function normalizeResolution(value: unknown): ResolutionMode {
+  // Migrasi native/480p dari preferensi lama ke Full HD; UI tidak menawarkan
+  // target di bawah HD dan tidak melakukan upscale palsu pada sumber kecil.
+  return value === '720p' ? '720p' : '1080p';
+}
+
 export type SessionPrefs = {
   volume: number;
   sens: number;
@@ -350,7 +361,7 @@ export type SessionPrefs = {
   cursorInVideo: boolean;
   tapClick: boolean;
   reverseScroll: boolean;
-  resolution: '720p'|'1080p'|'native';
+  resolution: ResolutionMode;
   quality: StreamQuality;
   bitrateMbps: BitrateMbps;
   fps:30|60;
@@ -567,7 +578,7 @@ export function SessionPanel({
           <div className="display-chips">{([30,60] as const).map(fps=><button type="button" key={fps} className={prefs.fps===fps?'active':''} onClick={()=>{onChange({...prefs,fps});onFps?.(fps);}}>{fps} FPS</button>)}</div>
           <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
           <p className="spanel-section">Resolusi maksimal</p>
-          <div className="display-chips">{(['720p','1080p','native'] as const).map(resolution=><button key={resolution} type="button" className={(prefs.resolution||'1080p')===resolution?'active':''} onClick={()=>{onChange({...prefs,resolution});onResolution?.(resolution);}}>{resolution==='native'?'Asli (maks. 4K)':resolution}</button>)}</div>
+          <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'1080p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
           <p className="spanel-note">Seluruh desktop dipertahankan tanpa zoom/crop. Layar ultrawide tetap ultrawide; angka di bawah adalah ukuran yang benar-benar diterima, bukan upscale.</p>
           <p className="spanel-section">Bitrate</p>
           <div className="display-chips bitrate-chips">
@@ -588,7 +599,7 @@ export function SessionPanel({
               </button>
             ))}
           </div>
-          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: desktop dikirim utuh pada rasio aslinya — tanpa pita hitam, tanpa crop; host otomatis meminta mode desktop 16:9 yang didukung. Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Mode asli maksimum 15 fps untuk mengutamakan detail; browser lama dapat dibatasi 720p.</p>
+          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host; software mengikuti negosiasi H264: desktop dikirim utuh pada rasio aslinya — tanpa pita hitam, tanpa crop; host otomatis meminta mode desktop 16:9 yang didukung. Tidak menambah detail lewat upscale. RTT bukan latensi layar-ke-layar. Target resolusi hanya HD (720p) atau Full HD (1080p); sumber kecil tidak di-upscale agar tetap jujur dan tidak buram.</p>
 
           <p className="spanel-section">Yang sedang berjalan</p>
           <div className="spanel-card">

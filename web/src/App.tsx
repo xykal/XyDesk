@@ -73,7 +73,7 @@ import {
 } from './version';
 import { vkFromCode } from './vk';
 import BillingPage from './Billing';
-import { VirtualKeyboard,  SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, useElapsedSec } from './session_ui';
+import { VirtualKeyboard,  SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
 import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
 import { WhatsAppIcon, TelegramIcon, XIcon, FacebookIcon } from './brand-icons';
@@ -2051,7 +2051,7 @@ function ConnectScreen({
   const [prefs, setPrefs] = useState<SessionPrefs>(() => {
     try {
       const raw = JSON.parse(localStorage.getItem('xydesk.session.prefs') ?? '{}');
-      return { ...DEFAULT_PREFS, ...raw, sens:Math.max(.2,Math.min(4,Number(raw.sens)||DEFAULT_PREFS.sens)), cursorSize:Math.max(24,Math.min(96,Number(raw.cursorSize)||36)), cursorInVideo:raw.cursorInVideo===true } as SessionPrefs;
+      return { ...DEFAULT_PREFS, ...raw, resolution:normalizeResolution(raw.resolution), sens:Math.max(.2,Math.min(4,Number(raw.sens)||DEFAULT_PREFS.sens)), cursorSize:Math.max(24,Math.min(96,Number(raw.cursorSize)||36)), cursorInVideo:raw.cursorInVideo===true } as SessionPrefs;
     } catch {
       return DEFAULT_PREFS;
     }
