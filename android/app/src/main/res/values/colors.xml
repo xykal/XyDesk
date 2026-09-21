@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Tema terang saja (#FAFAF9) — splash native mengikuti palet terang. -->
-    <color name="splash_background">#FAFAF9</color>
-    <color name="splash_background_light">#FAFAF9</color>
-</resources>
