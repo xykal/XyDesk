@@ -8,32 +8,18 @@ Status aktif tetap bukan bukti streaming; statistik live terlihat di web.
 Start Menu hanya menyediakan Control Panel, panduan, dan uninstall. Untuk
 pemakaian normal cukup Control Panel; skrip teknis internal tidak perlu dibuka.
 
-MODE: XYDESK VIRTUAL720 (OPT-IN / TEKNIS)
-Gunakan shortcut Start Menu "XyDesk Virtual720" untuk sumber virtual1280x720.
-Shortcut "XyDesk Host Test" (Start Menu) tetap mode biasa, bukan kunci virtual.
+MODE DRIVER / VIRTUAL DISPLAY — BELUM MENJADI ALUR NATIVE
 
-Jika belum ada driver, buka PowerShell Administrator di folder instalasi:
-  .\Setup-VirtualDisplay.ps1 -VerifyOnly
-  .\Setup-VirtualDisplay.ps1 -Install
-Install meminta konfirmasi, memvalidasi SHA256 arsip terpin dan tanda tangan
-katalog melalui Windows, lalu membuat adapter MttVDD dengan satu mode1280x720.
-Tidak import certificate, disable Secure Boot, testsigning, reboot, tscon,
-atau restart layanan. Config/driver yang sudah ada tidak ditimpa.
+Control Panel native tidak memasang, mengonfigurasi, atau mengaktifkan driver
+virtual display. Installer hanya membawa berkas teknis dan license untuk
+validasi engineering; tidak ada shortcut Virtual720 dan tidak ada setup driver
+otomatis. Flow driver/Virtual Display harus divalidasi terpisah sebelum dapat diklaim sebagai fitur native. Jangan menjalankan skrip teknis itu sebagai alur
+pemakaian normal, terutama saat terhubung melalui RDP.
 
-Untuk driver yang sudah ada, tambahkan1280x720 menggunakan kontrol driver
-tersebut. Jangan membuat adapter duplikat. Lalu jalankan:
-  .\xydesk-host.exe --display-probe
-  .\Start-Virtual720.ps1
-
-PENTING: driver aktif di sesi console belum tentu tampak pada sesi RDP.
-Virtual720 memeriksa identitas adapter DAN monitor yang terlihat pada sesi ini.
-Jika tidak ada, host berhenti dengan penjelasan, tidak fallback ke2336x1080 RDP.
-Perubahan dimensi/hilangnya sumber menghentikan frame, bukan mengirim monitor
-lain. Mode ini tidak memindahkan aplikasi dari layar RDP/monitor lain.
-Tidak menjanjikan bisa melewati session isolation/lock screen Windows.
-
-Driver adalah komponen Windows terpisah yang diminta secara eksplisit. Uninstall
-host tidak menghapus driver/config. Lihat VIRTUAL720.md untuk rollback driver.
+Jika pengujian driver diperlukan, ikuti prosedur engineering yang disetujui
+untuk mesin uji yang tepat. Jangan import certificate, disable Secure Boot,
+aktifkan testsigning, reboot, tscon, memutus RDP, memindahkan user console, atau
+memulai ulang host secara otomatis. Host uninstall tidak menghapus driver/config.
 
 --- PETUNJUK MODE HOST BIASA ---
 
@@ -66,9 +52,9 @@ kembali; Windows/RDP dapat menolak atau kemudian menerapkan ulang resolusinya.
 Tidak ada restart/reconnect RDP, instalasi driver, atau penyimpanan mode ke
 registry. Host tidak otomatis mengembalikan resolusi sebelumnya saat berhenti.
 
-Untuk TIDAK meminta perubahan resolusi, buka PowerShell di folder instalasi:
-  .\Start-TestHost.ps1 -KeepDesktopResolution
-Engine langsung menyediakan flag --keep-desktop-resolution.
+Flag engineering `--keep-desktop-resolution` tidak diekspos oleh Control Panel
+normal. Panel adalah alur yang didukung untuk menjalankan host; perubahan
+resolusi tetap tunduk pada kebijakan Windows/RDP dan hasil aktual di mesin.
 
 Panel Gambar web menampilkan desktop diminta, ukuran terbaca, serta hasil
 permintaan. Ukuran gambar hasil decode dilaporkan terpisah. Jika perubahan
@@ -116,4 +102,8 @@ resolusi atau latensi pada RDP fisik Anda. Paket ini belum diuji pada PC Anda.
 Lisensi: LICENSE-XyDesk.txt, THIRD-PARTY-LICENSES.md, dan folder licenses.
 
 DISPLAY TERBUNDEL
-Halaman akhir menawarkan penyiapan layar virtual dengan izin Administrator. Driver resmi dipin SHA256 dan diverifikasi katalog Windows; konfigurasi baru1280x720/60Hz. Driver/config yang sudah ada tidak ditimpa. Tidak ada reboot otomatis, pemutusan RDP, perpindahan pengguna console atau restart host. Jika Windows meminta reboot, lakukan hanya setelah merencanakan pemulihan akses. Silent install tidak menjalankan setup driver.
+Payload installer membawa arsip driver dan berkas konfigurasi hanya untuk alur
+engineering yang terpisah. Halaman installer tidak menawarkan setup driver dan
+Control Panel native tidak mengaktifkannya. Tidak ada reboot otomatis, pemutusan
+RDP, perpindahan pengguna console, atau restart host. Driver/config yang sudah
+ada tidak dihapus saat uninstall.
