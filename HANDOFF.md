@@ -2108,3 +2108,10 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - Commit source final: `c0ede5b8a2a01ee0295c584ad90e422221aa896c`. CI Windows `35535618245` dan NSIS `35536000419` SUCCESS; NSIS validation PASS.
 - Prerelease final: `uxhd9-4f6230e` (release 392566338), installer SHA256 `a24e3f88723065c09011522c85317e3016db5d82e92b1425aef5f2ece6172162`, 4.862.834 byte. Direct link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd9-4f6230e/XyDesk-Host-Test-Setup-x64.exe
 - `releases/latest` tetap `v6.8.5`; production release/deploy tidak dilakukan. Hardware/session validation masih harus dilakukan user: pastikan desktop yang tampil adalah desktop `kall`.
+
+## uxhd10 — Stop Host tidak muncul lagi, 2026-09-21
+
+- Akar masalah: `Console-Worker.ps1` menjalankan `Start-TestHost.ps1 -Supervise`, sedangkan tombol Stop sebelumnya hanya mematikan `xydesk-host.exe`; supervisor/task restart policy melahirkannya lagi. End Task dari Task Manager juga bukan kontrol permanen karena Scheduled Task masih enabled.
+- Fix `ab9d77c`: Stop men-disable task dulu, menghentikan scheduled action, mencari worker PowerShell exact path+user+install, lalu menghentikan worker dan engine. Worker memiliki kill-on-close Job Object sehingga child ikut selesai; sweep kedua exact-path menangani race restart. Tidak ada global taskkill.
+- Prerelease: `uxhd10-ab9d77c`, release 392622744, installer 4.864.403 byte SHA256 `ec7b183751e2b500a446e3bbf5674af4aff612026673309a43ae491167d3e9ab`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd10-ab9d77c/XyDesk-Host-Test-Setup-x64.exe
+- CI Windows `35546782004` + NSIS `35547229121` SUCCESS; NSIS validation PASS; latest tetap v6.8.5; hardware user belum tervalidasi.

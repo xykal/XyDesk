@@ -1,0 +1,32 @@
+{
+  "package": "uxhd10-stop-host-fix",
+  "date": "2026-09-21",
+  "sourceSha": "ab9d77c8d3244feecc6762c34ced20d7d094102e",
+  "version": "6.8.5",
+  "prerelease": {
+    "tag": "uxhd10-ab9d77c",
+    "releaseId": 392622744,
+    "installer": "XyDesk-Host-Test-Setup-x64.exe",
+    "sha256": "ec7b183751e2b500a446e3bbf5674af4aff612026673309a43ae491167d3e9ab",
+    "bytes": 4864403,
+    "downloadUrl": "https://github.com/xykalnotkel/XyDesk/releases/download/uxhd10-ab9d77c/XyDesk-Host-Test-Setup-x64.exe",
+    "sha256Url": "https://github.com/xykalnotkel/XyDesk/releases/download/uxhd10-ab9d77c/XyDesk-Host-Test-Setup-x64.exe.sha256",
+    "publicDownloadVerified": true,
+    "latestUnchanged": "v6.8.5"
+  },
+  "ci": {
+    "prepareHostWindows": 35546782004,
+    "prepareHostNsis": 35547229121,
+    "windowsConclusion": "success",
+    "nsisConclusion": "success",
+    "nsisValidation": "PASS",
+    "hardwareTested": false
+  },
+  "fix": [
+    "Stop men-disable Scheduled Task sebelum Stop-ScheduledTask agar restart policy tidak race.",
+    "Stop juga mencari worker Console-Worker.ps1 milik install dan mematikannya bersama xydesk-host.exe.",
+    "Kill-on-close Job Object worker menghentikan child engine; sweep kedua hanya exact-path host, tanpa global taskkill.",
+    "Task Manager masih bukan jalur kontrol; gunakan Stop Host di Control Panel supaya task disabled dan tidak muncul lagi."
+  ],
+  "fieldStatus": "Belum diuji user; wajib verifikasi Start, Stop, lalu Start ulang di mesin kall."
+}
