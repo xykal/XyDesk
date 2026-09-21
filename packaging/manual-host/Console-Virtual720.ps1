@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference='Stop'
 $admin=([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (!$admin) {throw 'Administrator PowerShell required. No automatic elevation.'}
-$name=if ($VirtualDisplay720p) {'XyDesk-Virtual720-Console'} else {'XyDesk-UserHost'}
+if ($VirtualDisplay720p) {$name='XyDesk-Virtual720-Console'} else {$name='XyDesk-UserHost'}
 $engine=[IO.Path]::GetFullPath((Join-Path $HostDirectory 'xydesk-host.exe'))
 # Upgrade cleanup: old uxhd8 used this task name for the lab-account workaround.
 # Remove it only when its action points to this exact install and worker; never
@@ -59,7 +59,11 @@ function Get-OwnedWorker {
 }
 $task=Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
 if ($task) {
- $registeredSid=if ($task.Principal.UserId -match '^S-1-') {$task.Principal.UserId} else {(New-Object Security.Principal.NTAccount($task.Principal.UserId)).Translate([Security.Principal.SecurityIdentifier]).Value}
+ if ($task.Principal.UserId -match '^S-1-') {
+  $registeredSid=$task.Principal.UserId
+ } else {
+  $registeredSid=(New-Object Security.Principal.NTAccount($task.Principal.UserId)).Translate([Security.Principal.SecurityIdentifier]).Value
+ }
  if ($registeredSid -ne $sid) {throw 'Task belongs to another account. Refusing takeover.'}
  $arguments=($task.Actions | Select-Object -First 1).Arguments
  if ($arguments -match '-EncodedCommand\s+(\S+)') {
@@ -140,7 +144,8 @@ if ($Action -eq 'Start') {
  $actionSpec=New-ScheduledTaskAction -Execute "$env:WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" -Argument $workerArgs -WorkingDirectory $HostDirectory
  $principal=New-ScheduledTaskPrincipal -UserId "$env:COMPUTERNAME\$ConsoleUser" -LogonType Interactive -RunLevel Highest
  $settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
- Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description (if ($VirtualDisplay720p) {'XyDesk strict Virtual720 console host'} else {'XyDesk host for the logged-in Windows user'}) -Force | Out-Null
+ if ($VirtualDisplay720p) {$description='XyDesk strict Virtual720 console host'} else {$description='XyDesk host for the logged-in Windows user'}
+ Register-ScheduledTask -TaskName $name -Action $actionSpec -Principal $principal -Settings $settings -Description $description -Force | Out-Null
  Start-ScheduledTask -TaskName $name
  Start-Sleep -Seconds 8
  }
