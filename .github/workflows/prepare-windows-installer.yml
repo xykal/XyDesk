@@ -1,6 +1,7 @@
 name: Prepare Windows Installer (Native C++)
 
 # Build installer non-release dari artifact Build yang sudah lulus.
+# Menghasilkan MSI WiX dan NSIS EXE dari payload yang sama.
 # Tidak membuat GitHub Release dan tidak mengubah releases/latest.
 on:
   workflow_dispatch:
@@ -16,9 +17,9 @@ permissions:
 
 jobs:
   installer:
-    name: Build installer Windows x64 native C++
+    name: Build MSI dan NSIS Windows x64
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,42 +55,78 @@ jobs:
         run: |
           if (-not (Test-Path 'native-bundle/XyDesk.exe')) { throw 'XyDesk.exe tidak ditemukan' }
           if (-not (Test-Path 'native-bundle/xydesk-host.exe')) { throw 'xydesk-host.exe tidak ditemukan' }
-          if (-not (Test-Path 'native-bundle/LICENSE-XyDesk.txt')) { throw 'Lisensi XyDesk tidak ditemukan' }
+          if (-not (Test-Path 'native-bundle/LICENSE-XyDesk.txt')) { throw 'English license tidak ditemukan' }
+          if (-not (Test-Path 'native-bundle/LICENSE-XyDesk-English.rtf')) { throw 'WiX English license RTF tidak ditemukan' }
 
-      - name: Pasang Inno Setup
+      - name: Pasang WiX v4 dan NSIS
         shell: pwsh
         run: |
-          choco install innosetup --no-progress -y
-          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup gagal dipasang' }
+          $ErrorActionPreference = 'Stop'
+          choco install nsis --no-progress -y
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS gagal dipasang' }
+          dotnet tool update --global wix --version 4.0.6
+          if ($LASTEXITCODE -ne 0) {
+            dotnet tool install --global wix --version 4.0.6
+            if ($LASTEXITCODE -ne 0) { throw 'WiX v4 gagal dipasang' }
+          }
+          "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
 
-      - name: Build installer satu pintu
+      - name: Build MSI dan NSIS dari payload yang sama
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $version = (Select-String '^version:\s*([^+\s]+)' pubspec.yaml).Matches.Groups[1].Value
           if (-not $version) { throw 'Versi tidak ditemukan di pubspec.yaml' }
+          $source = (Resolve-Path native-bundle).Path
           $out = Join-Path $PWD 'installer-output'
           New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $iscc = Get-ChildItem 'C:\Program Files (x86)' -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue |
-                  Select-Object -First 1 -ExpandProperty FullName
-          if (-not $iscc) { throw 'ISCC.exe tidak ditemukan' }
-          & $iscc `
+
+          python packaging/windows/generate_wix.py `
+            --source-dir $source `
+            --output packaging/windows/XyDesk.generated.wxs `
+            --version $version
+          if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
+
+          wix build -arch x64 -ext WixToolset.UI.wixext `
+            "-dSourceDir=$source" `
+            -o (Join-Path $out 'XyDesk-x64.msi') `
+            packaging/windows/XyDesk.generated.wxs
+          if ($LASTEXITCODE -ne 0) { throw "WiX MSI gagal: $LASTEXITCODE" }
+
+          $makensisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          if ($makensisCommand) {
+            $makensisPath = $makensisCommand.Source
+          } else {
+            $makensisPath = Get-ChildItem 'C:\Program Files (x86)\NSIS', 'C:\Program Files\NSIS' `
+              -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $makensisPath) { throw 'makensis.exe tidak ditemukan' }
+          & $makensisPath `
             "/DArch=x64" `
             "/DVersion=$version" `
-            "/DSourceDir=$((Resolve-Path native-bundle).Path)" `
+            "/DSourceDir=$source" `
             "/DOutputDir=$out" `
-            'packaging/windows/XyDesk.iss'
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup gagal: $LASTEXITCODE" }
-          $exe = Get-ChildItem $out -Filter '*.exe' | Select-Object -First 1
-          if (-not $exe) { throw 'Installer EXE tidak dihasilkan' }
-          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  $($exe.Name)" | Set-Content "$($exe.FullName).sha256" -Encoding ascii
-          Write-Host "$hash  $($exe.Name)"
+            'packaging/nsis/XyDesk.nsi'
+          if ($LASTEXITCODE -ne 0) { throw "NSIS gagal: $LASTEXITCODE" }
+
+          foreach ($expected in @('XyDesk-x64.msi', 'XyDesk-x64.exe')) {
+            if (-not (Test-Path (Join-Path $out $expected))) { throw "Installer tidak ditemukan: $expected" }
+          }
+          $artifacts = Get-ChildItem $out -File | Where-Object { $_.Extension -in '.msi', '.exe' }
+          if ($artifacts.Count -ne 2) { throw "Jumlah installer salah: $($artifacts.Count)" }
+          foreach ($artifact in $artifacts) {
+            $hash = (Get-FileHash $artifact -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($artifact.Name)" | Set-Content "$($artifact.FullName).sha256" -Encoding ascii
+            Write-Host "$hash  $($artifact.Name)"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
           name: XyDesk-Windows-x64-Installer
           path: |
+            installer-output/*.msi
             installer-output/*.exe
             installer-output/*.sha256
           if-no-files-found: error

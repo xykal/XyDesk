@@ -347,32 +347,77 @@ jobs:
             }
           }
           Write-Host "[OK] Bundle driver lengkap (VDD + Audio/Mic) siap."
-      - name: Pasang Inno Setup stabil
+      - name: Siapkan license English dan dependency manifest
         shell: pwsh
-        run: choco install innosetup --no-progress -y
-      - name: Build satu installer EXE utuh
+        run: |
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.txt' "$env:BUNDLE_PATH/LICENSE-XyDesk.txt" -Force
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.rtf' "$env:BUNDLE_PATH/LICENSE-XyDesk-English.rtf" -Force
+          Copy-Item 'packaging/windows/DEPENDENCIES-WINDOWS.txt' "$env:BUNDLE_PATH/DEPENDENCIES-WINDOWS.txt" -Force
+          if (-not (Test-Path "$env:BUNDLE_PATH/LICENSE-XyDesk.txt")) { throw 'English license tidak ada' }
+          if (-not (Test-Path "$env:BUNDLE_PATH/LICENSE-XyDesk-English.rtf")) { throw 'WiX English license RTF tidak ada' }
+
+      - name: Pasang WiX v4 dan NSIS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install nsis --no-progress -y
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS gagal dipasang' }
+          dotnet tool update --global wix --version 4.0.6
+          if ($LASTEXITCODE -ne 0) {
+            dotnet tool install --global wix --version 4.0.6
+            if ($LASTEXITCODE -ne 0) { throw 'WiX v4 gagal dipasang' }
+          }
+          "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+
+      - name: Build MSI dan NSIS EXE
         shell: pwsh
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
+          $ErrorActionPreference = 'Stop'
           $out = Join-Path $env:RUNNER_TEMP "installer-out"
           New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $iscc = Get-ChildItem "C:\Program Files (x86)" -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue |
-                  Select-Object -First 1 -ExpandProperty FullName
-          if (-not $iscc) { throw "ISCC.exe tidak ditemukan" }
-          Write-Host "Memakai compiler: $iscc"
-          & $iscc `
+          python packaging/windows/generate_wix.py `
+            --source-dir $env:BUNDLE_PATH `
+            --output "$env:RUNNER_TEMP\XyDesk.generated.wxs" `
+            --version $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
+          wix build -arch x64 -ext WixToolset.UI.wixext `
+            "-dSourceDir=$env:BUNDLE_PATH" `
+            -o "$out\XyDesk-${{ matrix.arch }}.msi" `
+            "$env:RUNNER_TEMP\XyDesk.generated.wxs"
+          if ($LASTEXITCODE -ne 0) { throw "WiX MSI gagal: $LASTEXITCODE" }
+          $makensisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          if ($makensisCommand) {
+            $makensisPath = $makensisCommand.Source
+          } else {
+            $makensisPath = Get-ChildItem 'C:\Program Files (x86)\NSIS', 'C:\Program Files\NSIS' -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $makensisPath) { throw 'makensis.exe tidak ditemukan' }
+          & $makensisPath `
             "/DArch=${{ matrix.arch }}" `
             "/DVersion=$env:VERSION" `
             "/DSourceDir=$env:BUNDLE_PATH" `
             "/DOutputDir=$out" `
-            "packaging/windows/XyDesk.iss"
-          if ($LASTEXITCODE -ne 0) { throw "Inno Setup gagal: $LASTEXITCODE" }
+            'packaging/nsis/XyDesk.nsi'
+          if ($LASTEXITCODE -ne 0) { throw "NSIS gagal: $LASTEXITCODE" }
+          foreach ($expected in @("XyDesk-${{ matrix.arch }}.msi", "XyDesk-${{ matrix.arch }}.exe")) {
+            if (-not (Test-Path (Join-Path $out $expected))) { throw "Installer tidak ditemukan: $expected" }
+          }
+          Get-ChildItem $out -File | Where-Object { $_.Extension -in '.msi', '.exe' } | ForEach-Object {
+            $hash = (Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Set-Content "$($_.FullName).sha256" -Encoding ascii
+          }
           "INSTALLER_OUT=$out" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - uses: actions/upload-artifact@v4
         with:
           name: release-installer-${{ matrix.arch }}
-          path: ${{ env.INSTALLER_OUT }}/*.exe
+          path: |
+            ${{ env.INSTALLER_OUT }}/*.msi
+            ${{ env.INSTALLER_OUT }}/*.exe
+            ${{ env.INSTALLER_OUT }}/*.sha256
           if-no-files-found: error
           retention-days: 3
 
@@ -411,10 +456,11 @@ jobs:
           cp artifacts/release-client-assets/XyDesk-Android-armeabi-v7a.apk dist/
           # Changelog rilis ikut dilampirkan — wajib ada di setiap rilis.
           cp CHANGELOG.md dist/CHANGELOG.md
-          # Satu installer per arsitektur. Client Flutter + engine Rust Host
-          # sudah menyatu di dalamnya, jadi host exe & portable zip tidak
-          # diterbitkan terpisah.
+          # Dua installer x64 dari payload yang sama: EXE NSIS untuk pengguna
+          # umum dan MSI WiX untuk deployment Windows/enterprise. Keduanya
+          # diterbitkan langsung; ZIP hanya dipakai sebagai artifact internal.
           cp artifacts/release-installer-x64/XyDesk-x64.exe dist/
+          cp artifacts/release-installer-x64/XyDesk-x64.msi dist/
           # Banner dirender ulang setiap rilis: versi, build, dan tanggal
           # ditulis otomatis di atas art dasar HD (tool/art/banner.py).
           pip install --quiet Pillow
@@ -428,6 +474,7 @@ jobs:
           sha256sum XyDesk-Android-arm64-v8a.apk \
             XyDesk-Android-armeabi-v7a.apk \
             XyDesk-x64.exe \
+            XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg \
             > SHA256SUMS.txt
           arm64_sha="$(sha256sum XyDesk-Android-arm64-v8a.apk | cut -d' ' -f1)"
@@ -436,8 +483,10 @@ jobs:
           armv7_bytes="$(stat -c%s XyDesk-Android-armeabi-v7a.apk)"
           winx64_sha="$(sha256sum XyDesk-x64.exe | cut -d' ' -f1)"
           winx64_bytes="$(stat -c%s XyDesk-x64.exe)"
+          winx64_msi_sha="$(sha256sum XyDesk-x64.msi | cut -d' ' -f1)"
+          winx64_msi_bytes="$(stat -c%s XyDesk-x64.msi)"
           export arm64_sha arm64_bytes armv7_sha armv7_bytes
-          export winx64_sha winx64_bytes
+          export winx64_sha winx64_bytes winx64_msi_sha winx64_msi_bytes
           python3 - <<'PY'
           import json, os
           repository = os.environ['GITHUB_REPOSITORY']
@@ -472,13 +521,18 @@ jobs:
                       "bytes": int(os.environ["armv7_bytes"]),
                   },
               },
-              # Satu installer Windows native C++ + engine Rust.
-              # Aditif: klien Android mengabaikan kunci ini.
+              # Installer Windows dari payload native C++ + engine Rust.
+              # Field legacy url/sha256/bytes tetap menunjuk ke EXE NSIS agar
+              # client lama kompatibel; metadata MSI ditambahkan sebagai field
+              # paralel untuk deployment enterprise.
               "windows": {
                   "x64": {
                       "url": f"{base}/XyDesk-x64.exe",
                       "sha256": os.environ["winx64_sha"],
                       "bytes": int(os.environ["winx64_bytes"]),
+                      "msi_url": f"{base}/XyDesk-x64.msi",
+                      "msi_sha256": os.environ["winx64_msi_sha"],
+                      "msi_bytes": int(os.environ["winx64_msi_bytes"]),
                   },
               },
               "release_url": f"https://github.com/{repository}/releases/tag/{tag}",
@@ -501,7 +555,7 @@ jobs:
           for asset in \
             CHANGELOG.md SHA256SUMS.txt update.json \
             XyDesk-Android-arm64-v8a.apk XyDesk-Android-armeabi-v7a.apk \
-            XyDesk-x64.exe \
+            XyDesk-x64.exe XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg
           do
             gh release delete-asset "$RELEASE_TAG" "$asset" --yes 2>/dev/null || true
@@ -544,7 +598,8 @@ jobs:
 
             | Platform | Berkas | Keterangan |
             |---|---|---|
-            | Windows x64 | `XyDesk-x64.exe` | PC & laptop Intel/AMD |
+            | Windows x64 EXE | `XyDesk-x64.exe` | Installer NSIS direct download |
+            | Windows x64 MSI | `XyDesk-x64.msi` | Deployment Windows/enterprise |
             | Android 64-bit | `XyDesk-Android-arm64-v8a.apk` | HP Android modern |
             | Android 32-bit | `XyDesk-Android-armeabi-v7a.apk` | Perangkat ARMv7 lama |
 

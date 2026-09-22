@@ -1,68 +1,98 @@
-# XyDesk Desktop — Shell Tauri v2 + Next.js
+# XyDesk Desktop — Native Win32 C++ + Rust Engine
 
 ## Posisi dalam arsitektur
 
-XyDesk Desktop adalah **launcher + panel host Windows** berbasis **Tauri v2 (Rust + WebView2)**
-yang menyajikan antarmuka React / Next.js (static export) dan mensupervisi engine streaming
-Rust murni (`xydesk-host.exe`).
+XyDesk Desktop adalah satu **Control Panel Windows native Win32 C++** yang
+menjalankan engine streaming Rust (`xydesk-host.exe`) sebagai proses internal.
+Panel tidak membuka terminal atau PowerShell untuk pemakaian normal.
 
 Pemisahan peran yang ketat:
 
 | Lapisan | Teknologi | Tanggung jawab |
 |---|---|---|
-| Shell Desktop | Tauri v2 + Next.js (static export) | Sidebar (Home, Connect, News, Profile, Settings), identitas, tray, supervisor engine |
-| Engine Streaming | Rust (`xydesk-host.exe`) | Signaling, pairing, capture DXGI, encode NVENC, WebRTC, WASAPI audio loopback, injeksi input |
-| Driver Bawaan | IddSampleDriver + VB-CABLE | Virtual display driver (headless/RDP tanpa layar hitam) + Virtual audio/mic driver |
+| Control Panel | Native Win32 C++ | Quiet Surface, tray, Start/Stop, Device ID, pairing code, diagnostics, dan lifecycle engine |
+| Engine Streaming | Rust (`xydesk-host.exe`) | Signaling, pairing, capture DXGI/GDI, encode, WebRTC, WASAPI audio, dan input |
+| Installer | WiX MSI + NSIS EXE | Dua format installer x64 dari payload terverifikasi yang sama |
+| Optional support | VDD + VB-CABLE payload | Berkas engineering yang tetap opt-in; tidak diunduh diam-diam |
 
-### Mengapa Tauri v2 Menggantikan Electron:
-1. **Ringan & Hemat RAM:** Penggunaan memori turun dari ~150–200 MB (Chromium V8 Electron) menjadi **~25–40 MB** (Tauri + native Windows WebView2).
-2. **Ukuran Installer:** Ukuran installer terpangkas drastis menjadi **~15–20 MB**.
-3. **Ekosistem Rust Terpadu:** Engine streaming (`host/`) dan shell desktop sama-sama ditulis dalam Rust, membuat IPC, tray handling, lifecycle management, dan integrasi OS jauh lebih andal dan konsisten.
+Satu produk tetap memiliki satu UI Windows. Rust berjalan sebagai proses internal
+terpisah supaya kegagalan engine tidak menjatuhkan panel, sementara panel dapat
+menampilkan status, exit code, dan log engine.
 
----
-
-## Driver Bawaan Terintegrasi (Zero-Prompt Setup)
-
-Pada rilis ini, seluruh driver pendukung **ditanam langsung (embedded)** di dalam paket installer dan runtime:
-- **Virtual Display Driver (`IddSampleDriver`)**:
-  Menghasilkan layar virtual berkecepatan tinggi saat PC host dijalankan tanpa monitor (headless), monitor mati, atau saat sesi RDP ditutup agar capture tidak menjadi hitam.
-- **Virtual Audio & Mic Driver (`VB-CABLE`)**:
-  Menangkap audio PC host dan meneruskan microphone client (HP/Tablet/Laptop) agar langsung terbaca sebagai perangkat microphone fisik Windows (CABLE Input $\rightarrow$ CABLE Output di Recording devices).
-
-### Otomasi Instalasi:
-- Saat installer dijalankan (dengan hak Admin), skrip Inno Setup (`packaging/windows/XyDesk.iss`) secara otomatis menginstal driver secara silent di latar belakang tanpa memunculkan dialog tambahan atau meminta pengguna menjalankan PowerShell manual.
-- Saat aplikasi di-uninstall, driver dibersihkan secara otomatis.
+### Prinsip Quiet Surface:
+1. Tidak membuka terminal atau PowerShell untuk pemakaian normal.
+2. Start/Stop, Device ID, pairing code, koneksi, dan diagnostics terlihat dari
+   satu panel.
+3. Engine hanya dianggap siap setelah proses hidup dan endpoint control tersedia.
+4. Kegagalan negosiasi WebRTC dicatat ke log tanpa mematikan panel.
 
 ---
 
-## Control API & Supervisi Engine
+## Driver dan dependency Windows
 
-Shell Tauri berkomunikasi dengan engine `xydesk-host.exe` melalui Control API lokal di `127.0.0.1`:
-- **Auth:** Token acak 128-bit yang dibaca dari stdout saat engine pertama kali di-spawn (`[control] http://127.0.0.1:PORT token=HEX`).
-- `GET /status`: Mengambil status realtime (state, session, video fps/encoder/latency, audio, display, dll.).
-- `POST /action`: Perintah interaktif (ganti password pairing, stop-session, pilih display, ubah bitrate, atur volume audio).
-- **Watchdog:** Supervisor mendeteksi bila engine berhenti tak terduga dan melakukan auto-restart dengan backoff bertahap (2s hingga 30s).
+Payload MSI dan NSIS dapat membawa driver/support files yang telah diverifikasi,
+tetapi pemasangan driver tetap opt-in dan mengikuti kebijakan Windows. Installer
+tidak mengunduh DLL atau driver secara diam-diam. Berkas non-sistem, lisensi,
+dan runtime yang dibundel harus dicatat di `DEPENDENCIES-WINDOWS.txt` serta
+third-party notices.
+
+- **Virtual Display Driver (`IddSampleDriver`)**: untuk skenario headless/RDP
+yang disetujui pengguna.
+- **Virtual Audio & Mic Driver (`VB-CABLE`)**: untuk rute audio/mic virtual
+yang dipilih pengguna.
+- Native C++ dibangun dengan static MSVC runtime (`/MT`) agar panel tidak
+  bergantung pada instalasi Visual C++ Redistributable terpisah.
 
 ---
 
-## Autentikasi Desktop (Google OAuth PKCE & Email OTP)
+## Lifecycle dan diagnostics engine
 
-- **Google OAuth:** Menggunakan alur Authorization Code + PKCE dengan loopback server lokal pada port acak `127.0.0.1:PORT/callback`. Pertukaran kode token dilakukan dengan Worker Cloudflare (`/auth/google/desktop`). Client secret tidak pernah ditanam di binary desktop.
-- **Email OTP:** Mengirimkan permintaan OTP ke Cloudflare Worker dan memverifikasinya langsung dari UI desktop.
-- **Penyimpanan Sesi:** Sesi login disimpan secara lokal di `%APPDATA%\XyDesk\auth_session.json` dan dijaga masa berlakunya.
+Control Panel menjalankan `xydesk-host.exe` dengan `CreateProcessW` dan Windows Job
+Object. Output stdout/stderr engine diarahkan ke:
+
+```text
+%LOCALAPPDATA%\XyDesk\host.log
+```
+
+Panel memeriksa exit code setiap detik. Jika engine berhenti, status menampilkan
+kode exit dan lokasi log; tombol **Buka log host** membuka file tersebut.
+Negosiasi WebRTC yang gagal harus menutup sesi terkait dan tetap membiarkan
+engine menunggu koneksi berikutnya, bukan membuat proses mati.
+
+Engine juga menyediakan Control API lokal untuk status dan tindakan internal.
+Auth token Control API tidak boleh ditampilkan ke pengguna atau dikirim ke
+jaringan publik.
+
+---
+
+## Identitas, pairing, dan privasi
+
+Panel native tidak menyimpan password pairing di command line. Device ID dan
+pairing code ditampilkan sebagai status lokal; sesi WebRTC tetap diautentikasi
+oleh engine Rust. Log diagnostik disimpan lokal di `%LOCALAPPDATA%\XyDesk` dan
+harus diperlakukan sebagai data sensitif.
 
 ---
 
 ## Pengembangan & Build
 
+Build engine Rust dan panel native dilakukan oleh workflow Windows. Prasyarat
+lokal untuk build native:
+
+- Visual Studio Build Tools dengan workload Desktop development with C++;
+- Windows SDK dan target `x86_64-pc-windows-msvc`;
+- Python 3 untuk generator manifest WiX;
+- WiX Toolset v4 dan NSIS untuk menghasilkan installer.
+
+Perintah validasi yang dapat dijalankan lintas platform:
+
 ```bash
-cd desktop
-npm install
-npm run dev        # Pratinjau frontend (mode demo di browser): http://localhost:3470
-npm run build      # Static export Next.js ke desktop/out/
+python -m py_compile packaging/windows/generate_wix.py
+python packaging/windows/generate_wix.py --help
+cargo fmt --check --manifest-path host/Cargo.toml
+cargo check --manifest-path host/Cargo.toml
 ```
 
-Kompilasi paket penuh Windows:
-```bash
-cargo build --release -p xydesk-desktop --manifest-path desktop/src-tauri/Cargo.toml
-```
+Kompilasi C++ panel harus memakai static MSVC runtime (`/MT`). Build final tidak
+mengandalkan Inno Setup; `packaging/windows/XyDesk.iss` dipertahankan sebagai
+legacy reference saja.

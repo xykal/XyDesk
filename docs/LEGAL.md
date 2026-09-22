@@ -119,15 +119,14 @@ Pencantuman di sini TIDAK mengubah status proprietary XyDesk.
 | onesignal_flutter | Ketentuan OneSignal | Notifikasi push |
 | share_plus | BSD-3-Clause (Flutter Community) | Berbagi tautan berita |
 
-### Desktop Windows (Tauri v2 + Next.js)
+### Desktop Windows (Native Win32 C++ + Rust Engine)
 
 | Komponen | Lisensi | Fungsi di XyDesk |
 |---|---|---|
-| Tauri v2 | MIT / Apache-2.0 | Cangkang aplikasi desktop native WebView2 |
-| Next.js | MIT (Vercel) | Render UI panel |
-| React | MIT (Meta) | Komponen UI |
-| lucide-react | ISC (Lucide Contributors) | Ikon panel |
-| TypeScript | Apache-2.0 (Microsoft) | Bahasa pengembangan shell |
+| Windows SDK / Win32 API | Microsoft SDK terms | Control Panel, tray, process lifecycle, dan diagnostics |
+| MSVC static runtime (`/MT`) | Microsoft SDK terms | Runtime C++ ditautkan statis ke panel |
+| WiX Toolset v4 | Microsoft Reciprocal License | Installer MSI x64 dan English license dialog |
+| NSIS | zlib/libpng license | Installer EXE x64 untuk pengguna umum |
 | NVENC SDK | Lisensi SDK NVIDIA | Encode video hardware (engine Rust) |
 
 ### Host (Rust)

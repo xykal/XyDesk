@@ -1,0 +1,27 @@
+XyDesk Windows Runtime Dependencies
+
+The XyDesk Windows bundle contains the native C++ Control Panel and the Rust
+xydesk-host engine. The native panel is built with the static MSVC runtime
+(/MT) so it does not require a separate Visual C++ redistributable DLL for the
+panel itself.
+
+Windows system libraries used by the panel:
+- user32.dll
+- gdi32.dll
+- shell32.dll
+
+The Rust engine targets x86_64-pc-windows-msvc. Windows system libraries and
+any third-party DLLs copied into this bundle remain subject to their respective
+licenses. The installer preserves their relative paths and includes the
+matching third-party notices.
+
+Installer license assets:
+- LICENSE-XyDesk.txt — English license text included in the installed bundle.
+- LICENSE-XyDesk-English.rtf — same English EULA in the RTF format required by
+the WiX MSI license dialog.
+- THIRD-PARTY-LICENSES.md — notices for dependencies and bundled support files.
+
+If a future build adds a non-system DLL, it must be copied into the verified
+native bundle, recorded here or in the generated dependency manifest, and
+included in both the MSI and NSIS artifacts. Never download a DLL at install
+time or silently replace a system DLL.

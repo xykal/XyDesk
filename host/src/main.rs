@@ -642,7 +642,7 @@ async fn main() -> Result<()> {
                         // Penundaan tetap dipertahankan agar penolakan tidak
                         // terasa lebih cepat daripada kegagalan password biasa.
                         tokio::time::sleep(pairguard::FAILURE_DELAY).await;
-                        send_msg(
+                        if let Err(error) = send_msg(
                             &mut ws,
                             &Msg {
                                 kind: "pair-response".into(),
@@ -651,7 +651,11 @@ async fn main() -> Result<()> {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await
+                        {
+                            eprintln!("[xydesk-host] gagal mengirim penolakan pairing: {error}");
+                            break;
+                        }
                         continue;
                     }
 
@@ -731,7 +735,7 @@ async fn main() -> Result<()> {
                         tokio::time::sleep(pairguard::FAILURE_DELAY).await;
                     }
 
-                    send_msg(
+                    if let Err(error) = send_msg(
                         &mut ws,
                         &Msg {
                             kind: "pair-response".into(),
@@ -741,7 +745,11 @@ async fn main() -> Result<()> {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    {
+                        eprintln!("[xydesk-host] gagal mengirim hasil pairing: {error}");
+                        break;
+                    }
                 }
 
                 "offer" => {
@@ -759,7 +767,7 @@ async fn main() -> Result<()> {
                             "[xydesk-host] offer DITOLAK dari {client} ({})",
                             reason.as_str()
                         );
-                        send_msg(
+                        if let Err(error) = send_msg(
                             &mut ws,
                             &Msg {
                                 kind: "error".into(),
@@ -769,25 +777,84 @@ async fn main() -> Result<()> {
                                 ..Default::default()
                             },
                         )
-                        .await?;
+                        .await
+                        {
+                            eprintln!("[xydesk-host] gagal mengirim penolakan offer: {error}");
+                            break;
+                        }
                         continue;
                     }
 
-                    let sdp = msg.sdp.clone().context("offer tanpa SDP")?;
+                    let sdp = match msg.sdp.clone().context("offer tanpa SDP") {
+                        Ok(sdp) => sdp,
+                        Err(error) => {
+                            eprintln!("[xydesk-host] offer dari {client} ditolak: {error:#}");
+                            let _ = send_msg(
+                                &mut ws,
+                                &Msg {
+                                    kind: "error".into(),
+                                    to: Some(client),
+                                    error: Some("offer-tidak-valid".into()),
+                                    reason: Some("offer".into()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                    };
                     println!("[xydesk-host] menerima offer dari {client}");
 
                     let video_level = xydesk_host::video_policy::offer_level(&sdp.sdp);
-                    let turn = tokio::task::spawn_blocking({
+                    let turn = match tokio::task::spawn_blocking({
                         let device_id = device_id.clone();
                         let token = token.clone();
                         move || fetch_turn_servers(&device_id, &token)
                     })
                     .await
-                    .context("pekerja TURN berhenti")?;
-                    let session = Arc::new(
-                        Session::new_with_video_level(vec![stun.clone()], turn, video_level)
-                            .await?,
-                    );
+                    .context("pekerja TURN berhenti")
+                    {
+                        Ok(turn) => turn,
+                        Err(error) => {
+                            eprintln!("[xydesk-host] pengambilan TURN gagal untuk {client}: {error:#}");
+                            let _ = send_msg(
+                                &mut ws,
+                                &Msg {
+                                    kind: "error".into(),
+                                    to: Some(client),
+                                    error: Some("turn-gagal".into()),
+                                    reason: Some("offer".into()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                    };
+                    let session = match Session::new_with_video_level(
+                        vec![stun.clone()],
+                        turn,
+                        video_level,
+                    )
+                    .await
+                    {
+                        Ok(session) => Arc::new(session),
+                        Err(error) => {
+                            eprintln!("[xydesk-host] peer connection gagal untuk {client}: {error:#}");
+                            let _ = send_msg(
+                                &mut ws,
+                                &Msg {
+                                    kind: "error".into(),
+                                    to: Some(client),
+                                    error: Some("peer-connection-gagal".into()),
+                                    reason: Some("offer".into()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                    };
                     // Track WAJIB didaftarkan sebelum answer (dilakukan di dalam
                     // `answer_media`): kalau tidak, SDP jawaban tidak berisi m-line
                     // dan client tidak pernah mendapat gambar. Lihat session.rs.
@@ -796,7 +863,25 @@ async fn main() -> Result<()> {
                     // Mic host aktif otomatis bila ada mikrofon yang terdeteksi —
                     // tidak ada toggle (standar remote desktop).
                     let mic_on = xydesk_host::audio::mic_capture_available();
-                    let media = session.answer_media(&sdp.sdp, audio_on, mic_on).await?;
+                    let media = match session.answer_media(&sdp.sdp, audio_on, mic_on).await {
+                        Ok(media) => media,
+                        Err(error) => {
+                            eprintln!("[xydesk-host] negosiasi SDP gagal untuk {client}: {error:#}");
+                            let _ = session.close().await;
+                            let _ = send_msg(
+                                &mut ws,
+                                &Msg {
+                                    kind: "error".into(),
+                                    to: Some(client),
+                                    error: Some("negosiasi-gagal".into()),
+                                    reason: Some("offer".into()),
+                                    ..Default::default()
+                                },
+                            )
+                            .await;
+                            continue;
+                        }
+                    };
                     xydesk_host::video_policy::configure(video_level);
                     if !args.keep_desktop_resolution && !args.virtual_display_720p {
                         let wanted = xydesk_host::screen::wanted_display();
@@ -820,7 +905,7 @@ async fn main() -> Result<()> {
                     let mic_track = media.mic;
                     let answer = media.sdp;
 
-                    send_msg(
+                    if let Err(error) = send_msg(
                         &mut ws,
                         &Msg {
                             kind: "answer".into(),
@@ -832,7 +917,12 @@ async fn main() -> Result<()> {
                             ..Default::default()
                         },
                     )
-                    .await?;
+                    .await
+                    {
+                        eprintln!("[xydesk-host] gagal mengirim answer ke {client}: {error}");
+                        let _ = session.close().await;
+                        break;
+                    }
 
                     // Client bisa hilang tanpa sempat mengirim `bye` (mati listrik,
                     // kereta masuk terowongan, proses di-kill). Tanpa handler ini
@@ -1412,13 +1502,16 @@ async fn main() -> Result<()> {
                         continue;
                     }
                     if let (Some(session), Some(c)) = (&active, msg.candidate) {
-                        session
+                        if let Err(error) = session
                             .add_ice_candidate(IceCandidate {
                                 candidate: c.candidate,
                                 sdp_mid: c.sdp_mid,
                                 sdp_mline_index: c.sdp_mline_index,
                             })
-                            .await?;
+                            .await
+                        {
+                            eprintln!("[xydesk-host] kandidat ICE dari {from} diabaikan: {error:#}");
+                        }
                     }
                 }
 

@@ -29,11 +29,14 @@ constexpr int kStop = 1002;
 constexpr int kCopyId = 1003;
 constexpr int kCopyPassword = 1004;
 constexpr int kOpenWeb = 1005;
+constexpr int kOpenLog = 1006;
+constexpr int kRestart = 1007;
 constexpr int kTrayOpen = 1010;
 constexpr int kTrayStart = 1011;
 constexpr int kTrayStop = 1012;
 constexpr int kTrayWeb = 1013;
 constexpr int kTrayQuit = 1014;
+constexpr int kTrayRestart = 1015;
 constexpr UINT kTrayMessage = WM_APP + 11;
 constexpr UINT kAutoStartMessage = WM_APP + 12;
 constexpr UINT kTrayId = 1;
@@ -56,9 +59,11 @@ struct AppState {
     HWND password = nullptr;
     HWND start = nullptr;
     HWND stop = nullptr;
+    HWND restart = nullptr;
     HWND copyId = nullptr;
     HWND copyPassword = nullptr;
     HWND web = nullptr;
+    HWND log = nullptr;
     HFONT titleFont = nullptr;
     HFONT bodyFont = nullptr;
     HFONT smallFont = nullptr;
@@ -66,6 +71,8 @@ struct AppState {
     HBRUSH surfaceBrush = nullptr;
     HANDLE process = nullptr;
     HANDLE job = nullptr;
+    HANDLE logFile = nullptr;
+    std::wstring logPath;
     std::wstring deviceId;
     std::wstring pairingCode;
     std::wstring lastError;
@@ -89,6 +96,17 @@ std::wstring moduleDirectory() {
 
 std::wstring enginePath() {
     return moduleDirectory() + L"\\xydesk-host.exe";
+}
+
+std::wstring hostLogPath() {
+    wchar_t localAppData[MAX_PATH]{};
+    DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, ARRAYSIZE(localAppData));
+    std::wstring base = n && n < ARRAYSIZE(localAppData)
+        ? std::wstring(localAppData, n)
+        : moduleDirectory();
+    const auto directory = base + L"\\XyDesk";
+    CreateDirectoryW(directory.c_str(), nullptr);
+    return directory + L"\\host.log";
 }
 
 void hideConsoleProcess(PROCESS_INFORMATION& pi) {
@@ -200,6 +218,10 @@ void closeHostHandles() {
         CloseHandle(g.process);
         g.process = nullptr;
     }
+    if (g.logFile) {
+        CloseHandle(g.logFile);
+        g.logFile = nullptr;
+    }
     if (g.job) {
         CloseHandle(g.job);
         g.job = nullptr;
@@ -207,12 +229,19 @@ void closeHostHandles() {
     g.running = false;
 }
 
+bool startHost();
+
 void stopHost() {
     if (g.job) TerminateJobObject(g.job, 0);
     closeHostHandles();
     EnableWindow(g.start, TRUE);
     EnableWindow(g.stop, FALSE);
     setStatus(L"Host berhenti", kMuted);
+}
+
+void restartHost() {
+    stopHost();
+    startHost();
 }
 
 bool startHost() {
@@ -234,16 +263,39 @@ bool startHost() {
         return false;
     }
 
+    g.logPath = hostLogPath();
+    SECURITY_ATTRIBUTES logSecurity{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+    g.logFile = CreateFileW(
+        g.logPath.c_str(),
+        FILE_APPEND_DATA,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        &logSecurity,
+        OPEN_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        nullptr);
+    if (g.logFile == INVALID_HANDLE_VALUE) {
+        g.logFile = nullptr;
+        closeHostHandles();
+        g.lastError = L"Log host tidak dapat dibuka: " + g.logPath;
+        setStatus(g.lastError, kBad);
+        return false;
+    }
+
     std::wstring command = quote(enginePath()) + L" --url \"wss://signal.xydesk.my.id/ws\" --managed-auth";
     std::vector<wchar_t> commandLine(command.begin(), command.end());
     commandLine.push_back(L'\0');
     STARTUPINFOW si{sizeof(STARTUPINFOW)};
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = g.logFile;
+    si.hStdError = g.logFile;
+    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     PROCESS_INFORMATION pi{};
-    const BOOL started = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, FALSE,
+    const BOOL started = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, TRUE,
         CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, nullptr, moduleDirectory().c_str(), &si, &pi);
     if (!started) {
+        const DWORD error = GetLastError();
         closeHostHandles();
-        g.lastError = L"Host tidak dapat dimulai (Windows error " + std::to_wstring(GetLastError()) + L").";
+        g.lastError = L"Host tidak dapat dimulai (Windows error " + std::to_wstring(error) + L"). Log: " + g.logPath;
         setStatus(g.lastError, kBad);
         return false;
     }
@@ -331,6 +383,7 @@ void showTrayMenu(HWND hwnd) {
     AppendMenuW(menu, MF_STRING, kTrayOpen, L"Buka Control Panel");
     AppendMenuW(menu, g.running ? MF_GRAYED : MF_STRING, kTrayStart, L"Mulai host");
     AppendMenuW(menu, g.running ? MF_STRING : MF_GRAYED, kTrayStop, L"Hentikan host");
+    AppendMenuW(menu, MF_STRING, kTrayRestart, L"Restart host");
     AppendMenuW(menu, MF_STRING, kTrayWeb, L"Buka XyDesk Web");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kTrayQuit, L"Keluar XyDesk");
@@ -385,12 +438,14 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.status = addControl(L"STATIC", L"Menyiapkan host…", SS_LEFT, 2001, 34, 72, 510, 28, hwnd);
         g.identity = addControl(L"EDIT", L"Belum tersedia", ES_READONLY | ES_AUTOHSCROLL, 2002, 34, 168, 310, 30, hwnd);
         g.password = addControl(L"EDIT", L"Belum tersedia", ES_READONLY | ES_AUTOHSCROLL, 2003, 34, 248, 310, 30, hwnd);
-        g.start = addControl(L"BUTTON", L"Mulai host", BS_OWNERDRAW, kStart, 34, 330, 160, 42, hwnd);
-        g.stop = addControl(L"BUTTON", L"Hentikan", BS_OWNERDRAW, kStop, 208, 330, 160, 42, hwnd);
+        g.start = addControl(L"BUTTON", L"Mulai host", BS_OWNERDRAW, kStart, 34, 330, 150, 42, hwnd);
+        g.stop = addControl(L"BUTTON", L"Hentikan", BS_OWNERDRAW, kStop, 195, 330, 150, 42, hwnd);
+        g.restart = addControl(L"BUTTON", L"Restart", BS_OWNERDRAW, kRestart, 356, 330, 94, 42, hwnd);
         g.copyId = addControl(L"BUTTON", L"Salin ID", BS_OWNERDRAW, kCopyId, 358, 166, 92, 34, hwnd);
         g.copyPassword = addControl(L"BUTTON", L"Salin kode", BS_OWNERDRAW, kCopyPassword, 358, 246, 92, 34, hwnd);
-        g.web = addControl(L"BUTTON", L"Buka XyDesk Web", BS_OWNERDRAW, kOpenWeb, 34, 394, 334, 40, hwnd);
-        for (HWND control : {g.status, g.identity, g.password, g.start, g.stop, g.copyId, g.copyPassword, g.web}) {
+        g.web = addControl(L"BUTTON", L"Buka XyDesk Web", BS_OWNERDRAW, kOpenWeb, 34, 394, 250, 40, hwnd);
+        g.log = addControl(L"BUTTON", L"Buka log host", BS_OWNERDRAW, kOpenLog, 294, 394, 156, 40, hwnd);
+        for (HWND control : {g.status, g.identity, g.password, g.start, g.stop, g.restart, g.copyId, g.copyPassword, g.web, g.log}) {
             SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(g.bodyFont), TRUE);
         }
         SendMessageW(g.status, WM_SETFONT, reinterpret_cast<WPARAM>(g.bodyFont), TRUE);
@@ -432,10 +487,13 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         if (wParam == kTimer && g.process) {
             DWORD code = STILL_ACTIVE;
             if (GetExitCodeProcess(g.process, &code) && code != STILL_ACTIVE) {
+                const auto log = g.logPath;
                 closeHostHandles();
                 EnableWindow(g.start, TRUE);
                 EnableWindow(g.stop, FALSE);
-                setStatus(L"Host berhenti", kWarn);
+                setStatus(
+                    L"Host berhenti (kode " + std::to_wstring(code) + L") · log: " + log,
+                    kWarn);
             }
         }
         return 0;
@@ -448,6 +506,9 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         case kStop:
             stopHost();
             return 0;
+        case kRestart:
+            restartHost();
+            return 0;
         case kCopyId:
             copyText(hwnd, g.identity);
             setStatus(L"ID disalin ke clipboard", kGood);
@@ -459,6 +520,11 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         case kOpenWeb:
             ShellExecuteW(hwnd, L"open", L"https://app.xydesk.my.id", nullptr, nullptr, SW_SHOWNORMAL);
             return 0;
+        case kOpenLog: {
+            const auto log = g.logPath.empty() ? hostLogPath() : g.logPath;
+            ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            return 0;
+        }
         case kTrayOpen:
             openPanel(hwnd);
             return 0;
@@ -467,6 +533,9 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             return 0;
         case kTrayStop:
             stopHost();
+            return 0;
+        case kTrayRestart:
+            restartHost();
             return 0;
         case kTrayWeb:
             ShellExecuteW(hwnd, L"open", L"https://app.xydesk.my.id", nullptr, nullptr, SW_SHOWNORMAL);

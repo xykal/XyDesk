@@ -519,7 +519,7 @@ jobs:
           $exe = Join-Path $out 'XyDesk.exe'
           $res = Join-Path $out 'xydesk.res'
           Copy-Item 'packaging/native-host/xydesk.ico' (Join-Path $out 'xydesk.ico')
-          $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /std:c++20 /O2 /EHsc /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
+          $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw 'UI native C++ gagal dikompilasi' }
       - name: Satukan aplikasi dan engine
@@ -527,9 +527,12 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           Copy-Item 'host/target/x86_64-pc-windows-msvc/release/xydesk-host.exe' 'native-windows-x64/xydesk-host.exe' -Force
-          Copy-Item 'LICENSE' 'native-windows-x64/LICENSE-XyDesk.txt' -Force
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.txt' 'native-windows-x64/LICENSE-XyDesk.txt' -Force
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.rtf' 'native-windows-x64/LICENSE-XyDesk-English.rtf' -Force
           Copy-Item 'docs/THIRD-PARTY-LICENSES.md' 'native-windows-x64/THIRD-PARTY-LICENSES.md' -Force
+          if (-not (Test-Path 'native-windows-x64/LICENSE-XyDesk.txt')) { throw 'English XyDesk license tidak ditemukan' }
           Copy-Item 'packaging/windows/README-postinstall.md' 'native-windows-x64/README-postinstall.md' -Force
+          Copy-Item 'packaging/windows/DEPENDENCIES-WINDOWS.txt' 'native-windows-x64/DEPENDENCIES-WINDOWS.txt' -Force
           New-Item -ItemType Directory -Force -Path 'native-windows-x64/drivers' | Out-Null
           if (Test-Path 'packaging/windows/drivers/*') {
             Copy-Item 'packaging/windows/drivers/*' 'native-windows-x64/drivers/' -Recurse -Force
@@ -582,47 +585,62 @@ jobs:
           path: web/dist/*
           retention-days: 30
 
-  # ── 6. Lint installer Inno Setup ──
-  # Skrip .iss tidak pernah dikompilasi sampai tahap Release, sehingga error
-  # sintaks baru ketahuan saat rilis sedang berjalan. Job ini mengompilasi
-  # dengan /O- (tanpa menulis output) supaya kesalahan tertangkap lebih awal.
+  # ── 6. Lint installer MSI + NSIS ──
+  # Kedua format harus bisa dibangun dari payload yang sama sebelum installer
+  # final dijalankan. Tidak ada lagi lint Inno Setup sebagai jalur produksi.
   installer-lint:
-    name: Lint Installer Windows
+    name: Lint MSI dan NSIS Installer
     needs: changes
     if: needs.changes.outputs.packaging == 'true' || needs.changes.outputs.full == 'true'
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Pasang Inno Setup
-        run: choco install innosetup --no-progress -y
-      - name: Compile-check XyDesk.iss (x64 dan arm64)
+      - name: Pasang WiX v4 dan NSIS
         shell: pwsh
         run: |
-          $iscc = Get-ChildItem "C:\Program Files (x86)" -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue |
-                  Select-Object -First 1 -ExpandProperty FullName
-          if (-not $iscc) { throw "ISCC.exe tidak ditemukan" }
-          Write-Host "Memakai compiler: $iscc"
-
-          # Bundle tiruan: lint hanya memerlukan struktur, bukan biner asli.
-          $fake = Join-Path $env:RUNNER_TEMP "fake-bundle"
-          New-Item -ItemType Directory -Force -Path "$fake\Host" | Out-Null
-          Set-Content "$fake\xydesk.exe" "stub"
-          Set-Content "$fake\Host\XyDesk-Host.exe" "stub"
-
-          $failed = $false
-          foreach ($arch in @("x64", "arm64")) {
-            Write-Host "--- Lint arch=$arch ---"
-            & $iscc /O- "/DArch=$arch" "/DVersion=0.0.0" `
-              "/DSourceDir=$fake" "/DOutputDir=$env:RUNNER_TEMP" `
-              "packaging/windows/XyDesk.iss"
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "::error::XyDesk.iss gagal compile untuk $arch"
-              $failed = $true
-            }
+          $ErrorActionPreference = 'Stop'
+          choco install nsis --no-progress -y
+          if ($LASTEXITCODE -ne 0) { throw 'NSIS gagal dipasang' }
+          dotnet tool update --global wix --version 4.0.6
+          if ($LASTEXITCODE -ne 0) {
+            dotnet tool install --global wix --version 4.0.6
+            if ($LASTEXITCODE -ne 0) { throw 'WiX v4 gagal dipasang' }
           }
-          if ($failed) { exit 1 }
-          Write-Host "OK: installer lolos compile-check untuk kedua arsitektur."
+          "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
+          $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+      - name: Compile-check MSI dan NSIS
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fake = Join-Path $env:RUNNER_TEMP 'fake-bundle'
+          New-Item -ItemType Directory -Force -Path $fake | Out-Null
+          Set-Content "$fake\XyDesk.exe" 'stub'
+          Set-Content "$fake\xydesk-host.exe" 'stub'
+          Copy-Item 'packaging/native-host/xydesk.ico' "$fake\xydesk.ico"
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.txt' "$fake\LICENSE-XyDesk.txt"
+          Copy-Item 'packaging/windows/LICENSE-XyDesk-English.rtf' "$fake\LICENSE-XyDesk-English.rtf"
+          Copy-Item 'packaging/windows/DEPENDENCIES-WINDOWS.txt' "$fake\DEPENDENCIES-WINDOWS.txt"
+          Set-Content "$fake\THIRD-PARTY-LICENSES.md" 'test notices'
+          $wxs = Join-Path $env:RUNNER_TEMP 'XyDesk.generated.wxs'
+          python packaging/windows/generate_wix.py --source-dir $fake --output $wxs --version 0.0.0
+          if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
+          wix build -arch x64 -ext WixToolset.UI.wixext "-dSourceDir=$fake" -o "$env:RUNNER_TEMP\XyDesk-lint.msi" $wxs
+          if ($LASTEXITCODE -ne 0) { throw "WiX lint gagal: $LASTEXITCODE" }
+          $makensisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
+          if ($makensisCommand) {
+            $makensisPath = $makensisCommand.Source
+          } else {
+            $makensisPath = Get-ChildItem 'C:\Program Files (x86)\NSIS', 'C:\Program Files\NSIS' -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $makensisPath) { throw 'makensis.exe tidak ditemukan' }
+          $out = Join-Path $env:RUNNER_TEMP 'nsis-out'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          & $makensisPath /DArch=x64 /DVersion=0.0.0 "/DSourceDir=$fake" "/DOutputDir=$out" 'packaging/nsis/XyDesk.nsi'
+          if ($LASTEXITCODE -ne 0) { throw "NSIS lint gagal: $LASTEXITCODE" }
+          if (-not (Test-Path "$out\XyDesk-x64.exe")) { throw 'Output NSIS x64 tidak ditemukan' }
+          Write-Host 'OK: MSI dan NSIS lolos compile-check.'
 
   summary:
     name: Ringkasan

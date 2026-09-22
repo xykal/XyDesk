@@ -532,7 +532,10 @@ export class RtcSession {
         if(m.reason==='remembered-access-revoked')this.onRememberedRejected();
         return this.stop();
       case 'error':
-        if (m.error === 'peer-offline') this.setPhase('peer-offline');
+        if (m.error === 'peer-offline') {
+          this.setPhase('peer-offline');
+          return;
+        }
         // Rem pairing server (hub.js) mengirim 'pair-terkunci' beserta alasan
         // dan sisa tunggu; 'host-sibuk' disimpan sebagai alias legacy supaya
         // client lama tetap paham bila berbicara dengan worker lama.
@@ -544,7 +547,13 @@ export class RtcSession {
               ? `PC sedang dikendalikan sesi lain. Server mengunci pairing sementara — coba lagi dalam ${retry} detik.`
               : undefined,
           );
+          return;
         }
+        // Error negosiasi dari host harus membuka kembali tombol Connect dan
+        // memberi arah yang bisa ditindaklanjuti. Sebelumnya pesan error baru
+        // dari jalur pair yang dikenal; error SDP/ICE jatuh diam-diam sampai
+        // watchdog habis, sehingga pengguna mengira host mati tanpa alasan.
+        this.fail('Host tidak dapat menyelesaikan koneksi. Buka log host di PC, lalu coba hubungkan lagi.');
         return;
     }
   }

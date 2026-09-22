@@ -1,0 +1,77 @@
+XYDESK SOFTWARE LICENSE
+End User License Agreement — Copyright Protected
+
+Copyright © 2026 XySpace Tech (xykalnotkel). All rights reserved.
+
+1. LICENSE GRANT
+
+XyDesk is proprietary software owned by XySpace Tech. Subject to this
+Agreement, XySpace Tech grants you a limited, non-exclusive, non-transferable
+license to install and use the XyDesk binaries on devices that you own or are
+authorized to administer.
+
+2. PERMITTED USE
+
+You may:
+
+- use the official XyDesk application for personal or business purposes on
+authorized devices;
+- share an official XyDesk download link; and
+- keep one backup copy of the installer for your own authorized deployment.
+
+3. RESTRICTIONS
+
+Without prior written permission from XySpace Tech, you may not:
+
+- copy, modify, adapt, translate, or create derivative works from XyDesk;
+- reverse engineer, decompile, disassemble, or attempt to extract source code;
+- redistribute, sell, rent, lease, sublicense, or host XyDesk as a service;
+- remove copyright, trademark, license, or security notices; or
+- use the XyDesk name, logo, or branding for another product or service.
+
+4. THIRD-PARTY COMPONENTS
+
+XyDesk includes or may distribute third-party software. Those components
+remain subject to their own licenses. The complete notices and license texts
+are provided in THIRD-PARTY-LICENSES.md and the licenses directory included
+with the installer. Those notices do not change the proprietary status of
+XyDesk code, artwork, branding, or application-specific assets.
+
+5. NETWORK AND REMOTE ACCESS RESPONSIBILITY
+
+You are responsible for obtaining consent before controlling a device, for
+protecting device identifiers and pairing credentials, and for complying with
+all applicable laws and organizational policies. Do not use XyDesk to access a
+device without authorization.
+
+6. UPDATES AND AVAILABILITY
+
+XySpace Tech may publish updates, security fixes, or changes to supported
+platforms and services. A feature or service may be unavailable, limited, or
+changed without notice.
+
+7. DISCLAIMER
+
+XyDesk is provided “AS IS” and “AS AVAILABLE”, without warranties of any kind,
+to the maximum extent permitted by law. XySpace Tech does not warrant that
+remote access, capture, encoding, networking, or input will work on every
+hardware, driver, Windows, RDP, or network configuration.
+
+8. LIMITATION OF LIABILITY
+
+To the maximum extent permitted by law, XySpace Tech is not liable for
+indirect, incidental, special, consequential, or loss-of-data damages arising
+from use of the software. Nothing in this Agreement limits liability that
+cannot legally be limited.
+
+9. TERMINATION
+
+This license ends automatically if you materially breach this Agreement. Upon
+termination, stop using XyDesk and delete the copies under your control.
+
+10. CONTACT
+
+License questions: legal@xydesk.app
+
+This English text is the installer-facing license. If a translation conflicts
+with this text, the English text controls to the extent permitted by law.

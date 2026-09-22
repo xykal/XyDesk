@@ -13,7 +13,7 @@ perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
 | `.github/workflows/release.yml` | Build `main` sukses + nilai `version` berubah (menolak SHA yang tertinggal dari `main`), manual recovery via `release_sha` | GitHub Release x64 Windows + Android + push OneSignal |
 | `.github/workflows/prepare-host-windows.yml` | **manual** (`workflow_dispatch`) | validasi/paket Native C++ x64 manual |
 | `.github/workflows/prepare-host-nsis.yml` | **manual** (`workflow_dispatch`) | installer NSIS Native C++ x64 test dari payload terverifikasi |
-| `.github/workflows/prepare-windows-installer.yml` | **manual** (`workflow_dispatch`) | satu installer produksi Windows x64 dari bundle Build Native C++ |
+| `.github/workflows/prepare-windows-installer.yml` | **manual** (`workflow_dispatch`) | MSI WiX + NSIS EXE Windows x64 dari bundle Build Native C++ yang sama |
 | `.github/workflows/deploy-news.yml` | **manual** (`workflow_dispatch`) | deploy Worker berita + migrasi D1 |
 | `.github/workflows/test-lab.yml` | **manual** (`workflow_dispatch`) | uji lab perangkat |
 | ~~`.github/workflows/verify-push-auth.yml`~~ | **dihapus** operator 5 Sep 2026 (`b4ce4a4`) — resep pemulihan ada di bawah | dulu: audit izin push, commit wajib memuat `Izin: <ID>` berstatus `DISETUJUI` di `AGENT_BOARD.md` |
@@ -294,8 +294,9 @@ Aset Release:
 
 - `XyDesk-Android-arm64-v8a.apk` — client Android 64-bit;
 - `XyDesk-Android-armeabi-v7a.apk` — client Android 32-bit;
-- `XyDesk-x64.exe` — satu installer Windows native C++ + engine Rust;
-- `XyDesk-Windows-x64` — bundle portable sebelum installer;
+- `XyDesk-x64.msi` — installer WiX MSI Windows x64;
+- `XyDesk-x64.exe` — installer NSIS consumer Windows x64 (link direct `.exe`);
+- `XyDesk-Windows-x64` — bundle portable native C++ + engine Rust sebelum kedua installer;
 - `XyDesk-Web.zip` — client Web;
 - `SHA256SUMS.txt` — checksum unduhan;
 - `update.json` — manifest update resmi untuk perbandingan build dan verifikasi

@@ -1,11 +1,14 @@
 XyDesk sudah terpasang. Langkah selanjutnya:
 
-1. Buka XyDesk dari Start Menu atau shortcut Desktop.
-2. Host engine (`XyDesk-Host.exe` di subfolder Host/) otomatis
-   berjalan saat user mengaktifkan mode Host di dashboard aplikasi.
-3. ID host 9 digit + password pairing akan tampil di dashboard.
-4. Masukkan ID + password dari aplikasi client (HP/Windows/Web) untuk
-   konek.
+1. Buka **XyDesk Control Panel** dari Start Menu atau shortcut Desktop.
+2. Panel menjalankan `xydesk-host.exe` sebagai proses internal tanpa terminal.
+3. Device ID dan kode pairing tampil di panel; gunakan pada aplikasi client
+   (HP/Windows/Web) untuk konek.
+4. Gunakan **Buka XyDesk Web** untuk kontrol sesi, display, audio, input, dan
+   privacy. Gunakan **Buka log host** bila host berhenti dengan exit code.
 
-Cara uninstall bersih: Control Panel > Programs > Uninstall XyDesk.
-Driver VDD (jika dipasang) akan otomatis dibersihkan.
+Log diagnostik tersimpan di `%LOCALAPPDATA%\XyDesk\host.log` dan dipertahankan
+saat uninstall. Driver VDD/VB-CABLE, bila tersedia di payload, tetap opsional
+dan mengikuti kebijakan Windows; installer tidak memasangnya diam-diam.
+
+Cara uninstall: Control Panel > Programs > Uninstall XyDesk.
