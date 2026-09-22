@@ -2670,7 +2670,6 @@ function ConnectScreen({
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
           <h2>{(phase==='error'&&fasePesan)||labels[phase]||'Menyiapkan sesi…'}</h2>
-          <p>{['pairing', 'negotiating'].includes(phase) ? 'Menyiapkan koneksi aman…' : 'Koneksi belum aktif.'}</p>
           {!['pairing','negotiating'].includes(phase)&&<button className="btn primary" onClick={()=>void connect()}>Coba lagi</button>}
           <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
         </div>}
