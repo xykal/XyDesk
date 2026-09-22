@@ -94,6 +94,55 @@ export class AdminSecurity {
     if (path === 'config') return json({ passwordEnabled: !!await this.storage.get(CREDENTIALS), setupAvailable: typeof this.env.ADMIN_AUTH_KEY === 'string' && this.env.ADMIN_AUTH_KEY.length >= 32 });
     if (!this.env.ADMIN_AUTH_KEY || this.env.ADMIN_AUTH_KEY.length < 32) return json({ error: 'admin-key-not-configured' }, 503);
     if (!body || typeof body !== 'object') return json({ error: 'bad-json' }, 400);
+    if (path === 'recovery/reset') {
+      if (body.recoveryAuthorized !== true || body.confirm !== 'RESET_ADMIN_CREDENTIALS') {
+        return json({ error: 'recovery-confirmation-required' }, 400);
+      }
+      const current = await this.storage.get(CREDENTIALS);
+      if (!current) return json({ error: 'setup-required' }, 409);
+      const username = usernameOf(body.username);
+      if (!validUsername(username) || !validPassword(body.password)) {
+        return json({ error: 'username-3-32-password-14-128' }, 400);
+      }
+      const now = Date.now();
+      const salt = b64(random(16));
+      const secret = base32(random(20));
+      const recoveryCodes = Array.from({ length: 10 }, () => base32(random(16)));
+      const recoveryHashes = await Promise.all(recoveryCodes.map(code => digest('recovery\\0' + code)));
+      const passwordHash = await passwordVerifier(body.password, salt, this.env.ADMIN_AUTH_KEY);
+      const credential = {
+        schema: 1,
+        version: (Number.isInteger(current.version) ? current.version : 1) + 1,
+        username,
+        email: current.email,
+        salt,
+        passwordHash,
+        iterations: PASSWORD_ITERATIONS,
+        totp: await seal(secret, this.env.ADMIN_AUTH_KEY),
+        lastCounter: 0,
+        recoveryHashes,
+        createdAt: now,
+      };
+      const sessions = await this.storage.list({ prefix: 'admin:session:' });
+      for (const key of sessions.keys()) await this.storage.delete(key);
+      await this.storage.transaction(async txn => {
+        await txn.put(CREDENTIALS, credential);
+        await txn.put(`admin:log:${now}:security:recovery-reset`, {
+          action: 'security-recovery-reset',
+          at: now,
+          by: current.email,
+          previousVersion: current.version,
+          version: credential.version,
+        });
+      });
+      return json({
+        username,
+        email: credential.email,
+        totpSecret: secret,
+        otpauthUri: `otpauth://totp/${encodeURIComponent('XyDesk Admin:' + username)}?secret=${secret}&issuer=XyDesk%20Admin&algorithm=SHA1&digits=6&period=30`,
+        recoveryCodes,
+      });
+    }
     if (path === 'setup/start') {
       if (await this.storage.get(CREDENTIALS)) return json({ error: 'setup-closed' }, 409);
       const username = usernameOf(body.username);

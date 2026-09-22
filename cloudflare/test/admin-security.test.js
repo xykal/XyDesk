@@ -9,7 +9,7 @@ const key='test-only-admin-encryption-key-32-bytes-long';
 function memory(){
   const values=new Map();let queue=Promise.resolve();
   const clone=v=>v===undefined?v:structuredClone(v);
-  return {values,get:async k=>clone(values.get(k)),put:async(k,v)=>values.set(k,clone(v)),delete:async k=>values.delete(k),transaction(fn){
+  return {values,get:async k=>clone(values.get(k)),put:async(k,v)=>values.set(k,clone(v)),delete:async k=>values.delete(k),list:async({prefix='' }={})=>new Map([...values].filter(([k])=>k.startsWith(prefix)).map(([k,v])=>[k,clone(v)])),transaction(fn){
     const run=queue.then(async()=>{const next=structuredClone(values);const txn={get:async k=>clone(next.get(k)),put:async(k,v)=>next.set(k,clone(v)),delete:async k=>next.delete(k)};const r=await fn(txn);values.clear();for(const [k,v]of next)values.set(k,v);return r});queue=run.catch(()=>{});return run;
   }};
 }
@@ -50,6 +50,20 @@ test('setup konfirmasi sekali, sesi valid, logout membatalkan sesi',async()=>{
   assert.equal((await service.fetch('logout',{token:result.token})).status,200);
   assert.equal((await service.fetch('session',{token:result.token})).status,401);
 });
+test('break-glass recovery mengganti password, TOTP, recovery, dan mencabut sesi lama',async()=>{
+  const {service,result}=await setup();
+  const nextPassword='A-new-unique-password-2026!';
+  const reset=await service.fetch('recovery/reset',{recoveryAuthorized:true,confirm:'RESET_ADMIN_CREDENTIALS',username:'owner.new',password:nextPassword});
+  assert.equal(reset.status,200);
+  const data=await reset.json();
+  assert.equal(data.username,'owner.new');
+  assert.equal(data.recoveryCodes.length,10);
+  assert.equal((await service.fetch('session',{token:result.token})).status,401);
+  const code=await totp(data.totpSecret,Math.floor(Date.now()/30000)+1);
+  assert.equal((await service.fetch('login',{username:'owner.new',password:nextPassword,code,ip:'recovery-test'})).status,200);
+  assert.equal((await service.fetch('login',{username:'owner',password,code,ip:'recovery-test-old'})).status,401);
+});
+
 test('password salah, username salah, dan TOTP replay ditolak',async()=>{
   const {service,enrollment}=await setup();const code=await totp(enrollment.secret,Math.floor(Date.now()/30000));
   for(const body of [{username:'owner',password:'wrong',code},{username:'stranger',password,code},{username:'owner',password,code}])assert.equal((await service.fetch('login',{...body,ip:'test-ip'})).status,401);

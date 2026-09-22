@@ -1,7 +1,7 @@
 import { validMaintenancePatch } from './maintenance.js'
 // XyDesk Admin — endpoint nyata untuk admin.xydesk.my.id
 // Konek ke web + apk via Durable Object yang sama
-import { signJwt, verifyJwt, verifyGoogleIdToken } from './auth.js'
+import { signJwt, verifyJwt, verifyGoogleIdToken, timingSafeEqual } from './auth.js'
 
 const ADMIN_EMAILS = ['xykalnotkel@gmail.com', 'akuntiktok76y@gmail.com', 'xycdigital@gmail.co', 'xycdigital@gmail.com']
 
@@ -36,6 +36,26 @@ async function handleAdminRequest(request, env, url) {
   // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) })
+  }
+
+  // Break-glass recovery is deliberately not part of the admin web UI. It is
+  // enabled only while ADMIN_RECOVERY_KEY exists as a temporary Worker secret,
+  // called once by the owner, then the secret is deleted again.
+  if (path === '/admin/recovery/reset' && request.method === 'POST') {
+    const configured = String(env.ADMIN_RECOVERY_KEY || '')
+    const supplied = request.headers.get('x-admin-recovery-key') || ''
+    if (configured.length < 32 || !timingSafeEqual(supplied, configured)) {
+      return json({ error: 'not-found' }, 404, env, request)
+    }
+    let body
+    try { body = await limitedJson(request) } catch { return json({ error: 'bad-json' }, 400, env, request) }
+    if (!body || typeof body !== 'object') return json({ error: 'bad-json' }, 400, env, request)
+    return securityResponse('recovery/reset', {
+      recoveryAuthorized: true,
+      confirm: body.confirm,
+      username: body.username,
+      password: body.password,
+    }, env, request)
   }
 
   if (!['GET','HEAD','OPTIONS'].includes(request.method) && !adminOrigin(request, env)) {
