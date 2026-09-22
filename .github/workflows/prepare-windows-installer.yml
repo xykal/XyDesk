@@ -1,0 +1,96 @@
+name: Prepare Windows Installer (Native C++)
+
+# Build installer non-release dari artifact Build yang sudah lulus.
+# Tidak membuat GitHub Release dan tidak mengubah releases/latest.
+on:
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful Build run containing XyDesk-Windows-x64
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  installer:
+    name: Build installer Windows x64 native C++
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Pastikan Build native berhasil pada commit yang sama
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        run: |
+          if ($env:BUILD_RUN_ID -notmatch '^\d+$') { throw 'Build run ID tidak valid' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:BUILD_RUN_ID" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Build run tidak dapat dibaca' }
+          if ($run.conclusion -ne 'success') { throw "Build belum sukses: $($run.conclusion)" }
+          if ($run.head_branch -ne 'main') { throw "Build bukan dari main: $($run.head_branch)" }
+          if ($run.head_sha -ne $env:GITHUB_SHA) {
+            throw "SHA Build $($run.head_sha) berbeda dari installer $env:GITHUB_SHA"
+          }
+          if ($run.path -ne '.github/workflows/build.yml') {
+            throw "Run bukan workflow Build utama: $($run.path)"
+          }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: XyDesk-Windows-x64
+          run-id: ${{ inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: native-bundle
+
+      - name: Verifikasi bundle native
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'native-bundle/XyDesk.exe')) { throw 'XyDesk.exe tidak ditemukan' }
+          if (-not (Test-Path 'native-bundle/xydesk-host.exe')) { throw 'xydesk-host.exe tidak ditemukan' }
+          if (-not (Test-Path 'native-bundle/LICENSE-XyDesk.txt')) { throw 'Lisensi XyDesk tidak ditemukan' }
+
+      - name: Pasang Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup gagal dipasang' }
+
+      - name: Build installer satu pintu
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Select-String '^version:\s*([^+\s]+)' pubspec.yaml).Matches.Groups[1].Value
+          if (-not $version) { throw 'Versi tidak ditemukan di pubspec.yaml' }
+          $out = Join-Path $PWD 'installer-output'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $iscc = Get-ChildItem 'C:\Program Files (x86)' -Filter ISCC.exe -Recurse -ErrorAction SilentlyContinue |
+                  Select-Object -First 1 -ExpandProperty FullName
+          if (-not $iscc) { throw 'ISCC.exe tidak ditemukan' }
+          & $iscc `
+            "/DArch=x64" `
+            "/DVersion=$version" `
+            "/DSourceDir=$((Resolve-Path native-bundle).Path)" `
+            "/DOutputDir=$out" `
+            'packaging/windows/XyDesk.iss'
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup gagal: $LASTEXITCODE" }
+          $exe = Get-ChildItem $out -Filter '*.exe' | Select-Object -First 1
+          if (-not $exe) { throw 'Installer EXE tidak dihasilkan' }
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($exe.Name)" | Set-Content "$($exe.FullName).sha256" -Encoding ascii
+          Write-Host "$hash  $($exe.Name)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XyDesk-Windows-x64-Installer
+          path: |
+            installer-output/*.exe
+            installer-output/*.sha256
+          if-no-files-found: error
+          retention-days: 30
