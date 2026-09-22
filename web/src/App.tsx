@@ -2527,8 +2527,8 @@ function ConnectScreen({
 
 
   const labels: Record<string, string> = {
-    pairing: 'Menyambungkan',
-    negotiating: 'Menyambungkan',
+    pairing: 'Optimasi Koneksi',
+    negotiating: 'Optimasi Koneksi',
     connected: 'Tersambung',
     rejected:
       'ID atau password salah. Periksa keduanya lalu coba lagi — huruf besar dan kecil ikut dihitung.',
@@ -2644,7 +2644,7 @@ function ConnectScreen({
           </div></>}
           {phase && (
             <p className="status-text">
-              {fasePesan || labels[phase] || phase}
+              {['pairing', 'negotiating'].includes(phase) ? labels[phase] : fasePesan || labels[phase] || phase}
             </p>
           )}
           {retryInfo && <p className="status-text">{retryInfo}</p>}
@@ -2670,7 +2670,7 @@ function ConnectScreen({
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
           <h2>{(phase==='error'&&fasePesan)||labels[phase]||'Menyiapkan sesi…'}</h2>
-          <p>{hostId} · {phase==='pairing'?'Memverifikasi pairing dengan PC.':phase==='negotiating'?'Menyiapkan video, audio, dan kontrol.':'Koneksi belum aktif.'}</p>
+          <p>{['pairing', 'negotiating'].includes(phase) ? 'Menyiapkan koneksi aman…' : 'Koneksi belum aktif.'}</p>
           {!['pairing','negotiating'].includes(phase)&&<button className="btn primary" onClick={()=>void connect()}>Coba lagi</button>}
           <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
         </div>}
