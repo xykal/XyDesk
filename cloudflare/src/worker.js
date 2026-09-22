@@ -433,12 +433,13 @@ async function handleTurnIce(request, url, env) {
     const admin = request.headers.get('X-Admin') || '';
     if (env.ADMIN_SECRET && timingSafeEqual(admin, String(env.ADMIN_SECRET))) return true;
     const id = url.searchParams.get('id') || 'client';
+    const role = url.searchParams.get('role') === 'host' ? 'host' : 'client';
     const token = extractToken(request,url);
     if (token.startsWith('v2.')) {
-      const principal = await readBoundTicket(token,id,'client',env.XYDESK_SECRET);
+      const principal = await readBoundTicket(token,id,role,env.XYDESK_SECRET);
       try { return principal && await checkPrincipal(env,principal); } catch { return false; }
     }
-    return token && (await verifyToken(token, id, 'client', env.XYDESK_SECRET));
+    return token && (await verifyToken(token, id, role, env.XYDESK_SECRET));
   })();
   if (!authorized) {
     return new Response('forbidden', { status: 403 });

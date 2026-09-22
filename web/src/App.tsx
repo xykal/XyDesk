@@ -2802,6 +2802,7 @@ function ConnectScreen({
             fpsLimit={hostMeta?.video?.fpsLimit}
             encoder={hostMeta?.encoder}
             videoApplied={hostMeta?.video?.applied}
+            capture={hostMeta?.capture}
             onClose={() => setPanelOpen(false)}
             hostId={hostId}
             onDisconnect={disconnect}

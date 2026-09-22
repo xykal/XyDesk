@@ -184,6 +184,35 @@ test('/turn-ice mengembalikan gabungan penyedia plus diagnostik', async () => {
       assert.equal(body.iceServers.length, 2, 'statis + cloudflare');
       assert.equal(body.degraded, false);
       assert.ok(body.providers.every((p) => p.ok));
+
+      // Host sekarang mengambil daftar TURN dari sisi native juga. Token
+      // client tidak boleh dinaikkan menjadi token host hanya dengan mengubah
+      // query role; token host yang ditandatangani khusus yang diterima.
+      const issuedHost = await worker.fetch(
+        new Request('https://signal.example/issue?purpose=' + id + '&role=host', {
+          headers: { 'X-Admin': 'admin-uji' },
+        }),
+        { ...env, ADMIN_SECRET: 'admin-uji' },
+        {},
+      );
+      assert.equal(issuedHost.status, 200);
+      const hostToken = (await issuedHost.text()).trim();
+      const hostRes = await worker.fetch(
+        new Request(`https://signal.example/turn-ice?id=${id}&role=host`, {
+          headers: { Authorization: `Bearer ${hostToken}` },
+        }),
+        env,
+        {},
+      );
+      assert.equal(hostRes.status, 200);
+      const clientAsHost = await worker.fetch(
+        new Request(`https://signal.example/turn-ice?id=${id}&role=host`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        env,
+        {},
+      );
+      assert.equal(clientAsHost.status, 403);
     },
   );
 });

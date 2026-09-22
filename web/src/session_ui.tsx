@@ -500,11 +500,13 @@ export function SessionPanel({
   fpsLimit,
   encoder,
   videoApplied,
+  capture,
 }: {
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
   encoder?:string;
   videoApplied?: [number, number] | null;
+  capture?: HostMeta['capture'];
   prefs: SessionPrefs;
   onChange: (next: SessionPrefs) => void;
   onClose: () => void;
@@ -632,6 +634,7 @@ export function SessionPanel({
                 <StatRow label="Gerak digabung (total)" value={String(stats.coalescedMoves??'—')}/>
                 <StatRow label="Codec" value={stats.codec || '—'} />
                 <StatRow label="Status video" value={stats.videoState || '—'} />
+                <StatRow label="Capture host" value={capture ? `${capture.state} · ${capture.backend} · ${capture.framesCaptured} frame${capture.lastError ? ` · ${capture.lastError}` : ''}` : 'Menunggu meta host'} />
                 <StatRow label="Penunjuk kontrol" value={stats.cursorState || '—'} />
                 <StatRow label="Pemutar video" value={stats.playerState || '—'} />
                 <StatRow label="Ukuran pemutar" value={stats.playerSize || '—'} />

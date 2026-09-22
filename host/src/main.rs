@@ -18,6 +18,7 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::Message;
 
+use webrtc::ice_transport::ice_server::RTCIceServer;
 use webrtc::peer_connection::peer_connection_state::RTCPeerConnectionState;
 use xydesk_host::control::{ControlState, EngineState};
 use xydesk_host::pairedpeers::{PairedPeers, PeerLabel};
@@ -234,6 +235,7 @@ fn meta_json() -> serde_json::Value {
         "desktopMode": xydesk_host::desktop_mode::telemetry(),
         "cursorEmbedded": xydesk_host::screen::cursor_embedded(),
         "video": xydesk_host::video_policy::telemetry(),
+        "capture": xydesk_host::screen::capture_telemetry(),
         "encoder": xydesk_host::screen::encoder_label(),
         "inputGeometry": xydesk_host::desktop_geometry::active(),
         "audio": {
@@ -251,6 +253,65 @@ fn meta_json() -> serde_json::Value {
         // supaya UI menulis "Tidak terdeteksi" — bukan angka karangan.
         "hardware": xydesk_host::hwinfo::hardware_json()
     })
+}
+
+/// Ambil kredensial TURN yang sama dengan client web. Host memakai token
+/// `role=host`; endpoint menolak token client sehingga kredensial relay tidak
+/// bocor lintas peran. Gagal mengambil TURN tidak mematikan sesi: ICE tetap
+/// mencoba jalur direct/STUN dan UI akan melaporkan jalurnya apa adanya.
+fn fetch_turn_servers(device_id: &str, token: &str) -> Vec<RTCIceServer> {
+    #[derive(Deserialize)]
+    struct TurnResponse {
+        #[serde(rename = "iceServers", default)]
+        ice_servers: Vec<serde_json::Value>,
+    }
+    let url = format!("https://signal.xydesk.my.id/turn-ice?id={device_id}&role=host");
+    let response = match ureq::get(&url)
+        .set("Authorization", &format!("Bearer {token}"))
+        .timeout(std::time::Duration::from_secs(5))
+        .call()
+    {
+        Ok(response) => response,
+        Err(error) => {
+            eprintln!("[xydesk-host] TURN tidak tersedia; lanjut STUN/direct ({error})");
+            return Vec::new();
+        }
+    };
+    let payload: TurnResponse = match response.into_json() {
+        Ok(payload) => payload,
+        Err(error) => {
+            eprintln!("[xydesk-host] balasan TURN tidak valid; lanjut STUN/direct ({error})");
+            return Vec::new();
+        }
+    };
+    let servers: Vec<_> = payload
+        .ice_servers
+        .into_iter()
+        .filter_map(|value| {
+            let urls = match &value["urls"] {
+                serde_json::Value::String(url) => vec![url.clone()],
+                serde_json::Value::Array(urls) => urls
+                    .iter()
+                    .filter_map(|url| url.as_str().map(str::to_owned))
+                    .collect(),
+                _ => Vec::new(),
+            };
+            if urls.is_empty() {
+                return None;
+            }
+            Some(RTCIceServer {
+                urls,
+                username: value["username"].as_str().unwrap_or_default().to_owned(),
+                credential: value["credential"].as_str().unwrap_or_default().to_owned(),
+                ..Default::default()
+            })
+        })
+        .collect();
+    println!(
+        "[xydesk-host] TURN siap: {} server relay; ICE memilih direct bila tersedia",
+        servers.len()
+    );
+    servers
 }
 
 #[tokio::main]
@@ -716,8 +777,15 @@ async fn main() -> Result<()> {
                     println!("[xydesk-host] menerima offer dari {client}");
 
                     let video_level = xydesk_host::video_policy::offer_level(&sdp.sdp);
+                    let turn = tokio::task::spawn_blocking({
+                        let device_id = device_id.clone();
+                        let token = token.clone();
+                        move || fetch_turn_servers(&device_id, &token)
+                    })
+                    .await
+                    .context("pekerja TURN berhenti")?;
                     let session = Arc::new(
-                        Session::new_with_video_level(vec![stun.clone()], vec![], video_level)
+                        Session::new_with_video_level(vec![stun.clone()], turn, video_level)
                             .await?,
                     );
                     // Track WAJIB didaftarkan sebelum answer (dilakukan di dalam
@@ -823,9 +891,16 @@ async fn main() -> Result<()> {
                     {
                         let session = session.clone();
                         tokio::spawn(async move {
-                            match session.receive_input_channel().await {
-                                Ok(dc) => {
-                                    println!("[xydesk-host] data channel input terbuka");
+                            match session.receive_input_channels().await {
+                                Ok((dc, pointer_dc)) => {
+                                    println!(
+                                        "[xydesk-host] data channel input terbuka{}",
+                                        if pointer_dc.is_some() {
+                                            " + pointer lossy"
+                                        } else {
+                                            " (legacy pointer fallback)"
+                                        }
+                                    );
                                     // Kirim META ke client: daftar layar + status
                                     // audio host. Client memakai ini untuk
                                     // pemilihan monitor dan label audio jujur.
@@ -857,6 +932,8 @@ async fn main() -> Result<()> {
                                                 let mut meta = base_meta.clone();
                                                 meta["video"] =
                                                     xydesk_host::video_policy::telemetry();
+                                                meta["capture"] =
+                                                    xydesk_host::screen::capture_telemetry();
                                                 meta["inputGeometry"] = serde_json::json!(
                                                     xydesk_host::desktop_geometry::active()
                                                 );
@@ -884,18 +961,44 @@ async fn main() -> Result<()> {
                                     let (tx, mut rx) = tokio::sync::mpsc::channel(128);
                                     let (closed_tx, mut closed_rx) =
                                         tokio::sync::watch::channel(false);
-                                    dc.on_close(Box::new(move || {
-                                        let _ = closed_tx.send(true);
-                                        Box::pin(async {})
+                                    dc.on_close(Box::new({
+                                        let closed_tx = closed_tx.clone();
+                                        move || {
+                                            let _ = closed_tx.send(true);
+                                            Box::pin(async {})
+                                        }
                                     }));
-                                    dc.on_message(Box::new(move |m| {
-                                        let tx = tx.clone();
-                                        Box::pin(async move {
-                                            if !m.is_string && m.data.len() <= 65536 {
-                                                let _ = tx.send(m.data.to_vec()).await;
+                                    dc.on_message(Box::new({
+                                        let reliable_tx = tx.clone();
+                                        move |m| {
+                                            let tx = reliable_tx.clone();
+                                            Box::pin(async move {
+                                                if !m.is_string && m.data.len() <= 65536 {
+                                                    let _ = tx.send(m.data.to_vec()).await;
+                                                }
+                                            })
+                                        }
+                                    }));
+                                    if let Some(pointer_dc) = pointer_dc {
+                                        pointer_dc.on_close(Box::new({
+                                            let closed_tx = closed_tx.clone();
+                                            move || {
+                                                let _ = closed_tx.send(true);
+                                                Box::pin(async {})
                                             }
-                                        })
-                                    }));
+                                        }));
+                                        pointer_dc.on_message(Box::new(move |m| {
+                                            let tx = tx.clone();
+                                            Box::pin(async move {
+                                                // Pointer events are already lossy at
+                                                // SCTP; keep only valid small binary
+                                                // packets and never block video/ICE.
+                                                if !m.is_string && m.data.len() <= 64 {
+                                                    let _ = tx.send(m.data.to_vec()).await;
+                                                }
+                                            })
+                                        }));
+                                    }
                                     // Injeksi di thread blocking terpisah: SendInput
                                     // adalah syscall sinkron — jangan blokir runtime
                                     // async yang juga melayani video/ICE.

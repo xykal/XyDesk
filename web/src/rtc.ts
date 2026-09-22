@@ -225,6 +225,7 @@ export interface HostMeta {
   inputGeometry?: {left:number;top:number;width:number;height:number}|null;
   hardware?: Record<string, unknown>;
   video?: {level:number;requested:number;applied:[number,number]|null;contentRect?:[number,number,number,number]|null;fpsLimit:number;fpsControl?:boolean;fpsRequested?:number};
+  capture?: {state:string;backend:string;framesCaptured:number;framesCapturedTotal:number;armed:boolean;rdp:boolean;lastError?:string|null};
   displays: HostDisplay[];
   wanted: number;
   audio: { available: boolean; pipeline: string };
@@ -286,6 +287,10 @@ export class RtcSession {
   private ws?: WebSocket;
   private pc?: RTCPeerConnection;
   private input?: RTCDataChannel;
+  /// Pointer-only channel: unordered, no retransmit. Keyboard, buttons, HUD,
+  /// clipboard, and video controls remain on the reliable `input` channel so
+  /// one stale mouse move can never block a control action.
+  private pointerInput?: RTCDataChannel;
   private pendingAbsoluteMove?:Uint8Array;
   private coalescedMoves=0;
   private deviceId = '';
@@ -574,7 +579,6 @@ export class RtcSession {
     this.input = pc.createDataChannel('input');
     this.input.binaryType = 'arraybuffer';
     this.input.bufferedAmountLowThreshold=512;
-    this.input.onbufferedamountlow=()=>this.flushAbsoluteMove();
     this.input.onmessage = (ev) => {
       // Balasan biner: 0x08 CLIPBOARD_SET (isi papan klip PC).
       if (ev.data instanceof ArrayBuffer) {
@@ -598,6 +602,17 @@ export class RtcSession {
         }
       }
     };
+
+    // Mouse movement and scroll are disposable by nature: if the network is
+    // busy, the newest position is more valuable than retransmitting stale
+    // positions. Reliable keyboard/buttons/HUD stay on `input`.
+    this.pointerInput = pc.createDataChannel('pointer', {
+      ordered: false,
+      maxRetransmits: 0,
+    });
+    this.pointerInput.binaryType = 'arraybuffer';
+    this.pointerInput.bufferedAmountLowThreshold = 512;
+    this.pointerInput.onbufferedamountlow = () => this.flushAbsoluteMove();
 
     pc.onicecandidate = (ev) => {
       if (this.stopped || !ev.candidate) return;
@@ -683,22 +698,27 @@ export class RtcSession {
 
   private flushAbsoluteMove(){
     if(this.meta?.inputGeometry===null){this.pendingAbsoluteMove=undefined;return;}
-    if(this.pendingAbsoluteMove&&this.input?.readyState==='open'&&this.input.bufferedAmount<=1024){
-      this.input.send(this.pendingAbsoluteMove.slice().buffer);this.pendingAbsoluteMove=undefined;
+    const dc=this.pointerInput?.readyState==='open'?this.pointerInput:this.input;
+    if(this.pendingAbsoluteMove&&dc?.readyState==='open'&&dc.bufferedAmount<=1024){
+      dc.send(this.pendingAbsoluteMove.slice().buffer);this.pendingAbsoluteMove=undefined;
     }
   }
   sendInput(event: Uint8Array) {
     if(this.meta?.inputGeometry===null)this.pendingAbsoluteMove=undefined;
-    if(this.meta?.inputGeometry===null && (event[0]===1||event[0]===2||event[0]===4||(event[0]===3&&event[2]===1))){this.pendingAbsoluteMove=undefined;return;}
-    const dc=this.input;if(dc?.readyState!=='open')return;
-    // Only replace absolute movement that has NOT entered SCTP. Buttons,
-    // releases, keys and relative deltas keep their reliable ordering.
-    if(event[0]===2){
+    const pointerEvent=event[0]===1||event[0]===2||event[0]===4;
+    if(this.meta?.inputGeometry===null && (pointerEvent||(event[0]===3&&event[2]===1))){this.pendingAbsoluteMove=undefined;return;}
+    // Pointer packets use the lossy unordered channel. Fall back to the
+    // reliable channel during the short data-channel opening race.
+    const pointer=this.pointerInput?.readyState==='open'?this.pointerInput:this.input;
+    const dc=pointerEvent?pointer:this.input;
+    if(dc?.readyState!=='open')return;
+    if(pointerEvent && event[0]===2){
       if(dc.bufferedAmount>1024){if(this.pendingAbsoluteMove)this.coalescedMoves++;this.pendingAbsoluteMove=event.slice();return;}
       if(this.pendingAbsoluteMove)this.coalescedMoves++;
       this.pendingAbsoluteMove=undefined;
     }else if(this.pendingAbsoluteMove&&(event[0]===1||event[0]===3||event[0]===4)){
-      dc.send(this.pendingAbsoluteMove.slice().buffer);this.pendingAbsoluteMove=undefined;
+      if(pointer?.readyState==='open')pointer.send(this.pendingAbsoluteMove.slice().buffer);
+      this.pendingAbsoluteMove=undefined;
     }
     dc.send(event.slice().buffer);
   }
@@ -944,6 +964,7 @@ export class RtcSession {
     }
     this.pendingAbsoluteMove=undefined;
     this.input?.close();
+    this.pointerInput?.close();
     this.pc?.close();
     this.ws?.close();
   }

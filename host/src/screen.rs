@@ -439,6 +439,8 @@ pub fn spawn_frame_source() -> FrameSource {
                     continue;
                 }
                 let backend = BACKEND.load(Ordering::Relaxed);
+                CAPTURE_WATCHDOG_STOP.store(false, Ordering::Release);
+                note_capture_heartbeat();
                 let frame_sebelum = frames_captured();
                 let mulai = std::time::Instant::now();
                 let hasil = match backend {
@@ -454,8 +456,11 @@ pub fn spawn_frame_source() -> FrameSource {
                             // Pakai DXGI tapi targetkan virtual display, bukan fisik
                             windows::start_dxgi_monitor(tx.clone(), v_idx)
                         } else {
-                            // Fallback: virtual display belum ada → GDI GetDC(0) sementara
+                            // Fallback: virtual display belum ada → GDI GetDC(0)
+                            // sementara. Catat backend sebenarnya agar HUD tidak
+                            // mengaku sedang memakai virtual display.
                             eprintln!("[xydesk-host] virtual backend: virtual display belum ada, fallback GDI GetDC(0)");
+                            BACKEND.store(BACKEND_GDI, Ordering::Relaxed);
                             windows::start_gdi_monitor(tx.clone(), current)
                         }
                     }
@@ -465,12 +470,17 @@ pub fn spawn_frame_source() -> FrameSource {
                 crate::video_policy::record(None);
                 let gagal = hasil.err();
                 if let Some(e) = &gagal {
+                    *crate::recover_lock(&LAST_CAPTURE_ERROR) =
+                        Some(format!("{}: {e}", label_backend(backend)));
                     eprintln!(
                         "[xydesk-host] capture {} (monitor {current}) gagal: {e}",
                         label_backend(backend)
                     );
                 }
                 let dihasilkan = frames_captured().saturating_sub(frame_sebelum);
+                if dihasilkan > 0 {
+                    *crate::recover_lock(&LAST_CAPTURE_ERROR) = None;
+                }
                 // Ada permintaan pindah monitor? Respawn dengan indeks baru.
                 let next = SWITCH_TO.swap(usize::MAX, Ordering::Relaxed);
                 if next != usize::MAX {
@@ -585,6 +595,20 @@ pub fn spawn_frame_source() -> FrameSource {
                 terakhir = total;
                 if fps == 0 {
                     nol_beruntun += 1;
+                    let now_ms = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .unwrap_or_default()
+                        .as_millis() as u64;
+                    let heartbeat = CAPTURE_HEARTBEAT_MS.load(Ordering::Acquire);
+                    if heartbeat > 0
+                        && now_ms.saturating_sub(heartbeat) >= NO_FRAME_GRACE.as_millis() as u64
+                    {
+                        CAPTURE_WATCHDOG_STOP.store(true, Ordering::Release);
+                        eprintln!(
+                            "[xydesk-host] watchdog capture {} tidak hidup (heartbeat stale); backend akan di-respawn",
+                            backend_label()
+                        );
+                    }
                     if is_rdp_session() && nol_beruntun == 3 {
                         eprintln!(
                             "[xydesk-host] PERINGATAN: capture {} armed tapi 0 frame selama {} detik (total {} frame) — RDP terdeteksi; nol frame bukan bukti sesi terkunci (layar diam juga dapat tidak menghasilkan pembaruan)",
@@ -765,6 +789,12 @@ pub const BACKEND_VIRTUAL: u8 = 3;
 /// Backend yang sedang dipakai. Diubah watchdog bila backend aktif terbukti
 /// tidak mengirim frame — jadi nilainya hasil pengukuran, bukan preferensi.
 static BACKEND: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(BACKEND_DXGI);
+static LAST_CAPTURE_ERROR: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+#[cfg(target_os = "windows")]
+static CAPTURE_WATCHDOG_STOP: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+#[cfg(target_os = "windows")]
+static CAPTURE_HEARTBEAT_MS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Backend awal sesi; RDP harus menangkap desktop sesi, bukan output DXGI.
 #[cfg(any(target_os = "windows", test))]
@@ -801,6 +831,9 @@ static ARMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new
 
 /// Izinkan capture mulai (dipanggil saat Connected).
 pub fn arm_capture() {
+    #[cfg(target_os = "windows")]
+    FRAMES_SESSION.store(0, std::sync::atomic::Ordering::Relaxed);
+    *crate::recover_lock(&LAST_CAPTURE_ERROR) = None;
     ARMED.store(true, std::sync::atomic::Ordering::Release);
 }
 
@@ -816,6 +849,24 @@ pub fn capture_armed() -> bool {
     ARMED.load(std::sync::atomic::Ordering::Acquire)
 }
 
+/// Hentikan backend yang sedang menunggu frame. DXGI/GDI memeriksanya di
+/// setiap iterasi; WGC memeriksanya pada callback frame berikutnya. Tanpa
+/// sinyal ini, backend DXGI yang macet dapat menahan supervisor selamanya dan
+/// membuat client melihat layar hitam walau data channel tetap Connected.
+#[cfg(target_os = "windows")]
+fn watchdog_stop_requested() -> bool {
+    CAPTURE_WATCHDOG_STOP.load(std::sync::atomic::Ordering::Acquire)
+}
+
+#[cfg(target_os = "windows")]
+fn note_capture_heartbeat() {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+    CAPTURE_HEARTBEAT_MS.store(now, std::sync::atomic::Ordering::Release);
+}
+
 /// Total frame yang benar-benar ditangkap (semua backend, sejak proses mulai).
 ///
 /// Inilah angka yang membedakan dua keadaan yang gejalanya sama-sama "layar
@@ -824,6 +875,8 @@ pub fn capture_armed() -> bool {
 /// tidak naik, padahal armed). Watchdog membaca selisihnya per detik.
 #[cfg(target_os = "windows")]
 static FRAMES_TOTAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+#[cfg(target_os = "windows")]
+static FRAMES_SESSION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 /// Catat satu frame tertangkap. Dipanggil setiap backend tepat sebelum frame
 /// ter-encode diserahkan ke channel. Ini bukan bukti frame terkirim melalui RTP
@@ -835,6 +888,7 @@ static FRAMES_TOTAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64
 #[cfg(target_os = "windows")]
 fn catat_frame() {
     FRAMES_TOTAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    FRAMES_SESSION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 }
 
 /// Total frame tertangkap (untuk control API / UI).
@@ -851,6 +905,44 @@ pub fn frames_captured() -> u64 {
     {
         0
     }
+}
+
+/// Diagnosis capture yang sengaja tidak menyamakan "Connected" dengan
+/// "gambar ada". Statistik browser membedakan tahap setelah RTP; blok ini
+/// membedakan tahap sebelum RTP: backend gagal, backend hidup tetapi belum
+/// menghasilkan frame, atau capture sedang mengalir.
+pub fn capture_telemetry() -> serde_json::Value {
+    let session_frames = {
+        #[cfg(target_os = "windows")]
+        {
+            FRAMES_SESSION.load(std::sync::atomic::Ordering::Relaxed)
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            0
+        }
+    };
+    let error = crate::recover_lock(&LAST_CAPTURE_ERROR).clone();
+    let state = if !capture_armed() {
+        "idle"
+    } else if session_frames == 0 {
+        if error.is_some() {
+            "backend-error"
+        } else {
+            "armed-no-frame"
+        }
+    } else {
+        "capturing"
+    };
+    serde_json::json!({
+        "state": state,
+        "backend": backend_label(),
+        "framesCaptured": session_frames,
+        "framesCapturedTotal": frames_captured(),
+        "armed": capture_armed(),
+        "rdp": is_rdp_session(),
+        "lastError": error,
+    })
 }
 
 /// Deteksi apakah host berjalan di sesi RDP — penyebab #1 hitam di lab Actions.
@@ -878,7 +970,11 @@ pub fn is_rdp_session() -> bool {
 fn backend_berikutnya(now: u8) -> Option<u8> {
     match now {
         BACKEND_DXGI => Some(BACKEND_VIRTUAL),
-        BACKEND_VIRTUAL => Some(BACKEND_WGC),
+        // Virtual-display fallback already uses DXGI on the virtual output;
+        // bila output itu macet, lompat langsung ke GDI yang dapat dipatahkan
+        // oleh watchdog. Jangan menahan sesi di WGC yang bisa menunggu event
+        // frame selamanya pada HDR/RDP/headless.
+        BACKEND_VIRTUAL => Some(BACKEND_GDI),
         BACKEND_WGC => Some(BACKEND_GDI),
         _ => None,
     }
@@ -1047,6 +1143,7 @@ mod windows {
         ) -> Result<(), Self::Error> {
             // Awal pipeline latensi: detik frame ditangkap (jam monotonik).
             let captured_at = std::time::Instant::now();
+            super::note_capture_heartbeat();
             // Permintaan pindah monitor, bitrate baru, ATAU keyframe yang belum
             // dilayani: hentikan handler ini — thread capture di atasnya akan
             // respawn (monitor baru, encoder dengan bitrate baru, atau encoder
@@ -1060,6 +1157,7 @@ mod windows {
             if super::SWITCH_TO.load(std::sync::atomic::Ordering::Relaxed) != usize::MAX
                 || super::BITRATE_DIRTY.load(std::sync::atomic::Ordering::Relaxed)
                 || super::peek_keyframe_request()
+                || super::watchdog_stop_requested()
             {
                 capture_control.stop();
                 return Ok(());
@@ -1310,11 +1408,13 @@ mod windows {
         loop {
             // Awal pipeline latensi — sebelum piksel diambil, sama seperti WGC.
             let captured_at = std::time::Instant::now();
+            super::note_capture_heartbeat();
             // Syarat berhenti identik dengan jalur WGC: perpindahan monitor,
             // bitrate, dan keyframe harus berlaku sama di backend mana pun.
             if super::SWITCH_TO.load(std::sync::atomic::Ordering::Relaxed) != usize::MAX
                 || super::BITRATE_DIRTY.load(std::sync::atomic::Ordering::Relaxed)
                 || super::peek_keyframe_request()
+                || super::watchdog_stop_requested()
                 || !super::capture_armed()
             {
                 break;
@@ -1464,9 +1564,11 @@ mod windows {
             // Awal pipeline latensi — sebelum piksel diambil, sama seperti
             // backend lain, supaya angka latensi bisa dibandingkan antar-backend.
             let captured_at = std::time::Instant::now();
+            super::note_capture_heartbeat();
             if super::SWITCH_TO.load(std::sync::atomic::Ordering::Relaxed) != usize::MAX
                 || super::BITRATE_DIRTY.load(std::sync::atomic::Ordering::Relaxed)
                 || super::peek_keyframe_request()
+                || super::watchdog_stop_requested()
                 || !super::capture_armed()
             {
                 break;

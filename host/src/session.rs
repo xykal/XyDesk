@@ -425,18 +425,41 @@ impl Session {
         Ok(track)
     }
 
-    /// Menunggu data channel "input" dari client (membuang channel lain).
-    pub async fn receive_input_channel(&self) -> Result<Arc<RTCDataChannel>> {
+    /// Menunggu channel kontrol reliable dan channel pointer lossy dari client.
+    /// Pointer boleh datang lebih dulu; setelah channel `input` masuk, beri
+    /// jeda pendek agar client lama tanpa channel pointer tetap kompatibel.
+    pub async fn receive_input_channels(
+        &self,
+    ) -> Result<(Arc<RTCDataChannel>, Option<Arc<RTCDataChannel>>)> {
         let mut rx = self.incoming_rx.lock().await;
-        loop {
+        let mut input = None;
+        let mut pointer = None;
+        while input.is_none() {
             let dc = rx
                 .recv()
                 .await
                 .context("koneksi ditutup sebelum data channel tiba")?;
-            if dc.label() == INPUT_CHANNEL {
-                return Ok(dc);
+            match dc.label() {
+                INPUT_CHANNEL => input = Some(dc),
+                "pointer" => pointer = Some(dc),
+                _ => {}
             }
         }
+        if pointer.is_none() {
+            if let Ok(Some(dc)) =
+                tokio::time::timeout(std::time::Duration::from_millis(500), rx.recv()).await
+            {
+                if dc.label() == "pointer" {
+                    pointer = Some(dc);
+                }
+            }
+        }
+        Ok((input.expect("input channel wajib ada"), pointer))
+    }
+
+    /// Kompatibilitas untuk test/klien lama yang hanya memakai `input`.
+    pub async fn receive_input_channel(&self) -> Result<Arc<RTCDataChannel>> {
+        Ok(self.receive_input_channels().await?.0)
     }
 
     /// Mendaftarkan handler status koneksi.

@@ -73,6 +73,7 @@ struct AppState {
 };
 
 AppState g;
+UINT g_taskbarCreated = 0;
 
 void removeTrayIcon();
 void showTrayMenu(HWND hwnd);
@@ -297,9 +298,16 @@ void addTrayIcon(HWND hwnd) {
     // aplikasi generik Windows; shell akan memilih ukuran paling sesuai.
     data.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_XYDESK));
     lstrcpynW(data.szTip, L"XyDesk Host — klik kanan untuk kontrol", ARRAYSIZE(data.szTip));
-    Shell_NotifyIconW(NIM_ADD, &data);
-    data.uVersion = NOTIFYICON_VERSION_4;
-    Shell_NotifyIconW(NIM_SETVERSION, &data);
+    if (!data.hIcon) {
+        data.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    }
+    // NIM_SETVERSION harus membawa versi yang diminta. Pada NOTIFYICON_VERSION_4
+    // callback mouse tidak selalu sama dengan WM_* mentah; windowProc menangani
+    // format lama dan format baru sekaligus.
+    if (Shell_NotifyIconW(NIM_ADD, &data)) {
+        data.uVersion = NOTIFYICON_VERSION_4;
+        Shell_NotifyIconW(NIM_SETVERSION, &data);
+    }
 }
 
 void removeTrayIcon() {
@@ -326,10 +334,14 @@ void showTrayMenu(HWND hwnd) {
     AppendMenuW(menu, MF_STRING, kTrayWeb, L"Buka XyDesk Web");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kTrayQuit, L"Keluar XyDesk");
+    SetMenuDefaultItem(menu, kTrayOpen, FALSE);
     POINT point{};
-    GetCursorPos(&point);
+    if (!GetCursorPos(&point)) {
+        point.x = 0;
+        point.y = 0;
+    }
     SetForegroundWindow(hwnd);
-    TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN,
+    TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN | TPM_NOANIMATION,
         point.x, point.y, 0, hwnd, nullptr);
     DestroyMenu(menu);
     PostMessageW(hwnd, WM_NULL, 0, 0);
@@ -355,6 +367,13 @@ void paintBackground(HWND hwnd, HDC dc) {
 }
 
 LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    // Explorer mengirim pesan terdaftar ini ketika taskbar/tray restart
+    // (mis. Explorer crash atau user restart Explorer). Daftarkan ulang agar
+    // ikon dan menu tidak hilang setelah sesi Windows tetap hidup.
+    if (g_taskbarCreated && message == g_taskbarCreated) {
+        addTrayIcon(hwnd);
+        return 0;
+    }
     switch (message) {
     case WM_CREATE:
         g.window = hwnd;
@@ -390,13 +409,24 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         if (!g.running) startHost();
         return 0;
 
-    case kTrayMessage:
-        if (lParam == WM_LBUTTONUP || lParam == WM_LBUTTONDBLCLK) {
+    case kTrayMessage: {
+        // NOTIFYICON_VERSION_4 biasanya menaruh event di lParam, tetapi
+        // beberapa build Explorer/compatibility mode mengemasnya di LOWORD.
+        // NIN_SELECT/NIN_KEYSELECT adalah bentuk callback keyboard versi 4.
+        const UINT raw = static_cast<UINT>(lParam);
+        const UINT event = LOWORD(raw);
+        if (raw == WM_LBUTTONUP || raw == WM_LBUTTONDBLCLK ||
+            event == WM_LBUTTONUP || event == WM_LBUTTONDBLCLK ||
+            raw == NIN_SELECT) {
             openPanel(hwnd);
-        } else if (lParam == WM_RBUTTONUP || lParam == WM_CONTEXTMENU) {
+        } else if (raw == WM_RBUTTONUP || raw == WM_RBUTTONDOWN ||
+                   raw == WM_CONTEXTMENU || event == WM_RBUTTONUP ||
+                   event == WM_RBUTTONDOWN || event == WM_CONTEXTMENU ||
+                   raw == NIN_KEYSELECT) {
             showTrayMenu(hwnd);
         }
         return 0;
+    }
 
     case WM_TIMER:
         if (wParam == kTimer && g.process) {
@@ -550,6 +580,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     SetProcessDPIAware();
+    g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
     wc.hInstance = instance;
