@@ -350,7 +350,7 @@ export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: st
 ];
 export function normalizeResolution(value: unknown): ResolutionMode {
   // Migrasi native/480p dari preferensi lama ke Full HD; UI tidak menawarkan
-  // target di bawah HD dan tidak melakukan upscale palsu pada sumber kecil.
+  // target di bawah HD. Mode 720p tetap mengirim canvas HD 1280×720.
   return value === '1080p' ? '1080p' : '720p';
 }
 
@@ -517,6 +517,7 @@ export function SessionPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>('gambar');
   const elapsed = useElapsedSec(connectedAt);
+  const observedHd = Boolean(stats && stats.width >= 1280 && stats.height >= 720);
 
   return (
     <aside
@@ -611,6 +612,7 @@ export function SessionPanel({
                 <StatRow label="Kehalusan" value={stats.fps ? `${idNum(stats.fps)} fps` : '—'} />
                 <StatRow label="Pemakaian data" value={`${idNum(stats.mbps, stats.mbps > 0 && stats.mbps < 0.1 ? 3 : 1)} Mbps`} />
                 <StatRow label="RTT jaringan" value={stats.rttMs ? `${idNum(stats.rttMs)} ms` : '—'} />
+                <StatRow label="Jalur WebRTC" value={stats.transportPath === 'turn-relay' ? `TURN relay (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : stats.transportPath === 'direct-p2p' ? `P2P langsung (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : 'Belum terukur'} />
                 <StatRow label="Paket hilang (total)" value={`${idNum(stats.lossPct, 1)} %`} />
                 <StatRow label="Jitter RTP" value={stats.jitterMs===undefined?'—':`${idNum(stats.jitterMs,1)} ms`}/>
                 <StatRow label="Buffer video (interval)" value={stats.jitterBufferMs===undefined?'—':`${idNum(stats.jitterBufferMs,1)} ms`}/>
@@ -635,7 +637,7 @@ export function SessionPanel({
               <p className="spanel-note">Angka kualitas muncul begitu koneksi mengalir.</p>
             )}
           </div>
-          {videoApplied && <p className="spanel-note" role="status">Output video host: {videoApplied.join('×')} · ukuran pemutar: {stats?.playerSize || 'menunggu decode'}.</p>}
+          {videoApplied && <p className="spanel-note" role="status">Output video host: {videoApplied.join('×')} · teramati decoder: {stats?.width && stats?.height ? `${stats.width}×${stats.height}` : 'menunggu decode'} · ukuran pemutar: {stats?.playerSize || 'menunggu decode'}{stats && !observedHd ? ' · PERINGATAN: output di bawah HD 1280×720' : ''}.</p>}
           {desktopMode && <p className="spanel-note" role="status">
             Desktop diminta {desktopMode.requested.join('×')} · terbaca {desktopMode.observed?.join('×') || 'belum tersedia'}.
             {' '}{({applied:'Mode 16:9 terverifikasi.',already:'Desktop sudah sesuai.',unsupported:'Mode tidak tersedia dari Windows/RDP.',rejected:'Windows/RDP menolak perubahan.',unverified:'Perubahan belum terverifikasi.',overridden:'Resolusi diubah kembali oleh Windows/RDP.',unavailable:'Mode desktop tidak dapat diperiksa.'} as Record<string,string>)[desktopMode.status] || 'Status belum diketahui.'}

@@ -12,15 +12,10 @@ pub fn output_size(width: usize, height: usize) -> Result<(usize, usize), String
     if width < 2 || height < 2 {
         return Err("capture lebih kecil dari 2x2".into());
     }
-    if width <= MAX_WIDTH && height <= MAX_HEIGHT {
-        return Ok((MAX_WIDTH, MAX_HEIGHT));
-    }
-    let scale = (MAX_WIDTH as f64 / width as f64)
-        .min(MAX_HEIGHT as f64 / height as f64)
-        .min(1.0);
-    let w = ((width as f64 * scale).round() as usize & !1).max(2);
-    let h = ((height as f64 * scale).round() as usize & !1).max(2);
-    Ok((w, h))
+    // Jalur software ini adalah output HD: jangan pernah mengembalikan
+    // tinggi di bawah 720, meski capture RDP hanya 940x529 atau sumbernya
+    // ber-aspek berbeda. Encoder utama memakai VideoLayout yang sama.
+    Ok((MAX_WIDTH, MAX_HEIGHT))
 }
 
 pub fn sps_profile_level(data: &[u8]) -> Option<[u8; 3]> {
@@ -167,7 +162,7 @@ impl SoftwareEncoder {
         if self.logged_size != Some((width, height)) {
             if let Some([profile, constraints, level]) = sps_profile_level(&data) {
                 let fps = self.fps;
-                println!("[xydesk-host] video software: capture {width}x{height} -> kirim {cw}x{ch} utuh rasio asli tanpa pita tanpa crop, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
+                println!("[xydesk-host] video software: capture {width}x{height} -> kirim {cw}x{ch} seluruh desktop tanpa pita tanpa crop, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
                 self.logged_size = Some((width, height));
             }
         }
@@ -182,7 +177,7 @@ mod tests {
     use openh264::formats::YUVSource;
     #[test]
     fn ukuran_aspek_genap_dan_batas_macroblock() {
-        assert_eq!(output_size(2336, 1080).unwrap(), (1280, 592));
+        assert_eq!(output_size(2336, 1080).unwrap(), (1280, 720));
         for (w, h) in [
             (2336, 1080),
             (3840, 2160),
@@ -210,8 +205,8 @@ mod tests {
         assert_eq!(level, 31, "SPS harus sesuai batas Level3.1, bukan 5.1");
         let mut decoder = openh264::decoder::Decoder::new().unwrap();
         let decoded = decoder.decode(&data).unwrap().expect("IDR harus terdecode");
-        // Rasio asli 2336x1080 dipertahankan: 1280x592, bukan crop 1280x720.
-        assert_eq!(decoded.dimensions(), (1280, 592));
+        // Mode HD tetap 1280x720; seluruh sumber dipetakan tanpa crop atau pita.
+        assert_eq!(decoded.dimensions(), (1280, 720));
     }
     #[test]
     fn negotiated_hd_and_native_are_real_decodable_pixels() {
@@ -234,7 +229,7 @@ mod tests {
     #[test]
     fn odd_aspect_desktop_kept_whole_without_bars_or_crop() {
         for (mode, level, expected) in [
-            (0, 31, (1280usize, 592usize)),
+            (0, 31, (1280usize, 720usize)),
             (1, 40, (1920, 888)),
             (1, 51, (1920, 888)),
         ] {

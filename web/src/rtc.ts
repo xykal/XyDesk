@@ -266,6 +266,10 @@ export interface SessionStats {
   audioBytesReceived?: number;
   audioEnergy?: number;
   noFrameWarning?: boolean;
+  /** Jalur ICE terpilih: direct P2P, atau relay TURN bila NAT mengharuskannya. */
+  transportPath?: 'direct-p2p' | 'turn-relay' | 'ice-unknown';
+  localCandidateType?: string;
+  remoteCandidateType?: string;
 }
 
 export class RtcSession {
@@ -739,6 +743,7 @@ export class RtcSession {
     try {
       const report = await pc.getStats();
       let rttMs = 0;
+      let selectedPair: Record<string, unknown> | undefined;
       // RTX/FEC bukan video utama. Jangan menimpa statistik H264 dengan
       // laporan repair/track kosong yang kebetulan muncul terakhir.
       const primary = Array.from(report.values())
@@ -811,6 +816,7 @@ export class RtcSession {
 
           };
         } else if (x.type === 'candidate-pair' && (x.nominated || x.selected === true)) {
+          selectedPair = x;
           if (x.state === 'succeeded' && typeof x.currentRoundTripTime === 'number') {
             rttMs = x.currentRoundTripTime * 1000;
           }
@@ -818,6 +824,21 @@ export class RtcSession {
       }
       if (stats) {
         stats.rttMs = rttMs;
+        const localCandidate = selectedPair?.localCandidateId
+          ? report.get(String(selectedPair.localCandidateId)) as unknown as Record<string, unknown> | undefined
+          : undefined;
+        const remoteCandidate = selectedPair?.remoteCandidateId
+          ? report.get(String(selectedPair.remoteCandidateId)) as unknown as Record<string, unknown> | undefined
+          : undefined;
+        const localType = String(localCandidate?.candidateType ?? '');
+        const remoteType = String(remoteCandidate?.candidateType ?? '');
+        stats.localCandidateType = localType || undefined;
+        stats.remoteCandidateType = remoteType || undefined;
+        stats.transportPath = localType === 'relay' || remoteType === 'relay'
+          ? 'turn-relay'
+          : localType || remoteType
+            ? 'direct-p2p'
+            : 'ice-unknown';
         stats.inputBufferedBytes=this.input?.bufferedAmount;
         stats.coalescedMoves=this.coalescedMoves;
         const audioReports = Array.from(report.values()).map(s => s as unknown as Record<string, unknown>).filter(x => x.type === 'inbound-rtp' && (x.kind === 'audio' || x.mediaType === 'audio'));

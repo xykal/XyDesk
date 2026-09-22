@@ -4,9 +4,10 @@
 //! frame tidak boleh memuat pita hitam dan tidak boleh memotong desktop.
 //! Host meminta mode desktop 16:9 yang didukung secara otomatis (lihat
 //! desktop_mode.rs); bila desktop tetap bukan 16:9, frame dikirim pada rasio
-//! asli desktop, diperkecil proporsional ke batas mode/level. Mode HD
-//! (720p) boleh melakukan upscale terkontrol pada sumber RDP yang lebih kecil
-//! agar kontrak output 1280x720 tetap dipenuhi; mode lain tidak mengarang detail.
+//! asli desktop, dipetakan ke canvas mode/level tanpa crop atau pita. Mode HD
+//! (720p) selalu memakai canvas minimum 1280x720 — termasuk bila sumbernya
+//! lebih kecil atau ber-aspek sedikit berbeda — agar tinggi output tidak pernah
+//! turun di bawah 720. Mode lain tidak mengarang detail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct VideoLayout {
     pub canvas: [usize; 2],
@@ -29,14 +30,13 @@ impl VideoLayout {
         } else {
             (1920, 1080)
         };
-        // Mode HD adalah kontrak output 1280x720. Capture RDP/virtual desktop
-        // yang lebih kecil diregangkan ke canvas kontrak (mis. 940x529),
-        // supaya client tidak lagi menerima tinggi 529. Tidak ada crop atau
-        // pita; sumber yang lebih besar tetap diperkecil proporsional. Mode
-        // lain tetap jujur dan tidak meng-upscale sumber kecil.
+        // Mode HD adalah kontrak mutlak 1280x720. Semua capture dipetakan
+        // ke canvas ini, termasuk desktop lebar/tinggi aneh: seluruh sumber
+        // tetap masuk tanpa crop atau pita, dengan resampling terkontrol.
+        // Mode lain tetap mempertahankan rasio dan tidak meng-upscale sumber.
         let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
         let scale = if mode == 0 { scale } else { scale.min(1.0) };
-        let (cw, ch) = if mode == 0 && width <= mw && height <= mh {
+        let (cw, ch) = if mode == 0 {
             (mw, mh)
         } else {
             (
@@ -66,13 +66,13 @@ impl VideoLayout {
 mod tests {
     use super::*;
     #[test]
-    fn rasio_asli_tanpa_pita_tanpa_crop_tanpa_upscale() {
-        // Desktop lebar aneh: diperkecil proporsional, TIDAK dipotong.
+    fn hd_minimum_tanpa_pita_tanpa_crop() {
+        // Desktop lebar aneh: seluruhnya dipetakan ke HD, TIDAK dipotong.
         assert_eq!(
             VideoLayout::new(2336, 1080, 0, 51).unwrap(),
             VideoLayout {
-                canvas: [1280, 592],
-                content: [0, 0, 1280, 592],
+                canvas: [1280, 720],
+                content: [0, 0, 1280, 720],
                 crop: [0, 0, 2336, 1080]
             }
         );

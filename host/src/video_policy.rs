@@ -99,7 +99,10 @@ pub fn output_size(w: usize, h: usize, mode: u8, level: u8) -> Result<(usize, us
     };
     let scale = (mw as f64 / w as f64).min(mh as f64 / h as f64);
     let scale = if mode == 0 { scale } else { scale.min(1.0) };
-    if mode == 0 && w <= mw && h <= mh {
+    if mode == 0 {
+        // 720p adalah kontrak minimum/mutlak: tinggi tidak boleh turun
+        // menjadi 529 atau ukuran lain hanya karena sumber RDP lebih kecil
+        // atau rasio sumber sedikit berbeda.
         return Ok((mw, mh));
     }
     Ok((
@@ -170,6 +173,7 @@ mod tests {
     use super::*;
     #[test]
     fn dimensions_no_crop_upscale_or_level_overflow() {
+        assert_eq!(output_size(2336, 1080, 0, 31).unwrap(), (1280, 720));
         assert_eq!(output_size(2336, 1080, 1, 40).unwrap(), (1920, 888));
         assert_eq!(output_size(2336, 1080, 2, 51).unwrap(), (2336, 1080));
         assert_eq!(output_size(1920, 1080, 1, 40).unwrap(), (1920, 1080));
