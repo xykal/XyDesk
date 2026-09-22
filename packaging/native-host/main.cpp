@@ -550,7 +550,8 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     SetProcessDPIAware();
-    WNDCLASSW wc{};
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
     wc.hInstance = instance;
     wc.lpfnWndProc = windowProc;
     wc.lpszClassName = kClassName;
@@ -558,7 +559,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     wc.hIconSm = LoadIconW(instance, MAKEINTRESOURCEW(IDI_XYDESK));
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
-    if (!RegisterClassW(&wc)) return 1;
+    if (!RegisterClassExW(&wc)) return 1;
 
     HWND window = CreateWindowExW(0, kClassName, kWindowTitle,
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
