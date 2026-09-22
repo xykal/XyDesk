@@ -155,16 +155,9 @@ impl SoftwareEncoder {
             // sengaja dibuat di encoder, bukan dengan menarik gambar, dan
             // contentRect dikirim ke client agar input mengabaikan bar.
             self.canvas.resize(cw * ch * 4, 0);
-            self.scaled
-                .resize(content_w * content_h * 4, 0);
-            self.resize_plan.resize(
-                src,
-                crw,
-                crh,
-                content_w,
-                content_h,
-                &mut self.scaled,
-            );
+            self.scaled.resize(content_w * content_h * 4, 0);
+            self.resize_plan
+                .resize(src, crw, crh, content_w, content_h, &mut self.scaled);
             for row in 0..content_h {
                 let from = row * content_w * 4;
                 let to = ((cy + row) * cw + cx) * 4;
@@ -272,7 +265,10 @@ mod tests {
             assert!(pixel(cx + cw - 6, cy + ch - 6) > 190);
             if mode == 0 {
                 assert!(cy > 0 || cx > 0);
-                assert!(pixel(6, 6) < 40, "letterbox harus tetap gelap, bukan stretch");
+                assert!(
+                    pixel(6, 6) < 40,
+                    "letterbox harus tetap gelap, bukan stretch"
+                );
             } else {
                 assert!(pixel(6, 6) > 190);
                 assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);

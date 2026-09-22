@@ -46,8 +46,12 @@ impl VideoLayout {
             ]
         };
         let content = if mode == 0 {
-            let cw = (((width as f64 * scale).round() as usize) & !1).max(2).min(mw);
-            let ch = (((height as f64 * scale).round() as usize) & !1).max(2).min(mh);
+            let cw = (((width as f64 * scale).round() as usize) & !1)
+                .max(2)
+                .min(mw);
+            let ch = (((height as f64 * scale).round() as usize) & !1)
+                .max(2)
+                .min(mh);
             [(mw - cw) / 2, (mh - ch) / 2, cw, ch]
         } else {
             [0, 0, canvas[0], canvas[1]]
