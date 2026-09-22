@@ -78,7 +78,7 @@ import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
 import { WhatsAppIcon, TelegramIcon, XIcon, FacebookIcon } from './brand-icons';
 
-type StaticRoute = '/' | '/connect' | '/download' | '/legal' | '/news' | '/billing' | '/history';
+type StaticRoute = '/' | '/connect' | '/download' | '/legal' | '/news' | '/billing' | '/history' | '/controls';
 type Route = StaticRoute | NewsDetailRoute;
 interface NewsDetailRoute {
   page: 'news-detail';
@@ -157,6 +157,8 @@ function currentRoute(): Route {
       return '/news';
     case '/billing':
       return '/billing';
+    case '/controls':
+      return '/controls';
     case '/n':
       return '/news';
     default:
@@ -200,6 +202,7 @@ export default function App() {
   else if (route === '/download') page = <DownloadPage />;
   else if (route === '/legal') page = <LegalPage />;
   else if (route === '/billing') page = <BillingPage />;
+  else if (route === '/controls') page = <ControlMappingPage navigate={navigate} />;
   else if (route === '/news') page = <NewsPage navigate={navigate} />;
   else if (typeof route === 'object' && route.page === 'news-detail')
     page = <NewsDetailPage slug={route.slug} navigate={navigate} />;
@@ -272,6 +275,9 @@ function SiteHeader({
           <button className={current === '/billing' ? 'active' : ''} onClick={() => navigate('/billing')}>
             Sewa PC
           </button>
+          <button className={current === '/controls' ? 'active' : ''} onClick={() => navigate('/controls')}>
+            Kontrol
+          </button>
           <button className={current === '/download' ? 'active' : ''} onClick={() => navigate('/download')}>
             Unduh
           </button>
@@ -331,6 +337,9 @@ function SiteHeader({
             <button className={current === '/billing' ? 'active' : ''} onClick={() => go('/billing')}>
               Sewa PC
             </button>
+            <button className={current === '/controls' ? 'active' : ''} onClick={() => go('/controls')}>
+              Kontrol
+            </button>
             <button className={current === '/download' ? 'active' : ''} onClick={() => go('/download')}>
               Unduh
             </button>
@@ -339,6 +348,40 @@ function SiteHeader({
         </>
       )}
     </header>
+  );
+}
+
+function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
+  return (
+    <main className="content-page control-mapping-page">
+      <p className="eyebrow">CONTROL MAPPING</p>
+      <h1>Atur tombol remote dengan nyaman.</h1>
+      <p className="page-lead">
+        Pilih preset, geser tombol, lalu simpan layout terpisah untuk portrait dan landscape.
+        Kontrol bawaan dibuat ringkas: klik kiri, klik kanan, switch, scroll atas, dan scroll bawah.
+      </p>
+      <div className="mapping-page-card">
+        <div className="mapping-page-toolbar">
+          <div>
+            <strong>Pratinjau layout</strong>
+            <span>Tekan <b>Atur tombol</b> untuk mengubah ukuran dan posisi.</span>
+          </div>
+          <button className="btn ghost" type="button" onClick={() => navigate('/connect')}>Buka Connect</button>
+        </div>
+        <div className="mapping-page-stage video-surface" aria-label="Pratinjau control mapping">
+          <div className="mapping-page-desktop" aria-hidden="true">
+            <span>Pratinjau desktop host</span>
+            <i /><i /><i />
+          </div>
+          <CustomControlMapping send={() => {}} />
+        </div>
+        <p className="mapping-page-note">
+          Saat tersambung, tombol yang sama mengirim input secara langsung ke PC. Keyboard virtual
+          tersedia dari tombol keyboard di HUD dan tetap membedakan Shift, Caps Lock, huruf besar,
+          serta huruf kecil.
+        </p>
+      </div>
+    </main>
   );
 }
 
@@ -2699,6 +2742,13 @@ function ConnectScreen({
             )}
           </div>
         )}
+        {connected && stats && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
+          <span className="session-connection-dot" aria-hidden="true" />
+          <strong>{stats.fps > 0 ? `${Math.round(stats.fps)} FPS` : 'FPS —'}</strong>
+          <span>{stats.mbps > 0 ? `${Math.round(stats.mbps * 1000)} kbps` : 'kbps —'}</span>
+          <span>{stats.transportPath === 'turn-relay' ? 'UDP relay' : stats.transportPath === 'direct-p2p' ? `${stats.transportProtocol || 'UDP'} direct` : 'Jalur —'}</span>
+          {stats.noFrameWarning && <span className="session-freeze-label">Freeze terdeteksi</span>}
+        </div>}
         {connected && <>
         <SessionRail
           collapsed={railHidden}

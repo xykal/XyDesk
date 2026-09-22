@@ -219,12 +219,21 @@ const VKB_ROWS: KeySpec[][] = [
 
 export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>void }) {
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
+  const [caps, setCaps] = useState(false);
   const heldRef=useRef<ReadonlySet<number>>(new Set());const sendRef=useRef(send);sendRef.current=send;
   const setHeld=(value:ReadonlySet<number>)=>{heldRef.current=value;updateHeld(value);};
   const release=()=>{for(const vk of heldRef.current)sendRef.current(InputCodec.key(vk,false));heldRef.current=new Set();};
   useEffect(()=>{const clear=()=>{release();updateHeld(new Set());};const hidden=()=>{if(document.hidden)clear();};window.addEventListener('blur',clear);document.addEventListener('visibilitychange',hidden);return()=>{release();window.removeEventListener('blur',clear);document.removeEventListener('visibilitychange',hidden);};},[]);
 
   const tap = (vk: number, modifier: boolean) => {
+    // Caps Lock adalah toggle keyboard, bukan modifier yang perlu ditahan.
+    // Simpan state lokal agar UI virtual selalu jujur terhadap mode huruf.
+    if (vk === 0x14) {
+      send(InputCodec.key(vk, true));
+      send(InputCodec.key(vk, false));
+      setCaps(value => !value);
+      return;
+    }
     if (modifier) {
       if (heldRef.current.has(vk)) {
         send(InputCodec.key(vk, false));
@@ -254,13 +263,13 @@ export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>vo
             <button
               key={`${label}-${j}`}
               type="button"
-              className={`vkb-key${modifier ? ' mod' : ''}${held.has(vk) ? ' on' : ''}`}
+              className={`vkb-key${modifier ? ' mod' : ''}${held.has(vk) || (vk === 0x14 && caps) ? ' on' : ''}`}
               style={{ flexGrow: flex, flexBasis: 0 }}
               onPointerDown={e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();tap(vk,modifier);}}
               onClick={e=>{if(e.detail===0)tap(vk,modifier);}}
               onContextMenu={e=>e.preventDefault()}
             >
-              {label}
+              {vk === 0x14 ? (caps ? 'CAPS' : 'Caps') : label}
             </button>
           ))}
         </div>

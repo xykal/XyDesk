@@ -268,6 +268,7 @@ export interface SessionStats {
   noFrameWarning?: boolean;
   /** Jalur ICE terpilih: direct P2P, atau relay TURN bila NAT mengharuskannya. */
   transportPath?: 'direct-p2p' | 'turn-relay' | 'ice-unknown';
+  transportProtocol?: string;
   localCandidateType?: string;
   remoteCandidateType?: string;
 }
@@ -338,6 +339,7 @@ export class RtcSession {
   private lastFrames = -1;
   private lastAtMs = 0;
   private lastVideoStatsId = "";
+  private lastDecodedAt = 0;
   private lastTiming?:{id:string;emitted:number;delay:number;frames:number;decode:number;received:number;lost:number};
 
   /// Satu-satunya jalan mengubah fase. Menangani watchdog secara terpusat
@@ -759,8 +761,11 @@ export class RtcSession {
           const frames = typeof x.framesDecoded === 'number' ? x.framesDecoded : undefined;
           if (this.lastVideoStatsId !== String(x.id)) {
             this.lastBytes = -1; this.lastFrames = -1; this.lastAtMs = 0;
+            this.lastDecodedAt = 0;
             this.lastVideoStatsId = String(x.id);
           }
+          const previousBytes = this.lastBytes;
+          const previousFrames = this.lastFrames;
           const dt = this.lastAtMs > 0 ? (now - this.lastAtMs) / 1000 : 0;
           const mbps =
             this.lastBytes >= 0 && dt > 0.2
@@ -770,6 +775,16 @@ export class RtcSession {
             frames !== undefined && this.lastFrames >= 0 && dt > 0.2
               ? Math.max(0, (frames - this.lastFrames) / dt)
               : 0;
+          if (frames !== undefined) {
+            if (previousFrames < 0 || frames > previousFrames) {
+              this.lastDecodedAt = now;
+              this.noFrameWarning = false;
+            } else if (this.lastDecodedAt > 0 && now - this.lastDecodedAt >= 3500 && bytes > previousBytes) {
+              // Payload masih masuk tetapi decoder tidak maju: ini adalah
+              // freeze nyata, bukan sekadar jaringan sedang idle.
+              this.noFrameWarning = true;
+            }
+          }
           this.lastBytes = bytes;
           this.lastFrames = frames ?? -1;
           this.lastAtMs = now;
@@ -834,6 +849,7 @@ export class RtcSession {
         const remoteType = String(remoteCandidate?.candidateType ?? '');
         stats.localCandidateType = localType || undefined;
         stats.remoteCandidateType = remoteType || undefined;
+        stats.transportProtocol = String(selectedPair?.protocol ?? localCandidate?.protocol ?? remoteCandidate?.protocol ?? '').toUpperCase() || undefined;
         stats.transportPath = localType === 'relay' || remoteType === 'relay'
           ? 'turn-relay'
           : localType || remoteType
@@ -845,10 +861,7 @@ export class RtcSession {
         stats.audioBytesReceived = audioReports.reduce((sum, x) => sum + Number(x.bytesReceived ?? 0), 0);
         const energy = audioReports.filter(x => typeof x.totalAudioEnergy === 'number');
         if (energy.length) stats.audioEnergy = energy.reduce((sum, x) => sum + Number(x.totalAudioEnergy), 0);
-        if (stats.width > 0 && stats.height > 0) {
-          this.clearNoFrameWatchdog();
-          this.noFrameWarning = false;
-        }
+        if (stats.width > 0 && stats.height > 0 && this.lastDecodedAt > 0) this.clearNoFrameWatchdog();
         stats.noFrameWarning = this.noFrameWarning;
       }
       return stats;

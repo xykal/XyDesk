@@ -10,6 +10,7 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include "resource.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -292,7 +293,9 @@ void addTrayIcon(HWND hwnd) {
     data.uID = kTrayId;
     data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     data.uCallbackMessage = kTrayMessage;
-    data.hIcon = LoadIconW(nullptr, IDI_APPLICATION);
+    // Gunakan resource XyDesk yang sama untuk tray dan window, bukan ikon
+    // aplikasi generik Windows; shell akan memilih ukuran paling sesuai.
+    data.hIcon = LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_XYDESK));
     lstrcpynW(data.szTip, L"XyDesk Host — klik kanan untuk kontrol", ARRAYSIZE(data.szTip));
     Shell_NotifyIconW(NIM_ADD, &data);
     data.uVersion = NOTIFYICON_VERSION_4;
@@ -551,6 +554,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     wc.hInstance = instance;
     wc.lpfnWndProc = windowProc;
     wc.lpszClassName = kClassName;
+    wc.hIcon = LoadIconW(instance, MAKEINTRESOURCEW(IDI_XYDESK));
+    wc.hIconSm = LoadIconW(instance, MAKEINTRESOURCEW(IDI_XYDESK));
     wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
     wc.hbrBackground = nullptr;
     if (!RegisterClassW(&wc)) return 1;

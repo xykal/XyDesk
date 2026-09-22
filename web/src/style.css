@@ -2006,7 +2006,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 /* Chip durasi & sisa waktu sesi — pojok kiri atas video. Sesi tamu
    berbatas 2 jam (token signaling), jadi sisanya diperlihatkan jujur;
    merah saat tinggal <= 5 menit. */
-.sesi-waktu {
+.session-connection-status{position:absolute;z-index:34;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #ffffff32;border-radius:999px;background:#17121dbd;color:#f8f5ff;box-shadow:0 8px 26px #08060d55;backdrop-filter:blur(12px);font-size:11px;line-height:1;pointer-events:none}.session-connection-status span:not(.session-connection-dot){color:#d6cae5}.session-connection-dot{width:7px;height:7px;border-radius:50%;background:#74e3a0;box-shadow:0 0 0 4px #74e3a025}.session-connection-status.warning{border-color:#f3bf624d}.session-connection-status.warning .session-connection-dot{background:#f3bf62;box-shadow:0 0 0 4px #f3bf6225}.session-freeze-label{color:#f3bf62!important;font-weight:700}.sesi-waktu {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -2819,7 +2819,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .video-surface::backdrop { background: #000; }
 .remote-session .srail { right: max(12px, env(safe-area-inset-right)); }
 .remote-session .srail-pill { right: max(6px, env(safe-area-inset-right)); }
-.remote-session .sesi-waktu { top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); }
+.remote-session .sesi-waktu { top: max(48px, calc(env(safe-area-inset-top) + 36px)); left: max(12px, env(safe-area-inset-left)); }
 .remote-session .hud-mouse { right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom)); }
 .remote-session .spanel { min-width: 0; }
 .remote-session .spanel.no-rail { min-width: 0; }
@@ -2873,6 +2873,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .mapping-editor label { display:flex;flex-direction:column;gap:5px;font-size:12px;margin:10px 0; }
 .mapping-editor input,.mapping-editor select { width:100%;min-height:34px;padding:5px;border:1px solid #d9d3e5;border-radius:6px; }
 .mapping-editor input[type=range] { padding:0; }
+.control-mapping-page{max-width:1100px}.mapping-page-card{margin-top:28px;padding:18px;border:1px solid #e3dbea;border-radius:24px;background:rgba(255,255,255,.62);box-shadow:0 16px 50px #271a450d}.mapping-page-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px;color:#332446}.mapping-page-toolbar strong,.mapping-page-toolbar span{display:block}.mapping-page-toolbar span{margin-top:4px;color:#766783;font-size:12px}.mapping-page-stage{position:relative;isolation:isolate;min-height:520px;aspect-ratio:16/9;overflow:hidden;border-radius:18px;background:#17121f}.mapping-page-desktop{position:absolute;inset:0;display:grid;place-content:center;gap:14px;color:#bcaed0;text-align:center;background:radial-gradient(circle at 50% 42%,#5b437b 0,#2a2038 34%,#17121f 74%)}.mapping-page-desktop span{font-size:clamp(15px,2vw,22px);font-weight:700;opacity:.8}.mapping-page-desktop i{position:absolute;display:block;width:32%;height:2px;border-radius:2px;background:#ffffff17;left:34%;top:56%}.mapping-page-desktop i:nth-child(2){top:62%;width:24%;left:38%}.mapping-page-desktop i:nth-child(3){top:68%;width:18%;left:41%}.mapping-page-note{margin:14px 2px 0;color:#766783;font-size:13px;line-height:1.6}.mapping-page-stage .mapping-tools{top:14px}.mapping-page-stage .mapping-editor{top:58px}.mapping-page-stage .mapping-button{z-index:4}@media(max-width:680px){.mapping-page-card{padding:10px;border-radius:18px}.mapping-page-toolbar{align-items:flex-start;flex-direction:column}.mapping-page-stage{min-height:430px;aspect-ratio:9/14}.mapping-page-stage .mapping-editor{width:min(340px,calc(100% - 24px))}}
 .history-page { max-width:1200px;margin:40px auto;padding:24px; }
 .history-heading { display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:28px; }
 .history-heading h1 { font-size:clamp(28px,5vw,44px);letter-spacing:-1.5px;margin:6px 0 12px; }
@@ -2954,7 +2955,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .remember-access{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;margin:8px 0}.remember-access input{flex:none;margin-top:3px}
 
 img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
-.mapping-button{background:rgba(10,10,14,.34);backdrop-filter:blur(2px);box-shadow:none;white-space:normal;overflow-wrap:anywhere;padding:5px;font-size:12px}
+.mapping-button{background:rgba(10,10,14,.34);backdrop-filter:blur(2px);box-shadow:none;white-space:normal;overflow-wrap:anywhere;padding:5px;font-size:12px}.mapping-glyph{width:24px;height:24px;display:block;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.mapping-glyph circle{fill:currentColor;stroke:none}.mapping-key-glyph{display:block;font-size:12px;font-weight:800;line-height:1}
 
 /* Rail kembali ke kolom kanan seperti semula; hanya pembuka keyboard di pojok. */
 .vkb{max-height:55dvh;overflow:auto;touch-action:manipulation;padding-bottom:max(8px,env(safe-area-inset-bottom))}.vkb-key{touch-action:manipulation;min-height:36px}

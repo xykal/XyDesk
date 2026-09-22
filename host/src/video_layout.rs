@@ -1,18 +1,19 @@
-//! Encoded canvas that carries the WHOLE desktop — tanpa pita, tanpa crop.
+//! Encoded canvas that carries the WHOLE desktop — tanpa stretch, tanpa crop.
 //!
 //! Keputusan operator 2026-09-20 (menggantikan kebijakan crop 2026-09-19):
-//! frame tidak boleh memuat pita hitam dan tidak boleh memotong desktop.
+//! frame tidak boleh menarik atau memotong desktop. Letterbox internal
+//! diperbolehkan pada mode HD agar canvas tetap 1280x720.
 //! Host meminta mode desktop 16:9 yang didukung secara otomatis (lihat
 //! desktop_mode.rs); bila desktop tetap bukan 16:9, frame dikirim pada rasio
-//! asli desktop, dipetakan ke canvas mode/level tanpa crop atau pita. Mode HD
+//! asli desktop, dipetakan ke canvas mode/level tanpa crop atau stretch. Mode HD
 //! (720p) selalu memakai canvas minimum 1280x720 — termasuk bila sumbernya
 //! lebih kecil atau ber-aspek sedikit berbeda — agar tinggi output tidak pernah
 //! turun di bawah 720. Mode lain tidak mengarang detail.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct VideoLayout {
     pub canvas: [usize; 2],
-    /// Area frame ter-encode yang memuat desktop: selalu seluruh canvas,
-    /// karena tidak ada pita yang boleh dikirim.
+    /// Area frame ter-encode yang memuat desktop. Pada HD 720p area ini
+    /// dipusatkan di canvas 1280x720 agar rasio sumber tidak tertarik.
     pub content: [usize; 4],
     /// Area desktop sumber dalam piksel desktop: selalu seluruh desktop,
     /// karena tidak ada crop yang boleh terjadi. left, top, width, height.
@@ -30,28 +31,36 @@ impl VideoLayout {
         } else {
             (1920, 1080)
         };
-        // Mode HD adalah kontrak mutlak 1280x720. Semua capture dipetakan
-        // ke canvas ini, termasuk desktop lebar/tinggi aneh: seluruh sumber
-        // tetap masuk tanpa crop atau pita, dengan resampling terkontrol.
-        // Mode lain tetap mempertahankan rasio dan tidak meng-upscale sumber.
+        // Mode HD adalah kontrak canvas 1280x720, tetapi isi desktop tetap
+        // mempertahankan rasio agar gambar tidak tertarik ke atas/bawah.
+        // Canvas boleh memiliki letterbox internal; input memakai contentRect
+        // sehingga area hitam tidak menerima klik.
         let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
         let scale = if mode == 0 { scale } else { scale.min(1.0) };
-        let (cw, ch) = if mode == 0 {
-            (mw, mh)
+        let canvas = if mode == 0 {
+            [mw, mh]
         } else {
-            (
+            [
                 (((width as f64 * scale).round() as usize) & !1).max(2),
                 (((height as f64 * scale).round() as usize) & !1).max(2),
-            )
+            ]
+        };
+        let content = if mode == 0 {
+            let cw = (((width as f64 * scale).round() as usize) & !1).max(2).min(mw);
+            let ch = (((height as f64 * scale).round() as usize) & !1).max(2).min(mh);
+            [(mw - cw) / 2, (mh - ch) / 2, cw, ch]
+        } else {
+            [0, 0, canvas[0], canvas[1]]
         };
         Ok(Self {
-            canvas: [cw, ch],
-            content: [0, 0, cw, ch],
+            canvas,
+            content,
             crop: [0, 0, width, height],
         })
     }
-    /// Petakan koordinat frame ternormalisasi ke koordinat desktop.
-    /// Seluruh frame adalah seluruh desktop: tanpa pita, tanpa crop.
+    /// Petakan koordinat desktop ternormalisasi ke koordinat desktop.
+    /// `contentRect` ditangani client sebelum koordinat ini dikirim; sumber
+    /// selalu seluruh desktop tanpa crop.
     pub fn desktop_point(self, x: u16, y: u16) -> Option<(u16, u16)> {
         let axis = |n: u16, start: usize, size: usize| -> u16 {
             (start as f64 + (n as f64 / 65535.0) * (size - 1) as f64).round() as u16
@@ -66,13 +75,13 @@ impl VideoLayout {
 mod tests {
     use super::*;
     #[test]
-    fn hd_minimum_tanpa_pita_tanpa_crop() {
-        // Desktop lebar aneh: seluruhnya dipetakan ke HD, TIDAK dipotong.
+    fn hd_minimum_tanpa_stretch_tanpa_crop() {
+        // Desktop lebar aneh: seluruhnya dipetakan ke HD tanpa ditarik atau dipotong.
         assert_eq!(
             VideoLayout::new(2336, 1080, 0, 51).unwrap(),
             VideoLayout {
                 canvas: [1280, 720],
-                content: [0, 0, 1280, 720],
+                content: [0, 64, 1280, 592],
                 crop: [0, 0, 2336, 1080]
             }
         );

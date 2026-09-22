@@ -377,7 +377,7 @@ impl Drop for FrameSource {
 pub fn spawn_frame_source() -> FrameSource {
     #[cfg(target_os = "windows")]
     {
-        let (tx, rx) = mpsc::sync_channel::<EncodedFrame>(2);
+        let (tx, rx) = mpsc::sync_channel::<EncodedFrame>(1);
         let alive = Arc::new(AtomicBool::new(true));
         let alive_thr = alive.clone();
         let alive_watch = alive.clone();
@@ -629,7 +629,7 @@ pub fn spawn_frame_source() -> FrameSource {
 /// Synthetic source for platform-independent regression tests, not desktop capture.
 #[cfg(any(test, not(target_os = "windows")))]
 pub fn spawn_test_pattern_source() -> FrameSource {
-    let (tx, rx) = mpsc::sync_channel::<EncodedFrame>(2);
+    let (tx, rx) = mpsc::sync_channel::<EncodedFrame>(1);
     let alive = Arc::new(AtomicBool::new(true));
     let alive_thr = alive.clone();
     std::thread::spawn(move || {

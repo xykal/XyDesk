@@ -91,6 +91,7 @@ impl ResizePlan {
 pub struct SoftwareEncoder {
     encoder: Encoder,
     resized: Vec<u8>,
+    scaled: Vec<u8>,
     canvas: Vec<u8>,
     resize_plan: ResizePlan,
     logged_size: Option<(usize, usize)>,
@@ -116,6 +117,7 @@ impl SoftwareEncoder {
                 crate::screen::prod_encoder_config_for(level, fps),
             )?,
             resized: Vec::new(),
+            scaled: Vec::new(),
             canvas: Vec::new(),
             resize_plan: ResizePlan::default(),
             logged_size: None,
@@ -145,12 +147,30 @@ impl SoftwareEncoder {
             &self.resized
         };
         let [cw, ch] = layout.canvas;
-        let pixels = if (crw, crh) == (cw, ch) {
+        let [cx, cy, content_w, content_h] = layout.content;
+        let pixels = if (crw, crh) == (cw, ch) && layout.content == [0, 0, cw, ch] {
             src
         } else {
+            // Pertahankan rasio sumber di dalam canvas HD. Bar internal
+            // sengaja dibuat di encoder, bukan dengan menarik gambar, dan
+            // contentRect dikirim ke client agar input mengabaikan bar.
             self.canvas.resize(cw * ch * 4, 0);
-            self.resize_plan
-                .resize(src, crw, crh, cw, ch, &mut self.canvas);
+            self.scaled
+                .resize(content_w * content_h * 4, 0);
+            self.resize_plan.resize(
+                src,
+                crw,
+                crh,
+                content_w,
+                content_h,
+                &mut self.scaled,
+            );
+            for row in 0..content_h {
+                let from = row * content_w * 4;
+                let to = ((cy + row) * cw + cx) * 4;
+                self.canvas[to..to + content_w * 4]
+                    .copy_from_slice(&self.scaled[from..from + content_w * 4]);
+            }
             &self.canvas
         };
         let yuv = YUVBuffer::from_rgb_source(RgbaSliceU8::new(pixels, (cw, ch)));
@@ -162,7 +182,7 @@ impl SoftwareEncoder {
         if self.logged_size != Some((width, height)) {
             if let Some([profile, constraints, level]) = sps_profile_level(&data) {
                 let fps = self.fps;
-                println!("[xydesk-host] video software: capture {width}x{height} -> kirim {cw}x{ch} seluruh desktop tanpa pita tanpa crop, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", crate::screen::target_bitrate_bps().min(MAX_BITRATE));
+                println!("[xydesk-host] video software: capture {width}x{height} -> canvas {cw}x{ch}, content {}x{} tanpa stretch/crop, maks {fps} fps, bitrate {} bps, SPS {profile:02x}{constraints:02x}{level:02x}", layout.content[2], layout.content[3], crate::screen::target_bitrate_bps().min(MAX_BITRATE));
                 self.logged_size = Some((width, height));
             }
         }
@@ -205,7 +225,7 @@ mod tests {
         assert_eq!(level, 31, "SPS harus sesuai batas Level3.1, bukan 5.1");
         let mut decoder = openh264::decoder::Decoder::new().unwrap();
         let decoded = decoder.decode(&data).unwrap().expect("IDR harus terdecode");
-        // Mode HD tetap 1280x720; seluruh sumber dipetakan tanpa crop atau pita.
+        // Mode HD tetap 1280x720; rasio sumber dipertahankan di contentRect.
         assert_eq!(decoded.dimensions(), (1280, 720));
     }
     #[test]
@@ -227,7 +247,7 @@ mod tests {
         }
     }
     #[test]
-    fn odd_aspect_desktop_kept_whole_without_bars_or_crop() {
+    fn odd_aspect_desktop_kept_whole_without_stretch_or_crop() {
         for (mode, level, expected) in [
             (0, 31, (1280usize, 720usize)),
             (1, 40, (1920, 888)),
@@ -235,8 +255,8 @@ mod tests {
         ] {
             let (w, h) = (2336, 1080);
             let layout = crate::video_layout::VideoLayout::new(w, h, mode, level).unwrap();
-            assert_eq!(layout.content, [0, 0, layout.canvas[0], layout.canvas[1]]);
-            // Tanpa crop: sumber adalah seluruh desktop.
+            // Tanpa crop: sumber adalah seluruh desktop. HD boleh memiliki
+            // letterbox internal agar rasio tidak tertarik.
             assert_eq!(layout.crop, [0, 0, w, h]);
             assert_eq!((layout.canvas[0], layout.canvas[1]), expected);
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
@@ -247,11 +267,16 @@ mod tests {
             let mut rgb = vec![0; layout.canvas[0] * layout.canvas[1] * 3];
             frame.write_rgb8(&mut rgb);
             let pixel = |x: usize, y: usize| rgb[(y * layout.canvas[0] + x) * 3];
-            // Tanpa pita: keempat sudut frame memuat piksel desktop, bukan hitam.
-            assert!(pixel(6, 6) > 190);
-            assert!(pixel(6, layout.canvas[1] - 6) > 190);
-            assert!(pixel(layout.canvas[0] - 6, 6) > 190);
-            assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);
+            let [cx, cy, cw, ch] = layout.content;
+            assert!(pixel(cx + 6, cy + 6) > 190);
+            assert!(pixel(cx + cw - 6, cy + ch - 6) > 190);
+            if mode == 0 {
+                assert!(cy > 0 || cx > 0);
+                assert!(pixel(6, 6) < 40, "letterbox harus tetap gelap, bukan stretch");
+            } else {
+                assert!(pixel(6, 6) > 190);
+                assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);
+            }
         }
         // Desktop tinggi: seluruh tinggi ikut terkirim — baris atas TIDAK dibuang.
         let (w, h) = (1920, 1200);
