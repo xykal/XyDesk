@@ -352,6 +352,7 @@ function SiteHeader({
 }
 
 function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
+  const [trackpad, setTrackpad] = useState(false);
   return (
     <main className="content-page control-mapping-page">
       <p className="eyebrow">CONTROL MAPPING</p>
@@ -364,7 +365,7 @@ function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
         <div className="mapping-page-toolbar">
           <div>
             <strong>Pratinjau layout</strong>
-            <span>Tekan <b>Atur tombol</b> untuk mengubah ukuran dan posisi.</span>
+            <span>Mode: <b>{trackpad ? 'Trackpad' : 'Langsung'}</b> · Tekan <b>Atur tombol</b> untuk mengubah ukuran dan posisi.</span>
           </div>
           <button className="btn ghost" type="button" onClick={() => navigate('/connect')}>Buka Connect</button>
         </div>
@@ -373,7 +374,7 @@ function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
             <span>Pratinjau desktop host</span>
             <i /><i /><i />
           </div>
-          <CustomControlMapping send={() => {}} />
+          <CustomControlMapping onToggleMode={() => setTrackpad(value => !value)} send={() => {}} />
         </div>
         <p className="mapping-page-note">
           Saat tersambung, tombol yang sama mengirim input secara langsung ke PC. Keyboard virtual
@@ -2827,7 +2828,7 @@ function ConnectScreen({
             }}
           />
         )}
-        {padOpen && <CustomControlMapping send={bytes=>{
+        {padOpen && <CustomControlMapping onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');
         }} />}

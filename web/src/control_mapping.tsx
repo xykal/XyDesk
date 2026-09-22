@@ -2,13 +2,13 @@ import {MappingPicker} from './mapping_picker';
 import {canonicalKey} from './remote_pointer';
 import {useEffect,useRef,useState} from 'react';
 import {InputCodec} from './rtc';
-export type Mapping={id:string;label:string;kind:'key'|'mouse'|'scroll'|'scrollX'|'chord';code:number;keys?:number[];x:number;y:number;size:number;radius?:number};
+export type Mapping={id:string;label:string;kind:'key'|'mouse'|'scroll'|'scrollX'|'chord'|'toggle';code:number;keys?:number[];x:number;y:number;size:number;radius?:number};
 const KEY='xydesk.mapping.v1';
 const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 export function normalizeMappings(raw:unknown):Mapping[]{
  if(!Array.isArray(raw))return [];
  // Default radius = setengah ukuran (bulat penuh); layout tersimpan dengan radius sendiri dipertahankan.
- const ids=new Set<string>();return raw.slice(0,24).filter(x=>x&&typeof x.id==='string'&&x.id.length<=50&&!ids.has(x.id)&&ids.add(x.id)&&['key','mouse','scroll','scrollX','chord'].includes(x.kind)&&Number.isFinite(x.code)).map(x=>{const size=clamp(Number(x.size)||56,36,160);return {id:x.id.slice(0,50),label:'',kind:x.kind,keys:x.kind==='chord'?chordKeys(x.keys):undefined,code:clamp(Math.round(x.code),x.kind.startsWith('scroll')?-120:0,x.kind==='key'?255:x.kind==='mouse'?4:120),x:clamp(Number(x.x)||0,0,100),y:clamp(Number(x.y)||0,0,100),size,radius:clamp(Number.isFinite(x.radius)?x.radius:Math.round(size/2),0,80)};}).map(x=>({...x,label:mappingLabel(x)}));
+ const ids=new Set<string>();return raw.slice(0,24).filter(x=>x&&typeof x.id==='string'&&x.id.length<=50&&!ids.has(x.id)&&ids.add(x.id)&&['key','mouse','scroll','scrollX','chord','toggle'].includes(x.kind)&&Number.isFinite(x.code)).map(x=>{const size=clamp(Number(x.size)||56,36,160);return {id:x.id.slice(0,50),label:'',kind:x.kind,keys:x.kind==='chord'?chordKeys(x.keys):undefined,code:clamp(Math.round(x.code),x.kind.startsWith('scroll')?-120:0,x.kind==='key'?255:x.kind==='mouse'?4:120),x:clamp(Number(x.x)||0,0,100),y:clamp(Number(x.y)||0,0,100),size,radius:clamp(Number.isFinite(x.radius)?x.radius:Math.round(size/2),0,80)};}).map(x=>({...x,label:mappingLabel(x)}));
 }
 export function chordKeys(raw:unknown):number[]{
  if(!Array.isArray(raw))return [];
@@ -29,6 +29,7 @@ export function mappingLabel(m:{kind:string;code:number;keys?:number[]}):string 
  const key=(code:number)=>String(KEY_OPTIONS.find(x=>x[0]===code)?.[1]??`Key ${code}`);
  if(m.kind==='key')return key(m.code);
  if(m.kind==='chord')return chordKeys(m.keys).map(key).join(' + ')||'Pilih kombinasi';
+ if(m.kind==='toggle')return 'Ganti mode gerak';
  if(m.kind==='mouse')return ['Klik kiri','Klik kanan','Klik tengah','Kembali','Maju'][m.code]||'Mouse';
  return m.kind==='scrollX'?(m.code>0?'Scroll kanan':'Scroll kiri'):(m.code>0?'Scroll atas':'Scroll bawah');
 }
@@ -36,7 +37,7 @@ export function mappingLabel(m:{kind:string;code:number;keys?:number[]}):string 
 const defaults=()=>normalizeMappings([
  {id:'left',kind:'mouse',code:0,x:70,y:68,size:56},
  {id:'right',kind:'mouse',code:1,x:84,y:68,size:56},
- {id:'switch',kind:'mouse',code:2,x:77,y:84,size:52},
+ {id:'switch',kind:'toggle',code:0,x:77,y:84,size:52},
  {id:'up',kind:'scroll',code:120,x:16,y:70,size:52},
  {id:'down',kind:'scroll',code:-120,x:16,y:84,size:52},
 ]);
@@ -56,11 +57,11 @@ export class MappingHolds {
  private owners=new Map<string,Mapping>();private counts=new Map<string,number>();
  constructor(private send:(b:Uint8Array)=>void){}
  private actions(m:Mapping):Mapping[]{return (m.kind==='chord'?(m.keys||[]).map(code=>({...m,kind:'key' as const,code})): [m]).map(a=>a.kind==='key'?{...a,code:canonicalKey(a.code)}:a);}
- down(owner:string,m:Mapping){if(this.owners.has(owner))return;if(m.kind==='scroll'||m.kind==='scrollX'){this.send(InputCodec.scroll(m.kind==='scrollX'?m.code:0,m.kind==='scroll'?m.code:0));return;}this.owners.set(owner,m);for(const a of this.actions(m)){const key=a.kind+':'+a.code,n=this.counts.get(key)||0;this.counts.set(key,n+1);if(n===0)this.send(a.kind==='key'?InputCodec.key(a.code,true):InputCodec.mouseButton(a.code,true));}}
+ down(owner:string,m:Mapping){if(this.owners.has(owner)||m.kind==='toggle')return;if(m.kind==='scroll'||m.kind==='scrollX'){this.send(InputCodec.scroll(m.kind==='scrollX'?m.code:0,m.kind==='scroll'?m.code:0));return;}this.owners.set(owner,m);for(const a of this.actions(m)){const key=a.kind+':'+a.code,n=this.counts.get(key)||0;this.counts.set(key,n+1);if(n===0)this.send(a.kind==='key'?InputCodec.key(a.code,true):InputCodec.mouseButton(a.code,true));}}
  up(owner:string){const m=this.owners.get(owner);if(!m)return;this.owners.delete(owner);for(const a of this.actions(m).reverse()){const key=a.kind+':'+a.code,n=(this.counts.get(key)||1)-1;if(n){this.counts.set(key,n);}else{this.counts.delete(key);this.send(a.kind==='key'?InputCodec.key(a.code,false):InputCodec.mouseButton(a.code,false));}}}
  reset(){for(const owner of [...this.owners.keys()])this.up(owner);}
 }
-export function CustomControlMapping({send}:{send:(b:Uint8Array)=>void}){
+export function CustomControlMapping({send,onToggleMode}:{send:(b:Uint8Array)=>void;onToggleMode?:()=>void}){
  const [landscape,setLandscape]=useState(()=>innerWidth>innerHeight);const orientation=landscape?'landscape':'portrait';
  const load=()=>{try{const raw=JSON.parse(localStorage.getItem(KEY)||'{}')[orientation];return Array.isArray(raw)?normalizeMappings(raw):null;}catch{return null;}};
  const [items,setItems]=useState<Mapping[]>(()=>{return withPointerDefaults(load()??defaults());});
@@ -76,13 +77,13 @@ export function CustomControlMapping({send}:{send:(b:Uint8Array)=>void}){
  return <>
  <div className="mapping-tools" data-editing={edit} onPointerDown={e=>e.stopPropagation()}><button type="button" onClick={()=>{if(edit)save();else{setEdit(true);setInspector(false);}}}>{edit?'Simpan layout':'Atur tombol'}</button>{edit&&<button type="button" onClick={()=>setInspector(v=>!v)}>{inspector?'Tutup properti':'Properti tombol'}</button>}{notice&&<small role="status">{notice}</small>}</div>
  {items.map(m=><button key={m.id} type="button" aria-label={`Mapping ${m.label}`} className={`mapping-button${edit?' editing':''}${selected===m.id&&edit?' selected':''}`} style={{left:`clamp(calc(env(safe-area-inset-left) + ${m.size/2}px), ${m.x}%, calc(100% - env(safe-area-inset-right) - ${m.size/2}px))`,top:`clamp(calc(env(safe-area-inset-top) + ${m.size/2}px), ${m.y}%, calc(100% - env(safe-area-inset-bottom) - ${m.size/2}px))`,width:m.size,height:m.size,borderRadius:m.radius??Math.round(m.size/2)}}
- onPointerDown={e=>{e.stopPropagation();e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);if(edit){setSelected(m.id);const rect=e.currentTarget.getBoundingClientRect();drag.current={pointer:e.pointerId,id:m.id,dx:e.clientX-rect.left-rect.width/2,dy:e.clientY-rect.top-rect.height/2};}else holds.current!.down(m.id+':'+e.pointerId,m);}}
+ onPointerDown={e=>{e.stopPropagation();e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);if(edit){setSelected(m.id);const rect=e.currentTarget.getBoundingClientRect();drag.current={pointer:e.pointerId,id:m.id,dx:e.clientX-rect.left-rect.width/2,dy:e.clientY-rect.top-rect.height/2};}else if(m.kind==='toggle'){onToggleMode?.();}else holds.current!.down(m.id+':'+e.pointerId,m);}}
  onPointerMove={e=>{e.stopPropagation();const d=drag.current;if(!edit||!d||d.pointer!==e.pointerId||d.id!==m.id)return;const r=e.currentTarget.closest('.video-surface')!.getBoundingClientRect();setItems(old=>old.map(x=>x.id===m.id?{...x,x:clamp((e.clientX-r.left-d.dx)/r.width*100,0,100),y:clamp((e.clientY-r.top-d.dy)/r.height*100,0,100)}:x));}}
  onPointerUp={e=>{e.stopPropagation();drag.current=null;holds.current!.up(m.id+':'+e.pointerId);}}
  onPointerCancel={e=>{drag.current=null;holds.current!.up(m.id+':'+e.pointerId);}}
- onLostPointerCapture={e=>{holds.current!.up(m.id+':'+e.pointerId);}} onKeyDown={e=>{if(e.key!=='Enter'&&e.key!==' ')return;e.preventDefault();if(!edit&&!e.repeat)holds.current!.down('keyboard:'+m.id,m);}} onKeyUp={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();holds.current!.up('keyboard:'+m.id);}}} onContextMenu={e=>e.preventDefault()}>{m.kind==='key'||m.kind==='chord'?m.label:<MappingGlyph kind={m.kind} code={m.code}/>}</button>)}
+ onLostPointerCapture={e=>{holds.current!.up(m.id+':'+e.pointerId);}} onKeyDown={e=>{if(e.key!=='Enter'&&e.key!==' ')return;e.preventDefault();if(!edit&&!e.repeat){if(m.kind==='toggle')onToggleMode?.();else holds.current!.down('keyboard:'+m.id,m);}}} onKeyUp={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();holds.current!.up('keyboard:'+m.id);}}} onContextMenu={e=>e.preventDefault()}>{m.kind==='key'||m.kind==='chord'?m.label:<MappingGlyph kind={m.kind} code={m.code}/>}</button>)}
  {edit&&inspector&&<aside className="mapping-editor" onPointerDown={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}><strong>Edit layout · {orientation}</strong><p>Geser tombol ke posisi bebas. Saat mengedit, tombol tidak mengirim input ke PC.</p><button type="button" disabled={items.length>=24} onClick={()=>{const id=crypto.randomUUID();setItems(old=>[...old,{id,label:'E',kind:'key',code:69,x:50,y:50,size:56}]);setSelected(id);}}>Tambah tombol</button>
- {selectedItem&&<><p>Nama otomatis: <strong>{selectedItem.label}</strong></p><MappingPicker label="Aksi" options={[["key","Keyboard"],["mouse","Mouse"],["scroll","Scroll vertikal"],["scrollX","Scroll horizontal"],["chord","Shortcut kombinasi"]]} values={[selectedItem.kind]} onChange={([kind])=>update({kind:kind as Mapping['kind'],code:String(kind).startsWith('scroll')?120:kind==='mouse'?0:69})}/>
+ {selectedItem&&<><p>Nama otomatis: <strong>{selectedItem.label}</strong></p><MappingPicker label="Aksi" options={[["key","Keyboard"],["mouse","Mouse"],["scroll","Scroll vertikal"],["scrollX","Scroll horizontal"],["toggle","Switch mode"],["chord","Shortcut kombinasi"]]} values={[selectedItem.kind]} onChange={([kind])=>update({kind:kind as Mapping['kind'],code:String(kind).startsWith('scroll')?120:kind==='mouse'?0:69})}/>
  {selectedItem.kind==='key'?<MappingPicker label="Tombol" options={KEY_OPTIONS} values={[selectedItem.code]} onChange={([code])=>update({code:Number(code),label:String(KEY_OPTIONS.find(x=>x[0]===code)?.[1]||code)})}/>:selectedItem.kind==='chord'?<MappingPicker label="Kombinasi" multiple options={KEY_OPTIONS} values={selectedItem.keys||[]} onChange={keys=>update({keys:chordKeys(keys)})}/>:<MappingPicker label="Tombol mouse / scroll" options={selectedItem.kind==='mouse'?[[0,'Kiri'],[1,'Kanan'],[2,'Tengah'],[3,'Samping kembali'],[4,'Samping maju']]:selectedItem.kind==='scrollX'?[[120,'Ke kanan'],[-120,'Ke kiri']]:[[120,'Ke atas'],[-120,'Ke bawah']]} values={[selectedItem.code]} onChange={([code])=>update({code:Number(code)})}/>}
 
  <label>Ukuran {selectedItem.size}px<input type="range" min="36" max="160" value={selectedItem.size} onChange={e=>update({size:Number(e.target.value)})}/></label><label>Radius {selectedItem.radius??Math.round(selectedItem.size/2)}px<input type="range" min="0" max="80" value={selectedItem.radius??Math.round(selectedItem.size/2)} onChange={e=>update({radius:Number(e.target.value)})}/></label><button type="button" onClick={()=>{setItems(old=>old.filter(x=>x.id!==selected));setSelected('');}}>Hapus tombol</button></>}
@@ -94,6 +95,7 @@ export function CustomControlMapping({send}:{send:(b:Uint8Array)=>void}){
 // Label teks tetap tersedia melalui aria-label untuk pembaca layar dan editor.
 function MappingGlyph({kind,code}:{kind:Mapping['kind'];code:number}) {
  if(kind==='mouse') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 2v8M8.5 7.5h3.5M12 7.5h3.5"/><circle cx={code===0?'9.5':code===1?'14.5':'12'} cy="5.5" r="1.35"/></svg>;
+ if(kind==='toggle') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10l-3-3M17 17H7l3 3M17 7l-3 3M7 17l3-3"/></svg>;
  if(kind==='scroll' || kind==='scrollX') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true">{kind==='scrollX'?<><path d="M5 12h14M9 8l-4 4 4 4M15 8l4 4-4 4"/><circle cx="12" cy="12" r="2"/></>:<><path d={code>0?'M12 19V5M7 10l5-5 5 5':'M12 5v14M7 14l5 5 5-5'}/><circle cx="12" cy="12" r="2"/></>}</svg>;
  return <span className="mapping-key-glyph">{mappingLabel({kind,code})}</span>;
 }
