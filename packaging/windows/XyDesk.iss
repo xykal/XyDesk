@@ -12,7 +12,7 @@
 #endif
 
 ; ============================================================================
-; XyDesk Installer — Wizard utuh Windows (Tauri Desktop + Rust Engine)
+; XyDesk Installer — Wizard utuh native Win32 C++ + Rust Engine
 ; Driver VDD: ge9/IddSampleDriver (MIT + CC0)
 ; Driver Audio/Mic: VB-Audio Software / VB-CABLE (Freeware)
 ; License tampilan: LICENSE (XyDesk), license-ge9.txt (VDD), license-vbcable.txt (Audio)
@@ -96,7 +96,7 @@ Name: "launchapp"; \
   GroupDescription: "Setelah instalasi:"
 
 [Files]
-; Aplikasi utama (shell Tauri + engine Host) — selalu dipasang.
+; Aplikasi utama (panel native C++ + engine Rust) — selalu dipasang.
 Source: "{#SourceDir}\*"; \
   DestDir: "{app}"; \
   Flags: ignoreversion recursesubdirs createallsubdirs; \

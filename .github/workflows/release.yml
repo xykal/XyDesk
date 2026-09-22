@@ -133,7 +133,7 @@ jobs:
           # Build penuh (commit bump versi / workflow_dispatch).
           artifact_names="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$build_run_id/artifacts" \
             --jq '.artifacts[].name')"
-          for required in XyDesk-Android-APK XyDesk-Windows-x64 XyDesk-Windows-arm64; do
+          for required in XyDesk-Android-APK XyDesk-Windows-x64; do
             if ! echo "$artifact_names" | grep -qx "$required"; then
               echo "::warning::Build run $build_run_id tidak memuat artefak $required — run itu build terfilter, bukan bump versi/penuh. Rilis dilewati; akan jalan kala Build penuh sukses."
               echo "should_release=false" >> "$GITHUB_OUTPUT"
@@ -196,23 +196,18 @@ jobs:
           BUILD_RUN_ID: ${{ needs.prepare.outputs.build_run_id }}
         run: |
           set -euo pipefail
-          mkdir -p incoming/android incoming/windows-x64 incoming/windows-arm64 dist
+          mkdir -p incoming/android incoming/windows-x64 dist
           gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
             --name XyDesk-Android-APK --dir incoming/android
           gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
             --name XyDesk-Windows-x64 --dir incoming/windows-x64
-          gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
-            --name XyDesk-Windows-arm64 --dir incoming/windows-arm64
           cp incoming/android/XyDesk-Android-arm64-v8a.apk dist/
           cp incoming/android/XyDesk-Android-armeabi-v7a.apk dist/
-          # Aplikasi Windows dibungkus zip HANYA sebagai bahan installer;
-          # zip ini tidak diterbitkan sebagai aset rilis.
+          # Satu paket Windows native C++ + engine Rust sebagai bahan installer.
           (cd incoming/windows-x64 && zip -q -r ../../dist/app-windows-x64.zip .)
-          (cd incoming/windows-arm64 && zip -q -r ../../dist/app-windows-arm64.zip .)
           test -s dist/XyDesk-Android-arm64-v8a.apk
           test -s dist/XyDesk-Android-armeabi-v7a.apk
           test -s dist/app-windows-x64.zip
-          test -s dist/app-windows-arm64.zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -228,7 +223,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x64, arm64]
+        arch: [x64]
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
@@ -244,13 +239,12 @@ jobs:
         run: |
           $bundle = Join-Path $env:RUNNER_TEMP "xydesk-${{ matrix.arch }}"
           New-Item -ItemType Directory -Force -Path $bundle | Out-Null
-          # Artefak Windows kini: shell Electron (XyDesk.exe) + engine Rust
-          # yang dibundel electron-builder ke resources/engine/xydesk-host.exe.
-          # GUI native Win32 tidak lagi dikemas.
+          # Artefak Windows: satu UI native C++ (XyDesk.exe) + engine Rust
+          # (xydesk-host.exe) dalam bundle yang sama.
           Expand-Archive "incoming/clients/app-windows-${{ matrix.arch }}.zip" $bundle
           if (-not (Test-Path "$bundle/XyDesk.exe")) { throw "XyDesk.exe tidak ada di bundle" }
-          if (-not (Test-Path "$bundle/resources/engine/xydesk-host.exe")) {
-            throw "engine tidak dibundel (resources/engine/xydesk-host.exe hilang)"
+          if (-not (Test-Path "$bundle/xydesk-host.exe")) {
+            throw "engine tidak dibundel (xydesk-host.exe hilang)"
           }
           "BUNDLE_PATH=$bundle" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
       - name: Bundle driver VDD untuk installer (opt-in)
@@ -421,7 +415,6 @@ jobs:
           # sudah menyatu di dalamnya, jadi host exe & portable zip tidak
           # diterbitkan terpisah.
           cp artifacts/release-installer-x64/XyDesk-x64.exe dist/
-          cp artifacts/release-installer-arm64/XyDesk-arm64.exe dist/
           # Banner dirender ulang setiap rilis: versi, build, dan tanggal
           # ditulis otomatis di atas art dasar HD (tool/art/banner.py).
           pip install --quiet Pillow
@@ -434,7 +427,7 @@ jobs:
           cd dist
           sha256sum XyDesk-Android-arm64-v8a.apk \
             XyDesk-Android-armeabi-v7a.apk \
-            XyDesk-x64.exe XyDesk-arm64.exe \
+            XyDesk-x64.exe \
             xydesk_update_banner_1024x512.jpg \
             > SHA256SUMS.txt
           arm64_sha="$(sha256sum XyDesk-Android-arm64-v8a.apk | cut -d' ' -f1)"
@@ -443,10 +436,8 @@ jobs:
           armv7_bytes="$(stat -c%s XyDesk-Android-armeabi-v7a.apk)"
           winx64_sha="$(sha256sum XyDesk-x64.exe | cut -d' ' -f1)"
           winx64_bytes="$(stat -c%s XyDesk-x64.exe)"
-          winarm64_sha="$(sha256sum XyDesk-arm64.exe | cut -d' ' -f1)"
-          winarm64_bytes="$(stat -c%s XyDesk-arm64.exe)"
           export arm64_sha arm64_bytes armv7_sha armv7_bytes
-          export winx64_sha winx64_bytes winarm64_sha winarm64_bytes
+          export winx64_sha winx64_bytes
           python3 - <<'PY'
           import json, os
           repository = os.environ['GITHUB_REPOSITORY']
@@ -481,18 +472,13 @@ jobs:
                       "bytes": int(os.environ["armv7_bytes"]),
                   },
               },
-              # Installer Windows (Inno Setup) untuk updater shell desktop.
+              # Satu installer Windows native C++ + engine Rust.
               # Aditif: klien Android mengabaikan kunci ini.
               "windows": {
                   "x64": {
                       "url": f"{base}/XyDesk-x64.exe",
                       "sha256": os.environ["winx64_sha"],
                       "bytes": int(os.environ["winx64_bytes"]),
-                  },
-                  "arm64": {
-                      "url": f"{base}/XyDesk-arm64.exe",
-                      "sha256": os.environ["winarm64_sha"],
-                      "bytes": int(os.environ["winarm64_bytes"]),
                   },
               },
               "release_url": f"https://github.com/{repository}/releases/tag/{tag}",
@@ -515,7 +501,7 @@ jobs:
           for asset in \
             CHANGELOG.md SHA256SUMS.txt update.json \
             XyDesk-Android-arm64-v8a.apk XyDesk-Android-armeabi-v7a.apk \
-            XyDesk-x64.exe XyDesk-arm64.exe \
+            XyDesk-x64.exe \
             xydesk_update_banner_1024x512.jpg
           do
             gh release delete-asset "$RELEASE_TAG" "$asset" --yes 2>/dev/null || true
@@ -558,8 +544,7 @@ jobs:
 
             | Platform | Berkas | Keterangan |
             |---|---|---|
-            | Windows Intel/AMD | `XyDesk-x64.exe` | Kebanyakan PC & laptop |
-            | Windows Arm | `XyDesk-arm64.exe` | Snapdragon / Windows on Arm |
+            | Windows x64 | `XyDesk-x64.exe` | PC & laptop Intel/AMD |
             | Android 64-bit | `XyDesk-Android-arm64-v8a.apk` | HP Android modern |
             | Android 32-bit | `XyDesk-Android-armeabi-v7a.apk` | Perangkat ARMv7 lama |
 

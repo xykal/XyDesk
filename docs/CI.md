@@ -7,11 +7,12 @@ perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
 
 | Berkas | Pemicu | Hasil |
 |---|---|---|
-| `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja — tidak otomatis oleh push | gerbang mutu per-area, APK Android, `XyDesk.exe` + `XyDesk-Host.exe`, bundle Web |
+| `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja — tidak otomatis oleh push | gerbang mutu per-area, APK Android, satu bundle Windows native C++ + engine Rust, bundle Web |
 | `.github/workflows/deploy-signaling.yml` | **manual** (`workflow_dispatch`) | deploy Cloudflare Worker API/signaling |
 | `.github/workflows/deploy-web.yml` | Build `main` sukses, manual recovery | deploy bundle Flutter Web terverifikasi ke Cloudflare Static Assets |
-| `.github/workflows/release.yml` | Build `main` sukses + nilai `version` berubah (menolak SHA yang tertinggal dari `main`), manual recovery via `release_sha` | GitHub Release multi-platform + push OneSignal |
-| `.github/workflows/build-desktop.yml` | **manual** (`workflow_dispatch`) | kemasan shell desktop Tauri v2 + Next.js |
+| `.github/workflows/release.yml` | Build `main` sukses + nilai `version` berubah (menolak SHA yang tertinggal dari `main`), manual recovery via `release_sha` | GitHub Release x64 Windows + Android + push OneSignal |
+| `.github/workflows/prepare-host-windows.yml` | **manual** (`workflow_dispatch`) | validasi/paket Native C++ x64 manual |
+| `.github/workflows/prepare-host-nsis.yml` | **manual** (`workflow_dispatch`) | installer NSIS Native C++ x64 dari payload terverifikasi |
 | `.github/workflows/deploy-news.yml` | **manual** (`workflow_dispatch`) | deploy Worker berita + migrasi D1 |
 | `.github/workflows/test-lab.yml` | **manual** (`workflow_dispatch`) | uji lab perangkat |
 | ~~`.github/workflows/verify-push-auth.yml`~~ | **dihapus** operator 5 Sep 2026 (`b4ce4a4`) — resep pemulihan ada di bawah | dulu: audit izin push, commit wajib memuat `Izin: <ID>` berstatus `DISETUJUI` di `AGENT_BOARD.md` |
@@ -292,9 +293,8 @@ Aset Release:
 
 - `XyDesk-Android-arm64-v8a.apk` — client Android 64-bit;
 - `XyDesk-Android-armeabi-v7a.apk` — client Android 32-bit;
-- `XyDesk-Windows-x64-Setup.exe` dan `XyDesk-Windows-arm64-Setup.exe` — installer Windows terpadu;
-- `XyDesk-Windows-x64.zip` dan `XyDesk-Windows-arm64.zip` — paket portable terpadu;
-- `XyDesk-Host-x64.exe` dan `XyDesk-Host-arm64.exe` — engine standalone untuk otomasi;
+- `XyDesk-x64.exe` — satu installer Windows native C++ + engine Rust;
+- `XyDesk-Windows-x64` — bundle portable sebelum installer;
 - `XyDesk-Web.zip` — client Web;
 - `SHA256SUMS.txt` — checksum unduhan;
 - `update.json` — manifest update resmi untuk perbandingan build dan verifikasi
