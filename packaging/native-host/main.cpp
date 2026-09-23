@@ -19,6 +19,10 @@
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0A00
 #endif
+// Berkas ini UTF-8 dan memuat tanda baca non-ASCII di teks panel (·, —, …).
+// MSVC membacanya sebagai codepage sistem tanpa flag ini, dan hasilnya mojibake
+// di jendela pengguna; karena itu setiap pemanggilan cl.exe di workflow memakai
+// /utf-8, dan tool/check_panel_text.py menjaga hasilnya.
 #ifndef _WIN32_IE
 #define _WIN32_IE 0x0A00
 #endif
