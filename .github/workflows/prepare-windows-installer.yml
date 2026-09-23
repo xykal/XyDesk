@@ -95,7 +95,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
 
           wix build -arch x64 -ext WixToolset.UI.wixext `
-            "-dSourceDir=$source" `
+            -d "SourceDir=$source" `
             -o (Join-Path $out 'XyDesk-x64.msi') `
             packaging/windows/XyDesk.generated.wxs
           if ($LASTEXITCODE -ne 0) { throw "WiX MSI gagal: $LASTEXITCODE" }

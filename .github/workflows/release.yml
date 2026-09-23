@@ -390,7 +390,7 @@ jobs:
             --version $env:VERSION
           if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
           wix build -arch x64 -ext WixToolset.UI.wixext `
-            "-dSourceDir=$env:BUNDLE_PATH" `
+            -d "SourceDir=$env:BUNDLE_PATH" `
             -o "$out\XyDesk-${{ matrix.arch }}.msi" `
             "$env:RUNNER_TEMP\XyDesk.generated.wxs"
           if ($LASTEXITCODE -ne 0) { throw "WiX MSI gagal: $LASTEXITCODE" }

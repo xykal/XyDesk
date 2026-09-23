@@ -631,7 +631,10 @@ jobs:
           $wxs = Join-Path $env:RUNNER_TEMP 'XyDesk.generated.wxs'
           python packaging/windows/generate_wix.py --source-dir $fake --output $wxs --version 0.0.0
           if ($LASTEXITCODE -ne 0) { throw 'Manifest WiX gagal dibuat' }
-          wix build -arch x64 -ext WixToolset.UI.wixext "-dSourceDir=$fake" -o "$env:RUNNER_TEMP\XyDesk-lint.msi" $wxs
+          # Parser WiX v4 menolak bentuk menempel `-dSourceDir=...` (WIX0118:
+          # "Additional argument ... was unexpected", run 35889077917) — `-d`
+          # menerima `name=value` sebagai token TERPISAH.
+          wix build -arch x64 -ext WixToolset.UI.wixext -d "SourceDir=$fake" -o "$env:RUNNER_TEMP\XyDesk-lint.msi" $wxs
           if ($LASTEXITCODE -ne 0) { throw "WiX lint gagal: $LASTEXITCODE" }
           $makensisCommand = Get-Command makensis.exe -ErrorAction SilentlyContinue
           if ($makensisCommand) {
