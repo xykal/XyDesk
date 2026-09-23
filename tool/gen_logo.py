@@ -8,8 +8,6 @@ matematis yang konsisten:
   - `android/app/src/main/res/mipmap-*/ic_launcher.png` (legacy)
   - `android/app/src/main/res/mipmap-*/ic_launcher_foreground.png` (adaptive)
   - `packaging/windows/xydesk.ico`, `app.ico` (Windows installer & binary)
-  - `desktop/assets/icon.ico`, `desktop/electron/tray.ico`
-  - `desktop/src-tauri/icons/*` (icon.ico, tray.ico, PNGs)
 
 Aturan desain XyDesk:
   - Logo adalah glyph "X" futuristik berlapis ganda dengan gradien ungu neon.
@@ -268,15 +266,6 @@ def main() -> None:
     logo_1024.save(ROOT / "web/public/logo.png")
     logo_1024.save(ROOT / "web/public/logo-512.png")
     print("OK web/public/logo.png (1024x1024 from design/logo-asli.png)")
-    # Desktop logo: 256 dari design/logo-asli.png via _from_design (persegi, proporsional, transparan)
-    try:
-        (ROOT / "desktop/public").mkdir(parents=True, exist_ok=True)
-        _from_design(256, fill=0.82).save(ROOT / "desktop/public/logo.png", "PNG")
-        print("OK desktop/public/logo.png (256x256 from design/logo-asli.png via _from_design)")
-    except Exception as e:
-        print(f"[WARN] gagal generate desktop logo dari design/logo-asli.png: {e}")
-        build_source(256, tile=False, fill=0.88).save(ROOT / "desktop/public/logo.png")
-        print("OK desktop/public/logo.png (256 fallback)")
 
     # 2. PWA 192x192
     logo_192 = _from_design(192, fill=0.88)

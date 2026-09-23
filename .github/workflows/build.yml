@@ -116,12 +116,15 @@ jobs:
             # `pubspec.yaml` ikut di sini: bump versi rilis menaikkan nomor
             # di host juga, jadi rantai host/client harus dibangun ulang —
             # kalau tidak, release.yml tidak menemukan artefak Windows.
-            # Perubahan legacy `desktop/**` tetap dicatat sebagai area host agar
-            # migrasi UI tidak lolos tanpa gerbang; produk Windows utama
-            # sekarang adalah panel native C++ + engine Rust.
+            # Produk Windows = panel native C++ + engine Rust (shell
+            # Tauri/Electron dihapus 2026-09-23 atas keputusan pemilik).
             host:
               - 'host/**'
-              - 'desktop/**'
+              # Panel native Windows ikut area host: dialah UI yang benar-benar
+              # dipasang installer, dan uji tata letaknya jalan di job host.
+              - 'packaging/native-host/**'
+              - 'packaging/tests/**'
+              - 'tool/check_panel_shape.py'
               - 'pubspec.yaml'
             web:
               - 'web/**'
@@ -148,7 +151,6 @@ jobs:
               - '.github/workflows/**'
               - 'pubspec.yaml'
               - 'web/package.json'
-              - 'desktop/package.json'
               - 'host/Cargo.toml'
 
   # ── 1a. Gerbang kompilasi & mutu client Flutter ──
@@ -467,6 +469,12 @@ jobs:
         working-directory: host
         run: cargo test --all-targets
 
+      # Tata letak panel digambar oleh kode yang sama dengan yang dipakai EXE
+      # Windows; bagian angkanya murni C++ tanpa API Windows, jadi bisa
+      # diperiksa di Linux lebih dulu sebelum runner Windows repot.
+      - name: Uji tata letak panel native (tanpa Windows)
+        run: packaging/tests/test-native-panel-layout.sh
+
   # ── 3. Produk Windows: satu aplikasi native C++ + engine Rust ──
   # UI/tray yang terlihat pengguna adalah Win32 C++ milik XyDesk. Engine
   # streaming tetap Rust sebagai child process tersembunyi agar crash UI dan
@@ -650,6 +658,46 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "NSIS lint gagal: $LASTEXITCODE" }
           if (-not (Test-Path "$out\XyDesk-x64.exe")) { throw 'Output NSIS x64 tidak ditemukan' }
           Write-Host 'OK: MSI dan NSIS lolos compile-check.'
+
+      - name: Kompilasi panel native dan periksa bentuk jendelanya
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          if (-not (Test-Path $vswhere)) { throw 'vswhere.exe tidak ditemukan' }
+          $vcvars = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC/Auxiliary/Build/vcvars64.bat' | Select-Object -First 1
+          if (-not $vcvars) { throw 'Toolchain MSVC x64 tidak ditemukan' }
+          $out = Join-Path $env:RUNNER_TEMP 'panel-check'
+          New-Item -ItemType Directory -Path $out -Force | Out-Null
+          $src = (Resolve-Path 'packaging/native-host/main.cpp').Path
+          $rc = (Resolve-Path 'packaging/native-host/main.rc').Path
+          $exe = Join-Path $out 'XyDesk Control Panel.exe'
+          $res = Join-Path $out 'xydesk.res'
+          $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
+          cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw 'Panel native gagal dikompilasi untuk pemeriksaan bentuk' }
+
+          # 1) Tata letak dari EXE yang benar-benar dikompilasi — bukan dari
+          #    sumber yang dibaca ulang — termasuk hasil hit-test klik.
+          $probe = Join-Path $out 'panel-probe.json'
+          & $exe --panel-probe $probe
+          if ($LASTEXITCODE -ne 0) { throw "Panel probe gagal: $LASTEXITCODE" }
+          $layout = Get-Content $probe -Raw | ConvertFrom-Json
+          Write-Host ($layout | ConvertTo-Json -Compress)
+          if ($layout.windowWidth -ne 608 -or $layout.windowHeight -ne 616) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
+          if ($layout.panelWidth -ne 560 -or $layout.panelHeight -ne 568) { throw 'Ukuran panel tidak sesuai' }
+          if ($layout.radiusPanel -ne 16) { throw "Radius sudut panel bukan 16: $($layout.radiusPanel)" }
+          if ($layout.shadowMargin -ne 24) { throw "Margin bayangan bukan 24: $($layout.shadowMargin)" }
+          $hits = ($layout.hits -join ',')
+          if ($hits -ne 'Close,Start,OpenLog,None,TitleBar') { throw "Hit-test panel tidak sesuai: $hits" }
+
+          # 2) Bentuk yang digambar aplikasi sendiri: busur sudut, tepi halus,
+          #    bayangan. Diperiksa per piksel oleh tool/check_panel_shape.py.
+          $snapshot = Join-Path $out 'panel.bmp'
+          & $exe --panel-snapshot $snapshot
+          if ($LASTEXITCODE -ne 0) { throw "Panel snapshot gagal: $LASTEXITCODE" }
+          python tool/check_panel_shape.py $snapshot
+          if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
 
   summary:
     name: Ringkasan

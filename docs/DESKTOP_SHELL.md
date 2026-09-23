@@ -1,5 +1,11 @@
 # XyDesk Desktop — Native Win32 C++ + Rust Engine
 
+> **Catatan 2026-09-23:** folder `desktop/` (shell Tauri + Electron lama) sudah
+> dihapus atas keputusan pemilik repo. Yang dikirim ke pengguna adalah panel
+> native C++ di `packaging/native-host/` — dokumen ini memang sudah
+> menggambarkan panel itu, jadi isinya tetap berlaku. Sisa rujukan lama di
+> changelog dan dokumen audit dibiarkan sebagai catatan sejarah.
+
 ## Posisi dalam arsitektur
 
 XyDesk Desktop adalah satu **Control Panel Windows native Win32 C++** yang
@@ -74,6 +80,46 @@ harus diperlakukan sebagai data sensitif.
 
 ---
 
+## Jendela: digambar sendiri, bukan bentuk bawaan Windows
+
+Panel ini tidak memakai caption, border, atau pembulatan bawaan Windows
+(justru tidak memakainya: `WS_POPUP`, tanpa `WS_CAPTION`). Seluruh bentuk
+jendela — judul, tombol tutup, sudut membulat, bayangan — digambar aplikasi
+ke permukaan 32-bit lalu ditempelkan sebagai jendela berlapis
+(`WS_EX_LAYERED` + `UpdateLayeredWindow`). Konsekuensinya:
+
+- Tampil **sama di Windows 10 dan Windows 11** — bukan bergantung pada
+  `DWMWA_WINDOW_CORNER_PREFERENCE` yang hanya ada di Windows 11 dan radiusnya
+  tidak bisa diatur.
+- Sudut memakai **busur radius 16** (skala radius desain XyDesk 8/12/16/20,
+  lihat `docs/DESIGN.md`), tepinya dihaluskan dengan cakupan piksel — bukan
+  dipotong keras seperti `SetWindowRgn`.
+- Bayangan digambar aplikasi (sebaran 26 px, kekuatan 48%), jadi tepi jendela
+  tetap terbaca di dinding desktop gelap.
+- Angka tata letak hidup di satu tempat: `packaging/native-host/layout.h`.
+  Sumber yang sama dipakai menggambar, hit-test klik, urutan Tab, dan uji.
+- Jendela bisa digeser dari area judul (`WM_NCHITTEST` → `HTCAPTION`), dan
+  klik di luar bentuk membiarkan desktop di bawahnya bekerja
+  (`HTTRANSPARENT`).
+- Dukungan DPI: `WM_DPICHANGED` menghitung ulang tata letak dan font, lalu
+  jendela dipusatkan kembali tanpa mengubah ukuran panel secara liar.
+
+Bentuknya bukan klaim di dokumen: EXE-nya punya dua jalur pemeriksaan yang
+dipakai CI Windows (`build.yml`, job `Lint MSI dan NSIS Installer`):
+
+```powershell
+XyDesk` Control Panel.exe --panel-probe    panel-probe.json  # ukuran + hit-test
+XyDesk` Control Panel.exe --panel-snapshot panel.bmp         # gambar apa adanya
+python tool/check_panel_shape.py panel.bmp                  # baca per piksel
+```
+
+`--panel-snapshot` menulis panel apa adanya sebagai BMP 32-bit; pemeriksanya
+membuktikan sudut benar-benar busur radius 16, tepinya punya piksel cakupan
+sebagian (bukti penghalusan), dan bayangan memudar habis di dalam margin.
+Tata letak angkanya juga diuji tanpa Windows di
+`packaging/tests/test-native-panel-layout.sh` (79 pemeriksaan, jalan di job
+`Uji Logika Host (Rust)`).
+
 ## Pengembangan & Build
 
 Build engine Rust dan panel native dilakukan oleh workflow Windows. Prasyarat
@@ -91,6 +137,7 @@ python -m py_compile packaging/windows/generate_wix.py
 python packaging/windows/generate_wix.py --help
 cargo fmt --check --manifest-path host/Cargo.toml
 cargo check --manifest-path host/Cargo.toml
+./packaging/tests/test-native-panel-layout.sh   # tata letak panel, tanpa Windows
 ```
 
 Kompilasi C++ panel harus memakai static MSVC runtime (`/MT`). Build final tidak

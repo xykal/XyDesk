@@ -54,7 +54,7 @@
 |---|---|---|
 | **Client Flutter** | `lib/`, `test/`, `assets/`, `android/`, `pubspec.yaml` | UI aplikasi, fitur sesi, panel gaming, l10n |
 | **Host Engine** | `host/` | Rust: capture DXGI, encode, WebRTC, audio, control API, test loopback |
-| **Desktop Shell** | `desktop/` | Electron + Next.js shell (engine tetap Rust — jangan pindahkan logika ke shell) |
+| **Desktop Shell** | `packaging/native-host/` | Panel Windows native C++ (jendela, kontrol, tray). Shell Tauri/Electron lama di `desktop/` **dihapus 2026-09-23** atas keputusan pemilik — engine tetap Rust, jangan pindahkan logika ke panel |
 | **Web** | `web/`, `web_deploy/` | Landing, download, legal, blog, client tamu, OG renderer |
 | **Backend / Edge** | `cloudflare/`, `signaling/` | Worker signaling, auth (OTP/JWT/OAuth), TURN, D1, rate-limit |
 | **News & Konten** | `news/`, `web/public/news/` | Artikel berita rilis — WAJIB ikut `docs/NEWS_STYLE.md`: detail lengkap (apa + kenapa), changelog versi pengguna, screenshot asli; penulis `Haekal Saputra` |

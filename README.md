@@ -18,7 +18,7 @@
 
 [![Flutter](https://img.shields.io/badge/Client-Flutter_3.44+-02569B?logo=flutter&logoColor=white&style=flat-square)](https://flutter.dev)
 [![Rust](https://img.shields.io/badge/Host_Engine-Rust_1.80+-000000?logo=rust&logoColor=white&style=flat-square)](host/)
-[![Tauri](https://img.shields.io/badge/Desktop_Shell-Tauri_v2-24C8D5?logo=tauri&logoColor=white&style=flat-square)](desktop/)
+[![Win32](https://img.shields.io/badge/Panel_Windows-Win32_C++-0078D6?logo=windows&logoColor=white&style=flat-square)](packaging/native-host/)
 [![TypeScript](https://img.shields.io/badge/Web_&_Edge-TypeScript_5-3178C6?logo=typescript&logoColor=white&style=flat-square)](web/)
 [![Cloudflare](https://img.shields.io/badge/Edge_Infrastructure-Workers_+_D1_+_DO-F38020?logo=cloudflare&logoColor=white&style=flat-square)](cloudflare/)
 [![WebRTC](https://img.shields.io/badge/Protocol-WebRTC_DTLS--SRTP-333333?logo=webrtc&logoColor=white&style=flat-square)](https://webrtc.org)
@@ -122,11 +122,8 @@ npm ci
 npm test
 npm run dev
 
-# Menjalankan Desktop Shell (Tauri v2 + Next.js)
-cd ../desktop
-npm ci
-npm test
-npm run tauri dev
+# Memeriksa tata letak panel Windows (tanpa Windows, murni angka)
+./packaging/tests/test-native-panel-layout.sh
 ```
 
 ---
@@ -135,7 +132,7 @@ npm run tauri dev
 
 - **Zero Divider Line**: Dilarang menyisipkan `Divider()` atau `VerticalDivider()`. Pemisah visual murni menggunakan jarak token `Gap` (16dp, 24dp, 32dp) dan gradasi permukaan `FadeEdge`.
 - **High Transparency Assets**: Seluruh ilustrasi diuji otomatis oleh `tool/audit_assets.py` untuk memastikan kompatibilitas tema dan transparansi tepi yang bersih.
-- **Konsistensi Lintas-Dokumen**: Nomor versi di seluruh manifest (`pubspec.yaml`, `host/Cargo.toml`, `desktop/src-tauri/tauri.conf.json`, `web/package.json`, dan `CHANGELOG.md`) divalidasi secara ketat oleh `tool/check_version.py`.
+- **Konsistensi Lintas-Dokumen**: Nomor versi di seluruh manifest (`pubspec.yaml`, `host/Cargo.toml`, `web/package.json`, dan `CHANGELOG.md`) divalidasi secara ketat oleh `tool/check_version.py`.
 - **Inventaris Lisensi Pihak Ketiga**: Seluruh dependensi tercatat dan terverifikasi secara hukum di [`docs/THIRD-PARTY-LICENSES.md`](docs/THIRD-PARTY-LICENSES.md).
 
 ---

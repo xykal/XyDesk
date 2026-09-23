@@ -236,6 +236,38 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 
 ## Untuk: Desktop Shell
 
+- [x] (Operator - XyDesk Team, 2026-09-23, sesi WINPANEL) — **Jendela panel
+  digambar sendiri, dan shell Tauri/Electron dihapus.** Perintah pemilik di
+  chat: sudut jendela harus custom (bukan pembulatan bawaan Windows), dan
+  `desktop/` (Tauri + Electron) dihapus — cukup panel native C++. Panel kini
+  `WS_POPUP` berlapis dengan `UpdateLayeredWindow`: caption/border Windows
+  dilepas, judul + tombol tutup digambar sendiri, sudut busur radius 16, tepi
+  dihaluskan (bukan `SetWindowRgn`), bayangan sendiri, dan seluruh isi panel
+  (kartu status, kartu identitas, lima tombol) digambar manual dengan hover,
+  navigasi Tab/Enter/Esc, serta notifikasi tindakan. Tata letak pindah ke
+  `packaging/native-host/layout.h` supaya gambar, hit-test, urutan Tab, dan
+  uji memakai angka yang sama. Bukti: 79 pemeriksaan tata letak tanpa Windows,
+  kompilasi mingw bersih, 8 tangkapan layar Wine (hover/klik/flash/restart/
+  close-to-tray), `--panel-probe` + `--panel-snapshot` + `tool/check_panel_shape.py`
+  lulus (radius terukur 14,2–14,8 px, piksel cakupan sebagian di tepi busur,
+  bayangan memudar habis). **Batas jujur:** Wine bukan Windows — tray, Alt+Tab,
+  dan perilaku caption harus diuji di mesin Windows asli; **dua step CI baru
+  (`Uji tata letak panel native` di job host, `Kompilasi panel native dan
+  periksa bentuk jendelanya` di job lint installer) belum pernah jalan di
+  runner** karena push tidak memicu Actions. Bukti lengkap:
+  `docs/qa/native-ui-windows-2026-09-23.md`.
+
+- [ ] (Operator - XyDesk Team, 2026-09-23) — **Sisa rujukan `desktop/` di
+  dokumen lama.** Yang sudah dibersihkan: CI, `tool/*`, `README.md`,
+  `AGENT.md`, `docs/DESKTOP_SHELL.md`, komentar di `host/src/*.rs`.
+  Yang sengaja dibiarkan: changelog versi lama dan `docs/AUDIT_*`
+  (catatan sejarah). Sisa yang perlu disisir role Docs & Audit:
+  `docs/OPERATOR-ROADMAP-6.8.0.md` (dua penyebutan `desktop/` sebagai lokasi
+  grep `update.json` dan "garis pemisah web/desktop"), `docs/DESIGN.md`,
+  `docs/PROTOCOL.md`, `docs/BRAND_ASSETS.md`, dan `docs/qa/host-finish-*.json`.
+  Sekalian: `docs/qa/native-ui-windows-2026-09-23.md` menyebut Wine, bukan
+  Windows — kalau ada sesi uji lab Windows, hasilnya layak ditambahkan ke sana.
+
 - [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**
   Shell desktop sekarang berjalan di atas Tauri v2 (Rust + native WebView2)
   dengan direktori `desktop/src-tauri/`. Frontend Next.js dihubungkan lewat

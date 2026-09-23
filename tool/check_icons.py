@@ -23,9 +23,7 @@ RES = ROOT / "android" / "app" / "src" / "main" / "res"
 DENSITIES = ("mdpi", "hdpi", "xhdpi", "xxhdpi", "xxxhdpi")
 ICOS = (
     "packaging/windows/xydesk.ico",
-    "desktop/electron/tray.ico",
-    "desktop/src-tauri/icons/icon.ico",
-    "desktop/src-tauri/icons/tray.ico",
+    "packaging/native-host/xydesk.ico",
 )
 BG_XML = RES / "values" / "ic_launcher_background.xml"
 BG_COLOR = "#00000000"

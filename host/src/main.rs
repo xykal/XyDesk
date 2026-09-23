@@ -397,7 +397,7 @@ async fn main() -> Result<()> {
         anyhow::bail!("--token or --managed-auth required");
     }
 
-    // ── Control API lokal (shell desktop: Electron + Next.js, desktop/) ──
+    // ── Control API lokal (panel native C++: packaging/native-host/) ──
     // Keadaan mesin ini dibagikan ke loop signaling di bawah DAN ke server
     // HTTP (lihat control.rs). Token dicetak sekali — hanya shell yang
     // men-spawn proses ini yang membacanya.
