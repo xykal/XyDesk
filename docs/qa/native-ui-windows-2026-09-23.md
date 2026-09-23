@@ -129,8 +129,33 @@ Nilai-nilai itu **identik** dengan tangkapan Wine di mesin sesi — bukti bahwa
 yang digambar aplikasi memang sama di kedua lingkungan, bukan kebetulan salah
 satu.
 
+## Paket uji untuk pengguna
+
+Panel yang baru dipaketkan untuk uji lapangan:
+
+- `Build` **35903102319** @ `dca258e`: **11/11 SUCCESS**.
+- `prepare-windows-installer.yml` run **35903930877** @ `dca258e`: **SUCCESS**.
+
+| Berkas | Ukuran | SHA-256 |
+|---|---|---|
+| `XyDesk-x64.exe` (NSIS) | 5.070.579 B | `a05165c977963abfc5ff7e4e2cded3c91cfc77aaef30461cd490de4c3eec9f13` |
+| `XyDesk-x64.msi` (WiX) | 6.381.568 B | `a5a4bd6cd2b1ed2bf96bef00b41fbbcb8a554d2fb881eaa946d9409950c619d1` |
+
+Paket pertama (`35902747669`) **dibuang** karena mojibake; yang ini memuat panel
+yang teksnya sudah diperiksa langsung di dalam EXE. Rencana uji lapangan yang
+diminta dari pengguna ada di `uji-windows/CARA-UJI.md` (sudut custom, geser
+jendela, tray, hover/salin, tombol host, keyboard Tab/Enter/Esc, skala 125%/150%).
+Tidak ada GitHub Release; rilis tetap keputusan pemilik.
+
 ## Batas jujur
 
+- **Mojibake MSVC `/utf-8` adalah bukti kedua bahwa sandbox tidak cukup.**
+  Kompilasi mingw di Linux membaca UTF-8 apa adanya, jadi seluruh uji gambar
+  saya lolos sementara build Windows mengirim "Panel host Windows Â· tanpa
+  terminal" dan tooltip "XyDesk Host â€” …". Ketahuan setelah paket sudah
+  terbentuk, dari pemeriksaan `strings` atas EXE yang dibangun CI. Perbaikannya
+  `/utf-8` di ketiga pemanggilan `cl.exe` + `tool/check_panel_text.py` yang
+  menjaga EXE (bukan sumbernya) — dan gerbangnya sudah diuji dua arah.
 - **Wine bukan Windows.** Uji visual (bentuk, warna, klik, tray, close-to-tray)
   dilakukan di Wine 10.0 dengan compositor X. Yang sudah terbukti di Windows
   asli lewat CI: kompilasi MSVC, tata letak dari EXE yang dikompilasi, dan
