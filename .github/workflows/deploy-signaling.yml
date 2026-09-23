@@ -163,3 +163,26 @@ jobs:
           if [ "$aktif" -eq 0 ]; then
             echo "::warning::NOL penyedia TURN terkonfigurasi — /turn-ice akan menjawab daftar kosong dan sesi jalan dengan STUN saja. Dua perangkat di balik NAT simetris/CGNAT tidak akan tersambung. Isi minimal TURN_STATIC_URLS + TURN_STATIC_SECRET (lihat cloudflare/README.md)."
           fi
+
+      # ── Gerbang relay sungguhan ──────────────────────────────────────────
+      # Hitungan penyedia di atas hanya membuktikan VARIABEL terisi; penyedia
+      # `direct` selalu "ok" selama tripletnya ada, walaupun kredensialnya
+      # sudah mati di server TURN. Insiden 23 Sep 2026: `/turn-ice` menjawab
+      # normal, semua gerbang hijau, tetapi relay tidak pernah bisa dipakai.
+      # Langkah ini melakukan STUN Allocate BER-MESSAGE-INTEGRITY ke tiap
+      # server TURN — bukti bahwa kredensialnya betul-betul diterima.
+      # Tiga percobaan supaya gangguan jaringan runner tidak menakut-nakuti.
+      - name: Buktikan kredensial TURN bisa allocate (bukan sekadar ada)
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            if python3 tool/check_turn_auth.py --signal https://signal.xydesk.my.id; then
+              exit 0
+            fi
+            echo "::warning::allocate TURN gagal (percobaan $attempt/3)"
+            sleep 5
+          done
+          echo "::error::Kredensial TURN ditolak server TURN. Worker tetap ter-deploy, tetapi relay tidak bisa dipakai — pengguna di balik CGNAT/NAT simetris tidak akan tersambung. Periksa TURN_DIRECT_*/TURN_STATIC_* atau ganti penyedia, lalu deploy ulang."
+          exit 1

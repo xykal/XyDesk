@@ -213,6 +213,12 @@ export class Hub {
       case 'answer':
       case 'ice':
       case 'bye':
+      // Host memakai `error` untuk memberi tahu client kenapa sesi tidak jadi
+      // (mis. `peer-connection-gagal`, `turn-gagal`, `offer-ditolak`). Sebelum
+      // ini tipe itu tidak ada di daftar, jadi ia jatuh ke `default`: host
+      // menerima "tipe tak dikenal" dan CLIENT tidak pernah tahu apa pun —
+      // kegagalan relay 23 Sep 2026 tersembunyi persis karena itu.
+      case 'error':
         return this.relay(ws, msg);
       default:
         return this.send(ws, { type: 'error', error: 'tipe tak dikenal', reason: msg.type });
@@ -383,8 +389,10 @@ export class Hub {
     if (type === 'pair-response' || type === 'answer') {
       return fromRole === ROLE_HOST && toRole === 'client';
     }
-    // ICE dan bye sah dua arah, tetapi tidak pernah sesama role.
-    return (type === 'ice' || type === 'bye') && fromRole !== toRole;
+    // ICE, bye, dan error sah dua arah, tetapi tidak pernah sesama role.
+    // `error` dibatasi begitu supaya kabar kegagalan tetap tidak bisa dipakai
+    // host A untuk menakut-nakuti host B di luar ikatan sesi client-host.
+    return (type === 'ice' || type === 'bye' || type === 'error') && fromRole !== toRole;
   }
 
   send(ws, msg) {

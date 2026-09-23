@@ -280,3 +280,50 @@ test('bye biasa menghapus ikatan sehingga close tidak mengirim bye ganda', async
   await hub.webSocketClose(socks[0]);
   assert.equal(hostOut.length, 1);
 });
+
+test('error dari host diteruskan ke client, bukan dijawab "tipe tak dikenal"', async () => {
+  // Insiden relay 23 Sep 2026: host mengirim `{type:'error', error:
+  // 'peer-connection-gagal'}` untuk memberi tahu client kenapa sesi tidak jadi,
+  // tetapi tipe `error` tidak ada di daftar relay `webSocketMessage`, jadi ia
+  // jatuh ke `default`: host menerima "tipe tak dikenal" dan client tidak
+  // pernah tahu apa pun. Yang dijaga di sini: pesannya SAMPAI, dan pengirimnya
+  // tidak dihukum karena memakai tipe yang sah.
+  const out = [];
+  const { hub, host, hostOut, socks } = harness([{ id: 'web-1', out, ip: '1.1.1.1' }]);
+
+  await hub.webSocketMessage(
+    host,
+    JSON.stringify({ type: 'error', to: 'web-1', error: 'peer-connection-gagal', reason: 'offer' }),
+  );
+
+  assert.equal(hostOut.length, 0, 'host tidak boleh dijawab "tipe tak dikenal"');
+  assert.equal(out.length, 1);
+  assert.equal(out[0].type, 'error');
+  assert.equal(out[0].error, 'peer-connection-gagal');
+  assert.equal(out[0].reason, 'offer');
+  assert.equal(out[0].from, '111222333', 'client harus tahu error itu datang dari host');
+
+  // Arah sebaliknya juga sah: client boleh melaporkan kegagalannya ke host.
+  await hub.webSocketMessage(
+    socks[0],
+    JSON.stringify({ type: 'error', to: '111222333', error: 'gagal-lokal' }),
+  );
+  assert.equal(hostOut.length, 1);
+  assert.equal(hostOut[0].error, 'gagal-lokal');
+  assert.equal(hostOut[0].from, 'web-1');
+
+  // Tetapi tidak sesama role: client tidak bisa mengirim "error" ke client lain.
+  assert.equal(hub.relayAllowed('error', 'client', 'client'), false);
+  assert.equal(hub.relayAllowed('error', 'host', 'host'), false);
+});
+
+test('tipe yang benar-benar tidak dikenal tetap dijawab error', async () => {
+  const { hub, host, hostOut } = harness([]);
+
+  await hub.webSocketMessage(host, JSON.stringify({ type: 'halo-dunia' }));
+
+  assert.equal(hostOut.length, 1);
+  assert.equal(hostOut[0].type, 'error');
+  assert.equal(hostOut[0].error, 'tipe tak dikenal');
+  assert.equal(hostOut[0].reason, 'halo-dunia');
+});

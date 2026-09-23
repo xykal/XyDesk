@@ -18,12 +18,14 @@ use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 use tokio_tungstenite::tungstenite::Message;
 
+use webrtc::ice_transport::ice_credential_type::RTCIceCredentialType;
 use webrtc::ice_transport::ice_server::RTCIceServer;
 use webrtc::peer_connection::peer_connection_state::RTCPeerConnectionState;
 use xydesk_host::control::{ControlState, EngineState};
 use xydesk_host::pairedpeers::{PairedPeers, PeerLabel};
 use xydesk_host::pairguard::{self, PairGuard};
 use xydesk_host::recover_lock;
+use xydesk_host::relay::RelayServer;
 use xydesk_host::session::{slot_action, IceCandidate, Session, SlotAction, DISCONNECT_GRACE};
 
 /// SDP ter-serialisasi (objek `{type, sdp}` — identik dgn sisi client).
@@ -264,22 +266,66 @@ fn meta_json() -> serde_json::Value {
 /// dicatat (`relay::telemetry()` → `/status`) dan ditulis ke log dengan
 /// kalimat yang bisa dibaca. Relay yang hilang tanpa jejak adalah kegagalan
 /// termahal bagi pengguna di belakang CGNAT — sesinya cuma tidak pernah jadi.
+/// Peta satu server relay ke bentuk yang dipakai webrtc-rs.
+///
+/// ## Kenapa `credential_type` tidak boleh dibiarkan default
+///
+/// `RTCIceServer::default()` di webrtc 0.11 meninggalkan `credential_type`
+/// sebagai `Unspecified`, dan `RTCIceServer::urls()` menolak URL `turn:` /
+/// `turns:` yang membawa kredensial bila tipenya bukan `Password` atau
+/// `Oauth` — galatnya `ErrTurnCredentials`, yang tampil di log sebagai
+/// **"invalid turn server credentials"**. Pemeriksaan itu berjalan di dalam
+/// `RTCPeerConnection::new` (`init_configuration`), jadi ia gagal SEBELUM
+/// satu paket pun keluar: sesi mati total walaupun kredensial relay-nya sah
+/// (dibuktikan dengan allocate TURN sungguhan, 200 OK, dari mesin lain).
+///
+/// Itu yang terjadi pada paket uji 23 Sep 2026: relay aktif di server, tapi
+/// setiap sesi native gagal di baris ini. Kalimat galatnya menyesatkan —
+/// yang salah bukan kredensialnya, melainkan tipe kredensial di sisi host.
+fn ice_server_from(server: RelayServer) -> RTCIceServer {
+    RTCIceServer {
+        urls: server.urls,
+        username: server.username,
+        credential: server.credential,
+        credential_type: RTCIceCredentialType::Password,
+    }
+}
+
+/// Ringkas URL relay untuk log: hanya `skema://host:port`.
+///
+/// Kredensial yang mungkin tertulis di URL (`turn:user:pass@host`) dan
+/// seluruh query dibuang, supaya log lapangan aman dibagikan apa adanya dan
+/// tetap menyebut relay mana yang dipakai.
+fn relay_url_label(url: &str) -> String {
+    let tanpa_query = url.split('?').next().unwrap_or(url);
+    let (skema, sisa) = if let Some((s, r)) = tanpa_query.split_once("://") {
+        (format!("{s}://"), r)
+    } else if let Some(r) = tanpa_query.strip_prefix("turns:") {
+        ("turns:".to_string(), r)
+    } else if let Some(r) = tanpa_query.strip_prefix("turn:") {
+        ("turn:".to_string(), r)
+    } else {
+        (String::new(), tanpa_query)
+    };
+    // Apa pun sebelum '@' terakhir adalah userinfo (kredensial) — buang.
+    let host = sisa.rsplit_once('@').map(|(_, h)| h).unwrap_or(sisa);
+    format!("{skema}{host}")
+}
+
 fn fetch_turn_servers(device_id: &str, token: &str) -> Vec<RTCIceServer> {
     match xydesk_host::relay::fetch(device_id, token) {
         xydesk_host::relay::RelayOutcome::Ready(servers) => {
             println!(
-                "[xydesk-host] TURN siap: {} server relay; ICE memilih direct bila tersedia",
-                servers.len()
+                "[xydesk-host] TURN siap: {} server relay ({}); ICE memilih direct bila tersedia",
+                servers.len(),
+                servers
+                    .iter()
+                    .flat_map(|server| server.urls.iter())
+                    .map(|url| relay_url_label(url))
+                    .collect::<Vec<_>>()
+                    .join(", ")
             );
-            servers
-                .into_iter()
-                .map(|server| RTCIceServer {
-                    urls: server.urls,
-                    username: server.username,
-                    credential: server.credential,
-                    ..Default::default()
-                })
-                .collect()
+            servers.into_iter().map(ice_server_from).collect()
         }
         xydesk_host::relay::RelayOutcome::Unavailable { reason, detail } => {
             eprintln!(
@@ -1518,7 +1564,20 @@ async fn main() -> Result<()> {
                     recover_lock(&paired).revoke(&from);
                     recover_lock(&control).mark_stopped();
                 }
-                "error" => println!("[xydesk-host] error: {}", msg.error.unwrap_or_default()),
+                "error" => {
+                    // `reason` membawa jenis pesan/pihak yang membuat hub
+                    // mengeluh (mis. `error` + reason `error` dari hub lama).
+                    // Tanpa ini satu baris log hanya berbunyi "error:" dan
+                    // sebabnya hilang — insiden relay 23 Sep 2026 menghabiskan
+                    // satu putaran diagnosis karena itu.
+                    let error = msg.error.clone().unwrap_or_default();
+                    let reason = msg.reason.clone().unwrap_or_default();
+                    if reason.is_empty() {
+                        println!("[xydesk-host] error: {error}");
+                    } else {
+                        println!("[xydesk-host] error: {error} (sebab: {reason})");
+                    }
+                }
                 other => println!("[xydesk-host] pesan: {other}"),
             }
         } // while let Some(m) = ws.next().await
@@ -1729,5 +1788,83 @@ mod signaling_cleanup_tests {
         close_signaling_session(&mut active, &paired, &control)
             .await
             .unwrap();
+    }
+}
+
+/// Penjaga regresi insiden relay 23 Sep 2026.
+///
+/// Yang diuji di sini bukan kredensial server (itu urusan `tool/check_turn_auth.py`),
+/// melainkan hal yang benar-benar rusak waktu itu: host menyerahkan TURN ke
+/// webrtc-rs dengan `credential_type` bawaan `Unspecified`, sehingga
+/// `RTCPeerConnection::new` menolaknya sebagai "invalid turn server credentials"
+/// dan sesi mati sebelum satu paket pun keluar.
+#[cfg(test)]
+mod relay_ice_tests {
+    use super::{ice_server_from, relay_url_label};
+    use webrtc::api::APIBuilder;
+    use webrtc::ice_transport::ice_credential_type::RTCIceCredentialType;
+    use webrtc::ice_transport::ice_server::RTCIceServer;
+    use webrtc::peer_connection::configuration::RTCConfiguration;
+    use xydesk_host::relay::RelayServer;
+
+    fn relay_express() -> RelayServer {
+        RelayServer {
+            urls: vec![
+                "turn:free.expressturn.com:3478".to_string(),
+                "turn:free.expressturn.com:3478?transport=tcp".to_string(),
+            ],
+            username: "000000000000000000".to_string(),
+            credential: "kredensial-yang-tidak-boleh-muncul-di-log".to_string(),
+        }
+    }
+
+    #[test]
+    fn relay_selalu_memakai_tipe_kredensial_password() {
+        let server = ice_server_from(relay_express());
+        assert_eq!(
+            server.credential_type,
+            RTCIceCredentialType::Password,
+            "default webrtc-rs adalah Unspecified, dan TURN ber-kredensial \
+             ditolak saat tipenya bukan Password — inilah insiden 23 Sep 2026"
+        );
+    }
+
+    #[tokio::test]
+    async fn peer_connection_dengan_relay_dan_stun_terbentuk() {
+        // Uji perilaku penuh: jalur yang gagal di lapangan. Tanpa
+        // `credential_type: Password`, `new_peer_connection` mengembalikan
+        // ErrTurnCredentials ("invalid turn server credentials").
+        let api = APIBuilder::new().build();
+        let configuration = RTCConfiguration {
+            ice_servers: vec![
+                RTCIceServer {
+                    urls: vec!["stun:stun.l.google.com:19302".to_string()],
+                    ..Default::default()
+                },
+                ice_server_from(relay_express()),
+            ],
+            ..Default::default()
+        };
+        let pc = api
+            .new_peer_connection(configuration)
+            .await
+            .expect("peer connection dengan relay TURN harus terbentuk");
+        let _ = pc.close().await;
+    }
+
+    #[test]
+    fn label_url_relay_membuang_kredensial_dan_query() {
+        assert_eq!(
+            relay_url_label("turn:free.expressturn.com:3478"),
+            "turn:free.expressturn.com:3478"
+        );
+        assert_eq!(
+            relay_url_label("turn:user:pass@relay.example:3478?transport=tcp"),
+            "turn:relay.example:3478"
+        );
+        assert_eq!(
+            relay_url_label("turns:relay.example:5349"),
+            "turns:relay.example:5349"
+        );
     }
 }

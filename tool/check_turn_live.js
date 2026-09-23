@@ -9,6 +9,13 @@
 //
 // Harus: providers[0].ok=true, iceServers.length>0
 // Kalau kosong: berarti secret belum kepasang atau salah pasang (statis butuh URL+SECRET sepasang).
+//
+// BATAS PENTING: skrip ini hanya memeriksa JAWABAN Worker. Untuk penyedia
+// `direct` (kredensial tetap dari env) jawabannya selalu `ok: true` selama
+// tripletnnya terisi — termasuk saat kredensialnya sudah mati di server TURN.
+// Untuk membuktikan relay benar-benar bisa dipakai, jalankan
+// `python3 tool/check_turn_auth.py` (allocate sungguhan; sudah jadi langkah
+// wajib di workflow Deploy Signaling sejak insiden 23 Sep 2026).
 
 const SIGNAL_URL = process.env.SIGNAL_URL || 'https://signal.xydesk.my.id';
 const ADMIN_SECRET = process.env.ADMIN_SECRET || process.env.ADMIN_TOKEN;
