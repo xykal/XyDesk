@@ -134,6 +134,70 @@ class HostMeta {
 /// Audio (rilis 6.1): transceiver audio `recvonly` memutar suara sistem host
 /// (Opus) — host mengirim bila WASAPI Windows aktif. Mic perangkat dikirim
 /// lewat track `sendonly` (getUserMedia) — host memutarnya di speaker PC.
+/// Sebab relay TURN tidak tersedia, sebagai kalimat yang bisa dibaca pengguna.
+/// Kode mentahnya tetap dipakai sebagai cadangan supaya sebab baru dari
+/// server tidak pernah hilang diam-diam.
+String relayReasonLabel(String? reason) {
+  switch (reason) {
+    case 'no-credentials':
+      return 'server menolak permintaan tanpa token perangkat';
+    case 'token-invalid':
+      return 'token perangkat ditolak server (mungkin sudah kedaluwarsa)';
+    case 'ticket-invalid':
+      return 'tiket perangkat tidak sah untuk relay';
+    case 'ticket-revoked':
+      return 'sesi akun dicabut server';
+    case 'turn-forbidden':
+      return 'kredensial relay ditolak server';
+    case 'turn-not-configured':
+      return 'server belum dikonfigurasi TURN';
+    case 'turn-auth-unavailable':
+      return 'server otorisasi sedang tidak bisa dihubungi';
+    case 'providers-failed':
+      return 'semua penyedia relay tidak menjawab';
+    case 'no-servers':
+      return 'server tidak mengirim daftar relay';
+    case 'no-signaling':
+      return 'signaling belum tersambung';
+    case 'bad-response':
+      return 'balasan server tidak dikenali';
+    case 'network':
+      return 'jaringan ke server signaling gagal';
+    default:
+      return (reason == null || reason.isEmpty)
+          ? 'sebab tidak diketahui'
+          : reason;
+  }
+}
+
+/// Kredensial relay TURN untuk SATU percobaan sesi, beserta sebabnya bila
+/// kosong.
+///
+/// Sebelumnya kegagalan apa pun menyusut jadi daftar kosong di dalam
+/// `_fetchTurn()`, jadi sesi berjalan dengan STUN saja tanpa satu pun pesan —
+/// dan justru pengguna di belakang CGNAT/NAT simetris yang paling butuh relay
+/// tidak punya apa pun untuk dibaca. Tipe ini membawa sebabnya sampai ke
+/// panel statistik dan banner "belum ada gambar".
+@immutable
+class TurnRelay {
+  const TurnRelay({this.servers = const [], this.reason, this.hint});
+
+  final List<Map<String, dynamic>> servers;
+  final String? reason;
+  final String? hint;
+
+  bool get ok => servers.isNotEmpty;
+  int get serverCount => servers.length;
+
+  String get label {
+    if (ok) {
+      return '$serverCount server siap — dipakai bila jalur langsung gagal';
+    }
+    if (reason == null) return 'Belum diperiksa';
+    return 'Tidak tersedia (${relayReasonLabel(reason)})';
+  }
+}
+
 /// Ringkasan kualitas sesi yang dibaca langsung dari `getStats()` WebRTC.
 ///
 /// Semua angka di sini berasal dari mesin WebRTC, bukan perkiraan UI. Bila
@@ -152,6 +216,10 @@ class SessionStats {
     this.codec,
     this.audioKbps,
     this.noFrameWarning = false,
+    this.relayOk,
+    this.relayServers,
+    this.relayReason,
+    this.relayHint,
   });
 
   final int? width;
@@ -165,7 +233,26 @@ class SessionStats {
   final double? audioKbps;
   final bool noFrameWarning;
 
+  /// Ketersediaan relay TURN: null = belum diperiksa pada sesi ini.
+  final bool? relayOk;
+  final int? relayServers;
+  final String? relayReason;
+  final String? relayHint;
+
   bool get hasVideo => width != null && height != null;
+
+  /// Kalimat siap-tampil untuk baris "Relay TURN".
+  String get relayLabel {
+    if (relayOk == null) return 'Belum diperiksa';
+    if (relayOk == true) {
+      return '${relayServers ?? 0} server siap — dipakai bila jalur langsung gagal';
+    }
+    return 'Tidak tersedia (${relayReasonLabel(relayReason)})';
+  }
+
+  /// Benar bila relay memang tidak tersedia pada sesi ini — dipakai banner
+  /// "belum ada gambar" untuk menyebut sebab yang paling mungkin.
+  bool get relayUnavailable => relayOk == false;
 
   String get resolutionLabel => hasVideo
       ? '$width x $height'
@@ -203,6 +290,10 @@ class SessionStats {
     String? codec,
     double? audioKbps,
     bool? noFrameWarning,
+    bool? relayOk,
+    int? relayServers,
+    String? relayReason,
+    String? relayHint,
   }) {
     return SessionStats(
       width: width ?? this.width,
@@ -215,6 +306,10 @@ class SessionStats {
       codec: codec ?? this.codec,
       audioKbps: audioKbps ?? this.audioKbps,
       noFrameWarning: noFrameWarning ?? this.noFrameWarning,
+      relayOk: relayOk ?? this.relayOk,
+      relayServers: relayServers ?? this.relayServers,
+      relayReason: relayReason ?? this.relayReason,
+      relayHint: relayHint ?? this.relayHint,
     );
   }
 }
@@ -293,6 +388,10 @@ class RtcService {
   /// Watchdog: 10 detik setelah connected tetapi belum ada frame video.
   Timer? _noFrameWatchdog;
   bool _noFrameWarning = false;
+
+  /// Relay TURN untuk percobaan sesi ini: kredensial + sebab bila kosong.
+  TurnRelay _relay = const TurnRelay();
+  TurnRelay get relay => _relay;
 
   /// Pesan kegagalan terakhir (null bila tidak ada kesalahan).
   String? get lastError => _lastError;
@@ -437,8 +536,13 @@ class RtcService {
         'urls': ['stun:stun.cloudflare.com:3478'],
       },
     ];
-    final turnServers = await _fetchTurn();
-    iceServers.addAll(turnServers);
+    // Relay dicatat apa adanya: ketiadaannya TIDAK menggagalkan sesi (banyak
+    // jaringan tersambung langsung), tetapi sebabnya harus terbaca di panel
+    // dan banner — bukan hilang sebagai daftar kosong.
+    final relay = await _fetchRelay();
+    if (_stopped) return;
+    _relay = relay;
+    iceServers.addAll(relay.servers);
 
     final config = <String, dynamic>{'iceServers': iceServers};
     final pc = await createPeerConnection(config);
@@ -548,26 +652,55 @@ class RtcService {
 
   /// Ambil kredensial TURN dari endpoint /turn-ice (server signaling).
   ///
-  /// Auth memakai token signaling perangkat ini (bukan admin secret). Bila
-  /// TURN belum dikonfigurasi (503) atau gagal, kembalikan null — koneksi
-  /// tetap jalan dengan STUN saja (cukup untuk LAN & sebagian besar NAT).
-  Future<List<Map<String, dynamic>>> _fetchTurn() async {
-    if (_sig == null) return const [];
+  /// Auth memakai token signaling perangkat ini (bukan admin secret). Balasan
+  /// dibaca UTUH — status, `reason`, dan `hint` sekaligus — supaya kegagalan
+  /// bisa dibedakan: token basi, penyedia relay yang diam, server yang belum
+  /// dikonfigurasi, dan gangguan sesaat bukan hal yang sama bagi pengguna.
+  Future<TurnRelay> _fetchRelay() async {
+    if (_sig == null) return const TurnRelay(reason: 'no-signaling');
     try {
       final base = _signalingBase;
       final uri = Uri.parse('$base/turn-ice?id=$_deviceId&token=$_token');
       final res = await http.get(uri).timeout(const Duration(seconds: 5));
-      if (res.statusCode != 200) return const [];
-      final body = jsonDecode(res.body);
-      final servers = body['iceServers'];
-      if (servers is! List) return const [];
-      return servers
-          .whereType<Map>()
-          .map((server) => Map<String, dynamic>.from(server))
-          .where((server) => server['urls'] != null)
-          .toList(growable: false);
+
+      Map<String, dynamic> body = const {};
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) body = decoded;
+      } catch (_) {
+        // Badan non-JSON (mis. halaman gateway) tidak pernah dikutip utuh.
+      }
+
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        return TurnRelay(
+          reason:
+              (body['reason'] as String?) ??
+              (body['error'] as String?) ??
+              'http-${res.statusCode}',
+          hint: body['hint'] as String?,
+        );
+      }
+      if (body.isEmpty) return const TurnRelay(reason: 'bad-response');
+
+      final rawServers = body['iceServers'];
+      final servers = rawServers is List
+          ? rawServers
+                .whereType<Map>()
+                .map((server) => Map<String, dynamic>.from(server))
+                .where((server) => server['urls'] != null)
+                .toList(growable: false)
+          : const <Map<String, dynamic>>[];
+      if (servers.isEmpty) {
+        // 200 dengan daftar kosong bukan keberhasilan: penyedia sudah
+        // dikonfigurasi tetapi tidak menjawab berbeda dari belum dikonfigurasi.
+        return TurnRelay(
+          reason: body['degraded'] == true ? 'providers-failed' : 'no-servers',
+          hint: body['hint'] as String?,
+        );
+      }
+      return TurnRelay(servers: servers);
     } catch (_) {
-      return const [];
+      return const TurnRelay(reason: 'network');
     }
   }
 
@@ -779,6 +912,10 @@ class RtcService {
       codec: codecName?.toUpperCase(),
       audioKbps: audioKbps,
       noFrameWarning: _noFrameWarning,
+      relayOk: _relay.ok,
+      relayServers: _relay.serverCount,
+      relayReason: _relay.reason,
+      relayHint: _relay.hint,
     );
     if (!_statsCtrl.isClosed) _statsCtrl.add(_stats);
   }
@@ -791,6 +928,9 @@ class RtcService {
     _noFrameWatchdog?.cancel();
     _noFrameWatchdog = null;
     _noFrameWarning = false;
+    // Status relay milik percobaan yang berakhir; sesi berikutnya mengambil
+    // kredensial baru, jadi jangan biarkan angka lama terbaca sebagai fakta.
+    _relay = const TurnRelay();
     _statsTimer?.cancel();
     _statsTimer = null;
     await disableMic();

@@ -221,6 +221,19 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   di perangkat nyata**: pengguna yang login memakai nama akun (bukan nama acak)
   dan tamu memakai nama deterministik; keduanya menampilkan avatar. Belum diuji.
 
+- [x] (Danu - XySpace Team, 2026-09-23; dikerjakan Laras, sesi
+  RELAYCLIENT) — **Paritas relay di client Flutter sudah selesai.** Sisa yang
+  dulu menunggu role Client Flutter: `lib/webrtc/rtc_service.dart` masih
+  `catch (_) => const []` untuk kredensial TURN, jadi relay yang tidak ada
+  tidak terlihat sama sekali di APK. Sekarang: `_fetchRelay()` membaca
+  status + `reason` + `hint` dari `/turn-ice`, hasilnya dibawa `TurnRelay`
+  dan ikut di `SessionStats`; panel sesi menambah baris "Relay TURN" dan
+  banner "belum ada gambar" menyebut relay bila itu sebab yang paling
+  mungkin. Uji: `test/webrtc/relay_test.dart` (9 kasus), `flutter analyze`
+  bersih, `flutter test` 77/77 memakai Flutter 3.44.9 (sama dengan CI).
+  **Batas jujur:** tidak diuji di HP nyata; perilaku hanya terbukti lewat
+  uji unit + analisis statis, bukan sesi sungguhan ke host.
+
 ## Untuk: Desktop Shell
 
 - [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**

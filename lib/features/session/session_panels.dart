@@ -540,6 +540,15 @@ class _StreamPanel extends ConsumerWidget {
                       value: st.lossLabel,
                     ),
                     const _CardGapLarge(),
+                    // Relay = jalan keluar terakhir saat NAT menolak jalur
+                    // langsung. Ketiadaannya dulu tidak terlihat sama sekali;
+                    // sekarang angkanya/sebabnya ikut di baris ini.
+                    _InfoRow(
+                      icon: LucideIcons.info,
+                      title: 'Relay TURN',
+                      value: st.relayLabel,
+                    ),
+                    const _CardGapLarge(),
                     _InfoRow(
                       icon: LucideIcons.cpu,
                       title: 'Codec',

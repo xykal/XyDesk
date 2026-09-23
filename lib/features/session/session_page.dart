@@ -685,10 +685,16 @@ class _SessionPageState extends ConsumerState<SessionPage>
                             color: Color(0xFFA78BFA),
                           ),
                           const SizedBox(width: Gap.sm),
-                          const Flexible(
+                          Flexible(
                             child: Text(
-                              'Belum ada gambar (periksa PC host)',
-                              style: TextStyle(
+                              // Sebab yang paling mungkin disebut apa adanya:
+                              // relay tidak tersedia menjelaskan kenapa sesi
+                              // bisa "tersambung" tetapi tidak pernah bergambar
+                              // di jaringan yang butuh relay.
+                              _lastStats?.relayUnavailable == true
+                                  ? 'Belum ada gambar — relay TURN juga tidak tersedia (${relayReasonLabel(_lastStats?.relayReason)}). Periksa PC host dan jaringan.'
+                                  : 'Belum ada gambar (periksa PC host)',
+                              style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                                 color: Colors.white,
