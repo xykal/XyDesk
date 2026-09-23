@@ -60,7 +60,7 @@ vars: CORS_ORIGINS, GOOGLE_DESKTOP_CLIENT_ID
    - Verifikasi TURN:
      ```bash
      curl -H "X-Admin: $ADMIN_SECRET" https://signal.xydesk.my.id/turn-ice
-     # => {"iceServers":[{"urls":["turn:free.expressturn.com:3478"],"username":"000000002101739639","credential":"6Zu9***"}],"ttl":86400,"providers":[{"id":"direct","ok":true,"servers":1,"cached":false,"ms":0}],"degraded":false}
+     # => {"iceServers":[{"urls":["turn:free.expressturn.com:3478"],"username":"<username-ExpressTurn; nilai ada di secret Worker>","credential":"6Zu9***"}],"ttl":86400,"providers":[{"id":"direct","ok":true,"servers":1,"cached":false,"ms":0}],"degraded":false}
      ```
    - **Kesimpulan TURN:** `TURN_DIRECT` (ExpressTurn free long-term) sudah terpasang sejak 2026-09-07 dan **hidup** — 1 penyedia, 0 ms, tanpa panggilan jaringan (HMAC dihitung di Worker). Client yang memakai `X-Admin` atau token signaling `?id=&token=` mendapat 1 relay. Sebelum sesi ini operator menganggap belum terpasang karena catatan HANDOFF Sep 6; sejak Sep 7 sudah terpasang dan sesi ini membuktikan.
 
@@ -102,7 +102,7 @@ wrangler deploy --config news/wrangler.toml
 
 | Penyedia | Secret | Status sesi ini |
 |---|---|---|
-| **ExpressTurn direct** (`TURN_DIRECT_*`) | `TURN_DIRECT_URLS=turn:free.expressturn.com:3478`, `USERNAME=000000002101739639`, `CREDENTIAL=6Zu9oT8...` | **AKTIF** — 0 ms, tanpa fetch |
+| **ExpressTurn direct** (`TURN_DIRECT_*`) | `TURN_DIRECT_URLS=turn:free.expressturn.com:3478`, `USERNAME=<username-ExpressTurn; nilai ada di secret Worker>`, `CREDENTIAL=6Zu9oT8...` | **AKTIF** — 0 ms, tanpa fetch |
 | **ExpressTurn static HMAC** (`TURN_STATIC_*`) | belum | Tidak perlu — direct sudah HMAC-like long-term; tambahkan bila mau 2 penyedia |
 | **Cloudflare Realtime** (`TURN_KEY_*`) | — | Ditolak (butuh kartu) |
 | **Open Relay Project** (`OPENRELAY_API_KEY`) | belum | Opsional cadangan — REST 2.5s timeout, quota 500MB-20GB ambigu |
@@ -125,7 +125,7 @@ ok
 
 $ curl -s -H "X-Admin: $ADMIN_SECRET" https://signal.xydesk.my.id/turn-ice | jq
 {
-  "iceServers": [{"urls":["turn:free.expressturn.com:3478"],"username":"000000002101739639","credential":"6Zu9***"}],
+  "iceServers": [{"urls":["turn:free.expressturn.com:3478"],"username":"<username-ExpressTurn; nilai ada di secret Worker>","credential":"6Zu9***"}],
   "ttl": 86400,
   "providers": [{"id":"direct","ok":true,"servers":1,"cached":false,"ms":0}],
   "degraded": false

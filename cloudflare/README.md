@@ -33,8 +33,8 @@ npx wrangler secret put TURN_STATIC_SECRET # shared secret dari penyedia
 # npx wrangler secret put TURN_STATIC_USER # opsional, default: xydesk
 # ATAU langsung long-term (ExpressTurn free tier pakai ini):
 npx wrangler secret put TURN_DIRECT_URLS      # turn:free.expressturn.com:3478
-npx wrangler secret put TURN_DIRECT_USERNAME  # 000000002101739639
-npx wrangler secret put TURN_DIRECT_CREDENTIAL # 6Zu9oT8nwW083jfwdvjCB4KAqJA=
+npx wrangler secret put TURN_DIRECT_USERNAME  # <username-ExpressTurn; nilai ada di secret Worker>
+npx wrangler secret put TURN_DIRECT_CREDENTIAL # <credential-ExpressTurn; nilai ada di secret Worker, dirotasi 2026-09-23>
 # Penyedia lain (tambahan, bukan pengganti):
 # npx wrangler secret put TURN_KEY_ID      # Cloudflare Realtime
 # npx wrangler secret put TURN_KEY_TOKEN

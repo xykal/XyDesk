@@ -272,6 +272,25 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   Sekalian: `docs/qa/native-ui-windows-2026-09-23.md` menyebut Wine, bukan
   Windows — kalau ada sesi uji lab Windows, hasilnya layak ditambahkan ke sana.
 
+- [ ] (Operator - XyDesk Team, 2026-09-23) — **Relay TURN host native: sesi gagal
+  walaupun kredensialnya sah — sudah diperbaiki, belum diuji di Windows asli.**
+  Rincian, bukti, dan batas jujurnya: `docs/qa/relay-turn-native-2026-09-23.md`.
+  Yang perlu ditindak role lain:
+  1. **Operator (keamanan, segera):** username + credential TURN produksi
+     tertulis apa adanya di `AGENT_BOARD.md` (baris sesi 2026-09-07) pada repo
+     **publik**, sejak 7 Sep 2026. Satu-satunya obat adalah rotasi kredensial
+     di ExpressTurn; sesudahnya cukup tulis "nilai ada di secret Worker".
+  2. **Backend/Edge:** relay produksi masih **satu penyedia** (`direct`,
+     ExpressTurn free). Langkah baru di `deploy-signaling.yml` ("Buktikan
+     kredensial TURN bisa allocate") sengaja MENGGAGALKAN deploy bila relay
+     tidak bisa allocate — siapkan cadangan (`OPENRELAY_API_KEY` atau
+     `TURN_REST_URL` + `TURN_REST_API_KEY`) supaya tidak terjepit.
+  3. **Host Engine:** `tool/check_turn_auth.py` baru memeriksa URL `turn:` (UDP);
+     `turns:` (TLS) masih dilewati dengan jujur. Bila relay TLS dipakai,
+     tambahkan dukungannya di alat itu.
+  4. **Docs & Audit:** kalimat "Wine bukan Windows" di dokumen panel tetap
+     berlaku sampai hasil uji lapangan Windows masuk (item di atas).
+
 - [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**
   Shell desktop sekarang berjalan di atas Tauri v2 (Rust + native WebView2)
   dengan direktori `desktop/src-tauri/`. Frontend Next.js dihubungkan lewat
@@ -795,7 +814,7 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   mendaftar dan menaruh API key di GitHub Secrets — agent tidak bisa membuat
   akun. Setelah terisi, verifikasi: `curl -s -H "X-Admin: $ADMIN_SECRET"
   https://signal.xydesk.my.id/turn-ice | jq` dan periksa `providers`.
-  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** `TURN_DIRECT` (`turn:free.expressturn.com:3478`, `000000002101739639`) sudah **AKTIF** sejak 2026-09-07 — 1 provider `ok true` 0 ms (tanpa fetch), `ADMIN_SECRET` dirotasi + sync GitHub+Worker, `turn.js` paralel 2.5s + `providers` diagnostik live teruji (`curl -H "X-Admin: $ADMIN_SECRET" ... | jq` → `direct ok true`). Cadangan Open Relay opsional bila quota habis.
+  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** `TURN_DIRECT` (`turn:free.expressturn.com:3478`, `<username-ExpressTurn; nilai ada di secret Worker>`) sudah **AKTIF** sejak 2026-09-07 — 1 provider `ok true` 0 ms (tanpa fetch), `ADMIN_SECRET` dirotasi + sync GitHub+Worker, `turn.js` paralel 2.5s + `providers` diagnostik live teruji (`curl -H "X-Admin: $ADMIN_SECRET" ... | jq` → `direct ok true`). Cadangan Open Relay opsional bila quota habis.
 
 - [x] (dari Operator - XyDesk Team, 2026-09-06) — **Verifikasi pengirim email produksi.** Dua jalur
   email punya default yang tidak aman untuk produksi:
