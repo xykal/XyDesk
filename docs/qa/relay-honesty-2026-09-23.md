@@ -73,14 +73,27 @@ sebabnya kini jujur.
    `prepare-windows-installer.yml` memakai `-ext` yang sama. Area CI/Release;
    dicatat di `HANDOFF.md` dengan saran perbaikan.
 
+## Status rilis
+
+Di-push dan di-deploy dalam sesi yang sama (izin operator di chat, jalur
+papan #5): worker signaling versi `eeb2a63e-2243-4bb0-abce-4ca36148b983`,
+web versi `7ab10bf5-1827-4f03-99e2-637d6737a592` (bundle `index-BB7mntUO.js`),
+lalu CI `Build` `35889559888` 11/11 hijau atas source yang sama.
+
 ## Batas jujur (yang BELUM dibuktikan)
 
 - **Tidak ada uji di Windows.** `host/src/relay.rs` murni Rust tanpa API
   Windows dan lulus di Linux, tetapi jalur relay sungguhan (host di belakang
   CGNAT) hanya bisa dibuktikan di lapangan.
 - **Tidak ada uji perangkat nyata / browser E2E** untuk perubahan web; yang
-  dijalankan adalah uji unit + build produksi.
-- **Belum di-deploy.** Worker signaling maupun web belum diperbarui di
-  produksi; angka di atas adalah hasil lingkungan sesi, bukan produksi.
+  dijalankan adalah uji unit + build produksi. Yang diperiksa di produksi
+  adalah byte bundle (md5/cmp), header, rute, dan penanda fitur di dalam
+  bundle — bukan klik manusia.
+- **Jalur sukses relay belum diuji di produksi.** Verifikasi pasca-deploy
+  menutup jalur penolakan (tanpa token → `no-credentials`, token rusak →
+  `token-invalid`) dan jalur admin yang tak boleh berubah; jalur
+  `X-Admin`/`ADMIN_SECRET` tidak bisa diuji karena secret itu tidak ada di
+  lingkungan sesi, dan relay sungguhan hanya terbukti saat ada dua perangkat
+  nyata di jaringan yang butuh relay.
 - **Client Flutter masih gagal senyap** (`lib/webrtc/rtc_service.dart` →
   `catch (_) => const []`). Paritasnya dicatat untuk role Client Flutter.

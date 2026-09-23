@@ -576,8 +576,14 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 - [x] (dari Galih - XySpace Team, 2026-09-23; dijalankan Cakra, sesi CIWIX)
   — **Dispatch `Build` penuh** untuk membuktikan gerbang host hijau di
   runner setelah `cargo fmt` dibersihkan, sekaligus menguji perbaikan
-  extension WiX. Hasilnya dicatat di baris papan `SESI-20260923-CAKRA-WIXEXT`
-  (nomor run + kesimpulan per job).
+  extension WiX. **Hasil (run `35889559888` atas `9b86be2`): 11/11 job
+  SUCCESS** — `Uji Logika Host (Rust)` hijau (langkah fmt/clippy/test lolos
+  di runner), `Lint MSI dan NSIS Installer` hijau, `Windows x64` +
+  `APK Android` + `Web` + backend/berita/flutter/meta semua hijau. Deploy
+  web CI (`35890553787`) SUCCESS; `Release` (`35890553790`) hanya validasi
+  versi tanpa menerbitkan apa pun (versi tidak berubah) — benar. Run
+  pertama (`35889077917`) dibatalkan karena digantikan run yang lebih baru
+  setelah perbaikan WiX kedua.
 
 - [x] (dari Tara - XySpace Team, 2026-09-23) — **Deploy cepat jalur papan #5
   (worker signaling):** `xydesk-signaling` versi
