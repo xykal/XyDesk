@@ -118,6 +118,21 @@ struct PanelLayout {
     Rect hint{};
 };
 
+// Pembantu min/max/clamp sendiri, bukan std::, karena windows.h mendefinisikan
+// makro min/max yang mematahkan std::min/std::max di MSVC (error C2589).
+// Berkas ini dipakai bersama EXE dan uji, jadi ia tidak boleh bergantung pada
+// urutan include pemakainya.
+template <typename T>
+constexpr T minValue(T a, T b) { return a < b ? a : b; }
+
+template <typename T>
+constexpr T maxValue(T a, T b) { return a > b ? a : b; }
+
+template <typename T>
+constexpr T clampValue(T value, T low, T high) {
+    return value < low ? low : (value > high ? high : value);
+}
+
 inline int scaled(int value, int scalePct) {
     return (value * scalePct + 50) / 100;
 }
@@ -125,7 +140,7 @@ inline int scaled(int value, int scalePct) {
 // `dpi` datang dari GetDpiForWindow; 96 apa adanya, 120 = 125%, 144 = 150%.
 inline int scalePctFromDpi(int dpi) {
     if (dpi <= 0) return 100;
-    return std::clamp((dpi * 100 + 48) / 96, 75, 400);
+    return clampValue((dpi * 100 + 48) / 96, 75, 400);
 }
 
 inline PanelLayout computeLayout(int dpi) {
@@ -226,7 +241,7 @@ inline Target targetAt(const PanelLayout& l, int x, int y) {
 // membuat jendela "kotak Windows" terlihat murah.
 
 inline float smoothstep01(float t) {
-    t = std::clamp(t, 0.0f, 1.0f);
+    t = clampValue(t, 0.0f, 1.0f);
     return t * t * (3.0f - 2.0f * t);
 }
 
@@ -238,15 +253,15 @@ inline float roundedRectDistance(float px, float py, const Rect& r, float radius
     const float cy = static_cast<float>(r.y) + halfH;
     const float dx = std::fabs(px - cx) - (halfW - radius);
     const float dy = std::fabs(py - cy) - (halfH - radius);
-    const float outsideX = std::max(dx, 0.0f);
-    const float outsideY = std::max(dy, 0.0f);
-    return std::sqrt(outsideX * outsideX + outsideY * outsideY) + std::min(std::max(dx, dy), 0.0f) - radius;
+    const float outsideX = maxValue(dx, 0.0f);
+    const float outsideY = maxValue(dy, 0.0f);
+    return std::sqrt(outsideX * outsideX + outsideY * outsideY) + minValue(maxValue(dx, dy), 0.0f) - radius;
 }
 
 // Cakupan piksel 0..1 dengan tepi selebar ~1 piksel.
 inline float roundedRectCoverage(float px, float py, const Rect& r, float radius) {
     const float distance = roundedRectDistance(px, py, r, radius);
-    return std::clamp(0.5f - distance, 0.0f, 1.0f);
+    return clampValue(0.5f - distance, 0.0f, 1.0f);
 }
 
 // Bayangan lembut di luar bentuk: 1 di tepi, memudar sampai 0 pada `spread`.

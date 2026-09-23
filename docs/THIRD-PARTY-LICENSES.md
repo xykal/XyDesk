@@ -10,32 +10,30 @@ bersama aplikasi, beserta lisensinya — diambil langsung dari lockfile dan
 teks lisensi paket yang benar-benar terpasang, bukan dari daftar ketik
 tangan yang bisa ketinggalan zaman.
 
-**Total komponen: 518**
-(Dart/Flutter 115 · Rust 332 · npm 59 · aset & layanan 12)
+**Total komponen: 463**
+(Dart/Flutter 115 · Rust 332 · npm 4 · aset & layanan 12)
 
 ## Ringkasan lisensi
 
 | Lisensi | Jumlah komponen |
 |---|---|
 | MIT OR Apache-2.0 | 199 |
-| BSD-3-Clause | 93 |
-| MIT | 82 |
+| BSD-3-Clause | 92 |
+| MIT | 56 |
 | Apache-2.0 OR MIT | 30 |
-| Apache-2.0 | 21 |
 | Unicode-3.0 | 18 |
 | MIT/Apache-2.0 | 17 |
-| LGPL-3.0-or-later | 8 |
-| ISC | 6 |
+| Apache-2.0 | 9 |
 | Unlicense OR MIT | 5 |
 | Zlib OR Apache-2.0 OR MIT | 3 |
 | BSD-2-Clause | 3 |
 | Apache-2.0 OR ISC OR MIT | 3 |
+| ISC | 3 |
 | BSD-3-Clause OR Apache-2.0 | 2 |
 | Unlicense/MIT | 2 |
 | CDLA-Permissive-2.0 | 2 |
 | BSD-2-Clause OR Apache-2.0 OR MIT | 2 |
 | MIT OR Apache-2.0 OR Zlib | 2 |
-| Apache-2.0 AND LGPL-3.0-or-later | 2 |
 | 0BSD OR MIT OR Apache-2.0 | 1 |
 | MIT OR Apache-2.0 OR BSD-1-Clause | 1 |
 | MIT AND BSD-3-Clause | 1 |
@@ -44,9 +42,6 @@ tangan yang bisa ketinggalan zaman.
 | Apache-2.0 AND ISC | 1 |
 | (MIT OR Apache-2.0) AND Unicode-3.0 | 1 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 1 |
-| Apache-2.0 AND LGPL-3.0-or-later AND MIT | 1 |
-| CC-BY-4.0 | 1 |
-| 0BSD | 1 |
 | OFL-1.1 | 1 |
 | CC0-1.0 | 1 |
 | NVIDIA Software License Agreement | 1 |
@@ -55,33 +50,7 @@ tangan yang bisa ketinggalan zaman.
 | Ketentuan Layanan Resend | 1 |
 | Ketentuan Layanan Google API | 1 |
 
-### Perhatian — komponen copyleft (11)
-
-Komponen berikut memakai lisensi copyleft. Tidak ada yang ditaut statis ke
-biner XyDesk, tetapi keberadaannya harus disebut dan ditinjau ulang setiap
-kali rantai dependensi berubah:
-
-- `@img/sharp-libvips-darwin-arm64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-darwin-x64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linux-arm` 1.0.5 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linux-arm64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linux-s390x` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linux-x64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linuxmusl-arm64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-libvips-linuxmusl-x64` 1.0.4 — **LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-wasm32` 0.33.5 — **Apache-2.0 AND LGPL-3.0-or-later AND MIT** · JavaScript (npm — desktop)
-- `@img/sharp-win32-ia32` 0.33.5 — **Apache-2.0 AND LGPL-3.0-or-later** · JavaScript (npm — desktop)
-- `@img/sharp-win32-x64` 0.33.5 — **Apache-2.0 AND LGPL-3.0-or-later** · JavaScript (npm — desktop)
-
-Ekspresi ber-OR yang menyediakan alternatif permisif (mis. `MIT OR
-Apache-2.0 OR LGPL-2.1-or-later` pada `r-efi`) sengaja TIDAK didaftar di
-sini: kita memilih alternatif permisifnya, jadi tidak ada kewajiban copyleft
-yang timbul.
-
-Seluruh komponen di atas adalah biner prebuilt `sharp`/`libvips` yang dipakai oleh
-perangkat build (optimasi gambar Next.js) dan **tidak ikut dikirim** ke
-perangkat pengguna dalam APK, EXE, maupun bundle web. LGPL terpenuhi karena
-pustaka dipakai apa adanya, tanpa modifikasi dan tanpa penautan statis.
+Tidak ada komponen berlisensi copyleft (GPL/LGPL/MPL/AGPL) yang terdeteksi.
 
 ---
 
@@ -627,71 +596,16 @@ Termasuk dependensi transitif yang ikut ditaut statis ke `xydesk.exe` dan
 
 ---
 
-## 4. Paket npm — web, signaling, berita (59)
+## 4. Paket npm — web, signaling, berita (4)
 
 Hanya dependensi runtime; alat build (`dev`) tidak ikut terkirim ke pengguna.
 
 | Komponen | Versi | Lisensi |
 |---|---|---|
-| `@emnapi/runtime` | 1.11.3 | MIT |
-| `@img/sharp-darwin-arm64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-darwin-x64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-libvips-darwin-arm64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-darwin-x64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linux-arm` | 1.0.5 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linux-arm64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linux-s390x` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linux-x64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linuxmusl-arm64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-libvips-linuxmusl-x64` | 1.0.4 | LGPL-3.0-or-later |
-| `@img/sharp-linux-arm` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-linux-arm64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-linux-s390x` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-linux-x64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-linuxmusl-arm64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-linuxmusl-x64` | 0.33.5 | Apache-2.0 |
-| `@img/sharp-wasm32` | 0.33.5 | Apache-2.0 AND LGPL-3.0-or-later AND MIT |
-| `@img/sharp-win32-ia32` | 0.33.5 | Apache-2.0 AND LGPL-3.0-or-later |
-| `@img/sharp-win32-x64` | 0.33.5 | Apache-2.0 AND LGPL-3.0-or-later |
-| `@next/env` | 15.1.6 | MIT |
-| `@next/swc-darwin-arm64` | 15.1.6 | MIT |
-| `@next/swc-darwin-x64` | 15.1.6 | MIT |
-| `@next/swc-linux-arm64-gnu` | 15.1.6 | MIT |
-| `@next/swc-linux-arm64-musl` | 15.1.6 | MIT |
-| `@next/swc-linux-x64-gnu` | 15.1.6 | MIT |
-| `@next/swc-linux-x64-musl` | 15.1.6 | MIT |
-| `@next/swc-win32-arm64-msvc` | 15.1.6 | MIT |
-| `@next/swc-win32-x64-msvc` | 15.1.6 | MIT |
-| `@swc/counter` | 0.1.3 | Apache-2.0 |
-| `@swc/helpers` | 0.5.15 | Apache-2.0 |
-| `busboy` | 1.6.0 | MIT |
-| `caniuse-lite` | 1.0.30001810 | CC-BY-4.0 |
-| `client-only` | 0.0.1 | MIT |
-| `color` | 4.2.3 | MIT |
-| `color-convert` | 2.0.1 | MIT |
-| `color-name` | 1.1.4 | MIT |
-| `color-string` | 1.9.1 | MIT |
-| `detect-libc` | 2.1.2 | Apache-2.0 |
-| `is-arrayish` | 0.3.4 | MIT |
 | `jsqr` | 1.4.0 | Apache-2.0 |
-| `lucide-react` | 1.37.0 | ISC |
-| `nanoid` | 3.3.18 | MIT |
-| `next` | 15.1.6 | MIT |
-| `picocolors` | 1.1.1 | ISC |
-| `postcss` | 8.4.31 | MIT |
 | `react` | 19.2.8 | MIT |
-| `react` | 19.0.0 | MIT |
 | `react-dom` | 19.2.8 | MIT |
-| `react-dom` | 19.0.0 | MIT |
 | `scheduler` | 0.27.0 | MIT |
-| `scheduler` | 0.25.0 | MIT |
-| `semver` | 7.8.5 | ISC |
-| `sharp` | 0.33.5 | Apache-2.0 |
-| `simple-swizzle` | 0.2.4 | MIT |
-| `source-map-js` | 1.2.1 | BSD-3-Clause |
-| `streamsearch` | 1.1.0 | MIT |
-| `styled-jsx` | 5.1.6 | MIT |
-| `tslib` | 2.8.1 | 0BSD |
 
 ---
 

@@ -22,6 +22,12 @@
 #ifndef _WIN32_IE
 #define _WIN32_IE 0x0A00
 #endif
+// Windows.h mendefinisikan makro min/max yang mematahkan std::min/std::max di
+// MSVC (error C2589 "illegal token on right side of '::'"). Layout dan gambar
+// memakai std::min/std::max/std::clamp, jadi makro itu dinonaktifkan di sini.
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 #include <windows.h>
 #include <shellapi.h>
