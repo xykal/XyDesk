@@ -251,11 +251,15 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   close-to-tray), `--panel-probe` + `--panel-snapshot` + `tool/check_panel_shape.py`
   lulus (radius terukur 14,2–14,8 px, piksel cakupan sebagian di tepi busur,
   bayangan memudar habis). **Batas jujur:** Wine bukan Windows — tray, Alt+Tab,
-  dan perilaku caption harus diuji di mesin Windows asli; **dua step CI baru
-  (`Uji tata letak panel native` di job host, `Kompilasi panel native dan
-  periksa bentuk jendelanya` di job lint installer) belum pernah jalan di
-  runner** karena push tidak memicu Actions. Bukti lengkap:
-  `docs/qa/native-ui-windows-2026-09-23.md`.
+  dan perilaku caption harus diuji di mesin Windows asli. **Gerbang CI-nya
+  sudah hijau di runner:** Build `35900760308` @ `2358a70` 11/11 SUCCESS —
+  `Uji tata letak panel native` (Linux, 79 pemeriksaan), `Kompilasi panel
+  native dan periksa bentuk jendelanya` (MSVC + probe + snapshot + pemeriksa
+  piksel; radius terukur 14,2–14,8 px, sama dengan hasil Wine), dan
+  `Analisis Statis (Flutter)` dengan inventaris lisensi 463 komponen. Tiga
+  kegagalan run pertama (`35898918240`: makro min/max MSVC, inventaris lisensi
+  usang, PowerShell tidak menunggu proses GUI) diperbaiki di `3dda9b6` dan
+  `2358a70`. Bukti lengkap: `docs/qa/native-ui-windows-2026-09-23.md`.
 
 - [ ] (Operator - XyDesk Team, 2026-09-23) — **Sisa rujukan `desktop/` di
   dokumen lama.** Yang sudah dibersihkan: CI, `tool/*`, `README.md`,

@@ -86,21 +86,66 @@ sehingga tepi sudut terlihat menggelap. Sekarang `alpha = cakupan +
 bayangan*(1-cakupan)` dengan warna dipremultiply oleh cakupan — terlihat di
 tangkapan layar sebelum/sesudah dan dijaga uji piksel.
 
+## CI: tiga kegagalan nyata, lalu hijau
+
+Push pertama membuka gerbang baru, dan `Build` **35898918240** (11 job, 3 merah)
+membongkar tiga masalah yang tidak terlihat di sandbox — semuanya nyata:
+
+| Job | Akar masalah | Perbaikan |
+|---|---|---|
+| `Windows x64` + `Lint MSI dan NSIS Installer` | MSVC menolak `std::min/std::max` karena `windows.h` mendefinisikan makro `min`/`max` (`C2589 illegal token on right side of '::'`); mingw tidak mengeluh | `layout.h` memakai pembantu `minValue`/`maxValue`/`clampValue` sendiri (tidak bergantung urutan include); `main.cpp` menetapkan `NOMINMAX` sebelum `windows.h` |
+| `Analisis Statis (Flutter)` | penghapusan `desktop/` membuat inventaris lisensi usang (npm 59 → 4) | regenerasi dengan Flutter 3.44.9 (versi CI): Dart 115 · Rust 332 · npm 4 · manual 12 = **463 komponen**, `--check` hijau |
+| `Lint MSI dan NSIS Installer` (step baru) | panel adalah aplikasi subsystem WINDOWS; PowerShell **tidak menunggu** proses seperti itu dengan `&`, jadi `panel-probe.json` dibaca sebelum ditulis | kedua jalur memakai `Start-Process -Wait -PassThru` + `ExitCode` |
+
+Catatan jujur untuk insiden kedua: percobaan pertama saya menjalankan generator
+lisensi tanpa `flutter` di sandbox, dan hasilnya **473** komponen — generator
+menyertakan paket dev kalau `flutter` tidak ada. Angka yang benar (463) baru
+keluar setelah Flutter dipasang. Sandbox tanpa SDK menghasilkan data yang
+terlihat masuk akal tapi salah; itu jenis kesalahan yang paling berbahaya untuk
+dokumen legal.
+
+### Hasil run penutup
+
+`Build` **35900760308** @ `2358a70`: **11/11 job SUCCESS**, termasuk
+`Windows x64` (panel dikompilasi MSVC), `Lint MSI dan NSIS Installer` (compile
+panel + probe + snapshot + pemeriksa bentuk), `Uji Logika Host (Rust)`
+(termasuk uji tata letak 79 pemeriksaan di Linux), dan `Analisis Statis
+(Flutter)` (inventaris lisensi mutakhir).
+
+Angka dari runner Windows, dibandingkan dengan hasil Wine di sesi yang sama:
+
+```
+panel-probe (runner)  {"scalePct":100,"windowWidth":608,"windowHeight":616,
+                       "panelWidth":560,"panelHeight":568,"radiusPanel":16,
+                       "shadowMargin":24,
+                       "hits":["Close","Start","OpenLog","None","TitleBar"]}
+check_panel_shape     pojok tembus pandang alpha 106 di keempat sudut
+                      tepi busur punya piksel cakupan sebagian (alpha 153)
+                      radius sudut terukur [14,8 | 14,2 | 14,2 | 14,8]
+                      Lulus: bentuk panel sesuai
+```
+
+Nilai-nilai itu **identik** dengan tangkapan Wine di mesin sesi — bukti bahwa
+yang digambar aplikasi memang sama di kedua lingkungan, bukan kebetulan salah
+satu.
+
 ## Batas jujur
 
-- **Wine bukan Windows.** Yang diuji adalah perilaku gambar (bentuk, warna,
-  interaksi) di Wine 10.0 dengan compositor X. Apinya Windows asli —
-  `UpdateLayeredWindow`, `WM_NCHITTEST`, `WM_DPICHANGED`, tray
-  (`Shell_NotifyIcon`) — **belum dijalankan di mesin Windows sungguhan**.
-  Tray, menu klik kanan, dan perilaku Alt+Tab baru terbukti saat uji lapangan.
+- **Wine bukan Windows.** Uji visual (bentuk, warna, klik, tray, close-to-tray)
+  dilakukan di Wine 10.0 dengan compositor X. Yang sudah terbukti di Windows
+  asli lewat CI: kompilasi MSVC, tata letak dari EXE yang dikompilasi, dan
+  **bentuk jendela hasil gambar aplikasi sendiri** (snapshot BMP diperiksa per
+  piksel, angkanya sama dengan Wine). Yang **belum** terbukti di Windows asli:
+  interaksi nyata — tray `Shell_NotifyIcon`, menu klik kanan, Alt+Tab, geser
+  jendela dari area judul, dan `WM_DPICHANGED` di monitor berskala 125%/150%.
 - **Belum ada uji klik manusia.** Interaksi di CI diperiksa lewat
   `--panel-probe` (hit-test) dan `--panel-snapshot` (bentuk), bukan otomatisasi
   klik; tangkapan layar Wine adalah bukti visual, bukan uji regresi.
-- **CI belum dijalankan untuk perubahan ini.** Push tidak memicu workflow
-  (kebijakan sejak 3 Sep 2026), jadi job baru di `build.yml`
-  ("Uji tata letak panel native", "Kompilasi panel native dan periksa bentuk
-  jendelanya") menunggu dispatch `Build` manual. Perlu satu dispatch untuk
-  membuktikan keduanya hijau di runner.
+- **CI sudah membuktikan gerbang barunya** (`Build` 35900760308, 11/11 hijau;
+  push tidak memicu Actions, jadi ini lewat dispatch manual sesuai kebijakan).
+  Yang **belum** dibuktikan CI adalah perilaku runtime di Windows: tray,
+  Alt+Tab, geser jendela, dan `WM_DPICHANGED` pada monitor berskala 125%/150%
+  — semuanya butuh sesi Windows nyata dengan mouse manusia.
 - **MSVC vs mingw.** CI memakai `cl.exe`; kompilasi lokal memakai mingw
   (tidak ada MSVC di Linux). Perbedaan warning antar-kompiler mungkin ada;
   yang dijaga sama adalah kode sumber dan hasil gambar.
