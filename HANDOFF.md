@@ -335,6 +335,23 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 - [x] (dari Cakra - XySpace Team, 2026-09-03) — **Rilis 6.4.0+27 TUNTAS.** Bump 4cbbc22 → Build `33728695280` 12/12 @ 4cbbc22 → Release `33729544852` 5/5 (tag v6.4.0, 8 aset, update.json build 27, OneSignal `e4f5574a`). Follow-up: Build `33730701921` (aset artikel) → deploy terjepit deploy manual Danu WEB8 (bundle tanpa aset) + cache CF menyimpan fallback SPA di path gambar → solusi cache-bust rename aset `8b1ebbd` → Build `33732158168` → deploy `33732896248` @ 8eb3ad5 → gambar 6.4.0 image/jpeg. Artikel **p-8f5aa26aa3bc** (id 73) live, top list, OG OK. Web live 6.4.0 terverifikasi (Sewa PC custom, Ingatkan saya, tombol lompat).
 ## Untuk: CI / Release
 
+- [x] (Cakra - XySpace Team, 2026-09-23, sesi INSTALLER) — **Installer native
+  (MSI + NSIS) akhirnya benar-benar terbentuk dari Build yang lulus.** Dua
+  perbaikan WiX sebelumnya hanya membuat *lint* hijau; belum ada satu paket pun
+  yang pernah diperiksa. Sekarang jalurnya dijalankan sungguhan: Build
+  `35894169582` @ `0bd310c` **11/11 job SUCCESS**, lalu `prepare-windows-installer.yml`
+  di-dispatch dengan `build_run_id=35894169582` → run `35895089978` **SUCCESS**
+  di semua langkah (validasi run/SHA, unduh artefak, verifikasi bundle,
+  `wix build` MSI, `makensis` NSIS, unggah artefak). Artefak
+  `XyDesk-Windows-x64-Installer` (id `10766851184`) diunduh lewat API dan
+  diperiksa dari byte-nya di lingkungan sesi: `XyDesk-x64.msi` (OLE MSI, WiX
+  Toolset 4.0.6.0, `Template x64;1033`, memuat `XyDesk.exe`, `xydesk-host.exe`,
+  kedua berkas lisensi, versi 6.8.5) dan `XyDesk-x64.exe` (PE32 NSIS 3.12);
+  berkas `.sha256` cocok dengan hash berkasnya. **Tidak ada GitHub Release**
+  (rilis/versi keputusan pemilik; versi tetap 6.8.5+59) dan **belum ada
+  instalasi di mesin Windows** — itu uji lapangan. Bukti + batas:
+  `docs/qa/installer-native-2026-09-23.md`. Artefak disimpan 30 hari.
+
 - [x] (Operator - XyDesk Team, 2026-09-18) — **VDISPLAY720 packaged** source691dd09, Windows35408521780 Linux168/Windows157 PASS; NSIS35408977237 PASS. Driver hash/catalog trust and -WhatIf verified, no actual driver install/capture. Deliverables/virtual720-691dd09 contains NSIS, hashes, proof and guide. No web/backend deploy/version bump. Physical RDP/session visibility remains open; never report lock accepted without runtime proof. `docs/qa/virtual720-2026-09-18.md`.
 
 - [x] (Operator - XyDesk Team, 2026-09-18) — **HOST-FINISH DELIVERED**: izin push/build/deploy dari user; final source56317a2 Windows35403913522 Linux164/Windows153 PASS + NSIS35404435326 PASS. Installer disiapkan di deliverables/host-finish-56317a2, source/checksum diverifikasi. Web runtime43fc35c live1d669576, unit76 + browser2viewport + asset/OAuth/bindings PASS; backend55cdda7c tetap. Instruksi NSIS lama ditemukan/disinkronkan sehingga paket43fc35c tidak diberikan sebagai paket final. Tidak version bump/tag/official release. `docs/qa/host-finish-2026-09-18.md`, package/production JSON.
@@ -699,10 +716,12 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   `relayReason`/`relayHint` di statistik, `stop()` mereset ke `pending`, dan
   panel Statistik menambah baris "Relay TURN" + catatan saat relay tidak ada.
   `node --test` web 102/102 (12 uji baru: 4 di `test/rtc.test.js`, 8 di
-  `test/turn_ice_api.test.js` yang baru), `npm run build` hijau. **Belum
-  di-deploy** ke app.xydesk.my.id. Sisa untuk Web: paritas di client Flutter
-  (`lib/webrtc/rtc_service.dart` masih `catch (_) => const []`) — itu area
-  Client Flutter, bukan sesi ini.
+  `test/turn_ice_api.test.js` yang baru), `npm run build` hijau. **Sudah
+  di-deploy** ke app.xydesk.my.id — versi Worker
+  `48048613-3f02-4c81-8c1a-d8ca4c28259a`, bundle `index-l7Eyy51I.js` (bundle
+  ini juga memuat panduan frame). Sisa yang dulu dicatat — paritas di client
+  Flutter (`lib/webrtc/rtc_service.dart` masih `catch (_) => const []`) — sudah
+  selesai di sesi Laras (RELAYCLIENT); lihat item Client Flutter di atas.
 
 - [x] (Galih - XySpace Team, 2026-09-23; dikerjakan Danu, sesi FRAMEGUIDE)
   — **P1.1 watchdog sesi web: dari label pasif jadi tindakan.** Watchdog
@@ -714,8 +733,12 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   "apa yang dikatakan" dipindah ke `web/src/session_guidance.ts` agar teruji
   (7 kasus) dan dipakai bersama panel Statistik; teks sebab relay sekarang
   satu sumber untuk host, web, dan client. `node --test` web 109/109,
-  `npm run build` hijau. **Belum di-deploy** saat commit ini ditulis —
-  status deploy dicatat di baris papan sesi ini.
+  `npm run build` hijau. **Sudah di-deploy** (jalur cepat papan #5): bundle
+  `index-l7Eyy51I.js` naik ke `app.xydesk.my.id` lewat versi Worker
+  `48048613-3f02-4c81-8c1a-d8ca4c28259a`; md5 `index.html` live == build
+  (`6ea6ae17a725360f1db9f2bf6a9433eb`), md5 bundle live == build
+  (`81cdd6b703e5ad25cba7d3c188ade009`), `content-type` JS, dan penanda
+  `session-frame-guidance`/"Ganti layar" ada di bundle live.
 
 ## Untuk: Backend / Edge
 

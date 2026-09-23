@@ -3,8 +3,12 @@
 Sesi: `SESI-20260923-TARA-TURNREASON` (Backend / Edge),
 `SESI-20260923-DANU-RELAYSTATUS` (Web),
 `SESI-20260923-GALIH-RELAYHOST` (Host Engine). Tiga sub-sesi berurutan atas
-satu instruksi operator di chat ("host engine, backend, web server"), belum
-di-push — menunggu izin.
+satu instruksi operator di chat ("host engine, backend, web server"), lalu
+dilanjutkan dua sub-sesi paritas: `SESI-20260923-LARAS-RELAYCLIENT` (Client
+Flutter) dan `SESI-20260923-DANU-FRAMEGUIDE` (Web), ditutup
+`SESI-20260923-CAKRA-INSTALLER` (CI / Release). Semuanya sudah **di-push** ke
+`main` dan web/worker sudah **di-deploy**; izin operator bertahap di chat
+("ya gas saja", lalu "gas semua").
 
 ## Masalah yang ditutup
 
@@ -75,10 +79,21 @@ sebabnya kini jujur.
 
 ## Status rilis
 
-Di-push dan di-deploy dalam sesi yang sama (izin operator di chat, jalur
-papan #5): worker signaling versi `eeb2a63e-2243-4bb0-abce-4ca36148b983`,
-web versi `7ab10bf5-1827-4f03-99e2-637d6737a592` (bundle `index-BB7mntUO.js`),
-lalu CI `Build` `35889559888` 11/11 hijau atas source yang sama.
+Di-push dan di-deploy pada 2026-09-23 (izin operator di chat, jalur papan
+#5): worker signaling versi `eeb2a63e-2243-4bb0-abce-4ca36148b983`; web versi
+`7ab10bf5-1827-4f03-99e2-637d6737a592` (bundle `index-BB7mntUO.js`) untuk
+gelombang pertama, lalu **versi `48048613-3f02-4c81-8c1a-d8ca4c28259a` bundle
+`index-l7Eyy51I.js`** setelah paritas client + panduan frame masuk (`main`
+`0bd310c`). Verifikasi pasca-deploy gelombang kedua: md5 `index.html` live ==
+build `6ea6ae17a725360f1db9f2bf6a9433eb`, md5 bundle live == build
+`81cdd6b703e5ad25cba7d3c188ade009`, `content-type` `text/javascript`, dan
+penanda `session-frame-guidance` / "Ganti layar" / "Relay TURN" ada di bundle
+yang benar-benar direferensikan `index.html` (bukan chunk tebakan).
+
+CI: `Build` `35889559888` (11/11) atas source gelombang pertama; `Build`
+`35894169582` @ `0bd310c` **11/11 hijau** setelah paritas Flutter + panduan
+frame masuk; `prepare-windows-installer.yml` run `35895089978` SUCCESS
+menghasilkan MSI + NSIS nyata dari Build itu (`docs/qa/installer-native-2026-09-23.md`).
 
 ## Batas jujur (yang BELUM dibuktikan)
 
@@ -95,5 +110,10 @@ lalu CI `Build` `35889559888` 11/11 hijau atas source yang sama.
   `X-Admin`/`ADMIN_SECRET` tidak bisa diuji karena secret itu tidak ada di
   lingkungan sesi, dan relay sungguhan hanya terbukti saat ada dua perangkat
   nyata di jaringan yang butuh relay.
-- **Client Flutter masih gagal senyap** (`lib/webrtc/rtc_service.dart` →
-  `catch (_) => const []`). Paritasnya dicatat untuk role Client Flutter.
+- **Client Flutter sudah tidak gagal senyap** (`_fetchRelay()` + `TurnRelay`
+  + baris "Relay TURN", 9 uji baru, `flutter test` 77/77), tetapi **belum
+  dijalankan di HP nyata** — buktinya uji unit + `flutter analyze`, bukan sesi
+  sungguhan ke host.
+- **Panduan frame di web belum diuji dengan mata pengguna**: yang diperiksa
+  adalah uji unit `session_guidance.test.js` (7 kasus) dan byte bundle live,
+  bukan klik manusia di sesi yang benar-benar membeku.
