@@ -704,6 +704,19 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   (`lib/webrtc/rtc_service.dart` masih `catch (_) => const []`) — itu area
   Client Flutter, bukan sesi ini.
 
+- [x] (Galih - XySpace Team, 2026-09-23; dikerjakan Danu, sesi FRAMEGUIDE)
+  — **P1.1 watchdog sesi web: dari label pasif jadi tindakan.** Watchdog
+  `noFrameWarning` sudah ada sejak lama, tetapi hanya muncul sebagai chip
+  kecil "Freeze terdeteksi" di status bar: pengguna tahu ada masalah, tidak
+  tahu apa yang bisa dilakukan. Sekarang banner menjelaskan sebab dan
+  menawarkan tombol "Ganti layar" (membuka panel sesi tempat layar dipilih),
+  dan bila relay TURN tidak tersedia, hal itu disebut lebih dulu. Logika
+  "apa yang dikatakan" dipindah ke `web/src/session_guidance.ts` agar teruji
+  (7 kasus) dan dipakai bersama panel Statistik; teks sebab relay sekarang
+  satu sumber untuk host, web, dan client. `node --test` web 109/109,
+  `npm run build` hijau. **Belum di-deploy** saat commit ini ditulis —
+  status deploy dicatat di baris papan sesi ini.
+
 ## Untuk: Backend / Edge
 
 - [x] (dari Operator - XyDesk Team, 2026-09-06) — **Pilih penyedia TURN, lalu

@@ -6,6 +6,7 @@
 // sama persis (host/src/input.rs), hanya medianya yang beda.
 import { useEffect, useState, useRef } from 'react';
 import { InputCodec } from './rtc';
+import { relayReasonText, relayStatusText } from './session_guidance';
 import type { SessionStats, HostMeta } from './rtc';
 
 type Send = (bytes: Uint8Array) => void;
@@ -444,30 +445,10 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/// Sebab relay tidak tersedia, ditulis sebagai kalimat yang bisa dibaca
-/// pengguna — bukan kode. Kode mentahnya tetap dipakai sebagai cadangan
-/// supaya sebab baru dari server tidak pernah hilang diam-diam.
-const RELAY_REASON: Record<string, string> = {
-  'no-credentials': 'server menolak permintaan tanpa token perangkat',
-  'token-invalid': 'token perangkat ditolak server (mungkin sudah kedaluwarsa)',
-  'ticket-invalid': 'tiket perangkat tidak sah untuk relay',
-  'ticket-revoked': 'sesi akun dicabut server',
-  'no-servers': 'server tidak mengirim daftar relay',
-  'providers-failed': 'semua penyedia relay tidak menjawab',
-  'turn-not-configured': 'server belum dikonfigurasi TURN',
-  'turn-forbidden': 'kredensial relay ditolak server',
-  'turn-auth-unavailable': 'server otorisasi sedang tidak bisa dihubungi',
-  network: 'jaringan ke server signaling gagal',
-};
-
 function relayText(stats: SessionStats): string {
-  if (stats.relayState === 'ready') {
-    const n = stats.relayServers ?? 0;
-    return `${n} server siap — dipakai bila jalur langsung gagal`;
-  }
+  if (stats.relayState === 'ready') return relayStatusText('ready', stats.relayServers);
   if (stats.relayState === 'unavailable') {
-    const reason = stats.relayReason ?? 'sebab tidak diketahui';
-    return `Tidak tersedia (${RELAY_REASON[reason] ?? reason})`;
+    return `Tidak tersedia (${relayReasonText(stats.relayReason)})`;
   }
   return 'Belum diperiksa';
 }
@@ -644,7 +625,7 @@ export function SessionPanel({
           <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host. Mode 720p mengirim kanvas HD; mode 1080p dipakai bila capture dan encoder mendukung. RTT bukan latensi layar-ke-layar.</p>
           {stats?.relayState === 'unavailable' && (
             <p className="spanel-note" role="status">
-              Relay TURN tidak tersedia — {RELAY_REASON[stats.relayReason ?? ''] ?? stats.relayReason ?? 'sebab tidak diketahui'}.
+              Relay TURN tidak tersedia — {relayReasonText(stats.relayReason)}.
               {' '}Sesi tetap bisa tersambung lewat jalur langsung; kalau koneksi tidak pernah jadi, inilah sebab pertama yang perlu diperiksa.
               {stats.relayHint ? ` ${stats.relayHint}` : ''}
             </p>

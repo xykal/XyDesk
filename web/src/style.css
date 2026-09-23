@@ -2966,3 +2966,15 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 @media(orientation:landscape) and (max-height:500px){.vkb-key{min-height:30px}.vkb-row{gap:3px}.vkb{gap:3px}}
 .video-surface .spanel,.video-surface .spanel:not(.no-rail){z-index:70;right:max(12px,env(safe-area-inset-right));top:60px;bottom:12px;width:min(440px,calc(100% - 24px));max-height:calc(100% - 72px)}
 .video-surface .mapping-editor{z-index:80}
+
+/* Banner "tersambung tapi belum ada gambar": menjelaskan sebab dan memberi
+   tombol yang bisa ditekan (membuka panel sesi, tempat layar dipilih).
+   Sebelumnya pengguna hanya melihat layar gelap tanpa penjelasan. */
+.session-frame-guidance{position:absolute;z-index:35;left:50%;top:max(56px,calc(env(safe-area-inset-top) + 56px));transform:translateX(-50%);width:min(420px,calc(100% - 32px));padding:12px 14px;border:1px solid #f3bf6259;border-radius:14px;background:#17121bf2;color:#f8f5ff;box-shadow:0 14px 38px #08060d80;backdrop-filter:blur(14px);font-size:12px;line-height:1.5}
+.session-frame-guidance strong{display:block;font-size:13px;color:#f3bf62;margin-bottom:4px}
+.session-frame-guidance p{margin:0;color:#ddd3ea}
+.session-frame-guidance.relay{border-color:#a78bfa73}
+.session-frame-guidance.relay strong{color:#c4b5fd}
+.session-frame-actions{display:flex;gap:8px;margin-top:10px}
+.session-frame-actions button{padding:6px 12px;border:1px solid #ffffff2e;border-radius:999px;background:#ffffff14;color:#f8f5ff;font-size:12px;font-weight:600;cursor:pointer}
+.session-frame-actions button:hover{background:#ffffff24}

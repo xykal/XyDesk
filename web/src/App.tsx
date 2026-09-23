@@ -62,6 +62,7 @@ import { LICENSE_TOTAL } from './license-total';
 // dibuka.
 const LicenseInventory = lazy(() => import('./LicenseInventory'));
 import { HostMeta, InputCodec, RtcPhase, RtcSession } from './rtc';
+import { frameGuidance } from './session_guidance';
 import type { SessionStats } from './rtc';
 import {
   APP_VERSION,
@@ -2743,6 +2744,18 @@ function ConnectScreen({
             )}
           </div>
         )}
+        {connected && stats && frameGuidance(stats) && (() => {
+          const g = frameGuidance(stats)!;
+          return (
+            <div className={`session-frame-guidance${g.relayRelated ? ' relay' : ''}`} role="status" aria-live="polite">
+              <strong>{g.title}</strong>
+              <p>{g.detail}</p>
+              <div className="session-frame-actions">
+                <button type="button" onClick={() => setPanelOpen(true)}>{g.action}</button>
+              </div>
+            </div>
+          );
+        })()}
         {connected && stats && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
           <span className="session-connection-dot" aria-hidden="true" />
           <strong>{stats.fps > 0 ? `${Math.round(stats.fps)} FPS` : 'FPS —'}</strong>
