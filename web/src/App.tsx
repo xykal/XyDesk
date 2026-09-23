@@ -2712,7 +2712,8 @@ function ConnectScreen({
       >
         <video ref={videoRef} autoPlay playsInline muted onLoadedMetadata={paintCursor} onResize={paintCursor} />
         {sessionOpen && !connected && <div className="session-connecting" role="status">
-          <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
+          {/* Gambar mengikuti fase: menunggu pasangan selagi pairing, atau terputus/gagal. */}
+          <img className="session-connect-art" src={['pairing','negotiating'].includes(phase)?'/illustrations/waiting.webp':'/illustrations/disconnected.webp'} alt="" width="120" height="120" loading="eager" decoding="async"/>
           {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
           <h2>{(phase==='error'&&fasePesan)||labels[phase]||'Menyiapkan sesi…'}</h2>
           {!['pairing','negotiating'].includes(phase)&&<button className="btn primary" onClick={()=>void connect()}>Coba lagi</button>}

@@ -2893,6 +2893,13 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .history-content footer { display:flex;justify-content:space-between;align-items:center;margin-top:20px; }
 .history-content summary { cursor:pointer;font-weight:600;margin-top:16px;font-size:13px; }
 .history-empty { padding:48px 24px;text-align:center;border-radius:16px;background:#efeaf5; }
+/* Ilustrasi status tema sesi (webp transparan di /illustrations). */
+.session-connecting .session-connect-art { width:120px; height:auto; filter:drop-shadow(0 12px 26px rgba(0,0,0,.4)); }
+.history-empty-art { display:block; width:200px; max-width:56%; height:auto; margin:0 auto 10px; }
+.guide-body { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+.guide-art { display:block; width:190px; height:auto; margin:0 auto; }
+@media (min-width:720px) { .guide-body { grid-template-columns:minmax(0,1fr) 190px; align-items:center; } .guide-art { margin:0; } }
+@media (max-width:560px) { .session-connecting .session-connect-art { width:96px; } .history-empty-art { width:160px; } }
 @media(max-width:600px){.history-heading{align-items:flex-start;flex-direction:column}.history-page{margin-top:12px;padding:18px}}
 
 .vkb-dismiss{align-self:center;display:flex;align-items:center;gap:8px;padding:6px 20px;border:0;border-radius:8px;background:#dee0e5;color:#1c1c1e;min-height:34px;cursor:pointer;font-weight:600}.vkb-dismiss:focus-visible{outline:2px solid #1c1c1e}

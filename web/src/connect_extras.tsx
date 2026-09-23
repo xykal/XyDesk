@@ -207,17 +207,29 @@ export function ConnectGuide() {
           Sisi host (PC)
         </button>
       </div>
-      <ol className="guide-steps">
-        {steps.map(([title, desc], i) => (
-          <li key={title}>
-            <span className="guide-num">{i + 1}</span>
-            <div>
-              <strong>{title}</strong>
-              <p>{desc}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <div className="guide-body">
+        <ol className="guide-steps">
+          {steps.map(([title, desc], i) => (
+            <li key={title}>
+              <span className="guide-num">{i + 1}</span>
+              <div>
+                <strong>{title}</strong>
+                <p>{desc}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+        {/* Client: gestur sentuh di layar. Host: pairing PC dan HP. */}
+        <img
+          className="guide-art"
+          src={side === 'client' ? '/illustrations/gestures.webp' : '/illustrations/connect.webp'}
+          alt=""
+          width="640"
+          height="640"
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
     </section>
   );
 }
