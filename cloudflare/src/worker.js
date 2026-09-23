@@ -413,6 +413,62 @@ async function handleSignalToken(request, url, env) {
   });
 }
 
+// Alasan penolakan `/turn-ice` dalam bentuk yang bisa dibaca mesin.
+//
+// Dulu semua penolakan berbunyi teks `forbidden` berstatus 403, jadi client
+// hanya tahu "gagal" lalu diam-diam jatuh ke STUN saja. Persis di situ relay
+// hilang tanpa jejak: pengguna di belakang CGNAT/NAT simetris tidak pernah
+// tahu kenapa sesinya tidak tersambung, dan operator tidak punya apa pun
+// untuk dibaca. Sekarang penolakan menyebut sebabnya (`reason`) dan langkah
+// berikutnya (`hint`) — tanpa membocorkan rahasia: yang dibicarakan hanya
+// bentuk token yang pemanggil sendiri kirim.
+const TURN_DENIAL_HINTS = {
+  'no-credentials':
+    'Sertakan token perangkat (Authorization: Bearer …), atau ambil token baru lewat /signal-token.',
+  'token-invalid':
+    'Token signaling tidak valid, sudah lewat 5 menit, atau milik perangkat/role lain. Ambil token baru lewat /signal-token.',
+  'ticket-invalid':
+    'Tiket terikat hanya sah untuk role client dan untuk perangkat yang sama seperti saat diterbitkan.',
+  'ticket-revoked':
+    'Akun pemilik tiket sudah dinonaktifkan atau sesinya dicabut. Login ulang untuk tiket baru.',
+};
+
+const turnDenialBody = (reason) => ({
+  error: 'turn-forbidden',
+  reason,
+  hint: TURN_DENIAL_HINTS[reason],
+});
+
+async function turnDenial(id, role, token, env) {
+  if (!token) return { status: 403, body: turnDenialBody('no-credentials') };
+  if (token.startsWith('v2.')) {
+    const principal = await readBoundTicket(token, id, role, env.XYDESK_SECRET);
+    if (!principal) return { status: 403, body: turnDenialBody('ticket-invalid') };
+    try {
+      if (!(await checkPrincipal(env, principal))) {
+        return { status: 403, body: turnDenialBody('ticket-revoked') };
+      }
+    } catch {
+      // Server otorisasi tidak bisa dihubungi. Itu BUKAN penolakan, jadi
+      // jawabannya pun tidak boleh berbunyi "ditolak" — kalau disamakan,
+      // gangguan sesaat akan terbaca sebagai akun dicabut, dan pengguna
+      // disuruh login ulang tanpa sebab.
+      return {
+        status: 503,
+        body: {
+          error: 'turn-auth-unavailable',
+          hint: 'Server otorisasi sedang tidak dapat dihubungi; coba lagi sebentar lagi.',
+        },
+      };
+    }
+    return null;
+  }
+  if (!(await verifyToken(token, id, role, env.XYDESK_SECRET))) {
+    return { status: 403, body: turnDenialBody('token-invalid') };
+  }
+  return null;
+}
+
 // ── Endpoint kredensial TURN ─────────────────────────────────────────────
 //
 // Menghasilkan ICE servers (kredensial TURN ber-TTL) dari Cloudflare Realtime.
@@ -429,20 +485,19 @@ async function handleSignalToken(request, url, env) {
 // Tanpa kedua secret itu, endpoint mengembalikan 503 dengan pesan jelas
 // (bukan crash), sehingga sisa sistem tetap berjalan pakai STUN saja.
 async function handleTurnIce(request, url, env) {
-  const authorized = await (async () => {
-    const admin = request.headers.get('X-Admin') || '';
-    if (env.ADMIN_SECRET && timingSafeEqual(admin, String(env.ADMIN_SECRET))) return true;
-    const id = url.searchParams.get('id') || 'client';
-    const role = url.searchParams.get('role') === 'host' ? 'host' : 'client';
-    const token = extractToken(request,url);
-    if (token.startsWith('v2.')) {
-      const principal = await readBoundTicket(token,id,role,env.XYDESK_SECRET);
-      try { return principal && await checkPrincipal(env,principal); } catch { return false; }
+  const id = url.searchParams.get('id') || 'client';
+  const role = url.searchParams.get('role') === 'host' ? 'host' : 'client';
+  const token = extractToken(request, url);
+  const admin = request.headers.get('X-Admin') || '';
+  const viaAdmin = Boolean(env.ADMIN_SECRET) && timingSafeEqual(admin, String(env.ADMIN_SECRET));
+  if (!viaAdmin) {
+    const denial = await turnDenial(id, role, token, env);
+    if (denial) {
+      return new Response(JSON.stringify(denial.body), {
+        status: denial.status,
+        headers: { 'content-type': 'application/json' },
+      });
     }
-    return token && (await verifyToken(token, id, role, env.XYDESK_SECRET));
-  })();
-  if (!authorized) {
-    return new Response('forbidden', { status: 403 });
   }
 
   const requestedTtl = Number(url.searchParams.get('ttl') || 86400);

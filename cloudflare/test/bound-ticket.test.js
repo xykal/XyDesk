@@ -32,7 +32,10 @@ test('revoked bound ticket blocked for websocket and TURN',async()=>{
 test('auth outage cannot open bound websocket or obtain TURN',async()=>{
  const t=await signBoundTicket('client-one',principal(),secret),e=env();e.AUTH_STORE.get=()=>({fetch:async()=>{throw Error('down')}});
  assert.equal((await worker.fetch(new Request('https://signal.example/ws?id=client-one',{headers:{Authorization:'Bearer '+t}}),e)).status,503);
- assert.equal((await worker.fetch(new Request('https://signal.example/turn-ice?id=client-one',{headers:{Authorization:'Bearer '+t}}),e)).status,403);
+ // TURN: gangguan otorisasi dijawab 503 (bukan 403) supaya client bisa
+ // membedakannya dari penolakan — akun dicabut tetap 403.
+ const turn=await worker.fetch(new Request('https://signal.example/turn-ice?id=client-one',{headers:{Authorization:'Bearer '+t}}),e);
+ assert.equal(turn.status,503);assert.equal((await turn.json()).error,'turn-auth-unavailable');
 });
 test('worker overwrites spoofed principal header for bound and legacy tickets',async()=>{
  for(const bound of [true,false]){
