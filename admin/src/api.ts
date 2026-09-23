@@ -187,14 +187,13 @@ export async function fetchHealth(): Promise<Health> {
 export interface SessionStatus { email:string; username?:string; setupRequired:boolean }
 export interface AuthConfig { passwordEnabled:boolean; setupAvailable:boolean }
 const authErrors:Record<string,string>={
-  'invalid-credentials':'Username, password, atau kode keamanan tidak sesuai. Kode authenticator yang sudah digunakan tidak dapat dipakai lagi.',
+  'invalid-credentials':'Username atau password tidak sesuai.',
   'captcha-invalid':'Captcha tidak valid atau kedaluwarsa. Selesaikan captcha lagi.',
   'too-many-attempts':'Terlalu banyak percobaan. Tunggu 15 menit sebelum mencoba lagi.',
   'setup-closed':'Akun admin sudah dikonfigurasi. Muat ulang lalu masuk dengan username.',
   'setup-closed-or-changed':'Setup sudah berubah atau selesai. Muat ulang halaman.',
   'setup-expired':'Setup kedaluwarsa. Mulai lagi dari awal.',
   'recent-login-required':'Untuk setup, keluar lalu login Google lagi agar verifikasi masih baru.',
-  'invalid-authenticator-code':'Kode authenticator tidak cocok. Periksa jam perangkat lalu coba kode terbaru.',
   'google-login-disabled':'Login Google sudah dimatikan. Muat ulang lalu gunakan username dan password.',
   'username-3-32-password-14-128':'Username 3–32 karakter (huruf kecil, angka, titik, garis bawah, atau tanda minus). Password 14–128 karakter.',
 }
