@@ -114,19 +114,62 @@ export async function deleteAccount(token: string) {
   if (!res.ok) throw new ApiError(res.status, 'delete', 'Gagal menghapus akun.');
 }
 
-/// Kredensial TURN ber-TTL; null bila belum dikonfigurasi (cukup STUN).
+/// Hasil permintaan kredensial TURN — termasuk sebab bila tidak ada relay.
+///
+/// Dulu fungsi ini mengembalikan `RTCIceServer[]`, dan setiap kegagalan
+/// (403, 503, jaringan mati) menyusut jadi daftar kosong yang sama. Akibatnya
+/// sesi berjalan dengan STUN saja tanpa satu pun pesan: pengguna di belakang
+/// CGNAT/NAT simetris hanya melihat "menyambung…" yang tidak pernah selesai,
+/// dan operator tidak punya apa pun untuk dibaca. Sekarang sebabnya ikut
+/// dikembalikan supaya bisa ditampilkan apa adanya.
+export interface TurnIceResult {
+  servers: RTCIceServer[];
+  ok: boolean;
+  /// `ok` · `no-servers` · `providers-failed` · `turn-not-configured` ·
+  /// `turn-forbidden` · `turn-auth-unavailable` · `http-<status>` · `network`.
+  reason: string;
+  hint?: string;
+}
+
 export async function turnIce(
   deviceId: string,
   token: string,
-): Promise<RTCIceServer[]> {
+): Promise<TurnIceResult> {
   try {
     const res = await fetch(
       `${API_BASE}/turn-ice?id=${encodeURIComponent(deviceId)}&token=${encodeURIComponent(token)}`,
     );
-    if (!res.ok) return [];
-    const body = (await res.json()) as { iceServers?: RTCIceServer[] };
-    return (body.iceServers ?? []).filter((server) => server.urls);
+    const body = (await res.json().catch(() => ({}))) as {
+      iceServers?: RTCIceServer[];
+      error?: string;
+      reason?: string;
+      hint?: string;
+      degraded?: boolean;
+    };
+    const servers = (body.iceServers ?? []).filter((server) => server.urls);
+    if (!res.ok) {
+      return {
+        servers: [],
+        ok: false,
+        // `reason` lebih rinci daripada `error` (mis. token-invalid vs
+        // turn-forbidden); kalau server lama hanya mengirim `error`,
+        // nilainya tetap terpakai.
+        reason: body.reason ?? body.error ?? `http-${res.status}`,
+        hint: body.hint,
+      };
+    }
+    if (!servers.length) {
+      // 200 dengan daftar kosong: penyedia sudah dikonfigurasi tetapi tidak
+      // satu pun menjawab. Beda sebab, beda tindakan.
+      return { servers, ok: false, reason: body.degraded ? 'providers-failed' : 'no-servers' };
+    }
+    return { servers, ok: true, reason: 'ok' };
   } catch {
-    return [];
+    return {
+      servers: [],
+      ok: false,
+      reason: 'network',
+      hint: 'Tidak bisa menghubungi server signaling untuk mengambil kredensial relay.',
+    };
   }
 }

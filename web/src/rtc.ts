@@ -272,6 +272,19 @@ export interface SessionStats {
   transportProtocol?: string;
   localCandidateType?: string;
   remoteCandidateType?: string;
+  /** Ketersediaan relay TURN, apa adanya — tanpa disamarkan jadi "kosong". */
+  relayState?: 'pending' | 'ready' | 'unavailable';
+  relayServers?: number;
+  relayReason?: string;
+  relayHint?: string;
+}
+
+/// Hasil pengambilan kredensial relay untuk satu percobaan sesi.
+interface RelayInfo {
+  state: 'pending' | 'ready' | 'unavailable';
+  servers: number;
+  reason?: string;
+  hint?: string;
 }
 
 export class RtcSession {
@@ -295,6 +308,7 @@ export class RtcSession {
   private coalescedMoves=0;
   private deviceId = '';
   private token = '';
+  private relay: RelayInfo = { state: 'pending', servers: 0 };
   reconnectAllowed = true;
   onRememberedAccess:(token:string)=>void=()=>{};
   onRememberedRejected:()=>void=()=>{};
@@ -562,9 +576,16 @@ export class RtcSession {
     const iceServers: RTCIceServer[] = [
       { urls: ['stun:stun.cloudflare.com:3478'] },
     ];
-    const turnServers = await turnIce(this.deviceId, this.token);
+    const relay = await turnIce(this.deviceId, this.token);
     if (this.stopped) return;
-    iceServers.push(...turnServers);
+    // Relay dicatat apa adanya. Ketiadaan relay tidak menggagalkan sesi —
+    // banyak jaringan memang tersambung langsung — tetapi ia tidak boleh
+    // hilang tanpa jejak: kalau nanti koneksi tidak pernah jadi, inilah
+    // petunjuk pertama yang dibutuhkan.
+    this.relay = relay.ok
+      ? { state: 'ready', servers: relay.servers.length }
+      : { state: 'unavailable', servers: 0, reason: relay.reason, hint: relay.hint };
+    iceServers.push(...relay.servers);
 
     const pc = new RTCPeerConnection({
       iceServers,
@@ -892,6 +913,10 @@ export class RtcSession {
         if (energy.length) stats.audioEnergy = energy.reduce((sum, x) => sum + Number(x.totalAudioEnergy), 0);
         if (stats.width > 0 && stats.height > 0 && this.lastDecodedAt > 0) this.clearNoFrameWatchdog();
         stats.noFrameWarning = this.noFrameWarning;
+        stats.relayState = this.relay.state;
+        stats.relayServers = this.relay.servers;
+        stats.relayReason = this.relay.reason;
+        stats.relayHint = this.relay.hint;
       }
       return stats;
     } catch {
@@ -981,6 +1006,9 @@ export class RtcSession {
   stop() {
     this.wallpaperTransfer.cancel();
     if (this.stopped) return;
+    // Status relay milik percobaan yang berakhir; sesi berikutnya mengambil
+    // kredensial baru, jadi jangan biarkan angka lama terbaca sebagai fakta.
+    this.relay = { state: 'pending', servers: 0 };
     this.setPhase('ended');
   }
 }

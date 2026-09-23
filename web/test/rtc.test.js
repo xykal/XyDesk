@@ -26,11 +26,27 @@ function setup(overrides = {}) {
     send(data) { this.sent.push(JSON.parse(data)); }
     close() { this.closed++; this.readyState = 3; }
   }
+  // Peer connection tiruan: cukup untuk mengamati konfigurasi ICE yang
+  // benar-benar dipakai sesi (termasuk relay TURN yang datang dari API).
+  class PeerConnection {
+    constructor(config) { this.config = config ?? {}; this.connectionState = 'new'; }
+    getConfiguration() { return this.config; }
+    addTransceiver() { return { direction: 'sendrecv', sender: { replaceTrack() {} } }; }
+    createDataChannel(name) {
+      return { label: name, readyState: 'connecting', bufferedAmount: 0, close() {}, send() {}, addEventListener() {}, removeEventListener() {} };
+    }
+    async createOffer() { return { type: 'offer', sdp: 'v=0\r\n' }; }
+    async setLocalDescription() {}
+    async setRemoteDescription() {}
+    async addIceCandidate() {}
+    getStats() { return new Map(); }
+    close() {}
+  }
   const exports = {};
   vm.runInNewContext(source, {
-    exports, api: { signalToken: async () => 'local-token', WS_URL: 'ws://local/ws', turnIce: async () => [], ...overrides },
-    WebSocket: Socket, crypto: webcrypto, setTimeout, clearTimeout,
-    TextEncoder, TextDecoder, Uint8Array, ArrayBuffer, performance, navigator: overrides.navigator,
+    exports, api: { signalToken: async () => 'local-token', WS_URL: 'ws://local/ws', turnIce: async () => ({ servers: [], ok: false, reason: 'no-servers' }), ...overrides },
+    WebSocket: Socket, RTCPeerConnection: PeerConnection, crypto: webcrypto, setTimeout, clearTimeout,
+    TextEncoder, TextDecoder, Uint8Array, ArrayBuffer, performance, navigator: overrides.navigator ?? {},
   });
   return { session: new exports.RtcSession(), sockets };
 }
@@ -98,7 +114,7 @@ test('stop ketika menunggu TURN tidak membuat peer connection terlambat', async 
   const { session } = setup({ turnIce: () => new Promise(resolve => { finish = resolve; }) });
   const pending = session.negotiate();
   session.stop();
-  finish([]);
+  finish({ servers: [], ok: false, reason: 'no-servers' });
   await pending;
   assert.equal(session.pc, undefined);
 });
@@ -319,3 +335,74 @@ test('network bye permits reconnect but owner bye and 1008 do not',async()=>{
  const {session,sockets}=setup();await session.start('jwt','123456789','password');sockets[0].onclose({code:1008});assert.equal(session.reconnectAllowed,false);session.stop();
 });
 test('FPS command requires advertised host capability and serializes selected target',()=>{const {session}=setup();const sent=[];session.sendInput=b=>sent.push(Array.from(b));session.setFps(60);assert.equal(sent.length,0);session.meta={video:{fpsControl:true}};session.setFps(60);session.setFps(30);assert.deepEqual(sent,[[15,60],[15,30]]);session.meta={video:{fpsLimit:30}};session.setFps(60);assert.equal(sent.length,2);});
+
+// ── Relay TURN: tidak ada lagi kegagalan yang hilang tanpa jejak ─────────
+//
+// Sebelumnya `turnIce()` mengembalikan daftar kosong untuk SEMUA kegagalan
+// (403, 503, jaringan mati), jadi sesi berjalan dengan STUN saja tanpa satu
+// pun pesan. Tiga uji di bawah menjaga janji barunya: sebabnya dicatat,
+// sesi tetap jalan, dan statistik melaporkannya apa adanya.
+
+test('kredensial relay yang siap dicatat lengkap di statistik', async () => {
+  const { session } = setup({
+    turnIce: async () => ({ servers: [{ urls: 'turn:relay.example:3478' }], ok: true, reason: 'ok' }),
+  });
+  try {
+    await session.negotiate();
+    assert.equal(session.relay.state, 'ready');
+    assert.equal(session.relay.servers, 1);
+    session.pc = { connectionState: 'connected', close() {}, getStats: async () => new Map() };
+    const stats = await session.readStats();
+    assert.equal(stats.relayState, 'ready');
+    assert.equal(stats.relayServers, 1);
+    assert.equal(stats.relayReason, undefined);
+  } finally { session.stop(); }
+});
+
+test('relay ditolak server: sesi tetap jalan, sebab dan saran dicatat', async () => {
+  const hint = 'Token signaling tidak valid, sudah lewat 5 menit.';
+  const { session } = setup({
+    turnIce: async () => ({ servers: [], ok: false, reason: 'turn-forbidden', hint }),
+  });
+  try {
+    await session.negotiate();
+    assert.equal(session.relay.state, 'unavailable');
+    assert.equal(session.relay.servers, 0);
+    assert.equal(session.relay.reason, 'turn-forbidden');
+    assert.equal(session.relay.hint, hint);
+    session.pc = { connectionState: 'connected', close() {}, getStats: async () => new Map() };
+    const stats = await session.readStats();
+    assert.equal(stats.relayState, 'unavailable');
+    assert.equal(stats.relayReason, 'turn-forbidden');
+    assert.equal(stats.relayHint, hint);
+  } finally { session.stop(); }
+});
+
+test('relay belum dikonfigurasi tetap membangun peer connection dengan STUN', async () => {
+  const { session } = setup({
+    turnIce: async () => ({ servers: [], ok: false, reason: 'turn-not-configured' }),
+  });
+  try {
+    await session.negotiate();
+    assert.equal(session.relay.state, 'unavailable');
+    assert.equal(session.relay.reason, 'turn-not-configured');
+    assert.ok(session.pc, 'peer connection tetap dibangun tanpa relay');
+    assert.equal(session.pc.getConfiguration().iceServers.some(s => String(s.urls).startsWith('turn:')), false);
+  } finally { session.stop(); }
+});
+
+test('relay yang siap benar-benar ikut ke iceServers', async () => {
+  const { session } = setup({
+    turnIce: async () => ({
+      servers: [{ urls: 'turn:relay.example:3478', username: 'u', credential: 'c' }],
+      ok: true,
+      reason: 'ok',
+    }),
+  });
+  try {
+    await session.negotiate();
+    const urls = session.pc.getConfiguration().iceServers.flatMap(s => [].concat(s.urls));
+    assert.ok(urls.includes('turn:relay.example:3478'));
+    assert.ok(urls.includes('stun:stun.cloudflare.com:3478'));
+  } finally { session.stop(); }
+});

@@ -444,6 +444,34 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/// Sebab relay tidak tersedia, ditulis sebagai kalimat yang bisa dibaca
+/// pengguna — bukan kode. Kode mentahnya tetap dipakai sebagai cadangan
+/// supaya sebab baru dari server tidak pernah hilang diam-diam.
+const RELAY_REASON: Record<string, string> = {
+  'no-credentials': 'server menolak permintaan tanpa token perangkat',
+  'token-invalid': 'token perangkat ditolak server (mungkin sudah kedaluwarsa)',
+  'ticket-invalid': 'tiket perangkat tidak sah untuk relay',
+  'ticket-revoked': 'sesi akun dicabut server',
+  'no-servers': 'server tidak mengirim daftar relay',
+  'providers-failed': 'semua penyedia relay tidak menjawab',
+  'turn-not-configured': 'server belum dikonfigurasi TURN',
+  'turn-forbidden': 'kredensial relay ditolak server',
+  'turn-auth-unavailable': 'server otorisasi sedang tidak bisa dihubungi',
+  network: 'jaringan ke server signaling gagal',
+};
+
+function relayText(stats: SessionStats): string {
+  if (stats.relayState === 'ready') {
+    const n = stats.relayServers ?? 0;
+    return `${n} server siap — dipakai bila jalur langsung gagal`;
+  }
+  if (stats.relayState === 'unavailable') {
+    const reason = stats.relayReason ?? 'sebab tidak diketahui';
+    return `Tidak tersedia (${RELAY_REASON[reason] ?? reason})`;
+  }
+  return 'Belum diperiksa';
+}
+
 function idNum(n: number, digits = 0) {
   return n.toFixed(digits).replace('.', ',');
 }
@@ -614,6 +642,13 @@ export function SessionPanel({
             ))}
           </div>
           <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host. Mode 720p mengirim kanvas HD; mode 1080p dipakai bila capture dan encoder mendukung. RTT bukan latensi layar-ke-layar.</p>
+          {stats?.relayState === 'unavailable' && (
+            <p className="spanel-note" role="status">
+              Relay TURN tidak tersedia — {RELAY_REASON[stats.relayReason ?? ''] ?? stats.relayReason ?? 'sebab tidak diketahui'}.
+              {' '}Sesi tetap bisa tersambung lewat jalur langsung; kalau koneksi tidak pernah jadi, inilah sebab pertama yang perlu diperiksa.
+              {stats.relayHint ? ` ${stats.relayHint}` : ''}
+            </p>
+          )}
 
           <p className="spanel-section">Yang sedang berjalan</p>
           <div className="spanel-card">
@@ -624,6 +659,7 @@ export function SessionPanel({
                 <StatRow label="Pemakaian data" value={`${idNum(stats.mbps, stats.mbps > 0 && stats.mbps < 0.1 ? 3 : 1)} Mbps`} />
                 <StatRow label="RTT jaringan" value={stats.rttMs ? `${idNum(stats.rttMs)} ms` : '—'} />
                 <StatRow label="Jalur WebRTC" value={stats.transportPath === 'turn-relay' ? `TURN relay (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : stats.transportPath === 'direct-p2p' ? `P2P langsung (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : 'Belum terukur'} />
+                <StatRow label="Relay TURN" value={relayText(stats)} />
                 <StatRow label="Paket hilang (total)" value={`${idNum(stats.lossPct, 1)} %`} />
                 <StatRow label="Jitter RTP" value={stats.jitterMs===undefined?'—':`${idNum(stats.jitterMs,1)} ms`}/>
                 <StatRow label="Buffer video (interval)" value={stats.jitterBufferMs===undefined?'—':`${idNum(stats.jitterBufferMs,1)} ms`}/>

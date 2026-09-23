@@ -553,6 +553,25 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   build rilis di perangkat nyata — item Danu "screenshot Android" adalah
   langkah serupa untuk Android.
 
+- [ ] (dari Galih - XySpace Team, 2026-09-23) — **MSI WiX tidak bisa
+  dibangun: extension UI tidak pernah dipasang.** Job `installer-lint` di
+  `build.yml` memasang WiX v4 (`dotnet tool install wix --version 4.0.6`)
+  lalu langsung `wix build -ext WixToolset.UI.wixext` → `error WIX0144: The
+  extension 'WixToolset.UI.wixext' could not be found` (run `35879908181`,
+  langkah "Compile-check MSI dan NSIS"). Tidak ada satu pun
+  `wix extension add` di seluruh workflow, sedangkan `release.yml:386` dan
+  `prepare-windows-installer.yml:91` memakai `-ext` yang sama — jadi jalur
+  MSI (bagian pekerjaan `596d2fe`, "Packaging Windows dual-format") belum
+  pernah benar-benar lulus; job lint barunya yang membongkarnya. Saran
+  perbaikan: setelah tool WiX terpasang, jalankan
+  `wix extension add -g WixToolset.UI.wixext/4.0.6` (versi disamakan dengan
+  tool) sebelum `wix build`, lalu ulangi job lint. **Tidak dikerjakan di sesi
+  ini** — itu area CI/Release.
+- [ ] (dari Galih - XySpace Team, 2026-09-23) — **Dispatch ulang `Build`
+  setelah push** untuk memastikan langkah host (`Cek format`, `Clippy
+  tanpa toleransi peringatan`, `Uji unit`) hijau di runner, bukan hanya di
+  lingkungan sesi agent.
+
 ## Untuk: Web
 
 - [x] (dari Tara - XySpace Team, 2026-09-03) — **Lengkapi sisi klien admin
@@ -609,6 +628,20 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   (md5 live == build `2de36d14…`, content-type `text/javascript`, fallback
   + client ID produksi ada di bundle live). Catatan untuk CI/Release di
   bawah.
+
+- [x] (Danu - XySpace Team, 2026-09-23) — **Relay TURN berhenti hilang tanpa
+  jejak.** `turnIce()` tidak lagi menyusut jadi daftar kosong untuk semua
+  kegagalan: ia mengembalikan `{servers, ok, reason, hint}` (`no-servers`,
+  `providers-failed`, `turn-not-configured`, `turn-forbidden`,
+  `turn-auth-unavailable`, `network`, `http-<status>`, plus kode rinci dari
+  server). Sesi menyimpannya sebagai `relayState`/`relayServers`/
+  `relayReason`/`relayHint` di statistik, `stop()` mereset ke `pending`, dan
+  panel Statistik menambah baris "Relay TURN" + catatan saat relay tidak ada.
+  `node --test` web 102/102 (12 uji baru: 4 di `test/rtc.test.js`, 8 di
+  `test/turn_ice_api.test.js` yang baru), `npm run build` hijau. **Belum
+  di-deploy** ke app.xydesk.my.id. Sisa untuk Web: paritas di client Flutter
+  (`lib/webrtc/rtc_service.dart` masih `catch (_) => const []`) — itu area
+  Client Flutter, bukan sesi ini.
 
 ## Untuk: Backend / Edge
 
@@ -740,6 +773,7 @@ _(kosong)_
   klien (RepaintBoundary) ternyata gelap di perangkat nyata, jalur
   terbaik adalah host mengirimkan satu frame terakhir saat sesi berakhir.
   Protokolnya bisa ditambahkan tanpa mengubah kontrak yang ada.
+
 
 ## Untuk: News & Konten
 
@@ -933,6 +967,7 @@ _(kosong)_
   peralatannya dibebaskan dengan benar. Ketikan panjang dari HP juga tidak lagi
   hilang sebagian di tengah jalan." **Tanpa screenshot** — tidak ada perubahan
   visual di sisi host, dan screenshot sesi Windows masih jadi utang Desktop Shell.
+
 
 ## Untuk: Docs & Audit
 
