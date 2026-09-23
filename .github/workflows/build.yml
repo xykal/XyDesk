@@ -677,11 +677,20 @@ jobs:
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw 'Panel native gagal dikompilasi untuk pemeriksaan bentuk' }
 
+          # Panel adalah aplikasi subsystem WINDOWS: PowerShell tidak menunggu
+          # proses seperti ini dengan `&`, sehingga berkas keluaran bisa dibaca
+          # sebelum sempat ditulis (run 35899915639). Start-Process -Wait
+          # memaksa urutannya, dan kode keluarnya tetap diperiksa.
+          function Invoke-Panel {
+            param([string]$Argument, [string]$OutputPath)
+            $proc = Start-Process -FilePath $exe -ArgumentList $Argument, $OutputPath -Wait -PassThru
+            if ($proc.ExitCode -ne 0) { throw "Panel $Argument gagal (kode $($proc.ExitCode))" }
+          }
+
           # 1) Tata letak dari EXE yang benar-benar dikompilasi — bukan dari
           #    sumber yang dibaca ulang — termasuk hasil hit-test klik.
           $probe = Join-Path $out 'panel-probe.json'
-          & $exe --panel-probe $probe
-          if ($LASTEXITCODE -ne 0) { throw "Panel probe gagal: $LASTEXITCODE" }
+          Invoke-Panel '--panel-probe' $probe
           $layout = Get-Content $probe -Raw | ConvertFrom-Json
           Write-Host ($layout | ConvertTo-Json -Compress)
           if ($layout.windowWidth -ne 608 -or $layout.windowHeight -ne 616) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
@@ -694,8 +703,7 @@ jobs:
           # 2) Bentuk yang digambar aplikasi sendiri: busur sudut, tepi halus,
           #    bayangan. Diperiksa per piksel oleh tool/check_panel_shape.py.
           $snapshot = Join-Path $out 'panel.bmp'
-          & $exe --panel-snapshot $snapshot
-          if ($LASTEXITCODE -ne 0) { throw "Panel snapshot gagal: $LASTEXITCODE" }
+          Invoke-Panel '--panel-snapshot' $snapshot
           python tool/check_panel_shape.py $snapshot
           if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
 
