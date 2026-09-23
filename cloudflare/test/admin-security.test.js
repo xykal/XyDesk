@@ -69,6 +69,11 @@ test('password-only login menerima credential tanpa code',async()=>{
   assert.equal((await service.fetch('login',{username:'stranger',password,ip:'wrong-user'})).status,401);
   assert.equal((await service.fetch('login',{username:'owner',password,ip:'ok'})).status,200);
 });
+test('worker tetap mewajibkan Turnstile dan tidak menerima code sebagai pengganti',async()=>{
+  const service=new AdminSecurity(memory(),{ADMIN_AUTH_KEY:key}),env=workerEnv(service);
+  const r=await route(env,'password-login',{username:'owner',password,code:'123456',recovery:true});
+  assert.equal(r.status,403);assert.deepEqual(await r.json(),{error:'captcha-invalid'});
+});
 test('password-only login paralel sama-sama dapat sesi dan audit',async()=>{
   const {service,storage}=await setup();
   const results=await Promise.all([service.fetch('login',{username:'owner',password,ip:'one'}),service.fetch('login',{username:'owner',password,ip:'two'})]);
