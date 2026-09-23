@@ -106,9 +106,6 @@ export class AdminSecurity {
       }
       const now = Date.now();
       const salt = b64(random(16));
-      const secret = base32(random(20));
-      const recoveryCodes = Array.from({ length: 10 }, () => base32(random(16)));
-      const recoveryHashes = await Promise.all(recoveryCodes.map(code => digest('recovery\\0' + code)));
       const passwordHash = await passwordVerifier(body.password, salt, this.env.ADMIN_AUTH_KEY);
       const credential = {
         schema: 1,
@@ -118,9 +115,9 @@ export class AdminSecurity {
         salt,
         passwordHash,
         iterations: PASSWORD_ITERATIONS,
-        totp: await seal(secret, this.env.ADMIN_AUTH_KEY),
+        totp: null,
         lastCounter: 0,
-        recoveryHashes,
+        recoveryHashes: [],
         createdAt: now,
       };
       const sessions = await this.storage.list({ prefix: 'admin:session:' });
@@ -135,23 +132,17 @@ export class AdminSecurity {
           version: credential.version,
         });
       });
-      return json({
-        username,
-        email: credential.email,
-        totpSecret: secret,
-        otpauthUri: `otpauth://totp/${encodeURIComponent('XyDesk Admin:' + username)}?secret=${secret}&issuer=XyDesk%20Admin&algorithm=SHA1&digits=6&period=30`,
-        recoveryCodes,
-      });
+      return json({ username, email: credential.email });
     }
     if (path === 'setup/start') {
       if (await this.storage.get(CREDENTIALS)) return json({ error: 'setup-closed' }, 409);
       const username = usernameOf(body.username);
       if (!body.actor || !validUsername(username) || !validPassword(body.password)) return json({ error: 'username-3-32-password-14-128' }, 400);
       if (!await this.rate(['setup:' + body.actor], 5, now)) return json({ error: 'too-many-attempts' }, 429);
-      const salt = b64(random(16)), secret = base32(random(20));
-      const pending = { username, email: body.actor, salt, passwordHash: await passwordVerifier(body.password, salt, this.env.ADMIN_AUTH_KEY), totp: await seal(secret, this.env.ADMIN_AUTH_KEY), expires: now + 10 * 60 * 1000 };
+      const salt = b64(random(16));
+      const pending = { username, email: body.actor, salt, passwordHash: await passwordVerifier(body.password, salt, this.env.ADMIN_AUTH_KEY), expires: now + 10 * 60 * 1000 };
       await this.storage.put('admin:pending:' + body.actor, pending);
-      return json({ secret, expiresAt: pending.expires, otpauthUri: `otpauth://totp/${encodeURIComponent('XyDesk Admin:' + username)}?secret=${secret}&issuer=XyDesk%20Admin&algorithm=SHA1&digits=6&period=30` });
+      return json({ expiresAt: pending.expires });
     }
     if (path === 'setup/confirm') {
       if (!body.actor) return json({ error: 'unauthorized' }, 401);
@@ -159,16 +150,12 @@ export class AdminSecurity {
       const pendingKey = 'admin:pending:' + body.actor;
       const pending = await this.storage.get(pendingKey);
       if (!pending || pending.expires <= now) return json({ error: 'setup-expired' }, 410);
-      const counter = await matchCounter(await open(pending.totp, this.env.ADMIN_AUTH_KEY), body.code, now);
-      if (counter === null) return json({ error: 'invalid-authenticator-code' }, 400);
-      const recoveryCodes = Array.from({ length: 10 }, () => base32(random(16)));
-      const recoveryHashes = await Promise.all(recoveryCodes.map(c => digest('recovery\0' + c)));
       const token = base32(random(32)), sessionKey = 'admin:session:' + await digest(token);
       const result = await this.storage.transaction(async txn => {
         if (await txn.get(CREDENTIALS)) return false;
         const current = await txn.get(pendingKey);
-        if (!current || current.expires <= now || current.passwordHash !== pending.passwordHash || current.totp.data !== pending.totp.data) return false;
-        const credential = { schema: 1, version: 1, username: pending.username, email: pending.email, salt: pending.salt, passwordHash: pending.passwordHash, iterations: PASSWORD_ITERATIONS, totp: pending.totp, lastCounter: counter, recoveryHashes, createdAt: now };
+        if (!current || current.expires <= now || current.passwordHash !== pending.passwordHash) return false;
+        const credential = { schema: 1, version: 1, username: pending.username, email: pending.email, salt: pending.salt, passwordHash: pending.passwordHash, iterations: PASSWORD_ITERATIONS, totp: null, lastCounter: 0, recoveryHashes: [], createdAt: now };
         await txn.put(CREDENTIALS, credential);
         await txn.put(sessionKey, { email: pending.email, username: pending.username, version: 1, expiresAt: now + SESSION_TTL * 1000 });
         await txn.delete(pendingKey);
@@ -176,38 +163,25 @@ export class AdminSecurity {
         return true;
       });
       if (!result) return json({ error: 'setup-closed-or-changed' }, 409);
-      return json({ token, email: pending.email, username: pending.username, setupRequired: false, recoveryCodes });
+      return json({ token, email: pending.email, username: pending.username, setupRequired: false });
     }
     if (path === 'login') {
       const username = usernameOf(body.username);
-      if (!validUsername(username) || typeof body.password !== 'string' || body.password.length > 128 || typeof body.code !== 'string' || body.code.length > 64) return json({ error: 'invalid-credentials' }, 401);
+      // Password + Cloudflare Turnstile is the complete production login
+      // contract. Legacy TOTP/recovery fields may still exist in storage for
+      // migration, but are deliberately ignored and never required here.
+      if (!validUsername(username) || typeof body.password !== 'string' || body.password.length > 128) return json({ error: 'invalid-credentials' }, 401);
       if (!await this.rate(['login-ip:' + (body.ip || 'unknown')], 20, now) || !await this.rate(['login-user:' + username], 5, now)) return json({ error: 'too-many-attempts' }, 429);
       const credential = await this.storage.get(CREDENTIALS);
       if (!credential) return json({ error: 'setup-required' }, 409);
       const hash = await passwordVerifier(body.password, credential.salt, this.env.ADMIN_AUTH_KEY);
       if (!timingSafeEqual(username, credential.username) || !timingSafeEqual(hash, credential.passwordHash)) return json({ error: 'invalid-credentials' }, 401);
-      let counter = null, recoveryHash = null;
-      if (body.recovery === true) {
-        recoveryHash = await digest('recovery\0' + normalizedRecovery(body.code));
-        if (!credential.recoveryHashes.some(h => timingSafeEqual(h, recoveryHash))) return json({ error: 'invalid-credentials' }, 401);
-      } else {
-        counter = await matchCounter(await open(credential.totp, this.env.ADMIN_AUTH_KEY), body.code, now);
-        if (counter === null || counter <= credential.lastCounter) return json({ error: 'invalid-credentials' }, 401);
-      }
       const token = base32(random(32)), sessionKey = 'admin:session:' + await digest(token);
       const success = await this.storage.transaction(async txn => {
         const current = await txn.get(CREDENTIALS);
         if (!current || current.version !== credential.version) return false;
-        if (recoveryHash) {
-          if (!current.recoveryHashes.includes(recoveryHash)) return false;
-          current.recoveryHashes = current.recoveryHashes.filter(h => h !== recoveryHash);
-        } else {
-          if (counter <= current.lastCounter) return false;
-          current.lastCounter = counter;
-        }
-        await txn.put(CREDENTIALS, current);
         await txn.put(sessionKey, { email: current.email, username: current.username, version: current.version, expiresAt: now + SESSION_TTL * 1000 });
-        await txn.put(`admin:log:${now}:security:login:${crypto.randomUUID()}`, { action: recoveryHash ? 'security-recovery-login' : 'security-login', at: now, by: current.email });
+        await txn.put(`admin:log:${now}:security:login:${crypto.randomUUID()}`, { action: 'security-login-password-only', at: now, by: current.email });
         return true;
       });
       if (!success) return json({ error: 'invalid-credentials' }, 401);

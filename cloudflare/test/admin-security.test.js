@@ -16,25 +16,29 @@ function memory(){
 async function setup(){
   const storage=memory(),service=new AdminSecurity(storage,{ADMIN_AUTH_KEY:key});
   const start=await service.fetch('setup/start',{actor:email,username:'owner',password});assert.equal(start.status,200);const enrollment=await start.json();
-  const code=await totp(enrollment.secret,Math.floor(Date.now()/30000));
-  const confirm=await service.fetch('setup/confirm',{actor:email,code});assert.equal(confirm.status,200);
-  return {storage,service,enrollment,result:await confirm.json()};
+  const confirm=await service.fetch('setup/confirm',{});assert.equal(confirm.status,401);
+  const confirmed=await service.fetch('setup/confirm',{actor:email});assert.equal(confirmed.status,200);
+  return {storage,service,enrollment,result:await confirmed.json()};
 }
-test('TOTP sesuai vektor RFC6238 SHA1',async()=>{
+async function setupWithActor(){
+  const storage=memory(),service=new AdminSecurity(storage,{ADMIN_AUTH_KEY:key});
+  const start=await service.fetch('setup/start',{actor:email,username:'owner',password});assert.equal(start.status,200);
+  return {storage,service};
+}
+
+test('TOTP helper legacy tetap sesuai vektor RFC6238 SHA1',async()=>{
   const secret=base32(new TextEncoder().encode('12345678901234567890'));
   for(const [seconds,expected] of [[59,'94287082'],[1111111109,'07081804'],[1111111111,'14050471'],[1234567890,'89005924'],[2000000000,'69279037'],[20000000000,'65353130']])assert.equal(await totp(secret,Math.floor(seconds/30),8),expected);
 });
 test('PBKDF2 memakai salt dan password berbeda menghasilkan hash berbeda',async()=>{
   const salt=btoa('1234567890123456');assert.equal(await passwordHash(password,salt),await passwordHash(password,salt));assert.notEqual(await passwordHash(password,salt),await passwordHash(password+'x',salt));assert.notEqual(await passwordHash(password,salt),await passwordHash(password,btoa('6543210987654321')));
 });
-test('setup belum mengalihkan Google sebelum TOTP valid; storage tanpa password/secret mentah',async()=>{
-  const storage=memory(),service=new AdminSecurity(storage,{ADMIN_AUTH_KEY:key});
-  const initial=await(await service.fetch('config')).json();assert.equal(initial.passwordEnabled,false);
-  const start=await service.fetch('setup/start',{actor:email,username:'owner',password});const enrollment=await start.json();
+test('setup password-only tidak menyimpan password mentah atau seed TOTP',async()=>{
+  const {storage,service}=await setupWithActor();
   assert.equal((await(await service.fetch('config')).json()).passwordEnabled,false);
-  const dump=JSON.stringify([...storage.values]);assert.equal(dump.includes(password),false);assert.equal(dump.includes(enrollment.secret),false);
-  assert.equal((await service.fetch('setup/confirm',{actor:email,code:'invalid'})).status,400);
-  assert.equal((await(await service.fetch('config')).json()).passwordEnabled,false);
+  const dump=JSON.stringify([...storage.values]);assert.equal(dump.includes(password),false);assert.equal(dump.includes('totp'),false);
+  assert.equal((await service.fetch('setup/confirm',{actor:email})).status,200);
+  assert.equal((await(await service.fetch('config')).json()).passwordEnabled,true);
 });
 for(const body of [{actor:email,username:'aa',password},{actor:email,username:'owner',password:'short'},{actor:email,username:'../owner',password}])test('setup menolak kebijakan username/password: '+body.username,async()=>{
   const s=new AdminSecurity(memory(),{ADMIN_AUTH_KEY:key});assert.equal((await s.fetch('setup/start',body)).status,400);
@@ -42,52 +46,45 @@ for(const body of [{actor:email,username:'aa',password},{actor:email,username:'o
 test('setup konfirmasi sekali, sesi valid, logout membatalkan sesi',async()=>{
   const {service,result,storage}=await setup();
   assert.equal((await(await service.fetch('config')).json()).passwordEnabled,true);
-  assert.equal(result.recoveryCodes.length,10);assert.equal(new Set(result.recoveryCodes).size,10);
-  assert.equal(JSON.stringify([...storage.values]).includes(result.token),false);
-  assert.equal(JSON.stringify([...storage.values]).includes(result.recoveryCodes[0]),false);
+  assert.equal(result.recoveryCodes,undefined);
   assert.equal((await service.fetch('session',{token:result.token})).status,200);
   assert.equal((await service.fetch('setup/start',{actor:email,username:'other',password})).status,409);
   assert.equal((await service.fetch('logout',{token:result.token})).status,200);
   assert.equal((await service.fetch('session',{token:result.token})).status,401);
+  assert.equal([...storage.values].some(([k])=>k.startsWith('admin:session:')),false);
 });
-test('break-glass recovery mengganti password, TOTP, recovery, dan mencabut sesi lama',async()=>{
+test('break-glass recovery mengganti password dan mencabut sesi lama tanpa TOTP',async()=>{
   const {service,result}=await setup();
   const nextPassword='A-new-unique-password-2026!';
   const reset=await service.fetch('recovery/reset',{recoveryAuthorized:true,confirm:'RESET_ADMIN_CREDENTIALS',username:'owner.new',password:nextPassword});
   assert.equal(reset.status,200);
   const data=await reset.json();
-  assert.equal(data.username,'owner.new');
-  assert.equal(data.recoveryCodes.length,10);
+  assert.deepEqual(data,{username:'owner.new',email});
   assert.equal((await service.fetch('session',{token:result.token})).status,401);
-  const code=await totp(data.totpSecret,Math.floor(Date.now()/30000)+1);
-  assert.equal((await service.fetch('login',{username:'owner.new',password:nextPassword,code,ip:'recovery-test'})).status,200);
-  assert.equal((await service.fetch('login',{username:'owner',password,code,ip:'recovery-test-old'})).status,401);
+  assert.equal((await service.fetch('login',{username:'owner.new',password:nextPassword,ip:'recovery-test'})).status,200);
 });
-
-test('password salah, username salah, dan TOTP replay ditolak',async()=>{
-  const {service,enrollment}=await setup();const code=await totp(enrollment.secret,Math.floor(Date.now()/30000));
-  for(const body of [{username:'owner',password:'wrong',code},{username:'stranger',password,code},{username:'owner',password,code}])assert.equal((await service.fetch('login',{...body,ip:'test-ip'})).status,401);
+test('password-only login menerima credential tanpa code',async()=>{
+  const {service}=await setup();
+  assert.equal((await service.fetch('login',{username:'owner',password:'wrong',ip:'wrong'})).status,401);
+  assert.equal((await service.fetch('login',{username:'stranger',password,ip:'wrong-user'})).status,401);
+  assert.equal((await service.fetch('login',{username:'owner',password,ip:'ok'})).status,200);
 });
-test('TOTP baru dapat login tetapi replay bersamaan hanya sekali',async()=>{
-  const {service,enrollment}=await setup();const code=await totp(enrollment.secret,Math.floor(Date.now()/30000)+1);
-  const body={username:'owner',password,code,ip:'ip'};
-  const results=await Promise.all([service.fetch('login',body),service.fetch('login',body)]);assert.deepEqual(results.map(r=>r.status).sort(),[200,401]);
-});
-test('kode recovery hanya sekali, masih memerlukan password, dan aman pada konkurensi',async()=>{
-  const {service,result}=await setup();const body={username:'owner',password,code:result.recoveryCodes[0],recovery:true,ip:'ip'};
-  assert.equal((await service.fetch('login',{...body,password:'wrong'})).status,401);
-  const results=await Promise.all([service.fetch('login',body),service.fetch('login',body)]);assert.deepEqual(results.map(r=>r.status).sort(),[200,401]);
+test('password-only login paralel sama-sama dapat sesi dan audit',async()=>{
+  const {service,storage}=await setup();
+  const results=await Promise.all([service.fetch('login',{username:'owner',password,ip:'one'}),service.fetch('login',{username:'owner',password,ip:'two'})]);
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,200]);
+  assert.equal([...storage.values.values()].filter(v=>v.action==='security-login-password-only').length,2);
 });
 test('rate limit username lintas IP',async()=>{
   const {service}=await setup();
-  for(let n=0;n<5;n++)assert.equal((await service.fetch('login',{username:'owner',password:'wrong',code:'123456',ip:'ip-'+n})).status,401);
-  assert.equal((await service.fetch('login',{username:'owner',password,code:'123456',ip:'different-ip'})).status,429);
+  for(let n=0;n<5;n++)assert.equal((await service.fetch('login',{username:'owner',password:'wrong',ip:'ip-'+n})).status,401);
+  assert.equal((await service.fetch('login',{username:'owner',password,ip:'different-ip'})).status,429);
 });
 test('session kedaluwarsa dihapus',async()=>{
   const {service,storage,result}=await setup();const [k,v]=[...storage.values].find(([k])=>k.startsWith('admin:session:'));await storage.put(k,{...v,expiresAt:0});assert.equal((await service.fetch('session',{token:result.token})).status,401);assert.equal(storage.values.has(k),false);
 });
 test('setup kadaluwarsa tidak mengaktifkan akun',async()=>{
-  const storage=memory(),service=new AdminSecurity(storage,{ADMIN_AUTH_KEY:key});const enrollment=await(await service.fetch('setup/start',{actor:email,username:'owner',password})).json();const pending=await storage.get('admin:pending:'+email);await storage.put('admin:pending:'+email,{...pending,expires:0});assert.equal((await service.fetch('setup/confirm',{actor:email,code:await totp(enrollment.secret,Math.floor(Date.now()/30000))})).status,410);
+  const {service,storage}=await setupWithActor();const pending=await storage.get('admin:pending:'+email);await storage.put('admin:pending:'+email,{...pending,expires:0});assert.equal((await service.fetch('setup/confirm',{actor:email})).status,410);
 });
 function workerEnv(service){return{AUTH_SECRET:'jwt-test-key',ADMIN_AUTH_KEY:key,ADMIN_EMAILS:email,AUTH_STORE:{idFromName:n=>n,get:()=>({fetch:async req=>service.fetch(new URL(req.url).pathname.slice('/admin/security/'.length),req.method==='GET'?undefined:await req.json())})}}}
 async function route(env,path,body,headers={}){
@@ -96,8 +93,8 @@ async function route(env,path,body,headers={}){
 test('Google dan JWT lama ditolak setelah aktivasi; cookie hanya HttpOnly, Secure, Strict',async()=>{
   const storage=memory(),service=new AdminSecurity(storage,{ADMIN_AUTH_KEY:key}),env=workerEnv(service);
   const jwt=await signJwt({email,role:'admin',aud:'xydesk-admin'},env.AUTH_SECRET,60),auth={Authorization:'Bearer '+jwt};
-  const begin=await route(env,'setup/start',{username:'owner',password},auth);assert.equal(begin.status,200);const enrollment=await begin.json();
-  const confirm=await route(env,'setup/confirm',{code:await totp(enrollment.secret,Math.floor(Date.now()/30000))},auth);assert.equal(confirm.status,200);
+  const begin=await route(env,'setup/start',{username:'owner',password},auth);assert.equal(begin.status,200);
+  const confirm=await route(env,'setup/confirm',{},auth);assert.equal(confirm.status,200);
   const body=await confirm.json();assert.equal(body.token,undefined);
   const cookie=confirm.headers.get('set-cookie');assert.match(cookie,/^__Host-xydesk_admin=/);assert.match(cookie,/HttpOnly/);assert.match(cookie,/Secure/);assert.match(cookie,/SameSite=Strict/);assert.match(cookie,/Path=\//);
   assert.equal((await route(env,'login',{})).status,410);
@@ -113,16 +110,6 @@ test('gagal baca konfigurasi auth tidak membuka fallback Google',async()=>{
 });
 test('setup tidak boleh memakai JWT Google yang sudah lama',async()=>{
   const service=new AdminSecurity(memory(),{ADMIN_AUTH_KEY:key}),env=workerEnv(service);const token=await signJwt({email,role:'admin',aud:'xydesk-admin',iat:Math.floor(Date.now()/1000)-700},env.AUTH_SECRET,3600);
-  // signJwt menetapkan iat sendiri, gunakan clock maju hanya untuk pengujian gate freshness.
   const original=Date.now;Date.now=()=>original()+700000;
   try{assert.equal((await route(env,'setup/start',{username:'owner',password},{Authorization:'Bearer '+token})).status,403)}finally{Date.now=original}
-});
-
-test('login recovery paralel memiliki audit terpisah pada milidetik yang sama',async()=>{
-  const {service,storage,result}=await setup();const original=Date.now,now=original();Date.now=()=>now;
-  try {
-    const results=await Promise.all(result.recoveryCodes.slice(0,2).map(code=>service.fetch('login',{username:'owner',password,code,recovery:true,ip:'audit-ip'})));
-    assert.deepEqual(results.map(r=>r.status),[200,200]);
-    assert.equal([...storage.values.values()].filter(v=>v.action==='security-recovery-login').length,2);
-  }finally{Date.now=original}
 });

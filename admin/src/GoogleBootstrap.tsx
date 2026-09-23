@@ -54,7 +54,7 @@ export default function GoogleBootstrap({onLogin}:{onLogin:(session:SessionStatu
     return ()=>{disposed=true;clearInterval(interval);clearTimeout(timeout);captchaToken.current='';if(widget)window.turnstile?.remove(widget);googleButton.current?.replaceChildren()}
   },[onLogin])
   return <div className="login-wrap"><div className="login-card">
-    <div className="login-head"><img src="/logo.png" alt="XyDesk"/><div><h1>XyDesk Admin</h1><p>Verifikasi pemilik untuk setup pertama. Google otomatis dimatikan setelah password dan authenticator aktif.</p></div></div>
+    <div className="login-head"><img src="/logo.png" alt="XyDesk"/><div><h1>XyDesk Admin</h1><p>Verifikasi pemilik untuk setup pertama. Google otomatis dimatikan setelah password aktif; login berikutnya memakai password dan Turnstile.</p></div></div>
     <div ref={captcha} style={{minHeight:65}}/>
     <div ref={googleButton}/>
     {busy && <p role="status">Memverifikasi akun...</p>}

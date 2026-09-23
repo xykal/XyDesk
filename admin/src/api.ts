@@ -209,17 +209,17 @@ export async function fetchAuthConfig():Promise<AuthConfig> {
 export async function fetchAdminSession():Promise<SessionStatus> {
   return readAuthResponse(await adminFetch('/admin/session'))
 }
-export async function passwordLogin(username:string,password:string,code:string,recovery:boolean,turnstileToken:string):Promise<SessionStatus> {
-  const r=await fetch(`${SIGNAL_BASE}/admin/password-login`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({username,password,code,recovery,turnstileToken})})
+export async function passwordLogin(username:string,password:string,turnstileToken:string):Promise<SessionStatus> {
+  const r=await fetch(`${SIGNAL_BASE}/admin/password-login`,{method:'POST',credentials:'include',headers:{'content-type':'application/json'},body:JSON.stringify({username,password,turnstileToken})})
   const status=await readAuthResponse<SessionStatus>(r)
   setAdminToken(null)
   return status
 }
-export async function startAdminSetup(username:string,password:string):Promise<{secret:string;otpauthUri:string;expiresAt:number}> {
+export async function startAdminSetup(username:string,password:string):Promise<{expiresAt:number}> {
   return readAuthResponse(await adminFetch('/admin/setup/start',{method:'POST',body:JSON.stringify({username,password})}))
 }
-export async function confirmAdminSetup(code:string):Promise<SessionStatus & {recoveryCodes:string[]}> {
-  const status=await readAuthResponse<SessionStatus & {recoveryCodes:string[]}>(await adminFetch('/admin/setup/confirm',{method:'POST',body:JSON.stringify({code})}))
+export async function confirmAdminSetup():Promise<SessionStatus> {
+  const status=await readAuthResponse<SessionStatus>(await adminFetch('/admin/setup/confirm',{method:'POST',body:'{}'}))
   setAdminToken(null)
   return status
 }

@@ -74,7 +74,7 @@ async function handleAdminRequest(request, env, url) {
     try { body=await limitedJson(request) }catch{return json({error:'bad-json'},400,env,request)}
     if (!body || typeof body!=='object') return json({error:'bad-json'},400,env,request)
     if (!await verifyTurnstile(body.turnstileToken,request.headers.get('CF-Connecting-IP')||'',env)) return json({error:'captcha-invalid'},403,env,request)
-    return securityResponse('login',{username:body.username,password:body.password,code:body.code,recovery:body.recovery===true,ip:request.headers.get('CF-Connecting-IP')||''},env,request,true)
+    return securityResponse('login',{username:body.username,password:body.password,ip:request.headers.get('CF-Connecting-IP')||''},env,request,true)
   }
   const cookie = cookieToken(request)
   if (path === '/admin/maintenance' && request.method === 'GET' && !request.headers.get('Authorization') && !cookie) {

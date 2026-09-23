@@ -1,10 +1,14 @@
 # Admin XyDesk — konfigurasi dan verifikasi
 
-## Penggantian login ke username/password + 2FA
+## Login username/password + Cloudflare Turnstile
 
-Lihat [panduan autentikasi dan setup akun](AUTHENTICATION.md). Login Google dipertahankan hanya untuk setup pertama, lalu ditutup atomik ketika pemilik mengonfirmasi authenticator. Bagian OAuth di bawah merupakan riwayat konfigurasi/bootstrap, bukan metode login permanen setelah akun password aktif.
+Lihat [panduan autentikasi dan setup akun](AUTHENTICATION.md). Login Google hanya
+dipakai untuk membuktikan kepemilikan saat setup pertama, lalu ditutup setelah
+akun password aktif. Login harian cukup username, password, dan Cloudflare
+Turnstile.
 
-**Status terbaru (17 September 2026): paket username/password + authenticator live di https://admin.xydesk.my.id.** Akun password menunggu setup pemilik; Google hanya untuk bootstrap dan ditutup setelah TOTP terverifikasi. Source `1d81c31`. Ikuti [panduan setup](AUTHENTICATION.md). Bagian rollout OAuth di bawah merupakan riwayat sebelumnya.
+**Status:** panel admin menggunakan password-only + Turnstile di
+https://admin.xydesk.my.id. TOTP/authenticator tidak diperlukan.
 
 ## Login
 
@@ -16,7 +20,7 @@ Build produksi membaca identitas publik dari `.env.production`. Untuk override l
 Worker membutuhkan `ADMIN_GOOGLE_CLIENT_ID` khusus admin (tanpa fallback ke client web/APK), `TURNSTILE_SECRET` (atau `TURNSTILE_SECRET_KEY`), `AUTH_SECRET` (atau `XYDESK_SECRET`), dan allowlist `ADMIN_EMAILS`. Jangan simpan secret di frontend.
 `ADMIN_TURNSTILE_HOSTNAMES` dapat diisi daftar hostname dipisahkan koma; default `admin.xydesk.my.id,xydesk-admin.pages.dev`.
 
-Login memakai Google Identity Services dan token Turnstile sekali pakai. Worker memeriksa signature/audience/issuer/expiry/email terverifikasi Google, hostname captcha, dan email allowlist. Sesi berlaku satu jam, membawa `aud=xydesk-admin` serta `role=admin`. JWT lama dan JWT akun biasa tidak diterima oleh endpoint admin. HTTP 401 mengembalikan panel ke Login.
+Login harian memakai username/password dan token Turnstile sekali pakai. Worker memeriksa hostname captcha, email allowlist pada sesi, rate limit, dan password verifier. Sesi berlaku satu jam sebagai cookie `HttpOnly`, `Secure`, dan `SameSite=Strict`. JWT lama dan JWT akun biasa tidak diterima oleh endpoint admin. HTTP 401 mengembalikan panel ke Login. Google Identity Services hanya dipakai pada bootstrap awal.
 
 **Dampak rollout:** admin yang sudah login harus masuk ulang. Konfigurasi OAuth dan captcha harus benar sebelum rollout bersama Worker + panel. Belum ada bukti pengujian Google/captcha produksi dari sesi ini.
 
