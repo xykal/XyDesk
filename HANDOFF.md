@@ -553,8 +553,8 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   build rilis di perangkat nyata — item Danu "screenshot Android" adalah
   langkah serupa untuk Android.
 
-- [ ] (dari Galih - XySpace Team, 2026-09-23) — **MSI WiX tidak bisa
-  dibangun: extension UI tidak pernah dipasang.** Job `installer-lint` di
+- [x] (dari Galih - XySpace Team, 2026-09-23; dikerjakan Cakra, sesi
+  CIWIX) — **MSI WiX: extension UI sekarang dipasang (WIX0144).** Job `installer-lint` di
   `build.yml` memasang WiX v4 (`dotnet tool install wix --version 4.0.6`)
   lalu langsung `wix build -ext WixToolset.UI.wixext` → `error WIX0144: The
   extension 'WixToolset.UI.wixext' could not be found` (run `35879908181`,
@@ -566,11 +566,33 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   perbaikan: setelah tool WiX terpasang, jalankan
   `wix extension add -g WixToolset.UI.wixext/4.0.6` (versi disamakan dengan
   tool) sebelum `wix build`, lalu ulangi job lint. **Tidak dikerjakan di sesi
-  ini** — itu area CI/Release.
-- [ ] (dari Galih - XySpace Team, 2026-09-23) — **Dispatch ulang `Build`
-  setelah push** untuk memastikan langkah host (`Cek format`, `Clippy
-  tanpa toleransi peringatan`, `Uji unit`) hijau di runner, bukan hanya di
-  lingkungan sesi agent.
+  **SELESAI (Cakra, 2026-09-23):** ketiga workflow (`build.yml`,
+  `release.yml`, `prepare-windows-installer.yml`) kini menjalankan
+  `wix extension add -g WixToolset.UI.wixext/4.0.6` setelah tool WiX
+  terpasang, dengan `throw` bila gagal. Versi 4.0.6 sengaja disamakan
+  dengan tool WiX supaya `-ext` tanpa versi tetap cocok. YAML ketiganya
+  divalidasi ulang dengan parser; **pembuktian hanya bisa dari runner**
+  (`wix` tidak ada di Linux) — lihat item dispatch di bawah.
+- [x] (dari Galih - XySpace Team, 2026-09-23; dijalankan Cakra, sesi CIWIX)
+  — **Dispatch `Build` penuh** untuk membuktikan gerbang host hijau di
+  runner setelah `cargo fmt` dibersihkan, sekaligus menguji perbaikan
+  extension WiX. Hasilnya dicatat di baris papan `SESI-20260923-CAKRA-WIXEXT`
+  (nomor run + kesimpulan per job).
+
+- [x] (dari Tara - XySpace Team, 2026-09-23) — **Deploy cepat jalur papan #5
+  (worker signaling):** `xydesk-signaling` versi
+  `eeb2a63e-2243-4bb0-abce-4ca36148b983` atas source `0339a40` — deploy
+  `wrangler deploy` (Wrangler 4.123.0) dengan binding utuh (HUB, AUTH_STORE,
+  ADMIN_GOOGLE_CLIENT_ID, CORS_ORIGINS, GOOGLE_DESKTOP_CLIENT_ID).
+  Verifikasi pasca-deploy: `/healthz` 200; `/admin/auth/config` tetap
+  `{passwordEnabled:true,setupAvailable:true}`; `/admin/session` anonim 401;
+  `/admin/password-login` body palsu 403 (Turnstile tetap dijaga);
+  `/turn-ice` tanpa token → `{error:'turn-forbidden',reason:'no-credentials'}`
+  dan token rusak → `reason:'token-invalid'`. Catatan: beberapa detik pertama
+  setelah deploy, sebagian edge masih menyajikan balasan lama (`forbidden`
+  teks polos) — setelah propagasi, seluruh permintaan konsisten JSON.
+  **Jalur sukses relay (X-Admin/`ADMIN_SECRET`) belum diuji** — secret itu
+  tidak ada di lingkungan sesi; yang terbukti hanya jalur penolakan.
 
 ## Untuk: Web
 
@@ -628,6 +650,26 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   (md5 live == build `2de36d14…`, content-type `text/javascript`, fallback
   + client ID produksi ada di bundle live). Catatan untuk CI/Release di
   bawah.
+
+- [x] (Danu - XySpace Team, 2026-09-23) — **Deploy cepat jalur papan #5
+  (web):** bundle `index-BB7mntUO.js` naik ke `app.xydesk.my.id` — versi
+  Worker `7ab10bf5-1827-4f03-99e2-637d6737a592` atas source `0339a40`, build
+  produksi dengan `VITE_GOOGLE_CLIENT_ID` = `495336144977-dp1k3678…`.
+  Verifikasi pasca-deploy: md5 `index.html` live == build
+  (`0712b72a4bf942e832eddfe87e244939`) dan md5 `assets/index-BB7mntUO.js` live
+  == build (`c39023b0e3f2b2b9ddd9d69dbb9e4532`), `cmp` byte-identik;
+  `content-type` JS `text/javascript`; CSP + `x-frame-options` + `nosniff`
+  tetap ada; `/connect`, `/news`, `/legal`, `manifest`, `sitemap` 200; worker
+  OG (bot WhatsApp) tetap melayani.
+  **Temuan lama yang ikut dipulihkan:** bundle produksi SEBELUM deploy ini
+  (`index-CwUAey3c.js`) tidak memuat client ID OAuth sama sekali —
+  `GREETING`/`accounts.google.com`/`dp1k3678`/`cadhmro3` nol kecocokan di
+  dalamnya, sedangkan string lain dari source yang sama ada. Karena tombol
+  Google dirender hanya bila client ID terisi, tombol itu tidak pernah muncul
+  di produksi. Deploy ini membangun ulang dengan secret/variabel repo
+  produksi (`GOOGLE_WEB_CLIENT_ID` → `VITE_GOOGLE_CLIENT_ID`) sehingga
+  terpulihkan. **Perlu diingat untuk deploy berikutnya:** jangan pernah
+  men-deploy web tanpa variabel itu.
 
 - [x] (Danu - XySpace Team, 2026-09-23) — **Relay TURN berhenti hilang tanpa
   jejak.** `turnIce()` tidak lagi menyusut jadi daftar kosong untuk semua

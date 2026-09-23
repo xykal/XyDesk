@@ -71,6 +71,12 @@ jobs:
           }
           "$env:USERPROFILE\.dotnet\tools" >> $env:GITHUB_PATH
           $env:PATH = "$env:USERPROFILE\.dotnet\tools;$env:PATH"
+          # `wix build -ext WixToolset.UI.wixext` mencari extension di cache
+          # global; tanpa langkah ini gagal WIX0144 'extension could not be
+          # found' (run 35879908181). Versi disamakan dengan tool WiX supaya
+          # `-ext` tanpa versi tetap cocok.
+          wix extension add -g WixToolset.UI.wixext/4.0.6
+          if ($LASTEXITCODE -ne 0) { throw 'Extension WiX UI gagal dipasang' }
 
       - name: Build MSI dan NSIS dari payload yang sama
         shell: pwsh
