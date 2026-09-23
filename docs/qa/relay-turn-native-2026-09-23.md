@@ -103,6 +103,28 @@ tiruan di loopback) supaya bisa diuji di CI tanpa jaringan.
   "Buktikan kredensial TURN bisa allocate (bukan sekadar ada)", 3 percobaan.
   Gerbang lama (hitung penyedia) hijau walaupun kredensialnya sudah mati.
 
+## Bagaimana perbaikan ini dikirim (semua terverifikasi)
+
+| Langkah | Hasil |
+|---|---|
+| Commit | `41ba057` (host + hub + alat + gerbang), `a1090e3` (dokumen + redaksi); lokal == `origin/main` |
+| Build `35911857824` @ `a1090e3` | **11/11 SUCCESS** — termasuk "Uji Logika Host (Rust)" (menjalankan tes baru di runner) dan "Windows x64 (native C++ panel + Rust engine)" |
+| Installer `35912714925` @ `a1090e3` | **SUCCESS** — artefak `XyDesk-Windows-x64-Installer` |
+| Paket uji baru | `XyDesk-x64.exe` sha256 `32bea417…b0ca` (5.072.868 B), `XyDesk-x64.msi` sha256 `6b4ae84e…ddfb` (6.393.856 B); gerbang teks EXE di dalam payload Build: "6 teks panel utuh, 148 rentetan bebas mojibake"; biner host memuat log baru (`server relay (`) sebagai bukti build dari kode yang diperbaiki |
+| Worker signaling | dideploy lewat jalur cepat #5 (API Cloudflare, kode dari `a1090e3`): versi `ce199fe5-165e-41bd-bff2-8dd8a8d52f64` (sebelumnya `03e40e2c…`). Secret Worker tidak disentuh (deploy kode saja). Verifikasi pasca-deploy: `/healthz` 200, `/turn-ice` 403 berstruktur (`turn-forbidden` + `no-credentials` + `hint`) |
+| Allocate relay | `tool/check_turn_auth.py` — `turn:free.expressturn.com:3478` UDP **dan** `?transport=tcp` keduanya OK (relay address diberikan); kredensial palsu ditolak 401 |
+
+**Yang belum: `Deploy Signaling` lewat GitHub masih MERAH — dan itu bukan karena
+perubahan ini.** Sejak 22 Sep 2026 run itu berhenti di langkah "Deploy ke
+Cloudflare" dengan alasan `RESEND_API_KEY belum diatur di GitHub Secrets/
+Variables` (anotasi run `35771592422` dan `35911873731`), sehingga langkah gerbang
+baru pun ter-skip. Secret `RESEND_API_KEY` ada di daftar GitHub (diperbarui
+22 Sep 16:36Z) tetapi isinya kosong saat dibaca runner; kunci Resend di vault
+kerja juga menjawab 403 saat diuji 23 Sep — jadi kemungkinan besar kunci lama
+sudah dicabut. Yang perlu dilakukan pemilik: buat kunci Resend baru lalu isi
+ulang secret `RESEND_API_KEY`, lalu dispatch `Deploy Signaling` supaya gerbang
+allocate ikut berjalan di CI.
+
 ## Batas jujur
 
 - Perbaikan **belum diuji di Windows asli**; bukti di atas dari Linux

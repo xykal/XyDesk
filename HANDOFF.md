@@ -291,6 +291,20 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   4. **Docs & Audit:** kalimat "Wine bukan Windows" di dokumen panel tetap
      berlaku sampai hasil uji lapangan Windows masuk (item di atas).
 
+- [ ] (Operator - XyDesk Team, 2026-09-23) — **`Deploy Signaling` lewat GitHub
+  MERAH sejak 22 Sep — bukan bug kode.** Run `35771592422` (22 Sep) dan
+  `35911873731` (23 Sep) berhenti di langkah "Deploy ke Cloudflare" dengan
+  anotasi `RESEND_API_KEY belum diatur di GitHub Secrets/Variables`; langkah
+  gerbang allocate TURN yang baru ditambahkan karena itu ter-skip. Secret-nya
+  ada di daftar GitHub (diperbarui 22 Sep 16:36Z) tetapi kosong saat dibaca
+  runner, dan kunci Resend di vault kerja menjawab `403` ketika diuji 23 Sep —
+  kunci lamanya kemungkinan sudah dicabut. Tindakan pemilik: buat kunci Resend
+  baru → isi ulang secret `RESEND_API_KEY` → dispatch `Deploy Signaling` supaya
+  gerbang allocate TURN ikut berjalan di CI. Sementara itu deploy worker
+  dilakukan lewat jalur cepat #5 (API Cloudflare, kode dari `a1090e3`, versi
+  `ce199fe5…`) dengan verifikasi pasca-deploy dicatat di
+  `docs/qa/relay-turn-native-2026-09-23.md`.
+
 - [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**
   Shell desktop sekarang berjalan di atas Tauri v2 (Rust + native WebView2)
   dengan direktori `desktop/src-tauri/`. Frontend Next.js dihubungkan lewat
