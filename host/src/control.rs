@@ -191,6 +191,11 @@ pub struct Status {
     pub virtual_display: VirtualDisplayStatus,
     /// Status virtual mic driver — biar denyut di Recording
     pub virtual_mic: VirtualMicStatus,
+    /// Status relay TURN terakhir (`relay::telemetry()`): siap, tidak
+    /// tersedia beserta sebabnya, atau belum pernah dicoba. Panel memakai ini
+    /// untuk memberi tahu bahwa jalur relay tidak ada — bukan membiarkan
+    /// pengguna menebak kenapa koneksi tidak pernah jadi.
+    pub relay: serde_json::Value,
     pub last_error: Option<String>,
 }
 
@@ -274,6 +279,7 @@ impl ControlState {
                 duration_ms: now.saturating_sub(s.started_at_ms),
             }),
             video: self.video,
+            relay: crate::relay::telemetry(),
             capture_backend: crate::screen::backend_label().to_string(),
             frames_captured: crate::screen::frames_captured(),
             is_rdp_session: crate::screen::is_rdp_session(),
@@ -865,6 +871,7 @@ mod tests {
             "session",
             "targetBitrateBps",
             "lastError",
+            "relay",
         ] {
             assert!(v.get(key).is_some(), "bidang {key} hilang: {body}");
         }
@@ -877,6 +884,9 @@ mod tests {
         for key in ["micAvailable", "micPipeline"] {
             assert!(v["audio"].get(key).is_some(), "audio.{key} hilang: {body}");
         }
+        // Status relay: "unknown" sebelum percobaan pertama, bukan "tidak ada".
+        assert_eq!(v["relay"]["state"], "unknown");
+        assert!(v["relay"].get("servers").is_some());
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

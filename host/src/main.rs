@@ -257,61 +257,42 @@ fn meta_json() -> serde_json::Value {
 
 /// Ambil kredensial TURN yang sama dengan client web. Host memakai token
 /// `role=host`; endpoint menolak token client sehingga kredensial relay tidak
-/// bocor lintas peran. Gagal mengambil TURN tidak mematikan sesi: ICE tetap
-/// mencoba jalur direct/STUN dan UI akan melaporkan jalurnya apa adanya.
+/// bocor lintas peran.
+///
+/// Gagal mengambil TURN tidak mematikan sesi: ICE tetap mencoba jalur
+/// direct/STUN. Yang berubah sejak relay dipindah ke `relay.rs`: sebabnya
+/// dicatat (`relay::telemetry()` → `/status`) dan ditulis ke log dengan
+/// kalimat yang bisa dibaca. Relay yang hilang tanpa jejak adalah kegagalan
+/// termahal bagi pengguna di belakang CGNAT — sesinya cuma tidak pernah jadi.
 fn fetch_turn_servers(device_id: &str, token: &str) -> Vec<RTCIceServer> {
-    #[derive(Deserialize)]
-    struct TurnResponse {
-        #[serde(rename = "iceServers", default)]
-        ice_servers: Vec<serde_json::Value>,
-    }
-    let url = format!("https://signal.xydesk.my.id/turn-ice?id={device_id}&role=host");
-    let response = match ureq::get(&url)
-        .set("Authorization", &format!("Bearer {token}"))
-        .timeout(std::time::Duration::from_secs(5))
-        .call()
-    {
-        Ok(response) => response,
-        Err(error) => {
-            eprintln!("[xydesk-host] TURN tidak tersedia; lanjut STUN/direct ({error})");
-            return Vec::new();
+    match xydesk_host::relay::fetch(device_id, token) {
+        xydesk_host::relay::RelayOutcome::Ready(servers) => {
+            println!(
+                "[xydesk-host] TURN siap: {} server relay; ICE memilih direct bila tersedia",
+                servers.len()
+            );
+            servers
+                .into_iter()
+                .map(|server| RTCIceServer {
+                    urls: server.urls,
+                    username: server.username,
+                    credential: server.credential,
+                    ..Default::default()
+                })
+                .collect()
         }
-    };
-    let payload: TurnResponse = match response.into_json() {
-        Ok(payload) => payload,
-        Err(error) => {
-            eprintln!("[xydesk-host] balasan TURN tidak valid; lanjut STUN/direct ({error})");
-            return Vec::new();
-        }
-    };
-    let servers: Vec<_> = payload
-        .ice_servers
-        .into_iter()
-        .filter_map(|value| {
-            let urls = match &value["urls"] {
-                serde_json::Value::String(url) => vec![url.clone()],
-                serde_json::Value::Array(urls) => urls
-                    .iter()
-                    .filter_map(|url| url.as_str().map(str::to_owned))
-                    .collect(),
-                _ => Vec::new(),
-            };
-            if urls.is_empty() {
-                return None;
+        xydesk_host::relay::RelayOutcome::Unavailable { reason, detail } => {
+            eprintln!(
+                "[xydesk-host] relay tidak tersedia: {} [{}]",
+                xydesk_host::relay::reason_label(&reason),
+                reason
+            );
+            if let Some(detail) = detail {
+                eprintln!("[xydesk-host] relay: {detail}");
             }
-            Some(RTCIceServer {
-                urls,
-                username: value["username"].as_str().unwrap_or_default().to_owned(),
-                credential: value["credential"].as_str().unwrap_or_default().to_owned(),
-                ..Default::default()
-            })
-        })
-        .collect();
-    println!(
-        "[xydesk-host] TURN siap: {} server relay; ICE memilih direct bila tersedia",
-        servers.len()
-    );
-    servers
+            Vec::new()
+        }
+    }
 }
 
 #[tokio::main]
@@ -816,7 +797,9 @@ async fn main() -> Result<()> {
                     {
                         Ok(turn) => turn,
                         Err(error) => {
-                            eprintln!("[xydesk-host] pengambilan TURN gagal untuk {client}: {error:#}");
+                            eprintln!(
+                                "[xydesk-host] pengambilan TURN gagal untuk {client}: {error:#}"
+                            );
                             let _ = send_msg(
                                 &mut ws,
                                 &Msg {
@@ -831,30 +814,29 @@ async fn main() -> Result<()> {
                             continue;
                         }
                     };
-                    let session = match Session::new_with_video_level(
-                        vec![stun.clone()],
-                        turn,
-                        video_level,
-                    )
-                    .await
-                    {
-                        Ok(session) => Arc::new(session),
-                        Err(error) => {
-                            eprintln!("[xydesk-host] peer connection gagal untuk {client}: {error:#}");
-                            let _ = send_msg(
-                                &mut ws,
-                                &Msg {
-                                    kind: "error".into(),
-                                    to: Some(client),
-                                    error: Some("peer-connection-gagal".into()),
-                                    reason: Some("offer".into()),
-                                    ..Default::default()
-                                },
-                            )
-                            .await;
-                            continue;
-                        }
-                    };
+                    let session =
+                        match Session::new_with_video_level(vec![stun.clone()], turn, video_level)
+                            .await
+                        {
+                            Ok(session) => Arc::new(session),
+                            Err(error) => {
+                                eprintln!(
+                                    "[xydesk-host] peer connection gagal untuk {client}: {error:#}"
+                                );
+                                let _ = send_msg(
+                                    &mut ws,
+                                    &Msg {
+                                        kind: "error".into(),
+                                        to: Some(client),
+                                        error: Some("peer-connection-gagal".into()),
+                                        reason: Some("offer".into()),
+                                        ..Default::default()
+                                    },
+                                )
+                                .await;
+                                continue;
+                            }
+                        };
                     // Track WAJIB didaftarkan sebelum answer (dilakukan di dalam
                     // `answer_media`): kalau tidak, SDP jawaban tidak berisi m-line
                     // dan client tidak pernah mendapat gambar. Lihat session.rs.
@@ -866,7 +848,9 @@ async fn main() -> Result<()> {
                     let media = match session.answer_media(&sdp.sdp, audio_on, mic_on).await {
                         Ok(media) => media,
                         Err(error) => {
-                            eprintln!("[xydesk-host] negosiasi SDP gagal untuk {client}: {error:#}");
+                            eprintln!(
+                                "[xydesk-host] negosiasi SDP gagal untuk {client}: {error:#}"
+                            );
                             let _ = session.close().await;
                             let _ = send_msg(
                                 &mut ws,
@@ -1510,7 +1494,9 @@ async fn main() -> Result<()> {
                             })
                             .await
                         {
-                            eprintln!("[xydesk-host] kandidat ICE dari {from} diabaikan: {error:#}");
+                            eprintln!(
+                                "[xydesk-host] kandidat ICE dari {from} diabaikan: {error:#}"
+                            );
                         }
                     }
                 }

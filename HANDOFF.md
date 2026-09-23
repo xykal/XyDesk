@@ -969,6 +969,26 @@ _(kosong)_
   visual di sisi host, dan screenshot sesi Windows masih jadi utang Desktop Shell.
 
 
+- [x] (Galih - XySpace Team, 2026-09-23) — **Status relay host + gerbang
+  format CI.** Modul baru `host/src/relay.rs`: balasan `/turn-ice` dibaca
+  utuh (termasuk `reason`/`hint` dari Worker), sebabnya diterjemahkan
+  (`reason_label`), dan hasil terakhir muncul di `/status` sebagai blok
+  `relay` (`state`: `ready` / `unavailable` / `unknown` — `unknown` berarti
+  belum pernah dicoba, bukan tidak ada). `main.rs` memakai `relay::fetch`,
+  bukan parser JSON sendiri; log kegagalan menyebut label + kode.
+  `cargo test --all-targets` hijau (177 uji lib + integrasi), `cargo clippy
+  --all-targets -- -D warnings` bersih, `cargo check --bins` hijau di Linux.
+  Tujuh uji baru khusus untuk `relay.rs`. **Batas jujur:** tidak ada uji di
+  Windows atau mesin pengguna — modul relay murni Rust tanpa API Windows,
+  tetapi jalur relay sungguhan baru terbukti di lapangan.
+- [x] (Galih - XySpace Team, 2026-09-23) — **Gerbang `cargo fmt` host merah
+  di main, sudah dibersihkan.** `host/src/main.rs` (bukan perubahan sesi ini;
+  versi HEAD-nya juga gagal) tidak lolos `cargo fmt --check`, sehingga job
+  "Uji Logika Host (Rust)" merah di langkah `Cek format` pada run
+  `35879908181` (HEAD `1473799`) dan `35772171870`; job `windows` menunggu
+  job itu, jadi rantai Windows ikut tertahan. `cargo fmt` dijalankan di
+  `host/`; `cargo fmt --check` kini bersih. Perlu dispatch `Build` setelah
+  push untuk membuktikan hijau di runner.
 ## Untuk: Docs & Audit
 
 - [ ] (dari Operator - XyDesk Team, 2026-09-06, diperbarui 2026-09-09) — **Sisa dari `docs/DESIGN.md`: navigasi

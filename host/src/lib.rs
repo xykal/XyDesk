@@ -101,4 +101,6 @@ pub mod desktop_mode;
 pub mod virtual_target;
 
 pub mod host_auth;
+/// Kredensial relay TURN host + sebabnya bila tidak ada (dipakai `/status`).
+pub mod relay;
 pub mod remembered;
