@@ -96,7 +96,7 @@ const NEWS_IMAGE_BLOCK = /^!\[([^\]]*)\]\((https:\/\/(app\.)?xydesk\.my\.id\/[^)
 const TOKEN_KEY = 'xydesk.web.jwt';const GUEST_TOKEN_KEY = 'xydesk.web.guestJwt';
 const LAST_HOST_KEY = 'xydesk.web.lastHost';
 const RELEASE_BASE =
-  'https://github.com/xykalnotkel/XyDesk/releases/latest/download';
+  'https://github.com/xykal/XyDesk/releases/latest/download';
 const WHATSAPP_CHANNEL =
   'https://whatsapp.com/channel/0029VbB7nwuJZg3ym6UQ4Z1L';
 

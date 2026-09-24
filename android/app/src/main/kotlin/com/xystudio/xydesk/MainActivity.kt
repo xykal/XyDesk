@@ -37,7 +37,7 @@ class MainActivity : FlutterActivity() {
         private const val KEY_BUILD = "build"
         private const val KEY_VERIFIED = "verified"
         private const val KEY_FAILURE = "failure"
-        private const val REPOSITORY_PATH = "/xykalnotkel/XyDesk/releases/download/"
+        private const val REPOSITORY_PATH = "/xykal/XyDesk/releases/download/"
         private const val APK_PACKAGE = "com.xystudio.xydesk"
     }
 

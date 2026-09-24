@@ -7,10 +7,10 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app_update_details.dart';
 
-const _repository = 'xykalnotkel/XyDesk';
+const _repository = 'xykal/XyDesk';
 const _officialHost = 'github.com';
 const _manifestUrl =
-    'https://github.com/xykalnotkel/XyDesk/releases/latest/download/update.json';
+    'https://github.com/xykal/XyDesk/releases/latest/download/update.json';
 
 class OfficialUpdateManifest {
   const OfficialUpdateManifest({

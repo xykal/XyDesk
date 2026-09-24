@@ -22,7 +22,7 @@ class UpdatePage extends StatefulWidget {
 
 class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
   static final Uri _officialReleasesUri = Uri.parse(
-    'https://github.com/xykalnotkel/XyDesk/releases/latest',
+    'https://github.com/xykal/XyDesk/releases/latest',
   );
 
   final _repository = const OfficialUpdateRepository();

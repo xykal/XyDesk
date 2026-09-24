@@ -10,10 +10,10 @@
 
 ---
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/xykalnotkel/XyDesk/build.yml?branch=main&label=CI%2FCD%20Build&logo=githubactions&logoColor=white&style=flat-square)](https://github.com/xykalnotkel/XyDesk/actions/workflows/build.yml)
-[![Release Version](https://img.shields.io/github/v/release/xykalnotkel/XyDesk?display_name=tag&sort=semver&label=Release&logo=github&logoColor=white&color=7c3aed&style=flat-square)](https://github.com/xykalnotkel/XyDesk/releases)
-[![Signaling Status](https://img.shields.io/github/actions/workflow/status/xykalnotkel/XyDesk/deploy-signaling.yml?label=Signaling%20Edge&logo=cloudflare&logoColor=white&style=flat-square)](https://signal.xydesk.my.id)
-[![News Status](https://img.shields.io/github/actions/workflow/status/xykalnotkel/XyDesk/deploy-news.yml?label=News%20Worker&logo=cloudflarepages&logoColor=white&style=flat-square)](https://news.xydesk.my.id)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/xykal/XyDesk/build.yml?branch=main&label=CI%2FCD%20Build&logo=githubactions&logoColor=white&style=flat-square)](https://github.com/xykal/XyDesk/actions/workflows/build.yml)
+[![Release Version](https://img.shields.io/github/v/release/xykal/XyDesk?display_name=tag&sort=semver&label=Release&logo=github&logoColor=white&color=7c3aed&style=flat-square)](https://github.com/xykal/XyDesk/releases)
+[![Signaling Status](https://img.shields.io/github/actions/workflow/status/xykal/XyDesk/deploy-signaling.yml?label=Signaling%20Edge&logo=cloudflare&logoColor=white&style=flat-square)](https://signal.xydesk.my.id)
+[![News Status](https://img.shields.io/github/actions/workflow/status/xykal/XyDesk/deploy-news.yml?label=News%20Worker&logo=cloudflarepages&logoColor=white&style=flat-square)](https://news.xydesk.my.id)
 [![Web Client](https://img.shields.io/badge/Web_Client-Live-success?logo=googlechrome&logoColor=white&style=flat-square)](https://app.xydesk.my.id)
 
 [![Flutter](https://img.shields.io/badge/Client-Flutter_3.44+-02569B?logo=flutter&logoColor=white&style=flat-square)](https://flutter.dev)
@@ -25,7 +25,7 @@
 [![OneSignal](https://img.shields.io/badge/Push_Notifications-OneSignal-E53935?logo=onesignal&logoColor=white&style=flat-square)](https://onesignal.com)
 [![Resend](https://img.shields.io/badge/Email_Service-Resend-000000?logo=resend&logoColor=white&style=flat-square)](https://resend.com)
 [![License](https://img.shields.io/badge/License-Proprietary-blueviolet?style=flat-square)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/xykalnotkel/XyDesk/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](https://github.com/xykal/XyDesk/pulls)
 
 </div>
 
@@ -156,13 +156,13 @@ Kami menyambut hangat kontribusi, diskusi teknis, pelaporan bug, dan ide fitur d
 
 Dibuat dan dipelihara dengan dedikasi tinggi oleh:
 
-**Haekal Saputra** (*Founder & Lead Developer*) — [@xykalnotkel](https://github.com/xykalnotkel)  
+**Haekal Saputra** (*Founder & Lead Developer*) — [@xykal](https://github.com/xykal)  
 *Dan seluruh kontributor komunitas open-source yang luar biasa.*
 
-[![GitHub Contributors](https://img.shields.io/github/contributors/xykalnotkel/XyDesk?color=7c3aed&style=flat-square)](https://github.com/xykalnotkel/XyDesk/graphs/contributors)
-[![GitHub Forks](https://img.shields.io/github/forks/xykalnotkel/XyDesk?style=flat-square)](https://github.com/xykalnotkel/XyDesk/network/members)
-[![GitHub Stars](https://img.shields.io/github/stars/xykalnotkel/XyDesk?style=flat-square)](https://github.com/xykalnotkel/XyDesk/stargazers)
-[![GitHub Issues](https://img.shields.io/github/issues/xykalnotkel/XyDesk?style=flat-square)](https://github.com/xykalnotkel/XyDesk/issues)
+[![GitHub Contributors](https://img.shields.io/github/contributors/xykal/XyDesk?color=7c3aed&style=flat-square)](https://github.com/xykal/XyDesk/graphs/contributors)
+[![GitHub Forks](https://img.shields.io/github/forks/xykal/XyDesk?style=flat-square)](https://github.com/xykal/XyDesk/network/members)
+[![GitHub Stars](https://img.shields.io/github/stars/xykal/XyDesk?style=flat-square)](https://github.com/xykal/XyDesk/stargazers)
+[![GitHub Issues](https://img.shields.io/github/issues/xykal/XyDesk?style=flat-square)](https://github.com/xykal/XyDesk/issues)
 
 </div>
 

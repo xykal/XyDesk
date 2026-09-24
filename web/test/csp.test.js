@@ -153,7 +153,7 @@ test("script-src 'self' tidak menghalangi alur OAuth", () => {
 test('update.json di Flutter mengarah ke GitHub Release resmi, bukan domain custom yang 404', () => {
   const repoFile = baca(join(ROOT, 'lib', 'features', 'notifications', 'update_repository.dart'));
   assert.ok(
-    repoFile.includes('https://github.com/xykalnotkel/XyDesk/releases/latest/download/update.json'),
+    repoFile.includes('https://github.com/xykal/XyDesk/releases/latest/download/update.json'),
     'update_repository.dart tidak mengarah ke URL GitHub Release resmi yang valid',
   );
   assert.ok(

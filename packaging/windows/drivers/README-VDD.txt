@@ -39,4 +39,4 @@ Beli HDMI dummy plug ($5-10 di Amazon). Plug ke port HDMI. Windows
 auto-detect monitor virtual tanpa perlu driver signature drama.
 
 Untuk dokumentasi lengkap XyDesk:
-https://github.com/xykalnotkel/XyDesk
+https://github.com/xykal/XyDesk
