@@ -991,16 +991,17 @@ pub mod capture_health {
         if session == u32::MAX {
             return String::new();
         }
-        let mut ptr: *mut u16 = std::ptr::null_mut();
+        let mut ptr = windows::core::PWSTR::null();
         let mut bytes = 0u32;
-        if WTSQuerySessionInformationW(session, WTSUserName, &mut ptr, &mut bytes).is_err()
-            || ptr.is_null()
+        // windows-rs 0.61: argumen pertama handle server (None = mesin ini).
+        if WTSQuerySessionInformationW(None, session, WTSUserName, &mut ptr, &mut bytes).is_err()
+            || ptr.0.is_null()
         {
             return String::new();
         }
         let len = (bytes as usize / 2).saturating_sub(1);
-        let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
-        WTSFreeMemory(ptr as *mut core::ffi::c_void);
+        let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr.0, len));
+        WTSFreeMemory(ptr.0 as *mut core::ffi::c_void);
         name
     }
 
