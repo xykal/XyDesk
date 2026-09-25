@@ -1497,8 +1497,8 @@ mod windows {
         println!(
             "[xydesk-host] capture gdi-bitblt mulai {w}x{h} (monitor {monitor}, target {target_fps} fps)"
         );
-        capture_health::evaluate_sessions();
-        capture_health::write_json("gdi-bitblt");
+        super::capture_health::evaluate_sessions();
+        super::capture_health::write_json("gdi-bitblt");
         loop {
             // Awal pipeline latensi — sebelum piksel diambil, sama seperti WGC.
             let captured_at = std::time::Instant::now();
@@ -1524,7 +1524,7 @@ mod windows {
                 break;
             }
             // Diagnosa layar hitam: kecerahan frame sebelum encode.
-            capture_health::note_frame_luma(capture_health::rata_luma(&rgba));
+            super::capture_health::note_frame_luma(super::capture_health::rata_luma(&rgba));
             let t0 = std::time::Instant::now();
             let encoded = match encoder.encode(rgba, fw, fh, &mut nv12) {
                 Ok(data) => data,
@@ -1559,7 +1559,7 @@ mod windows {
                 println!(
                     "[xydesk-host] capture gdi-bitblt {w}x{h} | {frame_detik} fps | encode avg {avg:.2} ms, max {max:.2} ms"
                 );
-                capture_health::write_json("gdi-bitblt");
+                super::capture_health::write_json("gdi-bitblt");
                 detik_terakhir = std::time::Instant::now();
                 frame_detik = 0;
                 enc_sum = 0;
