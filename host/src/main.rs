@@ -591,6 +591,14 @@ async fn main() -> Result<()> {
             continue;
         }
 
+        // Hub menolak hello bila id ini masih dipegang soket lain
+        // (`id sudah online` — misalnya soket lama yang mati jaringan tapi
+        // belum ditutup server). Error SEBELUM welcome berarti pendaftaran
+        // tidak pernah terjadi: menunggu welcome di soket itu tidak ada
+        // gunanya karena hub tidak menganggapnya terdaftar. Tutup koneksi
+        // supaya loop luar menyambung ulang — soket lama biasanya sudah
+        // ditutup server dalam hitungan detik.
+        let mut registered = false;
         let mut heartbeat = tokio::time::interval(std::time::Duration::from_secs(20));
         heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut last_received = std::time::Instant::now();
@@ -649,6 +657,7 @@ async fn main() -> Result<()> {
                 "pong" => {}
                 "welcome" => {
                     println!("[xydesk-host] terdaftar sebagai {}", device_id);
+                    registered = true;
                     recover_lock(&control).state = EngineState::Ready;
                 }
 
@@ -1576,6 +1585,15 @@ async fn main() -> Result<()> {
                         println!("[xydesk-host] error: {error}");
                     } else {
                         println!("[xydesk-host] error: {error} (sebab: {reason})");
+                    }
+                    // Error sebelum welcome = pendaftaran ditolak (biasanya
+                    // `id sudah online` setelah putus jaringan singkat). Soket
+                    // ini tidak akan pernah dipakai hub — putus dan biarkan
+                    // loop luar menyambung ulang. Error SETELAH welcome adalah
+                    // kabar tingkat sesi (relay dari client/hub): log saja.
+                    if !registered {
+                        println!("[xydesk-host] pendaftaran signaling gagal — sambung ulang");
+                        break;
                     }
                 }
                 other => println!("[xydesk-host] pesan: {other}"),

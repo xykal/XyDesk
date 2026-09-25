@@ -327,3 +327,67 @@ test('tipe yang benar-benar tidak dikenal tetap dijawab error', async () => {
   assert.equal(hostOut[0].error, 'tipe tak dikenal');
   assert.equal(hostOut[0].reason, 'halo-dunia');
 });
+
+// ── Pendaftaran (hello) dan id duplikat ─────────────────────────────────
+//
+// Penolakan id duplikat adalah anti-pembajakan sesi dan HARUS tetap ada;
+// yang wajib menyesuaikan adalah sisi client: host yang menyambung ulang
+// cepat (soket lamanya belum ditutup server) menerima `id sudah online`
+// SEBELUM welcome dan harus memutus lalu mencoba lagi — perbaikan sisi host
+// ada di `host/src/main.rs` (break sebelum welcome). Uji ini mengunci
+// kontrak hub-nya supaya salah satu sisi tidak "diperbaiki" dengan
+// menghapus perilaku yang disengaja.
+
+test('hello dengan id yang sudah terdaftar ditolak tanpa mengganggu pemegangnya', () => {
+  const storage = fakeStorage();
+  const hostOut = [];
+  const existing = fakeSocket(
+    { id: '111222333', role: 'host', name: 'PC', registered: true, since: 1, ip: '9.9.9.9' },
+    hostOut,
+  );
+  const newcomerOut = [];
+  const newcomer = fakeSocket(
+    { id: '111222333', role: 'host', name: 'PC-baru', registered: false, ip: '8.8.8.8' },
+    newcomerOut,
+  );
+  const hub = new Hub({ getWebSockets: () => [existing, newcomer], storage }, {});
+
+  hub.handleHello(newcomer, { to: '111222333', from: 'PC-baru' });
+
+  assert.equal(newcomerOut.length, 1);
+  assert.equal(newcomerOut[0].type, 'error');
+  assert.equal(newcomerOut[0].error, 'id sudah online');
+  assert.equal(newcomer.deserializeAttachment().registered, false);
+  // Pemegang id yang sah tidak menerima apa pun dan tetap terdaftar.
+  assert.equal(hostOut.length, 0);
+  assert.equal(existing.deserializeAttachment().registered, true);
+});
+
+test('hello pertama pada id itu diterima dan ditandai terdaftar', () => {
+  const storage = fakeStorage();
+  const out = [];
+  const sock = fakeSocket({ id: '444555666', role: 'host', name: '', registered: false, ip: '1.2.3.4' }, out);
+  const hub = new Hub({ getWebSockets: () => [sock], storage }, {});
+
+  hub.handleHello(sock, { from: 'PC' });
+
+  assert.equal(out.length, 1);
+  assert.equal(out[0].type, 'welcome');
+  const meta = sock.deserializeAttachment();
+  assert.equal(meta.registered, true);
+  assert.equal(meta.name, 'PC');
+  assert.ok(meta.since > 0);
+});
+
+test('hello tanpa id perangkat ditolak', () => {
+  const storage = fakeStorage();
+  const out = [];
+  const sock = fakeSocket({ id: '', role: 'host', name: '', registered: false, ip: '' }, out);
+  const hub = new Hub({ getWebSockets: () => [sock], storage }, {});
+
+  hub.handleHello(sock, {});
+
+  assert.equal(out.length, 1);
+  assert.equal(out[0].error, 'hello butuh id perangkat');
+  assert.equal(sock.deserializeAttachment().registered, false);
+});

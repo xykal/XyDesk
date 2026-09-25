@@ -29,6 +29,19 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 
 ## Untuk: Client Flutter
 
+- [ ] (Operator - XyDesk Team, 2026-09-25, sesi MATANGKAN) — **Temuan lintas
+  role dari perbaikan host: error sebelum `welcome` harus memicu coba ulang,
+  bukan menunggu selamanya.** Hub menolak `hello` dengan `id sudah online`
+  bila soket lama ber-id sama belum ditutup server (zombie pasca putus
+  jaringan; jendelanya ~30-60 detik sampai heartbeat hibernasi menutupnya).
+  Host sudah diperbaiki (`host/src/main.rs`: `error` sebelum welcome → putus
+  → sambung ulang; uji kontrak hub di `cloudflare/test/hub.test.js`). Web aman
+  (id `web-<uuid>` selalu baru per sesi + jalur `fail()` yang actionable).
+  Yang belum diperiksa: apakah APK memakai `deviceId` yang bisa dipakai ulang
+  lintas restart aplikasi — kalau ya, `SignalingClient` perlu perlakuan sama:
+  error pra-welcome = pendaftaran gagal → tutup dan sambung ulang, bukan diam.
+
+
 - [ ] (dari Operator - XyDesk Team, 2026-09-06) — **Pendeteksi "sudah connected tapi belum ada frame
   video"** di `lib/webrtc/rtc_service.dart` — watchdog yang ada sekarang
   dimatikan begitu `RTCPeerConnectionStateConnected` tiba
@@ -276,18 +289,24 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   walaupun kredensialnya sah — sudah diperbaiki, belum diuji di Windows asli.**
   Rincian, bukti, dan batas jujurnya: `docs/qa/relay-turn-native-2026-09-23.md`.
   Yang perlu ditindak role lain:
-  1. **Operator (keamanan, segera):** username + credential TURN produksi
-     tertulis apa adanya di `AGENT_BOARD.md` (baris sesi 2026-09-07) pada repo
-     **publik**, sejak 7 Sep 2026. Satu-satunya obat adalah rotasi kredensial
-     di ExpressTurn; sesudahnya cukup tulis "nilai ada di secret Worker".
+  1. **SELESAI 2026-09-23 (Operator, keamanan):** kredensial ExpressTurn sudah
+     dirotasi dan papan/HANDOFF diredaksi — nilai hanya ada di secret Worker.
+     Catatan 2026-09-25 (sesi MATANGKAN): saat diagnosis gerbang CI, kredensial
+     relay sempat tercetak di log sesi kerja (di luar repo) — rotasi berikut
+     di ExpressTurn disarankan saat pemilik sempat, sekalian simpan `turn.txt`
+     karena vault kerja tidak menyimpan salinannya.
   2. **Backend/Edge:** relay produksi masih **satu penyedia** (`direct`,
      ExpressTurn free). Langkah baru di `deploy-signaling.yml` ("Buktikan
      kredensial TURN bisa allocate") sengaja MENGGAGALKAN deploy bila relay
      tidak bisa allocate — siapkan cadangan (`OPENRELAY_API_KEY` atau
      `TURN_REST_URL` + `TURN_REST_API_KEY`) supaya tidak terjepit.
-  3. **Host Engine:** `tool/check_turn_auth.py` baru memeriksa URL `turn:` (UDP);
-     `turns:` (TLS) masih dilewati dengan jujur. Bila relay TLS dipakai,
-     tambahkan dukungannya di alat itu.
+  3. **SELESAI 2026-09-25 (sesi SESI-20260925-OPERATOR-MATANGKAN):**
+     `tool/check_turn_auth.py` kini mengallocate `turns:` (TLS di atas TCP)
+     sungguhan — verifikasi sertifikat terhadap CA sistem (atau `--tls-ca`),
+     `--tls-insecure` hanya untuk lab, dan `--self-test` menguji jalur TLS
+     dengan server tiruan bersertifikat sendiri (butuh CLI `openssl`; dilewati
+     dengan jujur bila tidak ada). Sekalian menutup cacat lama parser: URL
+     TURN tanpa port eksplisit dulu dibaca "bukan TURN" dan dilewati diam-diam.
   4. **Docs & Audit:** kalimat "Wine bukan Windows" di dokumen panel tetap
      berlaku sampai hasil uji lapangan Windows masuk (item di atas).
 
@@ -834,6 +853,15 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 
 ## Untuk: Backend / Edge
 
+- [ ] (Operator - XyDesk Team, 2026-09-25, sesi MATANGKAN) — **Audit hub.js:
+  inti sudah matang, dua catatan kecil.** (1) Kontrak pendaftaran kini dikunci
+  uji (hello duplikat ditolak tanpa mengganggu pemegang id, hello pertama
+  diterima, hello tanpa id ditolak — `cloudflare/test/hub.test.js` 21/21).
+  (2) Defense-in-depth (belum dikerjakan, bukan lubang keamanan aktif): endpoint HTTP DO Hub
+  (`/kick`, `/stats`, `/hub/devices`) hanya terlindungi karena tidak dirutekan
+  `worker.js` dan hanya dipanggil `admin.js` ber-JWT; pertimbangkan header
+  `x-internal-admin` seperti AuthStore supaya dua lapis, bukan satu.
+
 - [ ] (Operator - XyDesk Team, 2026-09-25, sesi PULIHKAN) — **Pasca-migrasi
   akun: tiga secret signaling DIROTASI, triplet TURN sengaja tidak ditaruh di
   GitHub.** (1) `XYDESK_SECRET`, `ADMIN_SECRET`, `AUTH_SECRET` lama hilang
@@ -1067,6 +1095,19 @@ _(kosong)_
   NEWS_STYLE yang sudah dikoreksi).
 
 ## Untuk: Host Engine
+
+- [ ] (Operator - XyDesk Team, 2026-09-25, sesi MATANGKAN) — **Host tidak lagi
+  macet saat hello ditolak hub.** `error` sebelum `welcome` (kasus nyata:
+  `id sudah online` setelah putus jaringan singkat) kini memutus koneksi dan
+  membiarkan loop luar menyambung ulang (jeda 2 dtk); sebelumnya host menunggu
+  welcome yang tak pernah datang di soket yang tidak diakui hub. Bukti:
+  `cargo fmt --check` + `clippy -D warnings` + 189 uji hijau di lingkungan
+  sesi (Linux); kontrak hub-nya dikunci 3 uji baru `cloudflare/test/hub.test.js`.
+  Batas jujur: jalur nyata (zombie socket di produksi) belum bisa direproduksi
+  di Linux — verifikasi lapangan berikutnya: cabut jaringan PC host ~10 detik,
+  sambungkan lagi, host harus terdaftar ulang sendiri dalam ~1 menit tanpa
+  restart manual.
+
 
 - [ ] (Operator - XyDesk Team, 2026-09-19) — **VDD3010 FIELD REGRESSION**: pengguna membuktikan catalog/hash PASS, stagingoem13.inf, install3010, lalu skrip691dd09 keliru menghapus ROOT\MTTVDD\0000. Probe setelah removal hanya membuktikan tiada monitor saat itu, bukan penolakan RDP terhadap monitor yang aktif. Hotfix preserves accepted device, pending reboot state + verified resume. Native driver install/720p acceptance masih perlu pembuktian di host pengguna; jangan sarankan reboot hosted runner tanpa recovery plan.
 
@@ -1533,7 +1574,8 @@ _(kosong)_
 Dari Operator - XyDesk Team, SESI-20260917-OPERATOR-ADMIN. Pemeriksaan kode lokal di afdc9f5, bukan verifikasi produksi.
 
 ### Untuk: Backend / Edge dan Operator
-- [ ] Prioritas: `cloudflare/src/admin.js` POST maintenance menelan exception dan tidak memeriksa status respons penyimpanan AuthStore; tetap mengembalikan `ok: true`. GET juga mengganti kegagalan storage dengan semua flag false. UI kini baca ulang setelah simpan, tetapi ini **tidak menjamin persistensi** jika backend memberi hasil fallback. Perbaiki propagasi galat dan tambahkan uji kegagalan storage. Penyimpanan empat layanan belum atomik dan dapat parsial; pertimbangkan endpoint batch dengan kontrol konkurensi.
+- [x] Prioritas: `cloudflare/src/admin.js` POST maintenance menelan exception dan tidak memeriksa status respons penyimpanan AuthStore; tetap mengembalikan `ok: true`. GET juga mengganti kegagalan storage dengan semua flag false. UI kini baca ulang setelah simpan, tetapi ini **tidak menjamin persistensi** jika backend memberi hasil fallback. Perbaiki propagasi galat dan tambahkan uji kegagalan penyimpanan. Penyimpanan empat layanan belum atomik dan dapat parsial; pertimbangkan endpoint batch dengan kontrol konkurensi.
+  **DITUTUP 2026-09-25 (sesi MATANGKAN) — sudah selesai dikerjakan sesi 17 Sep, itemnya yang tertinggal basi.** Bukti di kode & uji hari ini: POST memakai `storage.transaction` + revision (409 `maintenance-conflict`), kegagalan storage menjalar (`admin.test.js`: "storage gagal ditulis tidak menghasilkan sukses endpoint" → 503, "maintenance POST meneruskan kegagalan 500/409"), GET gagal → 503 `maintenance-unavailable` (bukan flag false; uji "maintenance GET galat upstream" untuk anonim maupun login), batch atomik + revision basi ditolak ("maintenance batch atomik"). Worker 206/206 hijau di Node 24.
 - [ ] `admin/src/App.tsx` Login masih membentuk `btoa({email,pass})` sebagai Google ID token, bukan GIS asli. Turnstile render hanya diperiksa sekali saat mount, fallback sitekey masih test. Perlu scope/izin autentikasi tersendiri; jangan klaim login produksi sudah berfungsi.
 - [ ] API menghapus token saat 401, tetapi React App belum otomatis kembali ke Login. Perlu penanganan sesi konsisten di pekerjaan autentikasi.
 - [ ] Sisa UI belum nyata: kontrol Dashboard, beberapa status Hosting/Backend/Settings, tombol Server, Rollback/DNS, dan Deploy Ulang yang memanggil purge. Audit lanjutan perlu mencocokkan setiap aksi dengan kontrak endpoint; jangan menganggap seluruh admin bebas dummy.
