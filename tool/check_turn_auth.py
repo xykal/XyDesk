@@ -187,7 +187,16 @@ def split_url(url: str) -> tuple[str, str, int] | None:
 
 def collect_via_worker(signal: str, admin: str, role: str) -> tuple[list[dict], dict]:
     url = f"{signal.rstrip('/')}/turn-ice?id=check-turn-auth&role={role}"
-    request = urllib.request.Request(url, headers={"X-Admin": admin})
+    # User-Agent wajib eksplisit: penyaring bot Cloudflare di zona xydesk.my.id
+    # menolak User-Agent bawaan urllib dengan error 1010 (403), yang di CI
+    # terbaca keliru sebagai "kredensial TURN ditolak".
+    request = urllib.request.Request(
+        url,
+        headers={
+            "X-Admin": admin,
+            "User-Agent": "XyDesk-check-turn-auth/1.0 (CI gate; +https://github.com/xykal/XyDesk)",
+        },
+    )
     with urllib.request.urlopen(request, timeout=10) as response:
         payload = json.load(response)
     return payload.get("iceServers", []), payload.get("providers", {})

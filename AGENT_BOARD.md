@@ -80,7 +80,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20260919-OPERATOR-VDD3010 | Operator - XyDesk Team | Host provisioning | SELESAI | Hotfix31380fc; Windows35412599966 SUCCESS PS5/PS7 masing-masing35. Patch resume siap; field driver/720p belum terverifikasi, tanpa restart otomatis. | 2026-09-19 |
 
 ## Antrean izin push
 
@@ -241,3 +240,10 @@ UXFINISH SESI-20260919-OPERATOR-UXFINISH — SELESAI: web89 + browser history/co
 | ID Sesi | Agent | Status | Hasil | Bukti |
 |---|---|---|---|---|
 | SESI-20260917-OPERATOR-PASSWORDMFA | Operator - XyDesk Team | SELESAI rollout; MENUNGGU SETUP PEMILIK | Source 1d81c31; backend 61c7b94a… dan panel aab0142f… aktif 100%. Password+TOTP+recovery+cookie tersedia. Google otomatis ditutup hanya setelah setup terverifikasi; saat pemeriksaan akun belum dibuat. | Worker 145/145, panel 18/18, runtime SQLite, browser lokal lolos; bundle live cocok; smoke live 200/401/403; bootstrap browser tanpa pageerror. Tidak membuat kredensial pemilik, rotasi global, restart engine, bump, atau rilis APK. |
+
+### Pemulihan CI pasca-migrasi akun — 2026-09-25
+
+| ID Sesi | Agent | Status | Hasil | Bukti |
+|---|---|---|---|---|
+| SESI-20260919-OPERATOR-VDD3010 | Operator - XyDesk Team | SELESAI (dipindah dari tabel aktif 2026-09-25 — baris SELESAI tidak boleh menetap di Sesi aktif) | Hotfix31380fc; Windows35412599966 SUCCESS PS5/PS7 masing-masing35. Patch resume siap; field driver/720p belum terverifikasi, tanpa restart otomatis. | 2026-09-19 |
+| SESI-20260925-OPERATOR-PULIHKAN | Operator - XyDesk Team | SELESAI | Pemulihan infrastruktur pasca-migrasi akun `xykalnotkel` → `xykal`: 12 GitHub Secrets + 3 variable dipasang ulang (sealed libsodium via API; sebelumnya 0/0/0-run di akun baru), `XYDESK_SECRET`/`ADMIN_SECRET`/`AUTH_SECRET` DIROTASI (restu operator di chat; nilai lama hangus, token perangkat & sesi login lama tidak sah), kunci Resend baru dipasang di GitHub + Worker `xydesk-signaling` & `xydesk-news` (kunci lama dicabut/403, kunci baru diverifikasi 200), keystore Android baru (keputusan operator; APK lama tidak bisa update-in-place — signer beda), `TURN_DIRECT_*` sengaja tidak diisi di GitHub (Worker memegang kredensial produksi 23 Sep; deploy CI tidak menimpanya), `Deploy Signaling` di-dispatch (run `36115843604`) — gerbang allocate TURN jalan di CI pertama kalinya. Tanpa bump versi, tanpa rilis. | Run `36115843604`; verifikasi live: `healthz` 200, `/turn-ice` terotorisasi menjawab relay; item HANDOFF Backend/Edge + CI/Release + penutupan item Deploy Signaling |

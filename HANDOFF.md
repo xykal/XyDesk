@@ -291,7 +291,7 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   4. **Docs & Audit:** kalimat "Wine bukan Windows" di dokumen panel tetap
      berlaku sampai hasil uji lapangan Windows masuk (item di atas).
 
-- [ ] (Operator - XyDesk Team, 2026-09-23) — **`Deploy Signaling` lewat GitHub
+- [x] (Operator - XyDesk Team, 2026-09-23) — **`Deploy Signaling` lewat GitHub
   MERAH sejak 22 Sep — bukan bug kode.** Run `35771592422` (22 Sep) dan
   `35911873731` (23 Sep) berhenti di langkah "Deploy ke Cloudflare" dengan
   anotasi `RESEND_API_KEY belum diatur di GitHub Secrets/Variables`; langkah
@@ -304,6 +304,16 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   dilakukan lewat jalur cepat #5 (API Cloudflare, kode dari `a1090e3`, versi
   `ce199fe5…`) dengan verifikasi pasca-deploy dicatat di
   `docs/qa/relay-turn-native-2026-09-23.md`.
+  **DITUTUP 2026-09-25 (sesi SESI-20260925-OPERATOR-PULIHKAN).** Akar
+  sebenarnya lebih dalam dari secret kosong: repo sudah pindah akun
+  (`xykalnotkel` → `xykal`, commit `da5dca9`), jadi daftar secret & variable
+  GitHub di akun baru benar-benar kosong (0 secret, 0 variable, 0 run).
+  Dipulihkan: 12 secret + 3 variable dipasang ulang (sealed libsodium via API),
+  kunci Resend baru dari vault pemilik (yang lama terbukti dicabut — `403`;
+  yang baru diverifikasi `200` + domain `mail.xystudio.my.id` verified), secret
+  Worker `RESEND_API_KEY` di `xydesk-signaling` + `xydesk-news` ikut diperbarui
+  via wrangler, dan `Deploy Signaling` di-dispatch sampai hijau — gerbang
+  allocate TURN akhirnya jalan di CI untuk pertama kalinya.
 
 - [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**
   Shell desktop sekarang berjalan di atas Tauri v2 (Rust + native WebView2)
@@ -403,6 +413,19 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 
 - [x] (dari Cakra - XySpace Team, 2026-09-03) — **Rilis 6.4.0+27 TUNTAS.** Bump 4cbbc22 → Build `33728695280` 12/12 @ 4cbbc22 → Release `33729544852` 5/5 (tag v6.4.0, 8 aset, update.json build 27, OneSignal `e4f5574a`). Follow-up: Build `33730701921` (aset artikel) → deploy terjepit deploy manual Danu WEB8 (bundle tanpa aset) + cache CF menyimpan fallback SPA di path gambar → solusi cache-bust rename aset `8b1ebbd` → Build `33732158168` → deploy `33732896248` @ 8eb3ad5 → gambar 6.4.0 image/jpeg. Artikel **p-8f5aa26aa3bc** (id 73) live, top list, OG OK. Web live 6.4.0 terverifikasi (Sewa PC custom, Ingatkan saya, tombol lompat).
 ## Untuk: CI / Release
+
+- [ ] (Operator - XyDesk Team, 2026-09-25, sesi PULIHKAN) — **Keystore signing
+  Android dirotasi — keystore lama hilang saat pindah akun GitHub.** Keystore
+  baru dibuat atas keputusan operator (JKS, RSA 2048, alias `xydesk`, valid
+  10000 hari); `KEYSTORE_BASE64`/`KEYSTORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD`
+  sudah terpasang di GitHub Secrets, dan berkas `.keystore` + kata sandinya
+  dipegang operator di brankas lokal (TIDAK di repo). Yang wajib diketahui
+  sebelum rilis APK berikutnya: `MainActivity.verifyApk` membandingkan signer
+  APK terpasang vs APK unduhan, jadi **APK rilisan lama tidak bisa
+  update-in-place ke APK ber-signer baru** — pengguna lama harus install ulang
+  (uninstall + pasang baru), dan ini layak disebut jujur di artikel rilis
+  mendatang. Build APK pertama dengan keystore baru harus diverifikasi:
+  `apksigner verify --print-certs` cocok dengan sertifikat keystore baru.
 
 - [x] (Cakra - XySpace Team, 2026-09-23, sesi INSTALLER) — **Installer native
   (MSI + NSIS) akhirnya benar-benar terbentuk dari Build yang lulus.** Dua
@@ -810,6 +833,26 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   `session-frame-guidance`/"Ganti layar" ada di bundle live.
 
 ## Untuk: Backend / Edge
+
+- [ ] (Operator - XyDesk Team, 2026-09-25, sesi PULIHKAN) — **Pasca-migrasi
+  akun: tiga secret signaling DIROTASI, triplet TURN sengaja tidak ditaruh di
+  GitHub.** (1) `XYDESK_SECRET`, `ADMIN_SECRET`, `AUTH_SECRET` lama hilang
+  bersama akun GitHub lama dan nilainya tidak bisa dibaca balik dari Worker —
+  atas restu operator di chat, ketiganya dirotasi (64-hex baru; nilai lama
+  hangus). Dampak yang sudah terjadi dan normal: token perangkat lama ditolak
+  (client ambil token baru lewat `/signal-token`) dan sesi login JWT lama mati
+  (login ulang). Nilai baru dipegang operator di brankas lokal, tidak di repo.
+  (2) `TURN_DIRECT_URLS/USERNAME/CREDENTIAL` **tidak** diisi di GitHub Secrets
+  (keputusan operator 25 Sep): kredensial ExpressTurn produksi tetap hidup di
+  secret Worker hasil rotasi 23 Sep, dan `deploy-signaling.yml` memang
+  merancang TURN kosong = sah (Worker tidak ditimpa). Konsekuensinya wajib
+  diketahui role ini: **deploy CI berikutnya tidak akan memperbarui secret TURN
+  Worker** — kalau suatu hari gerbang allocate merah, artinya kredensial
+  ExpressTurn mati dan pemilik harus menyediakan penggantinya (vault kerja
+  TIDAK menyimpan salinannya; simpan `turn.txt`!). Mengisi separuh triplet di
+  GitHub tetap ditolak keras workflow — itu disengaja. (3) Provider cadangan
+  (`OPENRELAY_API_KEY` / `TURN_REST_*`) masih kosong — item 23 Sep soal relay
+  satu penyedia tetap terbuka.
 
 - [x] (dari Operator - XyDesk Team, 2026-09-06) — **Pilih penyedia TURN, lalu
   dispatch `Deploy Signaling`.** Perbaikan `turn.js` (paralel + batas 2,5 dtk)
