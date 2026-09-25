@@ -979,6 +979,30 @@ pub mod capture_health {
     pub static PROC_SESSION: AtomicU32 = AtomicU32::new(u32::MAX);
     pub static ACTIVE_SESSION: AtomicU32 = AtomicU32::new(u32::MAX);
     static STREAK: AtomicU32 = AtomicU32::new(0);
+    static PROC_USER: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+    static ACTIVE_USER: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+    /// Nama user pemilik sesi (WTSUserName) — biar diagnosa bisa bilang
+    /// "host jalan sebagai runneradmin, layar aktif milik xyadmin".
+    unsafe fn session_user(session: u32) -> String {
+        use windows::Win32::System::RemoteDesktop::{
+            WTSFreeMemory, WTSQuerySessionInformationW, WTSUserName,
+        };
+        if session == u32::MAX {
+            return String::new();
+        }
+        let mut ptr: *mut u16 = std::ptr::null_mut();
+        let mut bytes = 0u32;
+        if WTSQuerySessionInformationW(session, WTSUserName, &mut ptr, &mut bytes).is_err()
+            || ptr.is_null()
+        {
+            return String::new();
+        }
+        let len = (bytes as usize / 2).saturating_sub(1);
+        let name = String::from_utf16_lossy(std::slice::from_raw_parts(ptr, len));
+        WTSFreeMemory(ptr as *mut core::ffi::c_void);
+        name
+    }
 
     /// Bandingkan sesi proses dengan sesi yang memegang layar konsol aktif.
     pub fn evaluate_sessions() {
@@ -992,12 +1016,14 @@ pub mod capture_health {
             let active = WTSGetActiveConsoleSessionId();
             PROC_SESSION.store(proc, Ordering::Relaxed);
             ACTIVE_SESSION.store(active, Ordering::Relaxed);
+            *PROC_USER.lock().unwrap() = session_user(proc);
+            *ACTIVE_USER.lock().unwrap() = session_user(active);
             let mismatch = proc != u32::MAX && active != u32::MAX && proc != active;
             if SESSION_MISMATCH.swap(mismatch, Ordering::Relaxed) != mismatch {
                 eprintln!(
                     "[xydesk-host] sesi proses {proc} vs sesi layar aktif {active} — {}",
                     if mismatch {
-                        "BERBEDA: capture bisa hitam; jalankan ulang host dari sesi yang aktif"
+                        "BERBEDA: capture bisa hitam; jalankan XyDesk dari sesi yang aktif"
                     } else {
                         "sama"
                     }
@@ -1043,9 +1069,13 @@ pub mod capture_health {
     /// Ditulis ~1x/detik; dibaca panel untuk kartu CAPTURE.
     pub fn write_json(backend: &str) {
         let path = crate::identity::config_dir().join("capture.json");
+        let esc = |s: String| s.replace('\\', "\\\\").replace('"', "\\\"");
+        let proc_user = esc(PROC_USER.lock().unwrap().clone());
+        let active_user = esc(ACTIVE_USER.lock().unwrap().clone());
         let body = format!(
             "{{\"backend\":\"{backend}\",\"black_frames\":{},\"session_mismatch\":{},\
-             \"proc_session\":{},\"active_session\":{},\"rdp\":{}}}",
+             \"proc_session\":{},\"active_session\":{},\"proc_user\":\"{proc_user}\",\
+             \"active_user\":\"{active_user}\",\"rdp\":{}}}",
             BLACK_FRAMES.load(Ordering::Relaxed),
             SESSION_MISMATCH.load(Ordering::Relaxed),
             PROC_SESSION.load(Ordering::Relaxed),

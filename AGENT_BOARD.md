@@ -80,7 +80,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | UX caption panel Windows: tombol perkecil/perbesar menyusul tutup (tray sudah ada), minimize sungguhan ke taskbar, zoom proporsional; lalu Build + prepare-windows-installer untuk menyerahkan MSI/EXE ke pemilik | 2026-09-25 |
+| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | Ronde 3 umpan balik pemilik: pindah sesi otomatis dicabut (berkedip di VPS multi-user) diganti diagnosis user+sesi di CAPTURE/log; panel morphing (pill sidebar + luncur halaman + gradien); installer NSIS+MSI berjenama dengan verifikasi berkas dan buka panel otomatis pasca-install | 2026-09-25 |
 
 ## Antrean izin push
 

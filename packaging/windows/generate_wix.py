@@ -103,6 +103,8 @@ def main() -> None:
     <MediaTemplate EmbedCab="yes" />
     <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
     <WixVariable Id="WixUILicenseRtf" Value="$(var.SourceDir)\\LICENSE-XyDesk-English.rtf" />
+    <WixVariable Id="WixUIBannerBmp" Value="packaging/windows/wix-banner.bmp" />
+    <WixVariable Id="WixUIDialogBmp" Value="packaging/windows/wix-dialog.bmp" />
     <StandardDirectory Id="LocalAppDataFolder">
       <Directory Id="INSTALLFOLDER" Name="XyDesk">
 {chr(10).join(directory_xml)}

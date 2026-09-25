@@ -67,6 +67,7 @@ constexpr UINT kTrayMessage = WM_APP + 11;
 constexpr UINT kAutoStartMessage = WM_APP + 12;
 constexpr UINT kTrayId = 1;
 constexpr UINT_PTR kTimer = 7;
+constexpr UINT_PTR kAnimTimer = 8; // tick morphing 16ms, hidup hanya saat animasi
 constexpr UINT kFlashDurationMs = 2600;
 #ifndef WM_DPICHANGED
 constexpr UINT WM_DPICHANGED = 0x02E0;
@@ -139,6 +140,12 @@ struct AppState {
     Target pressed = Target::None;
     Target focused = Target::None;
     Page page = Page::Status;
+    // Morphing UI: pill sidebar meluncur antar item dan halaman meluncur
+    // saat berpindah — animasi 60fps hanya selama transisi berjalan.
+    Page pageFrom = Page::Status;
+    float pageT = 1.0f;
+    float pillY = -1.0f;
+    bool animOn = false;
     bool trackingMouse = false;
     bool layered = true;
     // Kesehatan capture dari engine (berkas capture.json): buat kartu Status
@@ -148,8 +155,10 @@ struct AppState {
     bool captureWarn = false;
     bool captureSeen = false;
     bool sessionMismatch = false;
-    int mismatchTicks = 0;
-    bool movedSession = false;
+    std::wstring procUser;
+    std::wstring activeUser;
+    int procSession = -1;
+    int activeSession = -1;
     // Perbesar = panel dizoom proporsional (bukan maximized Win32, karena
     // jendela ini WS_POPUP berlapis). zoomPct dikalikan ke DPI efektif.
     int zoomPct = 100;
@@ -280,6 +289,13 @@ bool jsonFlag(const std::string& json, const char* key) {
     return json.find(needle) != std::string::npos;
 }
 
+int jsonNumber(const std::string& json, const char* key) {
+    const std::string needle = std::string("\"") + key + "\":";
+    const auto start = json.find(needle);
+    if (start == std::string::npos) return -1;
+    return std::atoi(json.c_str() + start + needle.size());
+}
+
 // Engine menulis capture.json sekali setiap beberapa detik: backend capture,
 // apakah frame hitam semua (layar terkunci / secure desktop), dan apakah
 // proses hidup di sesi yang berbeda dari sesi yang memegang layar aktif
@@ -309,62 +325,39 @@ void readCaptureStatus() {
     const std::wstring backend = jsonString(json, "backend");
     const bool mismatch = jsonFlag(json, "session_mismatch");
     const bool warn = jsonFlag(json, "black_frames") || mismatch;
+    const std::wstring procUser = jsonString(json, "proc_user");
+    const std::wstring activeUser = jsonString(json, "active_user");
+    const int procSession = jsonNumber(json, "proc_session");
+    const int activeSession = jsonNumber(json, "active_session");
     std::wstring note;
     if (mismatch) {
-        note = L"Host hidup di sesi berbeda dari layar aktif — capture hitam. Panel memindah diri otomatis ke sesi aktif; bila gagal, jalankan ulang aplikasi dari sesi ini.";
+        // Menunjuk persis: host hidup sebagai siapa di sesi mana, layar aktif
+        // milik siapa — dan apa yang harus dilakukan (tanpa trik pindah sesi;
+        // pemilik menolak, dan antar-user memang tidak mungkin user-mode).
+        note = L"Host jalan sebagai " + (procUser.empty() ? L"?" : procUser) +
+            L" (sesi " + std::to_wstring(procSession) + L"); layar aktif milik " +
+            (activeUser.empty() ? L"?" : activeUser) + L" (sesi " +
+            std::to_wstring(activeSession) +
+            L"). Capture antar-sesi selalu hitam: tutup XyDesk di sesi lama, jalankan dari sesi " +
+            (activeUser.empty() ? L"aktif" : activeUser) + L".";
     } else if (jsonFlag(json, "black_frames")) {
         note = L"Capture menghasilkan frame hitam — layar mungkin terkunci atau di secure desktop. Buka kunci PC host.";
     }
-    if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote || mismatch != g.sessionMismatch) {
+    if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote ||
+        mismatch != g.sessionMismatch || procUser != g.procUser || activeUser != g.activeUser) {
         g.captureBackend = backend;
         g.captureWarn = warn;
         g.captureNote = note;
         g.sessionMismatch = mismatch;
+        g.procUser = procUser;
+        g.activeUser = activeUser;
+        g.procSession = procSession;
+        g.activeSession = activeSession;
         g.captureSeen = true;
         renderPanel();
     } else if (!backend.empty()) {
         g.captureSeen = true;
     }
-}
-
-// Jalankan perintah tanpa jendela; kembalikan kode keluar. Dipakai untuk
-// memindah panel ke sesi aktif lewat Task Scheduler (schtasks /run memulai
-// tugas di sesi interaktif pemilik tugas — cara user-mode memindahkan proses
-// antar-sesi tanpa hak admin).
-int runHiddenCommand(const std::wstring& command) {
-    std::vector<wchar_t> commandLine(command.begin(), command.end());
-    commandLine.push_back(L'\0');
-    STARTUPINFOW si{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    PROCESS_INFORMATION pi{};
-    if (!CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, FALSE,
-            CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
-        return -1;
-    }
-    WaitForSingleObject(pi.hProcess, 8000);
-    DWORD code = 1;
-    GetExitCodeProcess(pi.hProcess, &code);
-    CloseHandle(pi.hThread);
-    CloseHandle(pi.hProcess);
-    return static_cast<int>(code);
-}
-
-// Pindahkan panel (yang akan membawa host) ke sesi yang memegang layar aktif.
-// Instance baru dimulai dulu; instance lama membereskan diri lewat WM_DESTROY
-// (yang menghentikan engine lama), jadi ID perangkat tidak pernah kembar.
-bool relaunchInActiveSession() {
-    wchar_t buffer[MAX_PATH]{};
-    const DWORD n = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
-    if (!n || n >= MAX_PATH) return false;
-    const std::wstring exe(buffer, n);
-    const std::wstring task = L"XyDesk Panel Sesi Aktif";
-    const std::wstring createCmd = L"schtasks /create /tn \"" + task + L"\" /tr \"" + exe +
-        L"\" /sc ONCE /st 23:59 /f";
-    if (runHiddenCommand(createCmd) != 0) return false;
-    const std::wstring runCmd = L"schtasks /run /tn \"" + task + L"\"";
-    return runHiddenCommand(runCmd) == 0;
 }
 
 void setStatus(const std::wstring& text, COLORREF color) {
@@ -834,6 +827,54 @@ void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
     }
 }
 
+float sidebarItemY(const PanelLayout& layout, Page page) {
+    switch (page) {
+    case Page::Pairing: return static_cast<float>(layout.sidePairing.y);
+    case Page::Control: return static_cast<float>(layout.sideControl.y);
+    case Page::Status:
+    default: return static_cast<float>(layout.sideStatus.y);
+    }
+}
+
+void startAnim(HWND hwnd) {
+    if (!g.animOn) {
+        g.animOn = true;
+        SetTimer(hwnd, kAnimTimer, 16, nullptr);
+    }
+}
+
+// Ganti halaman dengan transisi luncur; pill sidebar ikut meluncur.
+void goPage(HWND hwnd, Page target) {
+    if (target == g.page) return;
+    g.pageFrom = g.page;
+    g.page = target;
+    g.pageT = 0.0f;
+    if (g.pillY < 0.0f) g.pillY = sidebarItemY(g.layout, target);
+    startAnim(hwnd);
+}
+
+void tickAnimation(HWND hwnd) {
+    bool more = false;
+    if (g.pageT < 1.0f) {
+        g.pageT = std::min(1.0f, g.pageT + 0.10f); // ±160ms
+        more = g.pageT < 1.0f;
+    }
+    const float targetY = sidebarItemY(g.layout, g.page);
+    if (g.pillY < 0.0f) g.pillY = targetY;
+    const float dy = targetY - g.pillY;
+    if (std::fabs(dy) > 0.5f) {
+        g.pillY += dy * 0.30f; // ease-out sederhana
+        more = true;
+    } else {
+        g.pillY = targetY;
+    }
+    renderPanel();
+    if (!more) {
+        g.animOn = false;
+        KillTimer(hwnd, kAnimTimer);
+    }
+}
+
 void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
     const struct {
         Page page;
@@ -847,13 +888,19 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
         {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Pairing"},
         {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol"},
     };
+
+    // Pill aktif meluncur (morphing) antar item; tingginya sama dengan item.
+    if (g.pillY < 0.0f) g.pillY = sidebarItemY(layout, g.page);
+    const Rect pill{layout.sideStatus.x, static_cast<int>(g.pillY + 0.5f),
+        layout.sideStatus.w, layout.sideStatus.h};
+    fillRoundedOpaque(surface, pill, layout.radiusControl, mixColor(kSurface2, kAccent, 0.30f));
+    strokeRounded(surface, pill, layout.radiusControl, mixColor(kEdge, kAccent, 0.55f), 1);
+
     for (const auto& entry : items) {
         const bool active = g.page == entry.page;
         const bool hot = g.hot == entry.target;
         const bool pressed = g.pressed == entry.target;
-        if (active) {
-            fillRoundedOpaque(surface, entry.item, layout.radiusControl, mixColor(kSurface2, kAccent, 0.30f));
-        } else if (hot || pressed) {
+        if (!active && (hot || pressed)) {
             fillRoundedOpaque(surface, entry.item, layout.radiusControl, pressed ? kSurfacePressed : kSurface2);
         }
         if (g.focused == entry.target) {
@@ -883,6 +930,42 @@ void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
 // jalur yang sama dipakai `--panel-snapshot` untuk memeriksa hasil gambar
 // tanpa membuka jendela (dipakai CI).
+void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
+    switch (page) {
+    case Page::Status:
+        paintStatusCard(surface, layout, dc);
+        paintCaptureCard(surface, layout, dc);
+        break;
+    case Page::Pairing:
+        paintIdentityCard(surface, layout, dc, layout.idCard, layout.idLabel, layout.idValue, layout.idCopy,
+            L"Device ID", g.deviceId, Target::CopyId);
+        paintIdentityCard(surface, layout, dc, layout.passwordCard, layout.passwordLabel, layout.passwordValue,
+            layout.passwordCopy, L"Kode pairing", g.pairingCode, Target::CopyPassword);
+        break;
+    case Page::Control:
+        paintButton(surface, layout, dc, Target::Start, layout.start);
+        paintButton(surface, layout, dc, Target::Stop, layout.stop);
+        paintButton(surface, layout, dc, Target::Restart, layout.restart);
+        paintButton(surface, layout, dc, Target::Web, layout.web);
+        paintButton(surface, layout, dc, Target::OpenLog, layout.openLog);
+        break;
+    }
+}
+
+// Salinan tata letak dengan seluruh rect konten digeser — dipakai transisi
+// luncur antar halaman. Fill menulis piksel langsung (bukan lewat GDI), jadi
+// menggeser tata letak adalah satu-satunya cara menggeser isi secara utuh.
+PanelLayout shiftedContent(const PanelLayout& l, int dx) {
+    PanelLayout s = l;
+    const auto shift = [dx](Rect& r) { r.x += dx; };
+    shift(s.statusCard); shift(s.statusDot); shift(s.statusLine1); shift(s.statusLine2);
+    shift(s.captureCard); shift(s.captureTitle); shift(s.captureLine1); shift(s.captureLine2);
+    shift(s.idCard); shift(s.idLabel); shift(s.idValue); shift(s.idCopy);
+    shift(s.passwordCard); shift(s.passwordLabel); shift(s.passwordValue); shift(s.passwordCopy);
+    shift(s.start); shift(s.stop); shift(s.restart); shift(s.web); shift(s.openLog);
+    return s;
+}
+
 bool drawPanelToSurface() {
     if (!ensureSurface(g.surface, g.layout.window.w, g.layout.window.h)) return false;
     Surface& surface = g.surface;
@@ -892,43 +975,59 @@ bool drawPanelToSurface() {
     // Panel: isi penuh dulu (termasuk sudut), lalu garis tepi tipis supaya
     // tepi panel tetap terbaca walau dinding desktop gelap.
     fillRectOpaque(surface, g.layout.panel, kBackground);
+
+    // Gradien vertikal halus: pendar lembut di sepertiga atas, biar permukaan
+    // tidak datar seperti kotak — tetap tenang, bukan neon.
+    {
+        const Rect& p = g.layout.panel;
+        const int glowH = xydesk::panel::scaled(150, g.layout.scalePct);
+        const int bottom = std::min(p.bottom(), p.y + glowH);
+        for (int y = p.y; y < bottom; ++y) {
+            const float t = 1.0f - static_cast<float>(y - p.y) / static_cast<float>(glowH);
+            const float amount = 0.045f * t * t;
+            std::uint32_t* row = surface.pixels + static_cast<size_t>(y) * surface.width;
+            for (int x = p.x; x < p.right(); ++x) {
+                const std::uint32_t px = row[x];
+                const auto lift = [&amount](std::uint32_t c) {
+                    return std::min(255u, c + static_cast<std::uint32_t>(amount * static_cast<float>(255 - c)));
+                };
+                row[x] = 0xFF000000u | (lift((px >> 16) & 0xFF) << 16) |
+                    (lift((px >> 8) & 0xFF) << 8) | lift(px & 0xFF);
+            }
+        }
+    }
     strokeRounded(surface, g.layout.panel.inset(1), g.layout.radiusPanel - 1, kEdge, 1);
 
     HDC dc = surface.dc;
     if (!dc) return false;
 
     HFONT previousFont = static_cast<HFONT>(SelectObject(dc, g.fontBody));
+
+    // Konten halaman (dengan transisi luncur saat morphing), lalu chrome
+    // (sidebar + caption) digambar di atas supaya isi yang meluncur tidak
+    // pernah menimpa navigasi.
+    if (g.pageT < 1.0f && g.pageFrom != g.page) {
+        const float e = xydesk::panel::smoothstep01(g.pageT);
+        const int slide = xydesk::panel::scaled(28, g.layout.scalePct);
+        const PanelLayout layoutFrom = shiftedContent(g.layout, -static_cast<int>(e * slide));
+        const PanelLayout layoutTo = shiftedContent(g.layout, static_cast<int>((1.0f - e) * slide));
+        paintPage(surface, layoutFrom, dc, g.pageFrom);
+        paintPage(surface, layoutTo, dc, g.page);
+    } else {
+        paintPage(surface, g.layout, dc, g.page);
+    }
+
+    drawTextLine(dc, L"Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar. "
+                     L"Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
+        g.layout.hint, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+    paintSidebar(surface, g.layout, dc);
     paintLogo(surface, g.layout, dc);
     drawTextLine(dc, L"XyDesk Control Panel", g.layout.title, g.fontTitle, kText,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     drawTextLine(dc, L"Panel host Windows · tanpa terminal", g.layout.subtitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     paintCaptionButtons(surface, g.layout, dc);
-    paintSidebar(surface, g.layout, dc);
-
-    switch (g.page) {
-    case Page::Status:
-        paintStatusCard(surface, g.layout, dc);
-        paintCaptureCard(surface, g.layout, dc);
-        break;
-    case Page::Pairing:
-        paintIdentityCard(surface, g.layout, dc, g.layout.idCard, g.layout.idLabel, g.layout.idValue, g.layout.idCopy,
-            L"Device ID", g.deviceId, Target::CopyId);
-        paintIdentityCard(surface, g.layout, dc, g.layout.passwordCard, g.layout.passwordLabel, g.layout.passwordValue,
-            g.layout.passwordCopy, L"Kode pairing", g.pairingCode, Target::CopyPassword);
-        break;
-    case Page::Control:
-        paintButton(surface, g.layout, dc, Target::Start, g.layout.start);
-        paintButton(surface, g.layout, dc, Target::Stop, g.layout.stop);
-        paintButton(surface, g.layout, dc, Target::Restart, g.layout.restart);
-        paintButton(surface, g.layout, dc, Target::Web, g.layout.web);
-        paintButton(surface, g.layout, dc, Target::OpenLog, g.layout.openLog);
-        break;
-    }
-
-    drawTextLine(dc, L"Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar. "
-                     L"Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
-        g.layout.hint, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
     SelectObject(dc, previousFont);
     GdiFlush();
@@ -1015,6 +1114,7 @@ void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
     // sudah teruji; tidak ada gambar yang perlu digambar ulang khusus.
     const UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
     g.layout = xydesk::panel::computeLayout(static_cast<int>(effective));
+    g.pillY = sidebarItemY(g.layout, g.page); // posisi instan saat DPI/zoom
     createFonts();
     if (remeasure) {
         centerWindow(hwnd);
@@ -1276,16 +1376,13 @@ void activateTarget(HWND hwnd, Target target) {
         break;
     }
     case Target::PageStatus:
-        g.page = Page::Status;
-        renderPanel();
+        goPage(hwnd, Page::Status);
         break;
     case Target::PagePairing:
-        g.page = Page::Pairing;
-        renderPanel();
+        goPage(hwnd, Page::Pairing);
         break;
     case Target::PageControl:
-        g.page = Page::Control;
-        renderPanel();
+        goPage(hwnd, Page::Control);
         break;
     case Target::Minimize:
         // Perkecil sungguhan ke taskbar (panel tetap ada di taskbar karena
@@ -1570,23 +1667,12 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 1;
 
     case WM_TIMER:
+        if (wParam == kAnimTimer) {
+            tickAnimation(hwnd);
+            return 0;
+        }
         if (wParam == kTimer) {
             readCaptureStatus();
-            // Host hidup di sesi lain dari layar aktif: setelah yakin (8 detik
-            // berturut-turut, bukan flapping saat login), pindahkan panel ke
-            // sesi aktif. Gagal = tetap peringatan manual di kartu CAPTURE.
-            if (g.sessionMismatch && !g.movedSession) {
-                if (++g.mismatchTicks >= 8) {
-                    g.movedSession = true;
-                    if (relaunchInActiveSession()) {
-                        DestroyWindow(hwnd); // engine lama berhenti di WM_DESTROY
-                        return 0;
-                    }
-                    setStatus(L"Host di sesi lain; pindah otomatis gagal — jalankan ulang aplikasi dari sesi ini.", kWarn);
-                }
-            } else {
-                g.mismatchTicks = 0;
-            }
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
                 g.flashText.clear();
                 g.statusColor = g.running ? kGood : kMuted;
@@ -1636,6 +1722,8 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_DESTROY:
         KillTimer(hwnd, kTimer);
+        KillTimer(hwnd, kAnimTimer);
+        g.animOn = false;
         removeTrayIcon();
         stopHost();
         if (g.fontTitle) DeleteObject(g.fontTitle);
