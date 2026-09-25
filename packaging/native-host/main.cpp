@@ -147,6 +147,9 @@ struct AppState {
     std::wstring captureNote;
     bool captureWarn = false;
     bool captureSeen = false;
+    bool sessionMismatch = false;
+    int mismatchTicks = 0;
+    bool movedSession = false;
     // Perbesar = panel dizoom proporsional (bukan maximized Win32, karena
     // jendela ini WS_POPUP berlapis). zoomPct dikalikan ke DPI efektif.
     int zoomPct = 100;
@@ -304,22 +307,64 @@ void readCaptureStatus() {
     CloseHandle(file);
 
     const std::wstring backend = jsonString(json, "backend");
-    const bool warn = jsonFlag(json, "black_frames") || jsonFlag(json, "session_mismatch");
+    const bool mismatch = jsonFlag(json, "session_mismatch");
+    const bool warn = jsonFlag(json, "black_frames") || mismatch;
     std::wstring note;
-    if (jsonFlag(json, "session_mismatch")) {
-        note = L"Host berjalan di sesi berbeda dari layar aktif — capture hitam. Jalankan ulang aplikasi ini dari sesi aktif.";
+    if (mismatch) {
+        note = L"Host hidup di sesi berbeda dari layar aktif — capture hitam. Panel memindah diri otomatis ke sesi aktif; bila gagal, jalankan ulang aplikasi dari sesi ini.";
     } else if (jsonFlag(json, "black_frames")) {
         note = L"Capture menghasilkan frame hitam — layar mungkin terkunci atau di secure desktop. Buka kunci PC host.";
     }
-    if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote) {
+    if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote || mismatch != g.sessionMismatch) {
         g.captureBackend = backend;
         g.captureWarn = warn;
         g.captureNote = note;
+        g.sessionMismatch = mismatch;
         g.captureSeen = true;
         renderPanel();
     } else if (!backend.empty()) {
         g.captureSeen = true;
     }
+}
+
+// Jalankan perintah tanpa jendela; kembalikan kode keluar. Dipakai untuk
+// memindah panel ke sesi aktif lewat Task Scheduler (schtasks /run memulai
+// tugas di sesi interaktif pemilik tugas — cara user-mode memindahkan proses
+// antar-sesi tanpa hak admin).
+int runHiddenCommand(const std::wstring& command) {
+    std::vector<wchar_t> commandLine(command.begin(), command.end());
+    commandLine.push_back(L'\0');
+    STARTUPINFOW si{};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, FALSE,
+            CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+        return -1;
+    }
+    WaitForSingleObject(pi.hProcess, 8000);
+    DWORD code = 1;
+    GetExitCodeProcess(pi.hProcess, &code);
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return static_cast<int>(code);
+}
+
+// Pindahkan panel (yang akan membawa host) ke sesi yang memegang layar aktif.
+// Instance baru dimulai dulu; instance lama membereskan diri lewat WM_DESTROY
+// (yang menghentikan engine lama), jadi ID perangkat tidak pernah kembar.
+bool relaunchInActiveSession() {
+    wchar_t buffer[MAX_PATH]{};
+    const DWORD n = GetModuleFileNameW(nullptr, buffer, MAX_PATH);
+    if (!n || n >= MAX_PATH) return false;
+    const std::wstring exe(buffer, n);
+    const std::wstring task = L"XyDesk Panel Sesi Aktif";
+    const std::wstring createCmd = L"schtasks /create /tn \"" + task + L"\" /tr \"" + exe +
+        L"\" /sc ONCE /st 23:59 /f";
+    if (runHiddenCommand(createCmd) != 0) return false;
+    const std::wstring runCmd = L"schtasks /run /tn \"" + task + L"\"";
+    return runHiddenCommand(runCmd) == 0;
 }
 
 void setStatus(const std::wstring& text, COLORREF color) {
@@ -1527,6 +1572,21 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_TIMER:
         if (wParam == kTimer) {
             readCaptureStatus();
+            // Host hidup di sesi lain dari layar aktif: setelah yakin (8 detik
+            // berturut-turut, bukan flapping saat login), pindahkan panel ke
+            // sesi aktif. Gagal = tetap peringatan manual di kartu CAPTURE.
+            if (g.sessionMismatch && !g.movedSession) {
+                if (++g.mismatchTicks >= 8) {
+                    g.movedSession = true;
+                    if (relaunchInActiveSession()) {
+                        DestroyWindow(hwnd); // engine lama berhenti di WM_DESTROY
+                        return 0;
+                    }
+                    setStatus(L"Host di sesi lain; pindah otomatis gagal — jalankan ulang aplikasi dari sesi ini.", kWarn);
+                }
+            } else {
+                g.mismatchTicks = 0;
+            }
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
                 g.flashText.clear();
                 g.statusColor = g.running ? kGood : kMuted;
