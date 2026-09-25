@@ -218,6 +218,15 @@ const VKB_ROWS: KeySpec[][] = [
   ],
 ];
 
+// Keycap huruf mengikuti mode huruf yang aktif: kecil saat Caps/Shift mati,
+// besar saat salah satunya hidup — seperti keyboard sungguhan, bukan huruf
+// besar semua yang bikin pengguna ragu tombolnya benar.
+function hurufKeycap(label: string, caps: boolean, held: ReadonlySet<number>): string {
+  const shift = held.has(0x10);
+  if (!caps && !shift && /^[A-Z]$/.test(label)) return label.toLowerCase();
+  return label;
+}
+
 export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>void }) {
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
   const [caps, setCaps] = useState(false);
@@ -270,7 +279,7 @@ export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>vo
               onClick={e=>{if(e.detail===0)tap(vk,modifier);}}
               onContextMenu={e=>e.preventDefault()}
             >
-              {vk === 0x14 ? (caps ? 'CAPS' : 'Caps') : label}
+              {vk === 0x14 ? (caps ? 'CAPS' : 'Caps') : hurufKeycap(label, caps, held)}
             </button>
           ))}
         </div>

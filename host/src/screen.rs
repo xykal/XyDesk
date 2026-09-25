@@ -941,6 +941,11 @@ pub fn capture_telemetry() -> serde_json::Value {
         "framesCapturedTotal": frames_captured(),
         "armed": capture_armed(),
         "rdp": is_rdp_session(),
+        "blackSuspected": capture_black_suspected(),
+        "sessionMismatch": match session_mismatch() {
+            Some((current, active)) => serde_json::json!({ "host": current, "activeConsole": active }),
+            None => serde_json::Value::Null,
+        },
         "lastError": error,
     })
 }
@@ -961,6 +966,92 @@ pub fn is_rdp_session() -> bool {
     #[cfg(not(target_os = "windows"))]
     {
         false
+    }
+}
+
+// FFI mentah: dua fungsi kernel32 ini tidak selalu terbawa feature windows-rs
+// yang dipakai proyek, padahal keduanya kunci diagnosis layar hitam di RDP.
+#[cfg(target_os = "windows")]
+extern "system" {
+    fn WTSGetActiveConsoleSessionId() -> u32;
+    fn ProcessIdToSessionId(dw_process_id: u32, p_session_id: *mut u32) -> i32;
+    fn GetCurrentProcessId() -> u32;
+}
+
+/// Sesi proses ini vs sesi konsol aktif. GDI itu per-sesi: host yang berjalan
+/// di sesi lain (mis. service di sesi 0) hanya bisa menangkap desktop sesi itu
+/// sendiri — yang di VPS tanpa monitor fisik biasanya hitam pekat, sementara
+/// pengguna melihat sesi RDP-nya hidup. `None` = sama / tidak bisa diketahui.
+pub fn session_mismatch() -> Option<(u32, u32)> {
+    #[cfg(target_os = "windows")]
+    unsafe {
+        let mut current = 0u32;
+        if ProcessIdToSessionId(GetCurrentProcessId(), &mut current) == 0 {
+            return None;
+        }
+        let active = WTSGetActiveConsoleSessionId();
+        if active == 0xFFFF_FFFF || active == current {
+            return None;
+        }
+        return Some((current, active));
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        None
+    }
+}
+
+#[cfg(target_os = "windows")]
+static BLACK_STREAK: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+static BLACK_SUSPECTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// True bila capture baru-baru ini terbukti membaca isi hitam terus-menerus.
+/// Masuk telemetri /status supaya gejala "tersambung tapi layar hitam" punya
+/// sebab yang terbaca, bukan misteri.
+pub fn capture_black_suspected() -> bool {
+    BLACK_SUSPECTED.load(Ordering::Relaxed)
+}
+
+// Sampel 240 titik merata; hitam bila rata-rata kanal terterang < 6.
+// Murah (seperseribu piksel) tapi cukup membedakan desktop sungguhan dari
+// desktop sesi yang kosong. Hanya jalur GDI (Windows) yang memanggilnya.
+#[cfg(target_os = "windows")]
+fn frame_hitam(rgba: &[u8]) -> bool {
+    const SAMPEL: usize = 240;
+    let n = rgba.len() / 4;
+    if n < SAMPEL * 4 {
+        return false;
+    }
+    let langkah = n / SAMPEL;
+    let mut sum: u64 = 0;
+    for k in 0..SAMPEL {
+        let p = (k * langkah) * 4;
+        let m = rgba[p].max(rgba[p + 1]).max(rgba[p + 2]);
+        sum += u64::from(m);
+    }
+    sum / (SAMPEL as u64) < 6
+}
+
+#[cfg(target_os = "windows")]
+pub fn catat_frame_hitam(hitam: bool) {
+    if !hitam {
+        BLACK_STREAK.store(0, Ordering::Relaxed);
+        return;
+    }
+    let streak = BLACK_STREAK.fetch_add(1, Ordering::Relaxed) + 1;
+    if streak == 60 && !BLACK_SUSPECTED.swap(true, Ordering::Relaxed) {
+        let sebab = match session_mismatch() {
+            Some((current, active)) => format!(
+                " — host berjalan di sesi {current}, sedangkan sesi konsol aktif {active}: \
+                 GDI per-sesi, jadi host memang tidak bisa melihat layar itu. \
+                 Jalankan ulang XyDesk Host dari dalam sesi yang kamu pakai."
+            ),
+            None => " — host sudah di sesi aktif; periksa apakah layar tidak terkunci atau kosong."
+                .to_string(),
+        };
+        eprintln!(
+            "[xydesk-host] PERINGATAN: capture membaca isi HITAM terus-menerus ±2 detik{sebab}"
+        );
     }
 }
 
@@ -1405,6 +1496,13 @@ mod windows {
         println!(
             "[xydesk-host] capture gdi-bitblt mulai {w}x{h} (monitor {monitor}, target {target_fps} fps)"
         );
+        if let Some((current, active)) = session_mismatch() {
+            eprintln!(
+                "[xydesk-host] PERINGATAN: proses host di sesi {current} tetapi sesi konsol aktif {active} — \
+                 capture GDI hanya melihat desktop sesinya sendiri; bila layar client hitam, \
+                 jalankan ulang host dari dalam sesi yang kamu pakai."
+            );
+        }
         loop {
             // Awal pipeline latensi — sebelum piksel diambil, sama seperti WGC.
             let captured_at = std::time::Instant::now();
@@ -1426,6 +1524,7 @@ mod windows {
                     break;
                 }
             };
+            catat_frame_hitam(frame_hitam(rgba));
             if !crate::virtual_target::accepts_rect(capture_rect) {
                 break;
             }

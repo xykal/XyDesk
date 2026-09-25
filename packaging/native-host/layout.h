@@ -1,5 +1,5 @@
 #pragma once
-// Tata letak dan geometri panel XyDesk.
+// Tata letak dan geometri panel XyDesk (v2: lebar, bersidebar, tanpa bayangan).
 //
 // File ini sengaja murni angka: tidak menyentuh Windows API, tidak menyentuh
 // GDI. Dua alasannya nyata. Pertama, tata letak bisa diuji di Linux
@@ -10,6 +10,11 @@
 //
 // Semua ukuran di bawah ditulis untuk 96 DPI (skala 100) dan dikalikan
 // `scalePct` saat dipakai, supaya di layar 125%/150% tata letaknya tetap utuh.
+//
+// v2 (25 Sep, umpan balik pemilik): panel lebar 960x600 dengan sidebar navigasi
+// (Status / Kontrol / Bantuan), tanpa bayangan luar — tepi hanya dihaluskan
+// satu-dua piksel. Kontrol baku memakai ikon; teks hanya untuk nilai yang
+// memang milik pengguna (Device ID, kode pairing, judul bagian).
 
 #include <algorithm>
 #include <cmath>
@@ -22,16 +27,24 @@ constexpr int kRadiusPanel = 16;
 constexpr int kRadiusCard = 16;
 constexpr int kRadiusControl = 12;
 
-// Ruang untuk bayangan di luar panel. Jendela per-piksel-alpha membuat
-// bayangan bisa digambar sendiri (bukan bayangan DWM bawaan Windows).
-constexpr int kShadowMargin = 24;
-constexpr int kShadowSpread = 26;
-constexpr int kShadowStrength = 122;
+// v1 punya bayangan luar 24px; pemilik minta tanpa bayangan. Margin kecil ini
+// sekarang hanya memberi ruang tepi yang dihaluskan (antialias) supaya sudut
+// tidak bergerigi di atas wallpaper apa pun.
+constexpr int kEdgeMargin = 2;
 
-constexpr int kPanelWidth = 560;
-constexpr int kPanelHeight = 568;
+constexpr int kPanelWidth = 960;
+constexpr int kPanelHeight = 600;
 constexpr int kPadding = 24;
 constexpr int kGap = 12;
+constexpr int kSidebarWidth = 208;
+constexpr int kCaptionHeight = 56;
+
+// Bagian konten yang dipilih dari sidebar. Nilai ini ikut di PanelLayout
+// supaya hit-test dan urutan Tab tidak pernah menampilkan kontrol yang
+// sedang tidak terlihat di layar.
+constexpr int kSectionStatus = 0;
+constexpr int kSectionControl = 1;
+constexpr int kSectionHelp = 2;
 
 struct Rect {
     int x = 0;
@@ -58,6 +71,9 @@ enum class Target {
     Minimize,
     Maximize,
     Close,
+    NavStatus,
+    NavControl,
+    NavHelp,
     CopyId,
     CopyPassword,
     Start,
@@ -73,6 +89,9 @@ inline const char* targetName(Target target) {
     case Target::Minimize: return "Minimize";
     case Target::Maximize: return "Maximize";
     case Target::Close: return "Close";
+    case Target::NavStatus: return "NavStatus";
+    case Target::NavControl: return "NavControl";
+    case Target::NavHelp: return "NavHelp";
     case Target::CopyId: return "CopyId";
     case Target::CopyPassword: return "CopyPassword";
     case Target::Start: return "Start";
@@ -86,20 +105,30 @@ inline const char* targetName(Target target) {
 
 struct PanelLayout {
     int scalePct = 100;
+    int section = kSectionStatus;
     int radiusPanel = kRadiusPanel;
     int radiusCard = kRadiusCard;
     int radiusControl = kRadiusControl;
 
-    Rect window{};   // seluruh permukaan berlapis, termasuk ruang bayangan
+    Rect window{};   // seluruh permukaan berlapis, termasuk ruang tepi halus
     Rect panel{};    // permukaan membulat yang terlihat
 
-    Rect titleBar{};
+    Rect sidebar{};      // kolom navigasi kiri
     Rect logo{};
-    Rect title{};
-    Rect subtitle{};
+    Rect title{};        // nama aplikasi di sidebar
+    Rect subtitle{};     // keterangan kecil di bawah nama
+    Rect navStatus{};
+    Rect navControl{};
+    Rect navHelp{};
+    Rect sidebarFoot{};  // versi + catatan kecil di dasar sidebar
+
+    Rect titleBar{};     // strip atas: area geser + judul bagian + caption
+    Rect sectionTitle{};
     Rect minimizeButton{};
     Rect maximizeButton{};
     Rect closeButton{};
+
+    Rect content{};      // daerah isi di kanan sidebar, di bawah caption
 
     Rect statusCard{};
     Rect statusDot{};
@@ -121,6 +150,7 @@ struct PanelLayout {
     Rect restart{};
     Rect web{};
     Rect openLog{};
+    Rect logLine{};
     Rect hint{};
 };
 
@@ -159,7 +189,7 @@ inline PanelLayout computeLayout(int dpi) {
     l.radiusCard = px(kRadiusCard);
     l.radiusControl = px(kRadiusControl);
 
-    const int margin = px(kShadowMargin);
+    const int margin = px(kEdgeMargin);
     const int panelW = px(kPanelWidth);
     const int panelH = px(kPanelHeight);
     l.panel = Rect{margin, margin, panelW, panelH};
@@ -167,29 +197,48 @@ inline PanelLayout computeLayout(int dpi) {
 
     const int pad = px(kPadding);
     const int gap = px(kGap);
-    const int contentW = panelW - 2 * pad;
-    const int contentX = l.panel.x + pad;
 
-    // ── Judul: logo, nama, subjudul, tiga tombol caption ──
-    // Urutan kiri→kanan mengikuti Windows: perkecil, perbesar/pulihkan,
-    // tutup. Ukuran dan jarak seragam supaya barisnya terasa satu keluarga.
-    const int logo = px(28);
-    l.logo = Rect{contentX, l.panel.y + pad, logo, logo};
+    // ── Sidebar kiri: identitas aplikasi + navigasi ──
+    const int sideW = px(kSidebarWidth);
+    l.sidebar = Rect{l.panel.x, l.panel.y, sideW, panelH};
+    const int logo = px(30);
+    l.logo = Rect{l.panel.x + px(20), l.panel.y + px(17), logo, logo};
+    const int nameX = l.logo.right() + px(12);
+    l.title = Rect{nameX, l.panel.y + px(14), sideW - px(20) - (nameX - l.panel.x), px(22)};
+    l.subtitle = Rect{nameX, l.title.bottom() + px(1), l.title.w, px(16)};
+
+    const int navX = l.panel.x + px(12);
+    const int navW = sideW - px(24);
+    const int navH = px(42);
+    const int navGap = px(6);
+    int navY = l.panel.y + px(78);
+    l.navStatus = Rect{navX, navY, navW, navH};
+    navY += navH + navGap;
+    l.navControl = Rect{navX, navY, navW, navH};
+    navY += navH + navGap;
+    l.navHelp = Rect{navX, navY, navW, navH};
+    l.sidebarFoot = Rect{l.panel.x + px(16), l.panel.bottom() - px(52), sideW - px(32), px(36)};
+
+    // ── Strip atas: area geser, judul bagian, tombol caption ──
+    const int captionH = px(kCaptionHeight);
+    l.titleBar = Rect{l.panel.x, l.panel.y, panelW, captionH};
     const int closeSize = px(32);
     const int captionGap = px(4);
-    const int captionY = l.panel.y + pad - px(2);
-    l.closeButton = Rect{l.panel.right() - pad - closeSize, captionY, closeSize, closeSize};
+    const int captionY = l.panel.y + (captionH - closeSize) / 2;
+    l.closeButton = Rect{l.panel.right() - px(12) - closeSize, captionY, closeSize, closeSize};
     l.maximizeButton = Rect{l.closeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
     l.minimizeButton = Rect{l.maximizeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
-    const int textX = l.logo.right() + px(12);
-    const int textW = l.minimizeButton.x - px(12) - textX;
-    l.title = Rect{textX, l.panel.y + pad - px(3), textW, px(24)};
-    l.subtitle = Rect{textX, l.title.bottom() + px(1), textW, px(18)};
-    l.titleBar = Rect{l.panel.x, l.panel.y, panelW, pad + logo + px(10)};
+    l.sectionTitle = Rect{l.sidebar.right() + pad, l.panel.y, l.minimizeButton.x - px(16) - (l.sidebar.right() + pad), captionH};
 
-    // ── Kartu status ──
+    // ── Daerah isi ──
+    const int contentX = l.sidebar.right() + pad;
+    const int contentW = l.panel.right() - pad - contentX;
+    l.content = Rect{contentX, l.panel.y + captionH + px(16), contentW,
+                     l.panel.bottom() - px(20) - (l.panel.y + captionH + px(16))};
+
+    // ── Bagian Status: kartu status + dua kartu identitas ──
     const int statusH = px(64);
-    l.statusCard = Rect{contentX, l.titleBar.bottom() + px(20), contentW, statusH};
+    l.statusCard = Rect{contentX, l.content.y, contentW, statusH};
     const int dot = px(10);
     l.statusDot = Rect{l.statusCard.x + px(20), l.statusCard.y + px(22), dot, dot};
     const int lineX = l.statusDot.right() + px(14);
@@ -197,53 +246,73 @@ inline PanelLayout computeLayout(int dpi) {
     l.statusLine1 = Rect{lineX, l.statusCard.y + px(13), lineW, px(20)};
     l.statusLine2 = Rect{lineX, l.statusLine1.bottom() + px(3), lineW, px(18)};
 
-    // ── Kartu identitas ──
     const int cardH = px(84);
-    const int copyW = px(76);
-    const int copyH = px(34);
-    l.idCard = Rect{contentX, l.statusCard.bottom() + px(20), contentW, cardH};
+    const int copyW = px(84);
+    const int copyH = px(36);
+    l.idCard = Rect{contentX, l.statusCard.bottom() + px(16), contentW, cardH};
     l.idLabel = Rect{l.idCard.x + px(18), l.idCard.y + px(14), contentW - px(140), px(16)};
-    l.idValue = Rect{l.idCard.x + px(18), l.idCard.y + px(36), contentW - px(126), px(32)};
+    l.idValue = Rect{l.idCard.x + px(18), l.idCard.y + px(36), contentW - px(134), px(32)};
     l.idCopy = Rect{l.idCard.right() - px(18) - copyW, l.idCard.y + (cardH - copyH) / 2, copyW, copyH};
 
     l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, contentW, cardH};
     l.passwordLabel = Rect{l.passwordCard.x + px(18), l.passwordCard.y + px(14), contentW - px(140), px(16)};
-    l.passwordValue = Rect{l.passwordCard.x + px(18), l.passwordCard.y + px(36), contentW - px(126), px(32)};
-    l.passwordCopy = Rect{
+    l.passwordValue = Rect{l.passwordCard.x + px(18), l.passwordCard.y + px(36), contentW - px(134), px(32)};    l.passwordCopy = Rect{
         l.passwordCard.right() - px(18) - copyW,
         l.passwordCard.y + (cardH - copyH) / 2,
         copyW,
         copyH};
 
-    // ── Tombol aksi, dua baris, semua pas dalam lebar konten ──
-    const int actionH = px(46);
-    const int row1 = l.passwordCard.bottom() + px(20);
-    l.start = Rect{contentX, row1, px(190), actionH};
-    l.stop = Rect{l.start.right() + gap, row1, px(150), actionH};
-    l.restart = Rect{l.stop.right() + gap, row1, contentX + contentW - (l.stop.right() + gap), actionH};
-
-    const int row2 = row1 + actionH + gap;
+    // ── Bagian Kontrol: tiga aksi + dua tautan + baris log ──
+    const int actionH = px(64);
+    const int thirdW = (contentW - 2 * gap) / 3;
+    l.start = Rect{contentX, l.content.y, thirdW, actionH};
+    l.stop = Rect{l.start.right() + gap, l.content.y, thirdW, actionH};
+    l.restart = Rect{l.stop.right() + gap, l.content.y, contentW - 2 * thirdW - 2 * gap, actionH};
+    const int row2 = l.start.bottom() + gap;
     const int halfW = (contentW - gap) / 2;
-    l.web = Rect{contentX, row2, halfW, actionH};
-    l.openLog = Rect{l.web.right() + gap, row2, contentW - halfW - gap, actionH};
+    l.web = Rect{contentX, row2, halfW, px(48)};
+    l.openLog = Rect{l.web.right() + gap, row2, contentW - halfW - gap, px(48)};
+    l.logLine = Rect{contentX, l.web.bottom() + px(14), contentW, px(18)};
 
-    l.hint = Rect{contentX, row2 + actionH + px(18), contentW, px(44)};
+    // ── Bagian Bantuan: teks petunjuk ──
+    l.hint = Rect{contentX, l.content.y, contentW, l.content.h};
     return l;
 }
 
+// Kontrol isi hanya boleh diklik saat bagiannya tampil — menekan tombol yang
+// tidak terlihat sama saja dengan jebakan.
+inline bool sectionShowsTarget(int section, Target target) {
+    switch (target) {
+    case Target::CopyId:
+    case Target::CopyPassword:
+        return section == kSectionStatus;
+    case Target::Start:
+    case Target::Stop:
+    case Target::Restart:
+    case Target::Web:
+    case Target::OpenLog:
+        return section == kSectionControl;
+    default:
+        return true;
+    }
+}
+
 // Sasaran klik di koordinat klien jendela. Tombol diperiksa lebih dulu
-// supaya tombol tutup di dalam area judul tetap menang.
+// supaya tombol caption di dalam area judul tetap menang.
 inline Target targetAt(const PanelLayout& l, int x, int y) {
     if (l.minimizeButton.contains(x, y)) return Target::Minimize;
     if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;
-    if (l.idCopy.contains(x, y)) return Target::CopyId;
-    if (l.passwordCopy.contains(x, y)) return Target::CopyPassword;
-    if (l.start.contains(x, y)) return Target::Start;
-    if (l.stop.contains(x, y)) return Target::Stop;
-    if (l.restart.contains(x, y)) return Target::Restart;
-    if (l.web.contains(x, y)) return Target::Web;
-    if (l.openLog.contains(x, y)) return Target::OpenLog;
+    if (l.navStatus.contains(x, y)) return Target::NavStatus;
+    if (l.navControl.contains(x, y)) return Target::NavControl;
+    if (l.navHelp.contains(x, y)) return Target::NavHelp;
+    if (l.idCopy.contains(x, y) && sectionShowsTarget(l.section, Target::CopyId)) return Target::CopyId;
+    if (l.passwordCopy.contains(x, y) && sectionShowsTarget(l.section, Target::CopyPassword)) return Target::CopyPassword;
+    if (l.start.contains(x, y) && sectionShowsTarget(l.section, Target::Start)) return Target::Start;
+    if (l.stop.contains(x, y) && sectionShowsTarget(l.section, Target::Stop)) return Target::Stop;
+    if (l.restart.contains(x, y) && sectionShowsTarget(l.section, Target::Restart)) return Target::Restart;
+    if (l.web.contains(x, y) && sectionShowsTarget(l.section, Target::Web)) return Target::Web;
+    if (l.openLog.contains(x, y) && sectionShowsTarget(l.section, Target::OpenLog)) return Target::OpenLog;
     if (l.titleBar.contains(x, y)) return Target::TitleBar;
     return Target::None;
 }
@@ -276,14 +345,6 @@ inline float roundedRectDistance(float px, float py, const Rect& r, float radius
 inline float roundedRectCoverage(float px, float py, const Rect& r, float radius) {
     const float distance = roundedRectDistance(px, py, r, radius);
     return clampValue(0.5f - distance, 0.0f, 1.0f);
-}
-
-// Bayangan lembut di luar bentuk: 1 di tepi, memudar sampai 0 pada `spread`.
-inline float roundedRectShadow(float px, float py, const Rect& r, float radius, float spread, float strength) {
-    const float distance = roundedRectDistance(px, py, r, radius);
-    if (distance <= 0.0f) return 0.0f;
-    const float t = 1.0f - distance / spread;
-    return smoothstep01(t) * strength;
 }
 
 // Titik tengah, dipakai uji dan penempatan ikon.

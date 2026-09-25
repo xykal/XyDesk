@@ -693,12 +693,12 @@ jobs:
           Invoke-Panel '--panel-probe' $probe
           $layout = Get-Content $probe -Raw | ConvertFrom-Json
           Write-Host ($layout | ConvertTo-Json -Compress)
-          if ($layout.windowWidth -ne 608 -or $layout.windowHeight -ne 616) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
-          if ($layout.panelWidth -ne 560 -or $layout.panelHeight -ne 568) { throw 'Ukuran panel tidak sesuai' }
+          if ($layout.windowWidth -ne 964 -or $layout.windowHeight -ne 604) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
+          if ($layout.panelWidth -ne 960 -or $layout.panelHeight -ne 600) { throw 'Ukuran panel tidak sesuai' }
           if ($layout.radiusPanel -ne 16) { throw "Radius sudut panel bukan 16: $($layout.radiusPanel)" }
-          if ($layout.shadowMargin -ne 24) { throw "Margin bayangan bukan 24: $($layout.shadowMargin)" }
+          if ($layout.edgeMargin -ne 2) { throw "Margin tepi bukan 2 (tanpa bayangan): $($layout.edgeMargin)" }
           $hits = ($layout.hits -join ',')
-          if ($hits -ne 'Minimize,Maximize,Close,Start,OpenLog,None,TitleBar') { throw "Hit-test panel tidak sesuai: $hits" }
+          if ($hits -ne 'Minimize,Maximize,Close,NavStatus,Start,OpenLog,None,None,TitleBar') { throw "Hit-test panel tidak sesuai: $hits" }
 
           # 2) Bentuk yang digambar aplikasi sendiri: busur sudut, tepi halus,
           #    bayangan. Diperiksa per piksel oleh tool/check_panel_shape.py.

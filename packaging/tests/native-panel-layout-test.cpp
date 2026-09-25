@@ -2,9 +2,10 @@
 //
 // Yang diuji bukan gambar, melainkan angka yang menentukan gambar itu:
 // apakah semua kontrol masih berada di dalam panel, apakah tombol tidak
-// bertumpuk, apakah hit-test klik mengembalikan sasaran yang benar, dan
-// apakah skala DPI bekerja. Semua ini dijalankan di CI Linux sehingga
-// kesalahan tata letak ketahuan sebelum masuk ke runner Windows.
+// bertumpuk, apakah hit-test klik mengembalikan sasaran yang benar, apakah
+// kontrol bagian tersembunyi tidak bisa tertekan, dan apakah skala DPI
+// bekerja. Semua ini dijalankan di CI Linux sehingga kesalahan tata letak
+// ketahuan sebelum masuk ke runner Windows.
 //
 // Bangun dan jalankan: packaging/tests/test-native-panel-layout.sh
 
@@ -50,47 +51,75 @@ bool overlaps(const Rect& a, const Rect& b) {
 void testGeometry100() {
     const PanelLayout l = xydesk::panel::computeLayout(96);
     check(l.scalePct == 100, "DPI 96 memberi skala 100");
-    check(l.window.w == 560 + 2 * 24 && l.window.h == 568 + 2 * 24, "ukuran jendela = panel + margin bayangan");
-    check(l.panel.w == 560 && l.panel.h == 568, "ukuran panel 560x568 pada skala 100");
-    check(l.panel.x == 24 && l.panel.y == 24, "panel terletak setelah margin bayangan");
+    check(l.window.w == 960 + 2 * 2 && l.window.h == 600 + 2 * 2, "ukuran jendela = panel + margin tepi halus");
+    check(l.panel.w == 960 && l.panel.h == 600, "panel lebar 960x600 pada skala 100");
+    check(l.panel.x == 2 && l.panel.y == 2, "margin tepi hanya 2 (tanpa bayangan)");
     check(l.radiusPanel == 16 && l.radiusCard == 16 && l.radiusControl == 12, "radius panel/kartu/kontrol");
 
-    const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton, l.idCopy, l.passwordCopy,
-        l.start, l.stop, l.restart, l.web, l.openLog};
+    // Sidebar menempati kiri penuh dan tidak menimpa daerah isi.
+    check(l.sidebar.x == l.panel.x && l.sidebar.h == l.panel.h, "sidebar setinggi panel di kiri");
+    check(l.sidebar.w == 208, "lebar sidebar 208");
+    check(l.content.x == l.sidebar.right() + 24, "daerah isi mulai setelah sidebar + padding");
+    check(l.content.right() <= l.panel.right() - 24, "daerah isi menghormati padding kanan");
+
+    const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton, l.navStatus, l.navControl,
+        l.navHelp, l.idCopy, l.passwordCopy, l.start, l.stop, l.restart, l.web, l.openLog};
     for (const Rect& rect : interactive) {
         check(rect.valid(), "setiap kontrol punya ukuran positif");
         check(insidePanel(l, rect), "setiap kontrol berada di dalam panel");
     }
 
-    check(insidePanel(l, l.titleBar) && insidePanel(l, l.titleBar) == insidePanel(l, l.hint), "area judul dan petunjuk ada di dalam panel");
-    check(l.statusCard.y > l.titleBar.bottom(), "kartu status di bawah area judul");
+    check(insidePanel(l, l.titleBar), "area judul ada di dalam panel");
+    check(insidePanel(l, l.logo) && insidePanel(l, l.title) && insidePanel(l, l.subtitle), "identitas sidebar di dalam panel");
+    check(l.statusCard.y >= l.content.y, "kartu status di dalam daerah isi");
     check(l.idCard.y > l.statusCard.bottom(), "kartu identitas di bawah kartu status");
     check(l.passwordCard.y > l.idCard.bottom(), "kartu pairing di bawah kartu identitas");
-    check(l.start.y > l.passwordCard.bottom(), "tombol aksi di bawah kartu pairing");
-    check(l.hint.y > l.web.bottom(), "petunjuk di bawah baris tombol kedua");
+    check(l.stop.x > l.start.right() && l.restart.x > l.stop.right(), "tombol aksi urut kiri ke kanan");
+    check(l.openLog.x > l.web.right(), "tombol tautan urut kiri ke kanan");
 
     check(!overlaps(l.start, l.stop) && !overlaps(l.stop, l.restart), "tombol baris pertama tidak bertumpuk");
     check(!overlaps(l.web, l.openLog), "tombol baris kedua tidak bertumpuk");
-    check(!overlaps(l.start, l.web) && !overlaps(l.restart, l.web), "baris tombol tidak bertumpuk antar baris");
+    check(!overlaps(l.start, l.web) && !overlaps(l.restart, l.openLog), "baris tombol tidak bertumpuk antar baris");
     check(!overlaps(l.idValue, l.idCopy), "nilai Device ID tidak bertumpuk dengan tombol salin");
     check(!overlaps(l.passwordValue, l.passwordCopy), "nilai kode pairing tidak bertumpuk dengan tombol salin");
-    check(!overlaps(l.title, l.closeButton) && !overlaps(l.subtitle, l.closeButton), "judul tidak bertumpuk dengan tombol tutup");
-    check(!overlaps(l.title, l.minimizeButton) && !overlaps(l.subtitle, l.minimizeButton), "judul tidak bertumpuk dengan tombol caption");
+    check(!overlaps(l.sectionTitle, l.minimizeButton), "judul bagian tidak bertumpuk dengan tombol caption");
+    check(!overlaps(l.navStatus, l.navControl) && !overlaps(l.navControl, l.navHelp), "navigasi tidak bertumpuk");
+    check(!overlaps(l.sidebar, l.content), "sidebar dan isi tidak bertumpuk");
 
     check(!overlaps(l.minimizeButton, l.maximizeButton) && !overlaps(l.maximizeButton, l.closeButton), "tombol caption tidak bertumpuk");
     check(l.minimizeButton.x < l.maximizeButton.x && l.maximizeButton.x < l.closeButton.x, "urutan caption: perkecil, perbesar, tutup");
     check(l.minimizeButton.y == l.maximizeButton.y && l.maximizeButton.y == l.closeButton.y, "tombol caption sejajar satu baris");
-    check(l.minimizeButton.w == l.closeButton.w && l.minimizeButton.h == l.closeButton.h, "tombol caption berukuran seragam");
-    check(l.closeButton.x + l.closeButton.w <= l.panel.right() - 24 + 1, "tombol tutup menghormati padding kanan");
-    check(l.start.x == l.panel.x + 24 && l.restart.right() == l.panel.right() - 24, "tombol mengisi lebar konten");
-    check(l.statusLine1.x > l.statusDot.x && l.statusLine1.right() <= l.statusCard.right(), "teks status di sebelah titik status");
-    check(l.idCopy.h == 34 && l.passwordCopy.h == 34, "tombol salin setinggi 34");
+    check(l.closeButton.right() <= l.panel.right() - 12 + 1, "tombol tutup menghormati padding kanan");
     check(l.titleBar.h >= 56, "area geser setinggi minimal 56");
 }
 
-void testHitTesting() {
-    const PanelLayout l = xydesk::panel::computeLayout(96);
+void testSections() {
+    PanelLayout status = xydesk::panel::computeLayout(96);
+    status.section = xydesk::panel::kSectionStatus;
+    PanelLayout control = xydesk::panel::computeLayout(96);
+    control.section = xydesk::panel::kSectionControl;
+
     const auto center = [](const Rect& r) { return std::pair<int, int>{r.x + r.w / 2, r.y + r.h / 2}; };
+    const auto [sx, sy] = center(status.start);
+    check(xydesk::panel::targetAt(status, sx, sy) == Target::None, "tombol Mulai tidak tertekan di bagian Status");
+    check(xydesk::panel::targetAt(control, sx, sy) == Target::Start, "tombol Mulai tertekan di bagian Kontrol");
+    const auto [ix, iy] = center(status.idCopy);
+    check(xydesk::panel::targetAt(status, ix, iy) == Target::CopyId, "salin ID aktif di bagian Status");
+    // Di bagian Kontrol titik itu boleh jatuh ke tombol yang memang digambar
+    // di sana, tetapi TIDAK BOLEH menjadi salin ID yang tak terlihat.
+    check(xydesk::panel::targetAt(control, ix, iy) != Target::CopyId, "salin ID tidak tertekan di bagian Kontrol");
+    check(!xydesk::panel::sectionShowsTarget(xydesk::panel::kSectionControl, Target::CopyId), "gerbang seksi menolak salin ID di Kontrol");
+    // Navigasi dan caption selalu hidup di bagian mana pun.
+    const auto [nx, ny] = center(status.navControl);
+    check(xydesk::panel::targetAt(status, nx, ny) == Target::NavControl, "navigasi hidup di semua bagian");
+    const auto [cx, cy] = center(status.closeButton);
+    check(xydesk::panel::targetAt(control, cx, cy) == Target::Close, "tutup hidup di semua bagian");
+}
+
+void testHitTesting() {
+    PanelLayout l = xydesk::panel::computeLayout(96);
+    l.section = xydesk::panel::kSectionControl;
+    const auto center = [](const Rect& r) { return std::pair<int, int>{r.x + r.w / 2, r.y + r.h / 2}; } ;
 
     struct Case {
         Rect rect;
@@ -101,8 +130,9 @@ void testHitTesting() {
         {l.minimizeButton, Target::Minimize, "tombol perkecil"},
         {l.maximizeButton, Target::Maximize, "tombol perbesar"},
         {l.closeButton, Target::Close, "tombol tutup"},
-        {l.idCopy, Target::CopyId, "salin Device ID"},
-        {l.passwordCopy, Target::CopyPassword, "salin kode pairing"},
+        {l.navStatus, Target::NavStatus, "navigasi status"},
+        {l.navControl, Target::NavControl, "navigasi kontrol"},
+        {l.navHelp, Target::NavHelp, "navigasi bantuan"},
         {l.start, Target::Start, "mulai host"},
         {l.stop, Target::Stop, "hentikan"},
         {l.restart, Target::Restart, "restart"},
@@ -124,11 +154,10 @@ void testHitTesting() {
     check(xydesk::panel::targetAt(l, minX, minY) == Target::Minimize, "tombol perkecil menang atas area geser");
     check(xydesk::panel::targetAt(l, maxX, maxY) == Target::Maximize, "tombol perbesar menang atas area geser");
 
-    check(xydesk::panel::targetAt(l, l.panel.x + 300, l.panel.y + 6) == Target::TitleBar, "sisa area judul bisa dipakai menggeser");
+    check(xydesk::panel::targetAt(l, l.sidebar.x + 100, l.sidebar.bottom() - 80) == Target::None, "dasar sidebar bukan sasaran kontrol");
     check(xydesk::panel::targetAt(l, 0, 0) == Target::None, "poin di luar panel tidak menghalangi klik");
     check(xydesk::panel::targetAt(l, l.panel.x + 2, l.panel.bottom() - 2) == Target::None, "sudut bawah panel bukan sasaran kontrol");
-    check(xydesk::panel::targetAt(l, l.panel.x + 2, l.panel.y + 2) == Target::TitleBar, "sudut kiri atas masih area judul");
-    check(xydesk::panel::targetAt(l, l.statusCard.x + 10, l.statusCard.y + 10) == Target::None, "kartu status bukan sasaran klik");
+    check(xydesk::panel::targetAt(l, l.content.x + 10, l.content.y + l.content.h - 6) == Target::None, "dasar daerah isi bukan sasaran klik");
 }
 
 void testDpiScaling() {
@@ -138,12 +167,14 @@ void testDpiScaling() {
     check(bigger.panel.w == base.panel.w * 3 / 2, "lebar panel ikut skala");
     check(bigger.panel.h == base.panel.h * 3 / 2, "tinggi panel ikut skala");
     check(bigger.radiusPanel == 24 && bigger.radiusControl == 18, "radius ikut skala");
-    check(bigger.panel.x == 36, "margin bayangan ikut skala");
-    for (const Rect& rect : {bigger.closeButton, bigger.start, bigger.openLog, bigger.idCopy}) {
+    check(bigger.panel.x == 3, "margin tepi ikut skala");
+    for (const Rect& rect : {bigger.closeButton, bigger.start, bigger.openLog, bigger.idCopy, bigger.navStatus}) {
         check(insidePanel(bigger, rect), "kontrol tetap di dalam panel pada skala 150");
     }
+    PanelLayout control150 = bigger;
+    control150.section = xydesk::panel::kSectionControl;
     const auto [cx, cy] = std::pair<int, int>{bigger.start.x + bigger.start.w / 2, bigger.start.y + bigger.start.h / 2};
-    check(xydesk::panel::targetAt(bigger, cx, cy) == Target::Start, "hit-test bekerja pada skala 150");
+    check(xydesk::panel::targetAt(control150, cx, cy) == Target::Start, "hit-test bekerja pada skala 150");
 
     const PanelLayout tiny = xydesk::panel::computeLayout(0);
     check(tiny.scalePct == 100, "DPI tidak valid kembali ke 100");
@@ -171,20 +202,13 @@ void testRoundingMath() {
     // bukan bergerigi seperti SetWindowRgn.
     checkNear(xydesk::panel::roundedRectCoverage(40.5f, 40.5f, rect, radius), 0.0, 0.05, "sudut persegi membulat dipotong");
     checkNear(xydesk::panel::roundedRectCoverage(64.0f, 64.0f, rect, radius), 1.0, 0.001, "titik di dalam busur tercakup");
-
-    const float edge = xydesk::panel::roundedRectShadow(140.0f, 39.0f, rect, radius, 26.0f, 0.478f);
-    const float farther = xydesk::panel::roundedRectShadow(140.0f, 25.0f, rect, radius, 26.0f, 0.478f);
-    const float far = xydesk::panel::roundedRectShadow(140.0f, 5.0f, rect, radius, 26.0f, 0.478f);
-    checkNear(xydesk::panel::roundedRectShadow(140.0f, 90.0f, rect, radius, 26.0f, 0.478f), 0.0, 0.001, "di dalam bentuk tidak ada bayangan");
-    check(edge > farther && farther > far, "bayangan memudar menjauh dari tepi");
-    checkNear(far, 0.0, 0.01, "bayangan habis di luar sebaran");
-    check(edge <= 0.478f + 0.001f, "bayangan tidak melebihi kekuatan yang diminta");
 }
 
 void testTargetNames() {
     check(std::string(xydesk::panel::targetName(Target::Start)) == "Start", "nama sasaran dipakai di berkas probe");
     check(std::string(xydesk::panel::targetName(Target::Minimize)) == "Minimize", "tombol perkecil punya nama");
     check(std::string(xydesk::panel::targetName(Target::Maximize)) == "Maximize", "tombol perbesar punya nama");
+    check(std::string(xydesk::panel::targetName(Target::NavStatus)) == "NavStatus", "navigasi status punya nama");
     check(std::string(xydesk::panel::targetName(Target::None)) == "None", "sasaran kosong punya nama");
 }
 
@@ -192,6 +216,7 @@ void testTargetNames() {
 
 int main() {
     testGeometry100();
+    testSections();
     testHitTesting();
     testDpiScaling();
     testRoundingMath();

@@ -9,8 +9,10 @@ dibuktikan oleh uji angka biasa:
 1. sudut panel benar-benar dipotong sebagai busur radius yang diminta —
    bukan kotak, dan bukan potongan kotak seperti `SetWindowRgn`,
 2. busurnya dihaluskan (ada piksel dengan cakupan sebagian di tepi busur),
-3. bayangan memudar menjauh dari panel dan habis di dalam margin,
-4. tepi lurus tetap tajam, dan bagian dalam panel tetap opak + warnanya benar.
+3. TIDAK ada bayangan luar: semua piksel di luar bentuk tembus pandang penuh
+   (permintaan pemilik: panel bersih tanpa bayangan),
+4. tepi lurus tetap tajam, bagian dalam opak, dan sidebar punya warna bidang
+   sendiri yang berbeda dari daerah isi.
 
 Dipakai CI Windows (`build.yml`, job lint installer). Tanpa dependensi selain
 pustaka standar Python.
@@ -54,11 +56,13 @@ class Bitmap:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bitmap", type=Path)
-    parser.add_argument("--panel-width", type=int, default=560)
-    parser.add_argument("--panel-height", type=int, default=568)
-    parser.add_argument("--margin", type=int, default=24, help="margin bayangan (default 24)")
+    parser.add_argument("--panel-width", type=int, default=960)
+    parser.add_argument("--panel-height", type=int, default=600)
+    parser.add_argument("--margin", type=int, default=2, help="margin tepi halus (default 2, tanpa bayangan)")
     parser.add_argument("--radius", type=int, default=16, help="radius sudut (default 16)")
-    parser.add_argument("--background", default="14,16,22", help="warna panel 'R,G,B' (default 14,16,22)")
+    parser.add_argument("--sidebar-width", type=int, default=208)
+    parser.add_argument("--background", default="14,16,22", help="warna daerah isi 'R,G,B' (default 14,16,22)")
+    parser.add_argument("--sidebar", default="24,27,36", help="warna bidang sidebar 'R,G,B' (default 24,27,36)")
     args = parser.parse_args()
 
     bitmap = Bitmap(args.bitmap)
@@ -67,6 +71,7 @@ def main() -> int:
     panel_w, panel_h = args.panel_width, args.panel_height
     radius = args.radius
     background = tuple(int(part) for part in args.background.split(","))
+    sidebar = tuple(int(part) for part in args.sidebar.split(","))
 
     problems: list[str] = []
     report: list[str] = []
@@ -86,7 +91,6 @@ def main() -> int:
     )
 
     # ── 1. Sudut dibulatkan sebagai busur radius yang diminta ──
-    # Pusat busur tiap sudut, arah diagonal ke luar, dan nama sisinya.
     corners = [
         ("kiri atas", (panel_x + radius, panel_y + radius), (-1, -1)),
         ("kanan atas", (panel_x + panel_w - radius, panel_y + radius), (1, -1)),
@@ -96,8 +100,6 @@ def main() -> int:
     measured: list[float] = []
     smooth_evidence: list[int] = []
     for name, (cx, cy), (dx, dy) in corners:
-        # Menyusuri diagonal dari pusat busur ke arah sudut: piksel penuh
-        # terakhir menandai tepi busur.
         last_inside = 0.0
         partial: list[int] = []
         for step in range(0, radius + 6):
@@ -116,8 +118,10 @@ def main() -> int:
             abs(last_inside - radius) <= 2.0,
             f"sudut {name} membulat radius {last_inside:.1f} px (diminta {radius}±2)",
         )
+        # Tanpa bayangan, alpha parsial murni dari cakupan busur: nilainya di
+        # antara 0 dan 255 (bukan salah satu ekstrem) — itulah tepi halus.
         check(
-            len(partial) >= 1 and partial[0] >= 130,
+            len(partial) >= 1 and 20 <= partial[0] <= 240,
             f"sudut {name} punya piksel cakupan sebagian setelah busur "
             f"(alpha {partial[0] if partial else 'tidak ada'}) — tepi halus, bukan bergerigi",
         )
@@ -134,40 +138,44 @@ def main() -> int:
         ("kanan bawah", (panel_x + panel_w - 1, panel_y + panel_h - 1)),
     ):
         alpha = bitmap.rgba(x, y)[3]
-        check(alpha < 150, f"pojok {name} tembus pandang (alpha {alpha} < 150, bukan kotak)")
+        check(alpha == 0, f"pojok {name} tembus pandang penuh (alpha {alpha} = 0, bukan kotak)")
 
-    # ── 2. Tepi lurus tetap tajam, isi tetap opak ──
+    # ── 2. Tanpa bayangan: luar bentuk kosong sama sekali ──
     mid_x = panel_x + panel_w // 2
     mid_y = panel_y + panel_h // 2
-    inside_top = bitmap.rgba(mid_x, panel_y + 1)[3]
-    outside_top = bitmap.rgba(mid_x, panel_y - 1)[3]
-    check(inside_top == 255, f"tepi atas: piksel pertama di dalam panel opak (alpha {inside_top})")
-    check(outside_top <= 135, f"tepi atas: piksel di luar hanya bayangan (alpha {outside_top} <= 135)")
+    for distance in (1, 2):
+        outside = bitmap.rgba(mid_x, panel_y - distance)[3]
+        check(outside == 0, f"tanpa bayangan: {distance} px di atas panel kosong (alpha {outside} = 0)")
+    outside_side = bitmap.rgba(panel_x - 1, mid_y)[3]
+    check(outside_side == 0, f"tanpa bayangan: 1 px di kiri panel kosong (alpha {outside_side} = 0)")
+    check(bitmap.rgba(0, 0)[3] == 0, "pojok terjauh jendela benar-benar kosong")
 
-    # Titik di padding kiri (bukan di dalam kartu/bidang isi) untuk warna latar.
-    pad_x = panel_x + 10
-    pad = bitmap.rgba(pad_x, mid_y)
-    check(pad[3] == 255, f"bagian dalam panel opak (alpha {pad[3]})")
+    # ── 3. Tepi lurus tajam, isi opak, sidebar beda bidang ──
+    inside_top = bitmap.rgba(mid_x, panel_y + 1)[3]
+    check(inside_top == 255, f"tepi atas: piksel pertama di dalam panel opak (alpha {inside_top})")
+
+    side = bitmap.rgba(panel_x + 10, mid_y)
+    check(side[3] == 255, f"sidebar opak (alpha {side[3]})")
     check(
-        tuple(pad[:3]) == background,
-        f"padding panel berwarna latar {background} (terukur {tuple(pad[:3])})",
+        tuple(side[:3]) == sidebar,
+        f"sidebar berwarna bidangnya {sidebar} (terukur {tuple(side[:3])})",
+    )
+    gap_y = panel_y + 244  # celah antar kartu identitas di bagian Status
+    gap = bitmap.rgba(mid_x, gap_y)
+    check(
+        tuple(gap[:3]) == background,
+        f"celah daerah isi berwarna latar {background} (terukur {tuple(gap[:3])})",
+    )
+    check(
+        tuple(side[:3]) != tuple(gap[:3]),
+        "sidebar dan daerah isi dua bidang berbeda",
     )
     card = bitmap.rgba(mid_x, mid_y)
     check(card[3] == 255, f"bidang isi di tengah panel opak (alpha {card[3]})")
     check(
         tuple(card[:3]) != background,
-        f"bidang isi terpisah dari latar (terukur {tuple(card[:3])}, latar {background})",
+        f"kartu isi terpisah dari latar (terukur {tuple(card[:3])}, latar {background})",
     )
-
-    # ── 3. Bayangan memudar dan berhenti ──
-    fade = [bitmap.rgba(mid_x, panel_y - distance)[3] for distance in range(1, margin - 1)]
-    check(fade[0] > 40, f"bayangan terlihat tepat di sisi panel (alpha {fade[0]} > 40)")
-    check(
-        all(fade[i] >= fade[i + 1] - 2 for i in range(len(fade) - 1)),
-        "bayangan memudar monoton menjauh dari panel",
-    )
-    check(fade[-1] <= 12, f"bayangan habis di ujung margin (alpha {fade[-1]} <= 12)")
-    check(bitmap.rgba(0, 0)[3] == 0, "pojok terjauh jendela benar-benar kosong")
 
     print("\n".join(report))
     print(f"  info  radius sudut terukur: {[round(value, 1) for value in measured]}")
@@ -176,7 +184,7 @@ def main() -> int:
         for problem in problems:
             print(f"  - {problem}")
         return 1
-    print("\nLulus: bentuk panel sesuai — sudut busur custom, tepi halus, bayangan memudar.")
+    print("\nLulus: bentuk panel sesuai — sudut busur custom, tepi halus, tanpa bayangan.")
     return 0
 
 
