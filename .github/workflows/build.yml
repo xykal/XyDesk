@@ -698,7 +698,7 @@ jobs:
           if ($layout.radiusPanel -ne 16) { throw "Radius sudut panel bukan 16: $($layout.radiusPanel)" }
           if ($layout.shadowMargin -ne 24) { throw "Margin bayangan bukan 24: $($layout.shadowMargin)" }
           $hits = ($layout.hits -join ',')
-          if ($hits -ne 'Close,Start,OpenLog,None,TitleBar') { throw "Hit-test panel tidak sesuai: $hits" }
+          if ($hits -ne 'Minimize,Maximize,Close,Start,OpenLog,None,TitleBar') { throw "Hit-test panel tidak sesuai: $hits" }
 
           # 2) Bentuk yang digambar aplikasi sendiri: busur sudut, tepi halus,
           #    bayangan. Diperiksa per piksel oleh tool/check_panel_shape.py.

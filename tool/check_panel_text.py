@@ -30,7 +30,7 @@ from pathlib import Path
 # itulah bagian yang paling mudah rusak karena codepage.
 EXPECTED = (
     "Panel host Windows · tanpa terminal",
-    "Menutup panel menyembunyikan ke tray — host tetap jalan.",
+    "Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar.",
     "Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
     "XyDesk Host — klik kanan untuk kontrol",
     "Menyalakan host…",

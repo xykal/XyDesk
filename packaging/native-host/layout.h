@@ -55,6 +55,8 @@ struct Rect {
 enum class Target {
     None,
     TitleBar,
+    Minimize,
+    Maximize,
     Close,
     CopyId,
     CopyPassword,
@@ -68,6 +70,8 @@ enum class Target {
 inline const char* targetName(Target target) {
     switch (target) {
     case Target::TitleBar: return "TitleBar";
+    case Target::Minimize: return "Minimize";
+    case Target::Maximize: return "Maximize";
     case Target::Close: return "Close";
     case Target::CopyId: return "CopyId";
     case Target::CopyPassword: return "CopyPassword";
@@ -93,6 +97,8 @@ struct PanelLayout {
     Rect logo{};
     Rect title{};
     Rect subtitle{};
+    Rect minimizeButton{};
+    Rect maximizeButton{};
     Rect closeButton{};
 
     Rect statusCard{};
@@ -164,13 +170,19 @@ inline PanelLayout computeLayout(int dpi) {
     const int contentW = panelW - 2 * pad;
     const int contentX = l.panel.x + pad;
 
-    // ── Judul: logo, nama, subjudul, satu tombol tutup ──
+    // ── Judul: logo, nama, subjudul, tiga tombol caption ──
+    // Urutan kiri→kanan mengikuti Windows: perkecil, perbesar/pulihkan,
+    // tutup. Ukuran dan jarak seragam supaya barisnya terasa satu keluarga.
     const int logo = px(28);
     l.logo = Rect{contentX, l.panel.y + pad, logo, logo};
     const int closeSize = px(32);
-    l.closeButton = Rect{l.panel.right() - pad - closeSize, l.panel.y + pad - px(2), closeSize, closeSize};
+    const int captionGap = px(4);
+    const int captionY = l.panel.y + pad - px(2);
+    l.closeButton = Rect{l.panel.right() - pad - closeSize, captionY, closeSize, closeSize};
+    l.maximizeButton = Rect{l.closeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
+    l.minimizeButton = Rect{l.maximizeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
     const int textX = l.logo.right() + px(12);
-    const int textW = l.closeButton.x - px(12) - textX;
+    const int textW = l.minimizeButton.x - px(12) - textX;
     l.title = Rect{textX, l.panel.y + pad - px(3), textW, px(24)};
     l.subtitle = Rect{textX, l.title.bottom() + px(1), textW, px(18)};
     l.titleBar = Rect{l.panel.x, l.panel.y, panelW, pad + logo + px(10)};
@@ -222,6 +234,8 @@ inline PanelLayout computeLayout(int dpi) {
 // Sasaran klik di koordinat klien jendela. Tombol diperiksa lebih dulu
 // supaya tombol tutup di dalam area judul tetap menang.
 inline Target targetAt(const PanelLayout& l, int x, int y) {
+    if (l.minimizeButton.contains(x, y)) return Target::Minimize;
+    if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;
     if (l.idCopy.contains(x, y)) return Target::CopyId;
     if (l.passwordCopy.contains(x, y)) return Target::CopyPassword;

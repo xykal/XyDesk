@@ -55,7 +55,8 @@ void testGeometry100() {
     check(l.panel.x == 24 && l.panel.y == 24, "panel terletak setelah margin bayangan");
     check(l.radiusPanel == 16 && l.radiusCard == 16 && l.radiusControl == 12, "radius panel/kartu/kontrol");
 
-    const Rect interactive[] = {l.closeButton, l.idCopy, l.passwordCopy, l.start, l.stop, l.restart, l.web, l.openLog};
+    const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton, l.idCopy, l.passwordCopy,
+        l.start, l.stop, l.restart, l.web, l.openLog};
     for (const Rect& rect : interactive) {
         check(rect.valid(), "setiap kontrol punya ukuran positif");
         check(insidePanel(l, rect), "setiap kontrol berada di dalam panel");
@@ -74,7 +75,12 @@ void testGeometry100() {
     check(!overlaps(l.idValue, l.idCopy), "nilai Device ID tidak bertumpuk dengan tombol salin");
     check(!overlaps(l.passwordValue, l.passwordCopy), "nilai kode pairing tidak bertumpuk dengan tombol salin");
     check(!overlaps(l.title, l.closeButton) && !overlaps(l.subtitle, l.closeButton), "judul tidak bertumpuk dengan tombol tutup");
+    check(!overlaps(l.title, l.minimizeButton) && !overlaps(l.subtitle, l.minimizeButton), "judul tidak bertumpuk dengan tombol caption");
 
+    check(!overlaps(l.minimizeButton, l.maximizeButton) && !overlaps(l.maximizeButton, l.closeButton), "tombol caption tidak bertumpuk");
+    check(l.minimizeButton.x < l.maximizeButton.x && l.maximizeButton.x < l.closeButton.x, "urutan caption: perkecil, perbesar, tutup");
+    check(l.minimizeButton.y == l.maximizeButton.y && l.maximizeButton.y == l.closeButton.y, "tombol caption sejajar satu baris");
+    check(l.minimizeButton.w == l.closeButton.w && l.minimizeButton.h == l.closeButton.h, "tombol caption berukuran seragam");
     check(l.closeButton.x + l.closeButton.w <= l.panel.right() - 24 + 1, "tombol tutup menghormati padding kanan");
     check(l.start.x == l.panel.x + 24 && l.restart.right() == l.panel.right() - 24, "tombol mengisi lebar konten");
     check(l.statusLine1.x > l.statusDot.x && l.statusLine1.right() <= l.statusCard.right(), "teks status di sebelah titik status");
@@ -92,6 +98,8 @@ void testHitTesting() {
         const char* name;
     };
     const Case cases[] = {
+        {l.minimizeButton, Target::Minimize, "tombol perkecil"},
+        {l.maximizeButton, Target::Maximize, "tombol perbesar"},
         {l.closeButton, Target::Close, "tombol tutup"},
         {l.idCopy, Target::CopyId, "salin Device ID"},
         {l.passwordCopy, Target::CopyPassword, "salin kode pairing"},
@@ -106,10 +114,15 @@ void testHitTesting() {
         check(xydesk::panel::targetAt(l, cx, cy) == item.expected, std::string("klik tengah ") + item.name);
     }
 
-    // Tombol tutup berada DI DALAM area geser: urutan prioritas harus menang.
+    // Tombol caption berada DI DALAM area geser: urutan prioritas harus menang.
     const auto [closeX, closeY] = center(l.closeButton);
     check(l.titleBar.contains(closeX, closeY), "tombol tutup memang di dalam area judul");
     check(xydesk::panel::targetAt(l, closeX, closeY) == Target::Close, "tombol tutup menang atas area geser");
+    const auto [minX, minY] = center(l.minimizeButton);
+    const auto [maxX, maxY] = center(l.maximizeButton);
+    check(l.titleBar.contains(minX, minY) && l.titleBar.contains(maxX, maxY), "tombol perkecil/perbesar di dalam area judul");
+    check(xydesk::panel::targetAt(l, minX, minY) == Target::Minimize, "tombol perkecil menang atas area geser");
+    check(xydesk::panel::targetAt(l, maxX, maxY) == Target::Maximize, "tombol perbesar menang atas area geser");
 
     check(xydesk::panel::targetAt(l, l.panel.x + 300, l.panel.y + 6) == Target::TitleBar, "sisa area judul bisa dipakai menggeser");
     check(xydesk::panel::targetAt(l, 0, 0) == Target::None, "poin di luar panel tidak menghalangi klik");
@@ -170,6 +183,8 @@ void testRoundingMath() {
 
 void testTargetNames() {
     check(std::string(xydesk::panel::targetName(Target::Start)) == "Start", "nama sasaran dipakai di berkas probe");
+    check(std::string(xydesk::panel::targetName(Target::Minimize)) == "Minimize", "tombol perkecil punya nama");
+    check(std::string(xydesk::panel::targetName(Target::Maximize)) == "Maximize", "tombol perbesar punya nama");
     check(std::string(xydesk::panel::targetName(Target::None)) == "None", "sasaran kosong punya nama");
 }
 

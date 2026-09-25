@@ -139,6 +139,12 @@ struct AppState {
     Target focused = Target::None;
     bool trackingMouse = false;
     bool layered = true;
+    // Perbesar = panel dizoom proporsional (bukan maximized Win32, karena
+    // jendela ini WS_POPUP berlapis). zoomPct dikalikan ke DPI efektif.
+    int zoomPct = 100;
+    bool maximized = false;
+    RECT normalRect{};
+    bool haveNormalRect = false;
     std::wstring statusText = L"Menyiapkan host…";
     COLORREF statusColor = kMuted;
     std::wstring flashText;
@@ -582,30 +588,88 @@ void paintButton(Surface& surface, const PanelLayout& layout, HDC dc, Target tar
     drawTextCentered(dc, targetLabel(target), rect, g.fontBody, palette.label);
 }
 
-void paintCloseButton(Surface& surface, const PanelLayout& layout, HDC dc) {
-    const Rect& rect = layout.closeButton;
-    const bool hot = g.hot == Target::Close;
-    const bool pressed = g.pressed == Target::Close;
-    if (hot || pressed) {
-        fillRoundedOpaque(surface, rect, xydesk::panel::scaled(10, layout.scalePct),
-            pressed ? kSurfacePressed : kSurface2);
-    }
-    const COLORREF color = hot ? kBad : kMuted;
-    const int glyph = xydesk::panel::scaled(13, layout.scalePct);
-    const int centerX = xydesk::panel::centerX(rect);
-    const int centerY = xydesk::panel::centerY(rect);
-    // Silang digambar dari dua garis tebal; panjangnya dipilih supaya bobotnya
-    // seimbang dengan judul di sebelahnya.
-    const int arm = glyph / 2;
-    const int thickness = std::max(1, xydesk::panel::scaled(2, layout.scalePct));
+// Garis-garis glyph caption digambar lewat satu pembantu: pena dibuat,
+// dipakai untuk semua segmen, lalu dipulihkan — tidak ada pena bocor.
+void drawGlyphSegments(HDC dc, COLORREF color, int thickness,
+    const std::initializer_list<std::pair<POINT, POINT>>& segments) {
     const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-    const HGDIOBJ previousBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
-    MoveToEx(dc, centerX - arm, centerY - arm, nullptr);
-    LineTo(dc, centerX + arm + 1, centerY + arm + 1);
-    MoveToEx(dc, centerX + arm, centerY - arm, nullptr);
-    LineTo(dc, centerX - arm - 1, centerY + arm + 1);
+    for (const auto& segment : segments) {
+        MoveToEx(dc, segment.first.x, segment.first.y, nullptr);
+        LineTo(dc, segment.second.x, segment.second.y);
+    }
     if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-    if (previousBrush) SelectObject(dc, previousBrush);
+}
+
+// Tiga tombol caption: perkecil, perbesar/pulihkan, tutup. Rasa hover-nya
+// sama (latar bulat halus, glyph menerang); hanya tutup yang memerah supaya
+// makna destruktifnya tetap jelas. Tanpa warna mencolok lain — panel harus
+// tetap bersih.
+void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
+    const int radius = xydesk::panel::scaled(10, layout.scalePct);
+    const int thickness = std::max(1, xydesk::panel::scaled(2, layout.scalePct));
+
+    const auto hoverFill = [&](Target target, const Rect& rect) {
+        if (g.hot == target || g.pressed == target) {
+            fillRoundedOpaque(surface, rect, radius,
+                g.pressed == target ? kSurfacePressed : kSurface2);
+        }
+    };
+    const auto glyphColor = [&](Target target, COLORREF hotColor) {
+        return g.hot == target ? hotColor : kMuted;
+    };
+
+    // Perkecil: satu garis mendatar, bobotnya sama dengan lengan silang.
+    {
+        const Rect& rect = layout.minimizeButton;
+        hoverFill(Target::Minimize, rect);
+        const int arm = xydesk::panel::scaled(13, layout.scalePct) / 2;
+        const int cx = xydesk::panel::centerX(rect);
+        const int cy = xydesk::panel::centerY(rect);
+        drawGlyphSegments(dc, glyphColor(Target::Minimize, kText), thickness,
+            {{{cx - arm, cy}, {cx + arm + 1, cy}}});
+    }
+
+    // Perbesar: kotak kosong. Saat sudah besar, glyph berubah jadi dua kotak
+    // bertumpuk (pulihkan), mengikuti kebiasaan Windows.
+    {
+        const Rect& rect = layout.maximizeButton;
+        hoverFill(Target::Maximize, rect);
+        const COLORREF color = glyphColor(Target::Maximize, kText);
+        const int cx = xydesk::panel::centerX(rect);
+        const int cy = xydesk::panel::centerY(rect);
+        if (!g.maximized) {
+            const int half = xydesk::panel::scaled(12, layout.scalePct) / 2;
+            const int x0 = cx - half, y0 = cy - half;
+            const int x1 = cx + half, y1 = cy + half;
+            drawGlyphSegments(dc, color, thickness,
+                {{{x0, y0}, {x1, y0}}, {{x1, y0}, {x1, y1}},
+                 {{x1, y1}, {x0, y1}}, {{x0, y1}, {x0, y0}}});
+        } else {
+            const int size = xydesk::panel::scaled(12, layout.scalePct);
+            const int offset = xydesk::panel::scaled(3, layout.scalePct);
+            const int back = size - offset;
+            const int bx = cx - size / 2 + offset, by = cy - size / 2 - offset;
+            const int fx = bx - offset, fy = by + offset;
+            // Kotak belakang cukup dua garis (atas + kanan) supaya tidak
+            // ramai di ukuran sekecil ini.
+            drawGlyphSegments(dc, color, thickness,
+                {{{bx, by}, {bx + back, by}}, {{bx + back, by}, {bx + back, by + back}},
+                 {{fx, fy}, {fx + back, fy}}, {{fx + back, fy}, {fx + back, fy + back}},
+                 {{fx + back, fy + back}, {fx, fy + back}}, {{fx, fy + back}, {fx, fy}}});
+        }
+    }
+
+    // Tutup: silang dari dua garis tebal; hover memerah sebagai penegas.
+    {
+        const Rect& rect = layout.closeButton;
+        hoverFill(Target::Close, rect);
+        const int arm = xydesk::panel::scaled(13, layout.scalePct) / 2;
+        const int cx = xydesk::panel::centerX(rect);
+        const int cy = xydesk::panel::centerY(rect);
+        drawGlyphSegments(dc, glyphColor(Target::Close, kBad), thickness,
+            {{{cx - arm, cy - arm}, {cx + arm + 1, cy + arm + 1}},
+             {{cx + arm, cy - arm}, {cx - arm - 1, cy + arm + 1}}});
+    }
 }
 
 void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
@@ -636,7 +700,7 @@ bool drawPanelToSurface() {
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     drawTextLine(dc, L"Panel host Windows · tanpa terminal", g.layout.subtitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    paintCloseButton(surface, g.layout, dc);
+    paintCaptionButtons(surface, g.layout, dc);
 
     paintStatusCard(surface, g.layout, dc);
 
@@ -651,7 +715,7 @@ bool drawPanelToSurface() {
     paintButton(surface, g.layout, dc, Target::Web, g.layout.web);
     paintButton(surface, g.layout, dc, Target::OpenLog, g.layout.openLog);
 
-    drawTextLine(dc, L"Menutup panel menyembunyikan ke tray — host tetap jalan.\n"
+    drawTextLine(dc, L"Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar.\n"
                      L"Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
         g.layout.hint, g.fontSmall, kMuted, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
 
@@ -735,13 +799,54 @@ void centerWindow(HWND hwnd) {
 }
 
 void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
-    g.layout = xydesk::panel::computeLayout(static_cast<int>(dpi));
+    // Zoom perbesar ikut dikalikan ke DPI efektif sehingga seluruh tata
+    // letak (termasuk font) membesar proporsional lewat jalur skala yang
+    // sudah teruji; tidak ada gambar yang perlu digambar ulang khusus.
+    const UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
+    g.layout = xydesk::panel::computeLayout(static_cast<int>(effective));
     createFonts();
     if (remeasure) {
         centerWindow(hwnd);
     } else {
         SetWindowPos(hwnd, nullptr, 0, 0, g.layout.window.w, g.layout.window.h,
             SWP_NOZORDER | SWP_NOACTIVATE | SWP_NOMOVE);
+    }
+    renderPanel();
+}
+
+// Zoom agar panel (dengan margin bayangan) pas di area kerja monitor utama.
+// Dihitung dari ukuran jendela yang SEDANG tampil supaya benar pada DPI
+// berapa pun; dibatasi 100–400 mengikuti batas skala tata letak.
+int workAreaZoom() {
+    RECT work{};
+    if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &work, 0)) {
+        work = RECT{0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+    }
+    const int availW = work.right - work.left;
+    const int availH = work.bottom - work.top;
+    if (availW <= 0 || availH <= 0 || g.layout.window.w <= 0 || g.layout.window.h <= 0) return 100;
+    const int zoom = std::min(availW * 100 / g.layout.window.w, availH * 100 / g.layout.window.h);
+    return std::clamp(zoom, 100, 400);
+}
+
+// Perbesar = zoom penuh area kerja; klik lagi = kembali ke ukuran dan
+// posisi semula. Posisi normal disimpan sebelum zoom pertama.
+void toggleMaximize(HWND hwnd) {
+    if (!g.maximized) {
+        if (GetWindowRect(hwnd, &g.normalRect)) g.haveNormalRect = true;
+        g.zoomPct = workAreaZoom();
+        g.maximized = true;
+        applyDpi(hwnd, windowDpi(hwnd), true); // sekalian menengahkan
+        return;
+    }
+    g.maximized = false;
+    g.zoomPct = 100;
+    applyDpi(hwnd, windowDpi(hwnd), false);
+    if (g.haveNormalRect) {
+        SetWindowPos(hwnd, nullptr, g.normalRect.left, g.normalRect.top,
+            g.layout.window.w, g.layout.window.h, SWP_NOZORDER | SWP_NOACTIVATE);
+    } else {
+        centerWindow(hwnd);
     }
     renderPanel();
 }
@@ -959,6 +1064,14 @@ void activateTarget(HWND hwnd, Target target) {
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
+    case Target::Minimize:
+        // Perkecil sungguhan ke taskbar (panel tetap ada di taskbar karena
+        // WS_EX_APPWINDOW). Sembunyi ke tray tetap jadi tugas tombol tutup.
+        ShowWindow(hwnd, SW_MINIMIZE);
+        break;
+    case Target::Maximize:
+        toggleMaximize(hwnd);
+        break;
     case Target::Close:
         hidePanel(hwnd);
         break;
@@ -968,10 +1081,11 @@ void activateTarget(HWND hwnd, Target target) {
 }
 
 // Urutan Tab: kartu identitas dulu (aksi paling sering), lalu tombol host,
-// lalu tautan, terakhir tombol tutup.
+// lalu tautan, terakhir tombol caption (perkecil, perbesar, tutup).
 constexpr Target kFocusOrder[] = {
     Target::CopyId, Target::CopyPassword, Target::Start, Target::Stop,
-    Target::Restart, Target::Web, Target::OpenLog, Target::Close,
+    Target::Restart, Target::Web, Target::OpenLog,
+    Target::Minimize, Target::Maximize, Target::Close,
 };
 
 void moveFocus(int step) {
@@ -1017,6 +1131,8 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     ScreenToClient(hwnd, &client);
     const Target target = xydesk::panel::targetAt(g.layout, client.x, client.y);
     switch (target) {
+    case Target::Minimize:
+    case Target::Maximize:
     case Target::Close:
     case Target::CopyId:
     case Target::CopyPassword:
@@ -1115,6 +1231,16 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
     }
 
+    case WM_LBUTTONDBLCLK: {
+        // Kebiasaan Windows: dua klik di area judul = perbesar/pulihkan.
+        const Target target = xydesk::panel::targetAt(g.layout, xFromLParam(lParam), yFromLParam(lParam));
+        if (target == Target::TitleBar) {
+            toggleMaximize(hwnd);
+            return 0;
+        }
+        break;
+    }
+
     case WM_SETCURSOR: {
         if (LOWORD(lParam) == HTCLIENT) {
             const Target target = g.hot;
@@ -1150,10 +1276,20 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_SYSCOMMAND: {
         const WPARAM command = wParam & 0xFFF0;
         if (command == SC_MINIMIZE) {
-            hidePanel(hwnd);
+            // Perkecil sungguhan ke taskbar; menyembunyikan panel ke tray
+            // tetap jadi tugas tombol tutup dan menu tray.
+            ShowWindow(hwnd, SW_MINIMIZE);
             return 0;
         }
-        if (command == SC_MAXIMIZE || command == SC_RESTORE) {
+        if (command == SC_MAXIMIZE) {
+            if (!g.maximized) toggleMaximize(hwnd);
+            return 0;
+        }
+        if (command == SC_RESTORE) {
+            // Klik tombol taskbar atau Alt+Tab saat minimized: pulihkan.
+            // Kalau panel sedang di-zoom, kembalikan ke ukuran normal.
+            if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+            else if (g.maximized) toggleMaximize(hwnd);
             return 0;
         }
         if (command == SC_KEYMENU) return 0;
@@ -1264,6 +1400,8 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 int runPanelProbe(const std::wstring& path) {
     const PanelLayout layout = xydesk::panel::computeLayout(96);
     const Target samples[] = {
+        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.minimizeButton), xydesk::panel::centerY(layout.minimizeButton)),
+        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.maximizeButton), xydesk::panel::centerY(layout.maximizeButton)),
         xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.closeButton), xydesk::panel::centerY(layout.closeButton)),
         xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.start), xydesk::panel::centerY(layout.start)),
         xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.openLog), xydesk::panel::centerY(layout.openLog)),
@@ -1401,6 +1539,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
 
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
+    wc.style = CS_DBLCLKS; // dua klik di judul = perbesar/pulihkan
     wc.hInstance = instance;
     wc.lpfnWndProc = windowProc;
     wc.lpszClassName = kClassName;
