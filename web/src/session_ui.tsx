@@ -218,15 +218,6 @@ const VKB_ROWS: KeySpec[][] = [
   ],
 ];
 
-// Keycap huruf mengikuti mode huruf yang aktif: kecil saat Caps/Shift mati,
-// besar saat salah satunya hidup — seperti keyboard sungguhan, bukan huruf
-// besar semua yang bikin pengguna ragu tombolnya benar.
-function hurufKeycap(label: string, caps: boolean, held: ReadonlySet<number>): string {
-  const shift = held.has(0x10);
-  if (!caps && !shift && /^[A-Z]$/.test(label)) return label.toLowerCase();
-  return label;
-}
-
 export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>void }) {
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
   const [caps, setCaps] = useState(false);
@@ -267,7 +258,12 @@ export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>vo
   return (
     <div className="vkb" onPointerDown={(e) => e.stopPropagation()}>
       <button type="button" className="vkb-dismiss" aria-label="Tutup keyboard" onClick={()=>{release();setHeld(new Set());onClose?.();}}>⌄ <span>Tutup keyboard</span></button>
-      {VKB_ROWS.map((row, i) => (
+      {VKB_ROWS.map((row, i) => {
+        // Huruf mengikuti mode seperti keyboard fisik: Caps XOR Shift =
+        // huruf besar; selain itu kecil. Simbol tidak berubah.
+        const shiftHeld = held.has(0xa0) || held.has(0xa1);
+        const upper = caps !== shiftHeld;
+        return (
         <div className="vkb-row" key={i}>
           {row.map(([label, vk, flex = 1, modifier = false], j) => (
             <button
@@ -279,11 +275,14 @@ export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>vo
               onClick={e=>{if(e.detail===0)tap(vk,modifier);}}
               onContextMenu={e=>e.preventDefault()}
             >
-              {vk === 0x14 ? (caps ? 'CAPS' : 'Caps') : hurufKeycap(label, caps, held)}
+              {vk === 0x14 ? (caps ? 'CAPS' : 'Caps')
+                : vk >= 0x41 && vk <= 0x5a ? (upper ? String.fromCharCode(vk) : String.fromCharCode(vk + 32))
+                : label}
             </button>
           ))}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

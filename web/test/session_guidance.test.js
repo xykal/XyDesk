@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { frameGuidance, relayReasonText, relayStatusText } from '../src/session_guidance.ts';
+import { captureHealthText, frameGuidance, relayReasonText, relayStatusText } from '../src/session_guidance.ts';
 
 test('setiap sebab relay yang mungkin punya kalimat, kode asing tidak ditelan', () => {
   for (const reason of [
@@ -79,4 +79,11 @@ test('teks panduan tidak memakai istilah internal proyek', () => {
   for (const forbidden of ['rtc.ts', 'worker.js', 'selectDisplay', 'noFrameWarning', 'undefined', 'null']) {
     assert.doesNotMatch(g.title + ' ' + g.detail, new RegExp(forbidden.replace('.', '\\.')));
   }
+});
+
+test('kesehatan capture: sesi berbeda dan layar terkunci disebut jujur', () => {
+  assert.match(captureHealthText(false, true), /sesi yang berbeda/);
+  assert.match(captureHealthText(true, false), /terkunci/);
+  assert.equal(captureHealthText(false, false), null);
+  assert.equal(captureHealthText(undefined, undefined), null);
 });

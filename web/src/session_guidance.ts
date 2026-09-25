@@ -83,8 +83,22 @@ export function frameGuidance(
     title: 'Tersambung tapi belum ada gambar',
     detail:
       'Koneksi tersambung tetapi PC host belum mengirim gambar. Coba pilih layar lain ' +
-      'di panel sesi, pastikan PC host tidak terkunci, lalu sambung ulang.',
+      'di panel sesi, pastikan PC host tidak terkunci, dan aplikasi host berjalan di ' +
+      'sesi yang sedang aktif (host yang hidup di sesi RDP lama atau layar terkunci ' +
+      'mengirim gambar hitam), lalu sambung ulang.',
     action: 'Ganti layar',
     relayRelated: false,
   };
+}
+
+/// Sebab layar hitam yang terbaca dari kesehatan capture host (capture.json
+/// lewat panel): dipakai banner ketika frame datang tetapi semuanya hitam.
+export function captureHealthText(blackFrames?: boolean, sessionMismatch?: boolean): string | null {
+  if (sessionMismatch) {
+    return 'Host berjalan di sesi yang berbeda dari layar aktif — gambar hitam. Jalankan ulang aplikasi host dari sesi yang aktif.';
+  }
+  if (blackFrames) {
+    return 'Layar host terkunci atau di secure desktop — gambar hitam. Buka kunci PC host.';
+  }
+  return null;
 }

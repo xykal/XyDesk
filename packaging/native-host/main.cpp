@@ -53,6 +53,7 @@
 
 namespace {
 
+using xydesk::panel::Page;
 using xydesk::panel::PanelLayout;
 using xydesk::panel::Rect;
 using xydesk::panel::Target;
@@ -137,15 +138,21 @@ struct AppState {
     Target hot = Target::None;
     Target pressed = Target::None;
     Target focused = Target::None;
+    Page page = Page::Status;
     bool trackingMouse = false;
     bool layered = true;
+    // Kesehatan capture dari engine (berkas capture.json): buat kartu Status
+    // jujur soal layar hitam / sesi berbeda.
+    std::wstring captureBackend;
+    std::wstring captureNote;
+    bool captureWarn = false;
+    bool captureSeen = false;
     // Perbesar = panel dizoom proporsional (bukan maximized Win32, karena
     // jendela ini WS_POPUP berlapis). zoomPct dikalikan ke DPI efektif.
     int zoomPct = 100;
     bool maximized = false;
     RECT normalRect{};
     bool haveNormalRect = false;
-    int section = 0; // 0 Status, 1 Kontrol, 2 Bantuan
     std::wstring statusText = L"Menyiapkan host…";
     COLORREF statusColor = kMuted;
     std::wstring flashText;
@@ -263,6 +270,56 @@ bool readIdentity() {
     g.deviceId = id;
     g.pairingCode = password;
     return true;
+}
+
+bool jsonFlag(const std::string& json, const char* key) {
+    const std::string needle = std::string("\"") + key + "\":true";
+    return json.find(needle) != std::string::npos;
+}
+
+// Engine menulis capture.json sekali setiap beberapa detik: backend capture,
+// apakah frame hitam semua (layar terkunci / secure desktop), dan apakah
+// proses hidup di sesi yang berbeda dari sesi yang memegang layar aktif
+// (klasik RDP: BitBlt dari sesi lain selalu hitam). Panel menampilkan ini
+// apa adanya supaya layar hitam di client tidak jadi misteri.
+void readCaptureStatus() {
+    // Sama dengan config_dir() engine: XYDESK_HOME dulu, lalu USERPROFILE\.xydesk.
+    const std::wstring path = [&] {
+        wchar_t home[MAX_PATH]{};
+        DWORD n = GetEnvironmentVariableW(L"XYDESK_HOME", home, ARRAYSIZE(home));
+        if (n && n < ARRAYSIZE(home)) return std::wstring(home, n) + L"\\capture.json";
+        n = GetEnvironmentVariableW(L"USERPROFILE", home, ARRAYSIZE(home));
+        const std::wstring base = n && n < ARRAYSIZE(home)
+            ? std::wstring(home, n)
+            : moduleDirectory();
+        return base + L"\\.xydesk\\capture.json";
+    }();
+    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE) return;
+    std::string json;
+    char buffer[1024];
+    DWORD got = 0;
+    while (ReadFile(file, buffer, sizeof(buffer), &got, nullptr) && got) json.append(buffer, buffer + got);
+    CloseHandle(file);
+
+    const std::wstring backend = jsonString(json, "backend");
+    const bool warn = jsonFlag(json, "black_frames") || jsonFlag(json, "session_mismatch");
+    std::wstring note;
+    if (jsonFlag(json, "session_mismatch")) {
+        note = L"Host berjalan di sesi berbeda dari layar aktif — capture hitam. Jalankan ulang aplikasi ini dari sesi aktif.";
+    } else if (jsonFlag(json, "black_frames")) {
+        note = L"Capture menghasilkan frame hitam — layar mungkin terkunci atau di secure desktop. Buka kunci PC host.";
+    }
+    if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote) {
+        g.captureBackend = backend;
+        g.captureWarn = warn;
+        g.captureNote = note;
+        g.captureSeen = true;
+        renderPanel();
+    } else if (!backend.empty()) {
+        g.captureSeen = true;
+    }
 }
 
 void setStatus(const std::wstring& text, COLORREF color) {
@@ -422,13 +479,20 @@ void strokeRounded(Surface& surface, const Rect& rect, int radius, COLORREF colo
     }
 }
 
-// Sudut jendela: satu lintasan terakhir yang memberi alpha pada setiap
-// piksel, dijalankan SETELAH semua isi digambar. Tanpa bayangan luar sesuai
-// permintaan; di luar bentuk semuanya tembus pandang, dan piksel yang hanya
-// sebagian tertutup busur menerima alpha sebagian — itulah penghalusan tepi.
+// Sudut jendela + bayangan: satu lintasan terakhir yang memberi alpha pada
+// setiap piksel, dijalankan SETELAH semua isi digambar.
+//
+// Di luar bentuk panel isinya bayangan hitam; di dalamnya, isi panel apa
+// adanya. Piksel yang hanya sebagian tertutup bentuk (tepi busur) menerima
+// keduanya: alpha = cakupan + bayangan*(1-cakupan), sedangkan warnanya
+// menyumbang cakupan saja — bayangan tidak menambah warna, ia hanya
+// kegelapan. Inilah yang membuat tepi busur terlihat rata, bukan bergelombang
+// atau menggelap seperti potongan kotak.
 void applyWindowShape(Surface& surface, const PanelLayout& layout) {
     if (!surface.valid()) return;
     const float radius = static_cast<float>(layout.radiusPanel);
+    const float spread = static_cast<float>(xydesk::panel::scaled(xydesk::panel::kShadowSpread, layout.scalePct));
+    const float strength = static_cast<float>(xydesk::panel::kShadowStrength) / 255.0f;
 
     for (int y = 0; y < surface.height; ++y) {
         std::uint32_t* row = surface.pixels + static_cast<size_t>(y) * surface.width;
@@ -440,15 +504,18 @@ void applyWindowShape(Surface& surface, const PanelLayout& layout) {
                 row[x] = (0xFFu << 24) | (row[x] & 0x00FFFFFFu);
                 continue;
             }
+            const float shadow = xydesk::panel::roundedRectShadow(px, py, layout.panel, radius, spread, strength);
             if (coverage <= 0.0f) {
-                row[x] = 0;
+                row[x] = shadow <= 0.003f ? 0
+                                          : (static_cast<std::uint32_t>(shadow * 255.0f + 0.5f) << 24);
                 continue;
             }
             const std::uint32_t pixel = row[x];
+            const float alpha = coverage + shadow * (1.0f - coverage);
             const auto premultiply = [coverage](std::uint32_t channel) {
                 return static_cast<std::uint32_t>(static_cast<float>(channel) * coverage + 0.5f);
             };
-            row[x] = (static_cast<std::uint32_t>(coverage * 255.0f + 0.5f) << 24)
+            row[x] = (static_cast<std::uint32_t>(alpha * 255.0f + 0.5f) << 24)
                 | (premultiply((pixel >> 16) & 0xFF) << 16)
                 | (premultiply((pixel >> 8) & 0xFF) << 8)
                 | premultiply(pixel & 0xFF);
@@ -564,120 +631,7 @@ void paintIdentityCard(Surface& surface, const PanelLayout& layout, HDC dc, cons
     drawTextCentered(dc, L"Salin", copy, g.fontSmall, enabled ? kText : kDisabled);
 }
 
-// Garis-garis glyph caption/ikon digambar lewat satu pembantu: pena dibuat,
-// dipakai untuk semua segmen, lalu dipulihkan — tidak ada pena bocor.
-void drawGlyphSegments(HDC dc, COLORREF color, int thickness,
-    const std::initializer_list<std::pair<POINT, POINT>>& segments);
-
-// Ikon kontrol baku digambar sebagai vektor garis sederhana — bentuknya
-// dikenali tanpa teks, jadi teks tinggal untuk nilai yang memang milik
-// pengguna (ID, kode pairing, judul bagian).
-void paintControlIcon(HDC dc, Target target, const Rect& box, COLORREF color, const PanelLayout& layout) {
-    const int thickness = std::max(1, xydesk::panel::scaled(2, layout.scalePct));
-    const int cx = xydesk::panel::centerX(box);
-    const int cy = xydesk::panel::centerY(box);
-    const int r = xydesk::panel::scaled(8, layout.scalePct);
-    const HGDIOBJ previousBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
-
-    switch (target) {
-    case Target::Start: {
-        // Segitiga "putar".
-        const POINT tri[3] = {{cx - r + 1, cy - r}, {cx - r + 1, cy + r}, {cx + r + 1, cy}};
-        const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-        Polygon(dc, tri, 3);
-        if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-        break;
-    }
-    case Target::Stop:
-        drawGlyphSegments(dc, color, thickness,
-            {{{cx - r + 2, cy - r + 2}, {cx + r - 2, cy - r + 2}}, {{cx + r - 2, cy - r + 2}, {cx + r - 2, cy + r - 2}},
-             {{cx + r - 2, cy + r - 2}, {cx - r + 2, cy + r - 2}}, {{cx - r + 2, cy + r - 2}, {cx - r + 2, cy - r + 2}}});
-        break;
-    case Target::Restart: {
-        // Busur hampir penuh + kepala panah. AngleArc menarik garis dari
-        // posisi pena sekarang ke awal busur, jadi posisi pena harus sudah
-        // di titik awal busur lebih dulu — kalau tidak, ada garis panjang
-        // yang nyasar lintas tombol.
-        const double a = 60.0 * 3.14159265 / 180.0;
-        const int tx = cx + static_cast<int>(r * std::cos(a));
-        const int ty = cy - static_cast<int>(r * std::sin(a));
-        const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-        MoveToEx(dc, tx, ty, nullptr);
-        AngleArc(dc, cx, cy, r, 60, 280);
-        MoveToEx(dc, tx - thickness * 2, ty - thickness, nullptr);
-        LineTo(dc, tx + 1, ty + 1);
-        LineTo(dc, tx + thickness * 2, ty - thickness);
-        if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-        break;
-    }
-    case Target::Web: {
-        // Bola: lingkaran + khatulistiwa + satu meridian.
-        const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-        Ellipse(dc, cx - r, cy - r, cx + r + 1, cy + r + 1);
-        MoveToEx(dc, cx - r, cy, nullptr);
-        LineTo(dc, cx + r + 1, cy);
-        Ellipse(dc, cx - r / 2, cy - r, cx + r / 2 + 1, cy + r + 1);
-        if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-        break;
-    }
-    case Target::OpenLog:
-        // Lembar dengan tiga baris.
-        drawGlyphSegments(dc, color, thickness,
-            {{{cx - r + 1, cy - r}, {cx + r - 1, cy - r}}, {{cx + r - 1, cy - r}, {cx + r - 1, cy + r}},
-             {{cx + r - 1, cy + r}, {cx - r + 1, cy + r}}, {{cx - r + 1, cy + r}, {cx - r + 1, cy - r}},
-             {{cx - r + 4, cy - r / 2}, {cx + r - 4, cy - r / 2}},
-             {{cx - r + 4, cy}, {cx + r - 4, cy}},
-             {{cx - r + 4, cy + r / 2}, {cx + r - 6, cy + r / 2}}});
-        break;
-    case Target::CopyId:
-    case Target::CopyPassword:
-        // Dua lembar bertumpuk = salin.
-        drawGlyphSegments(dc, color, thickness,
-            {{{cx - r + 3, cy - r}, {cx + r - 1, cy - r}}, {{cx + r - 1, cy - r}, {cx + r - 1, cy + r - 4}},
-             {{cx - r + 1, cy - r + 3}, {cx - r + 1, cy + r}}, {{cx - r + 1, cy + r}, {cx + r - 3, cy + r}},
-             {{cx + r - 3, cy + r}, {cx + r - 3, cy - r + 3}}, {{cx - r + 1, cy - r + 3}, {cx + r - 3, cy - r + 3}}});
-        break;
-    case Target::NavStatus:
-        // Denyut: titik penuh + cincin.
-        {
-            const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-            Ellipse(dc, cx - r, cy - r, cx + r + 1, cy + r + 1);
-            if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-            const HGDIOBJ solidBrush = SelectObject(dc, GetStockObject(DC_BRUSH));
-            SetDCBrushColor(dc, color);
-            const int d = r / 2;
-            Ellipse(dc, cx - d, cy - d, cx + d + 1, cy + d + 1);
-            if (solidBrush) SelectObject(dc, solidBrush);
-        }
-        break;
-    case Target::NavControl:
-        // Tiga slider.
-        drawGlyphSegments(dc, color, thickness,
-            {{{cx - r, cy - r + 2}, {cx + r, cy - r + 2}}, {{cx - r / 2, cy - r - 1}, {cx - r / 2, cy - r + 5}},
-             {{cx - r, cy}, {cx + r, cy}}, {{cx + r / 2, cy - 3}, {cx + r / 2, cy + 3}},
-             {{cx - r, cy + r - 2}, {cx + r, cy + r - 2}}, {{cx - r / 3, cy + r - 5}, {cx - r / 3, cy + r + 1}}});
-        break;
-    case Target::NavHelp:
-        // Lingkaran + tanda tanya (glyph teks, bukan tombol teks).
-        {
-            const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-            Ellipse(dc, cx - r, cy - r, cx + r + 1, cy + r + 1);
-            if (previousPen) DeleteObject(SelectObject(dc, previousPen));
-            RECT q{cx - r, cy - r, cx + r + 1, cy + r + 1};
-            SetBkMode(dc, TRANSPARENT);
-            SetTextColor(dc, color);
-            DrawTextW(dc, L"?", -1, &q, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-        }
-        break;
-    default:
-        break;
-    }
-    if (previousBrush) SelectObject(dc, previousBrush);
-}
-
-// Tombol aksi besar (Mulai/Hentikan/Restart): ikon di atas, label kecil di
-// bawah — bentuk terbaca dari ikonnya, teks hanya penegas.
-void paintActionButton(Surface& surface, const PanelLayout& layout, HDC dc, Target target, const Rect& rect) {
+void paintButton(Surface& surface, const PanelLayout& layout, HDC dc, Target target, const Rect& rect) {
     const bool enabled = targetEnabled(target);
     const bool hot = g.hot == target && enabled;
     const bool pressed = g.pressed == target && enabled;
@@ -689,62 +643,7 @@ void paintActionButton(Surface& surface, const PanelLayout& layout, HDC dc, Targ
     if (enabled && g.focused == target) {
         strokeRounded(surface, rect, palette.radius, kAccent, xydesk::panel::scaled(2, layout.scalePct));
     }
-    const int iconH = xydesk::panel::scaled(22, layout.scalePct);
-    const Rect iconBox{xydesk::panel::centerX(rect) - iconH, rect.y + xydesk::panel::scaled(9, layout.scalePct), iconH * 2, iconH};
-    paintControlIcon(dc, target, iconBox, enabled ? palette.label : kDisabled, layout);
-    const Rect labelBox{rect.x, iconBox.bottom() + xydesk::panel::scaled(2, layout.scalePct), rect.w, xydesk::panel::scaled(18, layout.scalePct)};
-    drawTextCentered(dc, targetLabel(target), labelBox, g.fontSmall, enabled ? palette.label : kDisabled);
-}
-
-// Tombol tautan (web/log) dan salin: ikon kiri + label kanan.
-void paintIconLabelButton(Surface& surface, const PanelLayout& layout, HDC dc, Target target,
-    const Rect& rect, const wchar_t* label) {
-    const bool enabled = targetEnabled(target);
-    const bool hot = g.hot == target && enabled;
-    const bool pressed = g.pressed == target && enabled;
-    const ButtonPalette palette = buttonPalette(target, enabled, hot, pressed, layout);
-    fillRoundedOpaque(surface, rect, palette.radius, palette.fill);
-    if (!enabled) strokeRounded(surface, rect, palette.radius, kEdge, 1);
-    if (enabled && g.focused == target) {
-        strokeRounded(surface, rect, palette.radius, kAccent, xydesk::panel::scaled(2, layout.scalePct));
-    }
-    const int iconH = xydesk::panel::scaled(18, layout.scalePct);
-    const int padX = xydesk::panel::scaled(16, layout.scalePct);
-    const Rect iconBox{rect.x + padX, xydesk::panel::centerY(rect) - iconH / 2, iconH, iconH};
-    paintControlIcon(dc, target, iconBox, enabled ? palette.label : kDisabled, layout);
-    const Rect labelBox{iconBox.right() + xydesk::panel::scaled(10, layout.scalePct), rect.y,
-        rect.right() - padX - iconBox.right() - xydesk::panel::scaled(10, layout.scalePct), rect.h};
-    drawTextLine(dc, label, labelBox, g.fontBody, enabled ? palette.label : kDisabled,
-        DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-}
-
-// Item navigasi sidebar: ikon + label; bagian aktif diberi latar dan garis
-// aksen tipis di kiri.
-void paintNavButton(Surface& surface, const PanelLayout& layout, HDC dc, Target target, const Rect& rect,
-    const wchar_t* label, bool active) {
-    const bool hot = g.hot == target;
-    const bool pressed = g.pressed == target;
-    if (active || hot || pressed) {
-        fillRoundedOpaque(surface, rect, xydesk::panel::scaled(10, layout.scalePct),
-            pressed ? kSurfacePressed : kSurface2);
-    }
-    if (active) {
-        const int barW = xydesk::panel::scaled(3, layout.scalePct);
-        const Rect bar{rect.x, rect.y + rect.h / 4, barW, rect.h / 2};
-        fillRoundedOpaque(surface, bar, barW / 2 + 1, kAccent);
-    }
-    const int iconH = xydesk::panel::scaled(16, layout.scalePct);
-    const int padX = xydesk::panel::scaled(14, layout.scalePct);
-    const Rect iconBox{rect.x + padX, xydesk::panel::centerY(rect) - iconH / 2, iconH, iconH};
-    paintControlIcon(dc, target, iconBox, active ? kText : kMuted, layout);
-    const Rect labelBox{iconBox.right() + xydesk::panel::scaled(10, layout.scalePct), rect.y,
-        rect.right() - padX - iconBox.right(), rect.h};
-    drawTextLine(dc, label, labelBox, g.fontBody, active ? kText : kMuted,
-        DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    if (g.focused == target) {
-        strokeRounded(surface, rect, xydesk::panel::scaled(10, layout.scalePct), kAccent,
-            xydesk::panel::scaled(2, layout.scalePct));
-    }
+    drawTextCentered(dc, targetLabel(target), rect, g.fontBody, palette.label);
 }
 
 // Garis-garis glyph caption digambar lewat satu pembantu: pena dibuat,
@@ -836,6 +735,106 @@ void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
     drawTextCentered(dc, L"X", layout.logo, g.fontLogo, kText);
 }
 
+// ── Sidebar ────────────────────────────────────────────────────────────
+// Ikon digambar dari garis/busur sederhana (stroke 2px) supaya panel tidak
+// "semua teks": bentuknya yang bicara, label kecil hanya penegas.
+void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
+    const int s = g.layout.scalePct;
+    const int thickness = std::max(1, xydesk::panel::scaled(2, s));
+    const int x0 = icon.x + 1, y0 = icon.y + 1;
+    const int x1 = icon.right() - 2, y1 = icon.bottom() - 2;
+    const int cx = xydesk::panel::centerX(icon);
+    const int cy = xydesk::panel::centerY(icon);
+    switch (page) {
+    case Page::Status: {
+        // Denyut aktivitas: datar – puncak – lembah – datar.
+        drawGlyphSegments(dc, color, thickness, {
+            {{x0, cy}, {x0 + (x1 - x0) / 4, cy}},
+            {{x0 + (x1 - x0) / 4, cy}, {cx, y0}},
+            {{cx, y0}, {x0 + 3 * (x1 - x0) / 4, y1}},
+            {{x0 + 3 * (x1 - x0) / 4, y1}, {x1, cy}}});
+        break;
+    }
+    case Page::Pairing: {
+        // Kunci: lingkaran kecil + gagang bergerigi.
+        const int r = (y1 - y0) / 2;
+        const int ringCx = x0 + r + 1;
+        const HGDIOBJ pen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
+        Arc(dc, ringCx - r, y0, ringCx + r, y0 + 2 * r, ringCx - r, cy, ringCx - r, cy);
+        MoveToEx(dc, ringCx + r - 1, cy, nullptr);
+        LineTo(dc, x1, cy);
+        MoveToEx(dc, x1 - thickness - 1, cy, nullptr);
+        LineTo(dc, x1 - thickness - 1, y1);
+        MoveToEx(dc, cx + r, cy, nullptr);
+        LineTo(dc, cx + r, y1 - 2);
+        if (pen) DeleteObject(SelectObject(dc, pen));
+        break;
+    }
+    case Page::Control: {
+        // Slider: tiga rel mendatar dengan knobs di posisi selang-seling.
+        const int knob = std::max(3, xydesk::panel::scaled(5, s));
+        const HGDIOBJ pen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
+        const HGDIOBJ brush = SelectObject(dc, CreateSolidBrush(color));
+        const int rows[3] = {y0 + 1, cy, y1 - 1};
+        const int knobs[3] = {x0 + (x1 - x0) / 3, x0 + 2 * (x1 - x0) / 3, x0 + (x1 - x0) / 2};
+        for (int i = 0; i < 3; ++i) {
+            MoveToEx(dc, x0, rows[i], nullptr);
+            LineTo(dc, x1 + 1, rows[i]);
+            Ellipse(dc, knobs[i] - knob / 2, rows[i] - knob / 2, knobs[i] + knob / 2 + 1, rows[i] + knob / 2 + 1);
+        }
+        if (pen) DeleteObject(SelectObject(dc, pen));
+        if (brush) DeleteObject(SelectObject(dc, brush));
+        break;
+    }
+    }
+}
+
+void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
+    const struct {
+        Page page;
+        Target target;
+        const Rect& item;
+        const Rect& icon;
+        const Rect& label;
+        const wchar_t* text;
+    } items[] = {
+        {Page::Status, Target::PageStatus, layout.sideStatus, layout.sideStatusIcon, layout.sideStatusLabel, L"Status"},
+        {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Pairing"},
+        {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol"},
+    };
+    for (const auto& entry : items) {
+        const bool active = g.page == entry.page;
+        const bool hot = g.hot == entry.target;
+        const bool pressed = g.pressed == entry.target;
+        if (active) {
+            fillRoundedOpaque(surface, entry.item, layout.radiusControl, mixColor(kSurface2, kAccent, 0.30f));
+        } else if (hot || pressed) {
+            fillRoundedOpaque(surface, entry.item, layout.radiusControl, pressed ? kSurfacePressed : kSurface2);
+        }
+        if (g.focused == entry.target) {
+            strokeRounded(surface, entry.item, layout.radiusControl, kAccent, xydesk::panel::scaled(2, layout.scalePct));
+        }
+        paintSidebarIcon(dc, entry.page, entry.icon, active ? kText : (hot ? kText : kMuted));
+        drawTextCentered(dc, entry.text, entry.label, g.fontSmall, active ? kText : kMuted);
+    }
+}
+
+// Kartu kesehatan capture: jujur soal backend dan layar hitam/sesi berbeda.
+void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
+    fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface);
+    drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontSmall, kMuted,
+        DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    const std::wstring line1 = g.captureBackend.empty()
+        ? std::wstring(L"Engine belum melaporkan capture")
+        : (L"Backend: " + g.captureBackend);
+    drawTextLine(dc, line1, layout.captureLine1, g.fontSmall, kText,
+        DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    const std::wstring line2 = g.captureWarn ? g.captureNote
+        : std::wstring(L"Tidak ada masalah terdeteksi — frame langsung dari sesi aktif.");
+    drawTextLine(dc, line2, layout.captureLine2, g.fontSmall, g.captureWarn ? kWarn : kMuted,
+        DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+}
+
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
 // jalur yang sama dipakai `--panel-snapshot` untuk memeriksa hasil gambar
 // tanpa membuka jendela (dipakai CI).
@@ -854,54 +853,37 @@ bool drawPanelToSurface() {
     if (!dc) return false;
 
     HFONT previousFont = static_cast<HFONT>(SelectObject(dc, g.fontBody));
-
-    // ── Sidebar: identitas + navigasi ──
-    fillRectOpaque(surface, g.layout.sidebar, kSurface);
-    const Rect divider{g.layout.sidebar.right() - 1, g.layout.panel.y + 1, 1, g.layout.panel.h - 2};
-    fillRectOpaque(surface, divider, kEdge);
     paintLogo(surface, g.layout, dc);
-    drawTextLine(dc, L"XyDesk", g.layout.title, g.fontTitle, kText,
+    drawTextLine(dc, L"XyDesk Control Panel", g.layout.title, g.fontTitle, kText,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    drawTextLine(dc, L"Control Panel", g.layout.subtitle, g.fontSmall, kMuted,
+    drawTextLine(dc, L"Panel host Windows · tanpa terminal", g.layout.subtitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    paintNavButton(surface, g.layout, dc, Target::NavStatus, g.layout.navStatus, L"Status", g.section == 0);
-    paintNavButton(surface, g.layout, dc, Target::NavControl, g.layout.navControl, L"Kontrol", g.section == 1);
-    paintNavButton(surface, g.layout, dc, Target::NavHelp, g.layout.navHelp, L"Bantuan", g.section == 2);
-    drawTextLine(dc, L"Host jalan tanpa terminal.\nTutup = sembunyi ke tray.",
-        g.layout.sidebarFoot, g.fontSmall, kDisabled, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
-
-    // ── Strip atas: judul bagian + tombol caption ──
-    const wchar_t* sectionName = g.section == 1 ? L"Kontrol host" : (g.section == 2 ? L"Bantuan" : L"Status & identitas");
-    // DT_NOPREFIX: "&" adalah isi teks, bukan penanda mnemonic.
-    drawTextLine(dc, sectionName, g.layout.sectionTitle, g.fontTitle, kText,
-        DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS | DT_NOPREFIX);
     paintCaptionButtons(surface, g.layout, dc);
+    paintSidebar(surface, g.layout, dc);
 
-    // ── Isi sesuai bagian ──
-    if (g.section == 0) {
+    switch (g.page) {
+    case Page::Status:
         paintStatusCard(surface, g.layout, dc);
+        paintCaptureCard(surface, g.layout, dc);
+        break;
+    case Page::Pairing:
         paintIdentityCard(surface, g.layout, dc, g.layout.idCard, g.layout.idLabel, g.layout.idValue, g.layout.idCopy,
             L"Device ID", g.deviceId, Target::CopyId);
         paintIdentityCard(surface, g.layout, dc, g.layout.passwordCard, g.layout.passwordLabel, g.layout.passwordValue,
             g.layout.passwordCopy, L"Kode pairing", g.pairingCode, Target::CopyPassword);
-    } else if (g.section == 1) {
-        paintActionButton(surface, g.layout, dc, Target::Start, g.layout.start);
-        paintActionButton(surface, g.layout, dc, Target::Stop, g.layout.stop);
-        paintActionButton(surface, g.layout, dc, Target::Restart, g.layout.restart);
-        paintIconLabelButton(surface, g.layout, dc, Target::Web, g.layout.web, L"Buka XyDesk Web");
-        paintIconLabelButton(surface, g.layout, dc, Target::OpenLog, g.layout.openLog, L"Buka log host");
-        const std::wstring logLine = g.logPath.empty() ? std::wstring(L"Log host belum dibuat") : (L"Log: " + g.logPath);
-        drawTextLine(dc, logLine, g.layout.logLine, g.fontSmall, kMuted,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS);
-    } else {
-        drawTextLine(dc,
-            L"• Ketik Device ID dan kode pairing di aplikasi atau web XyDesk.\n"
-            L"• Tutup (✕) menyembunyikan panel ke tray — host tetap jalan; keluar lewat menu tray.\n"
-            L"• Perkecil (—) mengirim panel ke taskbar; klik taskbar memulihkan.\n"
-            L"• Perbesar (□) atau dobel-klik judul memenuhi layar; klik lagi mengembalikan.\n"
-            L"• Tab memindah fokus tombol, Enter menjalankan, Esc menyembunyikan.",
-            g.layout.hint, g.fontBody, kMuted, DT_LEFT | DT_TOP | DT_WORDBREAK | DT_NOPREFIX);
+        break;
+    case Page::Control:
+        paintButton(surface, g.layout, dc, Target::Start, g.layout.start);
+        paintButton(surface, g.layout, dc, Target::Stop, g.layout.stop);
+        paintButton(surface, g.layout, dc, Target::Restart, g.layout.restart);
+        paintButton(surface, g.layout, dc, Target::Web, g.layout.web);
+        paintButton(surface, g.layout, dc, Target::OpenLog, g.layout.openLog);
+        break;
     }
+
+    drawTextLine(dc, L"Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar. "
+                     L"Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
+        g.layout.hint, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
     SelectObject(dc, previousFont);
     GdiFlush();
@@ -988,7 +970,6 @@ void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
     // sudah teruji; tidak ada gambar yang perlu digambar ulang khusus.
     const UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
     g.layout = xydesk::panel::computeLayout(static_cast<int>(effective));
-    g.layout.section = g.section;
     createFonts();
     if (remeasure) {
         centerWindow(hwnd);
@@ -1249,14 +1230,17 @@ void activateTarget(HWND hwnd, Target target) {
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
-    case Target::NavStatus:
-    case Target::NavControl:
-    case Target::NavHelp:
-        // Pindah bagian konten dari sidebar; hit-test & urutan Tab ikut
-        // layout.section sehingga kontrol tersembunyi tidak bisa tertekan.
-        g.section = target == Target::NavStatus ? 0 : (target == Target::NavControl ? 1 : 2);
-        g.layout.section = g.section;
-        g.focused = Target::None;
+    case Target::PageStatus:
+        g.page = Page::Status;
+        renderPanel();
+        break;
+    case Target::PagePairing:
+        g.page = Page::Pairing;
+        renderPanel();
+        break;
+    case Target::PageControl:
+        g.page = Page::Control;
+        renderPanel();
         break;
     case Target::Minimize:
         // Perkecil sungguhan ke taskbar (panel tetap ada di taskbar karena
@@ -1274,29 +1258,45 @@ void activateTarget(HWND hwnd, Target target) {
     }
 }
 
-// Urutan Tab: navigasi dulu, lalu isi bagian yang sedang tampil, terakhir
-// tombol caption (perkecil, perbesar, tutup). Kontrol bagian lain dilewati.
-constexpr Target kFocusOrder[] = {
-    Target::NavStatus, Target::NavControl, Target::NavHelp,
-    Target::CopyId, Target::CopyPassword, Target::Start, Target::Stop,
-    Target::Restart, Target::Web, Target::OpenLog,
-    Target::Minimize, Target::Maximize, Target::Close,
-};
+// Urutan Tab mengikuti halaman yang terbuka: sidebar dulu, lalu isi halaman
+// (yang terlihat saja), terakhir tombol caption.
+std::vector<Target> focusOrder() {
+    std::vector<Target> order = {Target::PageStatus, Target::PagePairing, Target::PageControl};
+    switch (g.page) {
+    case Page::Pairing:
+        order.push_back(Target::CopyId);
+        order.push_back(Target::CopyPassword);
+        break;
+    case Page::Control:
+        order.push_back(Target::Start);
+        order.push_back(Target::Stop);
+        order.push_back(Target::Restart);
+        order.push_back(Target::Web);
+        order.push_back(Target::OpenLog);
+        break;
+    case Page::Status:
+        break;
+    }
+    order.push_back(Target::Minimize);
+    order.push_back(Target::Maximize);
+    order.push_back(Target::Close);
+    return order;
+}
 
 void moveFocus(int step) {
-    const int count = static_cast<int>(std::size(kFocusOrder));
+    const std::vector<Target> order = focusOrder();
+    const int count = static_cast<int>(order.size());
     int index = -1;
     for (int i = 0; i < count; ++i) {
-        if (kFocusOrder[i] == g.focused) {
+        if (order[i] == g.focused) {
             index = i;
             break;
         }
     }
     for (int i = 0; i < count; ++i) {
         index = (index + step + count) % count;
-        if (targetEnabled(kFocusOrder[index]) &&
-            xydesk::panel::sectionShowsTarget(g.section, kFocusOrder[index])) {
-            g.focused = kFocusOrder[index];
+        if (targetEnabled(order[index])) {
+            g.focused = order[index];
             renderPanel();
             return;
         }
@@ -1313,7 +1313,7 @@ void trackMouse(HWND hwnd) {
 }
 
 void updateHover(int x, int y) {
-    const Target target = xydesk::panel::targetAt(g.layout, x, y);
+    const Target target = xydesk::panel::targetAt(g.layout, g.page, x, y);
     const Target hot = targetEnabled(target) || target == Target::TitleBar ? target : Target::None;
     if (hot != g.hot) {
         g.hot = hot;
@@ -1325,14 +1325,14 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     POINT client{static_cast<LONG>(static_cast<short>(LOWORD(lParam))),
         static_cast<LONG>(static_cast<short>(HIWORD(lParam)))};
     ScreenToClient(hwnd, &client);
-    const Target target = xydesk::panel::targetAt(g.layout, client.x, client.y);
+    const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y);
     switch (target) {
-    case Target::NavStatus:
-    case Target::NavControl:
-    case Target::NavHelp:
     case Target::Minimize:
     case Target::Maximize:
     case Target::Close:
+    case Target::PageStatus:
+    case Target::PagePairing:
+    case Target::PageControl:
     case Target::CopyId:
     case Target::CopyPassword:
     case Target::Start:
@@ -1408,7 +1408,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_LBUTTONDOWN: {
-        const Target target = xydesk::panel::targetAt(g.layout, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
         if (target != Target::None && target != Target::TitleBar && targetEnabled(target)) {
             g.pressed = target;
             SetCapture(hwnd);
@@ -1418,7 +1418,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     }
 
     case WM_LBUTTONUP: {
-        const Target target = xydesk::panel::targetAt(g.layout, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
         const Target pressed = g.pressed;
         g.pressed = Target::None;
         if (GetCapture() == hwnd) ReleaseCapture();
@@ -1432,7 +1432,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_LBUTTONDBLCLK: {
         // Kebiasaan Windows: dua klik di area judul = perbesar/pulihkan.
-        const Target target = xydesk::panel::targetAt(g.layout, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
         if (target == Target::TitleBar) {
             toggleMaximize(hwnd);
             return 0;
@@ -1526,6 +1526,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_TIMER:
         if (wParam == kTimer) {
+            readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
                 g.flashText.clear();
                 g.statusColor = g.running ? kGood : kMuted;
@@ -1598,21 +1599,18 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 // dikompilasi masih menjalankan tata letak yang diharapkan.
 int runPanelProbe(const std::wstring& path) {
     const PanelLayout layout = xydesk::panel::computeLayout(96);
-    // Start/OpenLog hanya tampil (dan hanya boleh tertekan) di bagian Kontrol,
-    // jadi sampelnya diambil dari salinan tata letak bagian itu.
-    PanelLayout control = layout;
-    control.section = xydesk::panel::kSectionControl;
+    const auto at = [&](const Rect& r, Page page) {
+        return xydesk::panel::targetAt(layout, page, xydesk::panel::centerX(r), xydesk::panel::centerY(r));
+    };
     const Target samples[] = {
-        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.minimizeButton), xydesk::panel::centerY(layout.minimizeButton)),
-        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.maximizeButton), xydesk::panel::centerY(layout.maximizeButton)),
-        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.closeButton), xydesk::panel::centerY(layout.closeButton)),
-        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.navStatus), xydesk::panel::centerY(layout.navStatus)),
-        xydesk::panel::targetAt(control, xydesk::panel::centerX(control.start), xydesk::panel::centerY(control.start)),
-        xydesk::panel::targetAt(control, xydesk::panel::centerX(control.openLog), xydesk::panel::centerY(control.openLog)),
-        // Di bagian Status, tombol Kontrol tidak boleh menjadi sasaran klik.
-        xydesk::panel::targetAt(layout, xydesk::panel::centerX(layout.start), xydesk::panel::centerY(layout.start)),
-        xydesk::panel::targetAt(layout, 0, 0),
-        xydesk::panel::targetAt(layout, layout.panel.x + 4, layout.panel.y + 4),
+        at(layout.minimizeButton, Page::Status),
+        at(layout.maximizeButton, Page::Status),
+        at(layout.closeButton, Page::Status),
+        at(layout.sideStatus, Page::Status),
+        at(layout.sidePairing, Page::Status),
+        at(layout.start, Page::Control),
+        at(layout.idCopy, Page::Pairing),
+        xydesk::panel::targetAt(layout, Page::Status, layout.panel.x + 2, layout.panel.bottom() - 2),
     };
     std::string json = "{\n";
     json += "  \"scalePct\": " + std::to_string(layout.scalePct) + ",\n";
@@ -1621,7 +1619,7 @@ int runPanelProbe(const std::wstring& path) {
     json += "  \"panelWidth\": " + std::to_string(layout.panel.w) + ",\n";
     json += "  \"panelHeight\": " + std::to_string(layout.panel.h) + ",\n";
     json += "  \"radiusPanel\": " + std::to_string(layout.radiusPanel) + ",\n";
-    json += "  \"edgeMargin\": " + std::to_string(layout.panel.x) + ",\n";
+    json += "  \"shadowMargin\": " + std::to_string(layout.panel.x) + ",\n";
     json += "  \"hits\": [";
     for (int i = 0; i < static_cast<int>(std::size(samples)); ++i) {
         if (i) json += ", ";
@@ -1643,7 +1641,6 @@ int runPanelProbe(const std::wstring& path) {
 // separuh tembus (bukti penghalusan), dan bayangan harus memudar keluar.
 int runPanelSnapshot(const std::wstring& path) {
     g.layout = xydesk::panel::computeLayout(96);
-    g.layout.section = g.section;
     createFonts();
     g.statusText = L"Host aktif sebagai user Windows ini";
     g.statusColor = kGood;
@@ -1652,6 +1649,9 @@ int runPanelSnapshot(const std::wstring& path) {
     g.logPath = L"C:\\Users\\operator\\AppData\\Local\\XyDesk\\host.log";
     g.running = true;
     g.hot = xydesk::panel::Target::None;
+    g.page = xydesk::panel::Page::Status;
+    g.captureBackend = L"gdi-bitblt · sesi aktif";
+    g.captureSeen = true;
     if (!drawPanelToSurface()) return 4;
 
     const Surface& surface = g.surface;
@@ -1715,23 +1715,6 @@ std::wstring commandLineArgument(const wchar_t* name) {
     return result;
 }
 
-// Argumen angka opsional, misalnya `--panel-section 1` untuk snapshot QA.
-int intArgument(const wchar_t* name, int fallback) {
-    int count = 0;
-    LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
-    int result = fallback;
-    if (args) {
-        for (int i = 1; i < count - 1; ++i) {
-            if (_wcsicmp(args[i], name) == 0) {
-                result = _wtoi(args[i + 1]);
-                break;
-            }
-        }
-        LocalFree(args);
-    }
-    return result;
-}
-
 bool hasArgument(const wchar_t* name) {
     int count = 0;
     LPWSTR* args = CommandLineToArgvW(GetCommandLineW(), &count);
@@ -1751,8 +1734,6 @@ bool hasArgument(const wchar_t* name) {
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
-    const int sectionArg = intArgument(L"--panel-section", 0);
-    g.section = (sectionArg >= 0 && sectionArg <= 2) ? sectionArg : 0;
     if (hasArgument(L"--panel-probe")) {
         return runPanelProbe(commandLineArgument(L"--panel-probe"));
     }

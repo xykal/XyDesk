@@ -74,6 +74,8 @@ windows = { version = "0.61", features = [
   "Win32_System_SystemInformation",
   # Kapasitas volume C: (GetDiskFreeSpaceExW)
   "Win32_Storage_FileSystem",
+  # Sesi aktif vs sesi proses (capture.json: diagnosa layar hitam RDP/lock)
+  "Win32_System_RemoteDesktop",
 ] }
 # ── Fase capture/encode (Windows-only) — aktifkan saat implementasi ──
 # windows-capture = "1"              # DXGI Desktop Duplication

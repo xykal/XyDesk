@@ -29,9 +29,9 @@ from pathlib import Path
 # Teks yang HARUS utuh di dalam EXE. Sengaja memuat tanda baca non-ASCII:
 # itulah bagian yang paling mudah rusak karena codepage.
 EXPECTED = (
-    "Control Panel",
-    "• Tutup (✕) menyembunyikan panel ke tray — host tetap jalan; keluar lewat menu tray.",
-    "• Perbesar (□) atau dobel-klik judul memenuhi layar; klik lagi mengembalikan.",
+    "Panel host Windows · tanpa terminal",
+    "Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar.",
+    "Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
     "XyDesk Host — klik kanan untuk kontrol",
     "Menyalakan host…",
     "Host aktif sebagai user Windows ini",
