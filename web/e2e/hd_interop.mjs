@@ -11,10 +11,19 @@ try{for(const mode of [1,2,0]){
  const answer=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{child.kill();reject(Error('answer timeout '+stderr));},15000);const lines=createInterface({input:child.stdout});lines.on('line',s=>{if(s.startsWith('XYDESK_ANSWER:')){clearTimeout(timer);resolve(JSON.parse(s.slice(14)));}});child.on('error',reject);child.on('exit',code=>{if(code)reject(Error('host failed '+stderr));});child.stdin.end(JSON.stringify({sdp:offer.sdp,mode})+'\n');});
  await page.evaluate(sdp=>window.__pc.setRemoteDescription({type:'answer',sdp}),answer.sdp);
  const actual=await page.evaluate(async()=>{const deadline=Date.now()+20000;while(Date.now()<deadline){const stats=await window.__pc.getStats();const r=[...stats.values()].find(x=>x.type==='inbound-rtp'&&x.kind==='video');const v=document.querySelector('video');if(r?.framesDecoded>=3&&v.videoWidth)return {width:v.videoWidth,height:v.videoHeight,framesDecoded:r.framesDecoded,codec:stats.get(r.codecId)?.sdpFmtpLine,jitterSeconds:r.jitter,framesDropped:r.framesDropped,totalDecodeTime:r.totalDecodeTime,jitterBufferDelay:r.jitterBufferDelay,jitterBufferEmittedCount:r.jitterBufferEmittedCount};await new Promise(r=>setTimeout(r,50));}throw Error('decode timeout '+window.__pc.connectionState+' '+JSON.stringify([...((await window.__pc.getStats()).values())]));});
- const expected=mode===2?[2336,1080]:mode===0?[1280,720]:[1920,1080];assert.deepEqual([actual.width,actual.height],expected);const pixels=await page.evaluate(()=>{const v=document.querySelector('video'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;const ctx=c.getContext('2d');ctx.drawImage(v,0,0);return {top:[...ctx.getImageData(10,10,1,1).data],middle:[...ctx.getImageData(c.width/2,c.height/2,1,1).data]};});
- if(mode!==2)assert.ok(pixels.top.slice(0,3).every(n=>n<20),'encoded padding is black');assert.ok(pixels.middle.slice(0,3).some(n=>n>50));
+ const expected=mode===2?[2336,1080]:mode===0?[1280,720]:[1920,888];assert.deepEqual([actual.width,actual.height],expected);const pixels=await page.evaluate(()=>{const v=document.querySelector('video'),c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;const ctx=c.getContext('2d');ctx.drawImage(v,0,0);return {top:[...ctx.getImageData(10,10,1,1).data],middle:[...ctx.getImageData(c.width/2,c.height/2,1,1).data]};});
+ // Kebijakan 20 Sep 2026 ("tanpa pita DAN tanpa crop") berlaku untuk mode
+ // stream 1 & 2: frame memuat SELURUH sumber, diperkecil proporsional —
+ // sumber 2336x1080 di mode 1 menjadi 1920x888 (dikunci unit test
+ // video_policy/software_video/video_layout), jadi sudut atas TIDAK hitam.
+ // Mode 0 (Virtual720) adalah perkecualian yang disengaja: keluaran wajib
+ // persis 1280x720, sehingga sumber non-16:9 tetap di-letterbox di dalamnya
+ // (pita hitam ±64px atas/bawah) — sudut atas HITAM adalah kontrak.
+ if(mode===0)assert.ok(pixels.top.slice(0,3).every(n=>n<20),`mode 0: pita letterbox Virtual720 hilang? top=${JSON.stringify(pixels.top)}`);
+ else assert.ok(pixels.top[0]>50||pixels.top[1]>50||pixels.top[2]>50,`mode ${mode}: sudut atas hitam ${JSON.stringify(pixels.top)} — kebijakan tanpa pita dilanggar`);
+ assert.ok(pixels.middle.slice(0,3).some(n=>n>50),'tengah gelap — pola tidak sampai?');
  results.push({mode,pixels,receiverLevel:offer.level,answerLevel:answer.level,...actual});
- if(mode===1)await page.screenshot({path:new URL('../../docs/qa/letterbox-chromium-2026-09-18.png',import.meta.url).pathname});
+ if(mode===1)await page.screenshot({path:new URL('../../docs/qa/no-letterbox-chromium-2026-09-25.png',import.meta.url).pathname});
  await page.evaluate(()=>window.__pc.close());child.kill();await page.close();
 }
 writeFileSync(new URL('../../docs/qa/letterbox-chromium-2026-09-18.json',import.meta.url),JSON.stringify({boundary:'Real Chromium SDP/RTP/decode with production Rust Session/SoftwareEncoder and synthetic pixels; no Windows or Android runtime.',results},null,2)+'\n');console.log(JSON.stringify(results));

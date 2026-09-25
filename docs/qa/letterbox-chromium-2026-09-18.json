@@ -6,27 +6,27 @@
       "pixels": {
         "top": [
           0,
-          0,
-          0,
+          12,
+          203,
           255
         ],
         "middle": [
-          125,
-          128,
-          212,
+          126,
+          129,
+          213,
           255
         ]
       },
       "receiverLevel": "33",
       "answerLevel": 51,
       "width": 1920,
-      "height": 1080,
+      "height": 888,
       "framesDecoded": 3,
       "codec": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e033",
-      "jitterSeconds": 0.015,
+      "jitterSeconds": 0.025,
       "framesDropped": 0,
-      "totalDecodeTime": 0.025616999999999997,
-      "jitterBufferDelay": 0.065845,
+      "totalDecodeTime": 0.021658,
+      "jitterBufferDelay": 0.14096599999999998,
       "jitterBufferEmittedCount": 3
     },
     {
@@ -51,10 +51,10 @@
       "height": 1080,
       "framesDecoded": 3,
       "codec": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e033",
-      "jitterSeconds": 0.002,
+      "jitterSeconds": 0.003,
       "framesDropped": 0,
-      "totalDecodeTime": 0.021016999999999997,
-      "jitterBufferDelay": 0.036278,
+      "totalDecodeTime": 0.023073,
+      "jitterBufferDelay": 0.035916,
       "jitterBufferEmittedCount": 3
     },
     {
@@ -79,10 +79,10 @@
       "height": 720,
       "framesDecoded": 3,
       "codec": "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e033",
-      "jitterSeconds": 0.006,
+      "jitterSeconds": 0.005,
       "framesDropped": 0,
-      "totalDecodeTime": 0.011888,
-      "jitterBufferDelay": 0.061557,
+      "totalDecodeTime": 0.014565999999999999,
+      "jitterBufferDelay": 0.057069999999999996,
       "jitterBufferEmittedCount": 3
     }
   ]
