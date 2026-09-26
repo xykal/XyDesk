@@ -99,7 +99,6 @@ def main() -> int:
         # Menyusuri diagonal dari pusat busur ke arah sudut: piksel penuh
         # terakhir menandai tepi busur.
         last_inside = 0.0
-        partial: list[int] = []
         for step in range(0, radius + 6):
             x = int(round(cx + dx * step))
             y = int(round(cy + dy * step))
@@ -108,8 +107,21 @@ def main() -> int:
             alpha = bitmap.rgba(x, y)[3]
             if alpha >= 250:
                 last_inside = math.hypot(x + 0.5 - cx, y + 0.5 - cy)
-            elif last_inside > 0:
-                partial.append(alpha)
+        # Integer diagonal rays can skip every antialiased edge pixel for
+        # smaller radii. Inspect the corner's pixel neighborhood instead.
+        partial = []
+        x0 = max(0, int(cx - radius - 2))
+        x1 = min(bitmap.width, int(cx + radius + 3))
+        y0 = max(0, int(cy - radius - 2))
+        y1 = min(bitmap.height, int(cy + radius + 3))
+        for py in range(y0, y1):
+            for px in range(x0, x1):
+                if (px + 0.5 - cx) * dx < 0 or (py + 0.5 - cy) * dy < 0:
+                    continue
+                alpha = bitmap.rgba(px, py)[3]
+                radial = math.hypot(px + 0.5 - cx, py + 0.5 - cy)
+                if 0 < alpha < 250 and abs(radial - radius) <= 1.5:
+                    partial.append(alpha)
         measured.append(last_inside)
         smooth_evidence.append(len(partial))
         check(
