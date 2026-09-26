@@ -35,13 +35,16 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include <dwmapi.h>
 
 #include "resource.h"
 #include "layout.h"
+#include "webview2/WebView2.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -49,6 +52,7 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "dwmapi.lib")
 #endif
 
 namespace {
@@ -148,6 +152,9 @@ struct AppState {
     bool animOn = false;
     bool trackingMouse = false;
     bool layered = true;
+    // Mode UI: true = jendela biasa (non-layered) dengan isi WebView2;
+    // false = panel GDI berlapis seperti sebelumnya (fallback otomatis).
+    bool webMode = false;
     // Kesehatan capture dari engine (berkas capture.json): buat kartu Status
     // jujur soal layar hitam / sesi berbeda.
     std::wstring captureBackend;
@@ -187,6 +194,7 @@ void showTrayMenu(HWND hwnd);
 bool startHost();
 void stopHost();
 void renderPanel();
+void pushWebState();
 
 // ── Berkas mesin: ± sama seperti sebelumnya -------------------------------
 
@@ -1037,6 +1045,10 @@ bool drawPanelToSurface() {
 
 void renderPanel() {
     if (!g.window) return;
+    if (g.webMode) {
+        pushWebState();
+        return;
+    }
     if (!drawPanelToSurface()) return;
     Surface& surface = g.surface;
 
@@ -1491,6 +1503,335 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     }
 }
 
+// ── Kulit WebView2 ─────────────────────────────────────────────────────────
+// Panel modern digambar Microsoft Edge WebView2 (Chromium): HTML+CSS ada di
+// panel.html (tertanam sebagai resource RC), state host didorong lewat
+// ExecuteScript, perintah tombol masuk lewat WebMessage. Kalau loader atau
+// WebView2 Runtime tidak ada (Windows lama / instalasi dipangkas), panel
+// otomatis memakai kulit GDI berlapis di bawah ini — logika host, tray, zoom,
+// dan gerbang CI tetap satu jalur.
+
+constexpr UINT kWebFailedMessage = WM_APP + 13;
+
+typedef HRESULT(STDAPICALLTYPE* CreateWebEnvFn)(PCWSTR browserExecutableFolder,
+    PCWSTR userDataFolder, ICoreWebView2EnvironmentOptions* options,
+    ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* handler);
+
+HMODULE g_webLoader = nullptr;
+CreateWebEnvFn g_createWebEnv = nullptr;
+ICoreWebView2Controller* g_webController = nullptr;
+ICoreWebView2* g_webView = nullptr;
+bool g_webReady = false;
+
+bool hasRuntimeVersion(HKEY root, const wchar_t* sub) {
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(root, sub, 0, KEY_READ, &key) != ERROR_SUCCESS) return false;
+    wchar_t pv[64] = {};
+    DWORD size = sizeof(pv);
+    DWORD type = 0;
+    const LONG read = RegQueryValueExW(key, L"pv", nullptr, &type,
+        reinterpret_cast<LPBYTE>(pv), &size);
+    RegCloseKey(key);
+    return read == ERROR_SUCCESS && type == REG_SZ && pv[0] != 0
+        && wcscmp(pv, L"0.0.0.0") != 0;
+}
+
+bool webViewAvailable() {
+    wchar_t exePath[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
+    std::wstring dir(exePath);
+    const size_t cut = dir.find_last_of(L"\\/");
+    if (cut != std::wstring::npos) dir.resize(cut + 1);
+    g_webLoader = LoadLibraryW((dir + L"WebView2Loader.dll").c_str());
+    if (!g_webLoader) g_webLoader = LoadLibraryW(L"WebView2Loader.dll");
+    if (!g_webLoader) return false;
+    g_createWebEnv = reinterpret_cast<CreateWebEnvFn>(
+        GetProcAddress(g_webLoader, "CreateCoreWebView2EnvironmentWithOptions"));
+    if (!g_createWebEnv) return false;
+    const wchar_t* evergreen[] = {
+        L"SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+        L"SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
+    };
+    return hasRuntimeVersion(HKEY_LOCAL_MACHINE, evergreen[0])
+        || hasRuntimeVersion(HKEY_LOCAL_MACHINE, evergreen[1])
+        || hasRuntimeVersion(HKEY_CURRENT_USER, evergreen[1]);
+}
+
+std::wstring panelHtmlFromResource() {
+    HMODULE mod = GetModuleHandleW(nullptr);
+    HRSRC info = FindResourceW(mod, MAKEINTRESOURCEW(IDR_PANEL_HTML), RT_RCDATA);
+    if (!info) return L"<!DOCTYPE html><meta charset=utf-8><body style='background:#0b0d14;color:#eef0fa;font:14px sans-serif;padding:24px'>panel.html tidak termuat di EXE.</body>";
+    HGLOBAL data = LoadResource(mod, info);
+    const DWORD size = SizeofResource(mod, info);
+    const char* bytes = data ? static_cast<const char*>(LockResource(data)) : nullptr;
+    if (!bytes || size == 0) return L"<!DOCTYPE html><meta charset=utf-8><body style='background:#0b0d14;color:#eef0fa;font:14px sans-serif;padding:24px'>panel.html kosong.</body>";
+    const int need = MultiByteToWideChar(CP_UTF8, 0, bytes, static_cast<int>(size), nullptr, 0);
+    std::wstring wide(static_cast<size_t>(need), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, bytes, static_cast<int>(size), &wide[0], need);
+    return wide;
+}
+
+std::wstring jsQuote(const std::wstring& in) {
+    static const wchar_t kHex[] = L"0123456789abcdef";
+    std::wstring out = L"\"";
+    for (const wchar_t ch : in) {
+        switch (ch) {
+        case L'\\': out += L"\\\\"; break;
+        case L'"': out += L"\\\""; break;
+        case L'\n': out += L"\\n"; break;
+        case L'\r': out += L"\\r"; break;
+        case L'\t': out += L"\\t"; break;
+        default:
+            if (ch < 0x20 || ch == 0x2028 || ch == 0x2029) {
+                wchar_t buf[7] = {L'\\', L'u', kHex[(ch >> 12) & 15],
+                    kHex[(ch >> 8) & 15], kHex[(ch >> 4) & 15], kHex[ch & 15], 0};
+                out += buf;
+            } else {
+                out += ch;
+            }
+        }
+    }
+    out += L'"';
+    return out;
+}
+
+
+// GUID eksplisit dari MIDL_INTERFACE di WebView2.h — __uuidof tidak tersedia
+// di mingw-w64, dan dengan konstanta ini QI identik di MSVC maupun mingw.
+constexpr GUID kIID_IUnknownW2 = {0x00000000, 0x0000, 0x0000, {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
+constexpr GUID kIID_EnvDone = {0x4e8a3389, 0xc9d8, 0x4bd2, {0xb6, 0xb5, 0x12, 0x4f, 0xee, 0x6c, 0xc1, 0x4d}};
+constexpr GUID kIID_CtlDone = {0x6c4819f3, 0xc9b7, 0x4260, {0x81, 0x27, 0xc9, 0xf5, 0xbd, 0xe7, 0xf6, 0x8c}};
+constexpr GUID kIID_MsgRecv = {0x57213f19, 0x00e6, 0x49fa, {0x8e, 0x07, 0x89, 0x8e, 0xa0, 0x1e, 0xcb, 0xd2}};
+constexpr GUID kIID_NavDone = {0xd33a35bf, 0x1c49, 0x4f98, {0x93, 0xab, 0x00, 0x6e, 0x05, 0x33, 0xfe, 0x1c}};
+
+struct WebMsgHandler;
+struct WebNavHandler;
+
+struct WebCtlHandler final : ICoreWebView2CreateCoreWebView2ControllerCompletedHandler {
+    ULONG refs = 1;
+    HWND hwnd;
+    explicit WebCtlHandler(HWND h) : hwnd(h) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
+        if (!out) return E_POINTER;
+        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_CtlDone)) {
+            *out = static_cast<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *out = nullptr;
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
+    ULONG STDMETHODCALLTYPE Release() override {
+        const ULONG r = --refs;
+        if (!r) delete this;
+        return r;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Controller* controller) override;
+};
+
+struct WebEnvHandler final : ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler {
+    ULONG refs = 1;
+    HWND hwnd;
+    explicit WebEnvHandler(HWND h) : hwnd(h) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
+        if (!out) return E_POINTER;
+        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_EnvDone)) {
+            *out = static_cast<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *out = nullptr;
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
+    ULONG STDMETHODCALLTYPE Release() override {
+        const ULONG r = --refs;
+        if (!r) delete this;
+        return r;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Environment* env) override {
+        if (FAILED(result) || !env) {
+            PostMessageW(hwnd, kWebFailedMessage, 0, 0);
+            return S_OK;
+        }
+        env->CreateCoreWebView2Controller(hwnd, new WebCtlHandler(hwnd));
+        return S_OK;
+    }
+};
+
+void handleWebMessage(HWND hwnd, const std::wstring& msg);
+
+struct WebMsgHandler final : ICoreWebView2WebMessageReceivedEventHandler {
+    ULONG refs = 1;
+    HWND hwnd;
+    explicit WebMsgHandler(HWND h) : hwnd(h) {}
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
+        if (!out) return E_POINTER;
+        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_MsgRecv)) {
+            *out = static_cast<ICoreWebView2WebMessageReceivedEventHandler*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *out = nullptr;
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
+    ULONG STDMETHODCALLTYPE Release() override {
+        const ULONG r = --refs;
+        if (!r) delete this;
+        return r;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* args) override {
+        if (!args) return S_OK;
+        LPWSTR text = nullptr;
+        if (SUCCEEDED(args->TryGetWebMessageAsString(&text)) && text) {
+            handleWebMessage(hwnd, text);
+            CoTaskMemFree(text);
+        }
+        return S_OK;
+    }
+};
+
+struct WebNavHandler final : ICoreWebView2NavigationCompletedEventHandler {
+    ULONG refs = 1;
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
+        if (!out) return E_POINTER;
+        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_NavDone)) {
+            *out = static_cast<ICoreWebView2NavigationCompletedEventHandler*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *out = nullptr;
+        return E_NOINTERFACE;
+    }
+    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
+    ULONG STDMETHODCALLTYPE Release() override {
+        const ULONG r = --refs;
+        if (!r) delete this;
+        return r;
+    }
+    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) override {
+        g_webReady = true;
+        pushWebState();
+        return S_OK;
+    }
+};
+
+HRESULT STDMETHODCALLTYPE WebCtlHandler::Invoke(HRESULT result, ICoreWebView2Controller* controller) {
+    if (FAILED(result) || !controller) {
+        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
+        return S_OK;
+    }
+    controller->AddRef();
+    g_webController = controller;
+    if (FAILED(controller->get_CoreWebView2(&g_webView)) || !g_webView) {
+        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
+        return S_OK;
+    }
+    g_webView->AddRef();
+    ICoreWebView2Settings* settings = nullptr;
+    if (SUCCEEDED(g_webView->get_Settings(&settings)) && settings) {
+        settings->put_AreDevToolsEnabled(FALSE);
+        settings->put_AreDefaultContextMenusEnabled(FALSE);
+        settings->put_IsStatusBarEnabled(FALSE);
+        settings->Release();
+    }
+    g_webView->add_WebMessageReceived(new WebMsgHandler(hwnd), nullptr);
+    g_webView->add_NavigationCompleted(new WebNavHandler(), nullptr);
+    const std::wstring html = panelHtmlFromResource();
+    g_webView->NavigateToString(html.c_str());
+    controller->put_IsVisible(TRUE);
+    RECT rc{};
+    GetClientRect(hwnd, &rc);
+    controller->put_Bounds(rc);
+    return S_OK;
+}
+
+void handleWebMessage(HWND hwnd, const std::wstring& msg) {
+    if (msg == L"start") {
+        if (!g.running) startHost();
+    } else if (msg == L"stop") {
+        stopHost();
+    } else if (msg == L"restart") {
+        stopHost();
+        startHost();
+    } else if (msg == L"log") {
+        activateTarget(hwnd, Target::OpenLog);
+    } else if (msg == L"web") {
+        activateTarget(hwnd, Target::Web);
+    } else if (msg == L"copyid") {
+        activateTarget(hwnd, Target::CopyId);
+    } else if (msg == L"copypw") {
+        activateTarget(hwnd, Target::CopyPassword);
+    } else if (msg == L"min") {
+        ShowWindow(hwnd, SW_MINIMIZE);
+    } else if (msg == L"max") {
+        activateTarget(hwnd, Target::Maximize);
+    } else if (msg == L"close") {
+        activateTarget(hwnd, Target::Close);
+    } else if (msg == L"drag") {
+        ReleaseCapture();
+        SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    } else if (msg.compare(0, 5, L"page:") == 0) {
+        const std::wstring page = msg.substr(5);
+        g.page = page == L"pairing" ? Page::Pairing
+            : (page == L"control" ? Page::Control : Page::Status);
+    }
+    pushWebState();
+}
+
+void pushWebState() {
+    if (!g_webView || !g_webReady) return;
+    const wchar_t* kind = g.captureWarn ? L"warn" : (g.running ? L"good" : L"bad");
+    const std::wstring sub = g.running
+        ? std::wstring(L"xydesk-host.exe aktif") + (g.logPath.empty() ? std::wstring() : (L" · " + g.logPath))
+        : std::wstring(L"Engine mati — tekan \u201CNyalakan host\u201D");
+    std::wstring script = L"window.xySetState && window.xySetState({";
+    script += L"status:" + jsQuote(g.flashText.empty() ? g.statusText : g.flashText) + L",";
+    script += L"kind:" + jsQuote(kind) + L",";
+    script += L"sub:" + jsQuote(sub) + L",";
+    script += L"backend:" + jsQuote(g.captureBackend) + L",";
+    script += L"note:" + jsQuote(g.captureNote) + L",";
+    script += L"mismatch:";
+    script += g.sessionMismatch ? L"true" : L"false";
+    script += L",";
+    script += L"procUser:" + jsQuote(g.procUser) + L",";
+    script += L"activeUser:" + jsQuote(g.activeUser) + L",";
+    script += L"procSession:" + (g.procSession >= 0 ? std::to_wstring(g.procSession) : std::wstring(L"null")) + L",";
+    script += L"activeSession:" + (g.activeSession >= 0 ? std::to_wstring(g.activeSession) : std::wstring(L"null")) + L",";
+    script += L"id:" + jsQuote(g.deviceId) + L",";
+    script += L"code:" + jsQuote(g.pairingCode) + L",";
+    script += L"toast:" + jsQuote(g.flashText) + L"});";
+    g_webView->ExecuteScript(script.c_str(), nullptr);
+}
+
+void initWebView(HWND hwnd) {
+    if (!g_createWebEnv || FAILED(g_createWebEnv(nullptr, nullptr, nullptr, new WebEnvHandler(hwnd)))) {
+        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
+    }
+}
+
+void resizeWebView(HWND hwnd) {
+    if (!g_webController) return;
+    RECT rc{};
+    GetClientRect(hwnd, &rc);
+    g_webController->put_Bounds(rc);
+}
+
+void releaseWebView() {
+    g_webReady = false;
+    if (g_webView) {
+        g_webView->Release();
+        g_webView = nullptr;
+    }
+    if (g_webController) {
+        g_webController->Close();
+        g_webController->Release();
+        g_webController = nullptr;
+    }
+}
+
 LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     // Explorer mengirim pesan ini saat taskbar/tray restart (Explorer crash):
     // ikon tray didaftarkan ulang supaya tidak hilang sampai sesi Windows mati.
@@ -1504,6 +1845,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.window = hwnd;
         g.layout = xydesk::panel::computeLayout(static_cast<int>(windowDpi(hwnd)));
         createFonts();
+        if (g.webMode) initWebView(hwnd);
         g.logPath = hostLogPath();
         readIdentity();
         addTrayIcon(hwnd);
@@ -1534,6 +1876,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     }
 
     case WM_NCHITTEST:
+        if (g.webMode) return HTCLIENT; // WebView2 yang menangani klik
         return handleHitTest(hwnd, lParam);
 
     case WM_MOUSEMOVE:
@@ -1646,6 +1989,22 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_QUERYENDSESSION:
         return TRUE;
 
+    case kWebFailedMessage:
+        // WebView2 gagal dibuat (runtime hilang setelah probe / kebijakan
+        // mesin): jatuh ke kulit GDI di jendela biasa tanpa drama.
+        if (g.webMode) {
+            releaseWebView();
+            g.webMode = false;
+            g.layered = false;
+            renderPanel();
+            InvalidateRect(hwnd, nullptr, TRUE);
+        }
+        return 0;
+
+    case WM_SIZE:
+        resizeWebView(hwnd);
+        return 0;
+
     case WM_ENDSESSION:
         if (wParam) {
             removeTrayIcon();
@@ -1724,6 +2083,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         KillTimer(hwnd, kTimer);
         KillTimer(hwnd, kAnimTimer);
         g.animOn = false;
+        releaseWebView();
         removeTrayIcon();
         stopHost();
         if (g.fontTitle) DeleteObject(g.fontTitle);
@@ -1891,6 +2251,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
 
     SetProcessDPIAware();
     g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    // Kulit WebView2 hanya bila loader + runtime tersedia di mesin ini.
+    g.webMode = webViewAvailable();
 
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
@@ -1914,10 +2276,18 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const int x = workArea.left + ((workArea.right - workArea.left) - g.layout.window.w) / 2;
     const int y = workArea.top + ((workArea.bottom - workArea.top) - g.layout.window.h) / 2;
 
-    HWND window = CreateWindowExW(WS_EX_LAYERED | WS_EX_APPWINDOW, kClassName, kWindowTitle,
+    const DWORD exStyle = g.webMode ? WS_EX_APPWINDOW : (WS_EX_LAYERED | WS_EX_APPWINDOW);
+    HWND window = CreateWindowExW(exStyle, kClassName, kWindowTitle,
         WS_POPUP | WS_SYSMENU, x, y, g.layout.window.w, g.layout.window.h,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
+    if (g.webMode) {
+        // Jendela biasa (bukan berlapis): sudut membulat diserahkan ke DWM
+        // (Windows 11 / Server 2025). Di Server 2022 atribut ini gagal dan
+        // sudut tetap siku — dapat ditutupi CSS nanti, bukan masalah fungsi.
+        DWM_WINDOW_CORNER_PREFERENCE pref = DWMWCP_ROUND;
+        DwmSetWindowAttribute(window, DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof(pref));
+    }
 
     applyDpi(window, windowDpi(window), false);
     ShowWindow(window, show);

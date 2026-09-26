@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src data:;">
+<title>XyDesk Control Panel</title>
+<style>
+  :root {
+    --bg: #0b0d14;
+    --bg2: #10131f;
+    --card: rgba(255,255,255,.045);
+    --card-border: rgba(255,255,255,.085);
+    --text: #eef0fa;
+    --muted: #9aa1b9;
+    --faint: #6b7290;
+    --accent: #7d69ee;
+    --accent2: #9d8bff;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --pill-h: 46px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* ===== Latar aurora beranimasi ===== */
+  .aurora { position: fixed; inset: 0; z-index: 0; overflow: hidden; }
+  .aurora::before, .aurora::after {
+    content: ""; position: absolute; border-radius: 50%;
+    filter: blur(90px); opacity: .5;
+    animation: drift 22s ease-in-out infinite alternate;
+  }
+  .aurora::before {
+    width: 520px; height: 420px; left: -140px; top: -160px;
+    background: radial-gradient(circle at 30% 30%, #5b4bc4, transparent 65%);
+  }
+  .aurora::after {
+    width: 480px; height: 400px; right: -120px; bottom: -140px;
+    background: radial-gradient(circle at 60% 60%, #2c6e91, transparent 65%);
+    animation-delay: -11s;
+  }
+  @keyframes drift {
+    from { transform: translate(0,0) scale(1); }
+    to   { transform: translate(70px, 46px) scale(1.18); }
+  }
+  .grain {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .5;
+    background: linear-gradient(180deg, rgba(255,255,255,.028), transparent 32%);
+  }
+
+  .shell { position: relative; z-index: 2; display: flex; height: 100vh; }
+
+  /* ===== Sidebar ===== */
+  .side {
+    width: 92px; flex: 0 0 92px; display: flex; flex-direction: column;
+    align-items: center; padding: 14px 0 16px;
+    border-right: 1px solid rgba(255,255,255,.06);
+    background: rgba(255,255,255,.018);
+  }
+  .logo {
+    width: 40px; height: 40px; border-radius: 13px; margin-bottom: 26px;
+    background: linear-gradient(135deg, var(--accent), #4c3fa8);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 22px rgba(125,105,238,.4), inset 0 1px 0 rgba(255,255,255,.25);
+  }
+  .logo svg { width: 21px; height: 21px; }
+  .nav { position: relative; display: flex; flex-direction: column; gap: 12px; width: 64px; }
+  .pill {
+    position: absolute; left: 0; top: 0; width: 64px; height: var(--pill-h);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(125,105,238,.30), rgba(125,105,238,.16));
+    border: 1px solid rgba(157,139,255,.40);
+    box-shadow: 0 4px 18px rgba(125,105,238,.25);
+    transition: transform .38s cubic-bezier(.34,1.4,.44,1);
+  }
+  .navbtn {
+    position: relative; z-index: 1; height: var(--pill-h); border: 0; background: none;
+    border-radius: 16px; cursor: pointer; color: var(--faint);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    transition: color .25s, transform .18s;
+    font-family: inherit;
+  }
+  .navbtn:hover { color: var(--muted); }
+  .navbtn:active { transform: scale(.93); }
+  .navbtn.on { color: var(--text); }
+  .navbtn svg { width: 20px; height: 20px; }
+  .navbtn span { font-size: 9.5px; font-weight: 600; letter-spacing: .3px; }
+
+  /* ===== Kolom utama ===== */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .caption {
+    height: 46px; flex: 0 0 46px; display: flex; align-items: center;
+    padding: 0 8px 0 20px; cursor: default;
+  }
+  .caption .title { font-size: 13.5px; font-weight: 700; letter-spacing: .2px; }
+  .caption .sub { font-size: 11px; color: var(--faint); margin-left: 10px; }
+  .capbtns { margin-left: auto; display: flex; gap: 2px; }
+  .capbtn {
+    width: 40px; height: 32px; border: 0; background: none; border-radius: 9px;
+    color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    transition: background .15s, color .15s;
+  }
+  .capbtn:hover { background: rgba(255,255,255,.09); color: var(--text); }
+  .capbtn.close:hover { background: #e0483e; color: #fff; }
+  .capbtn svg { width: 11px; height: 11px; }
+
+  /* ===== Halaman & transisi morphing ===== */
+  .pages { flex: 1; position: relative; overflow: hidden; }
+  .page {
+    position: absolute; inset: 0; padding: 6px 26px 18px;
+    opacity: 0; transform: translateX(34px) scale(.985);
+    pointer-events: none;
+    transition: opacity .34s ease, transform .38s cubic-bezier(.22,1,.36,1);
+    overflow-y: auto;
+  }
+  .page::-webkit-scrollbar { width: 8px; }
+  .page::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+  .page.on { opacity: 1; transform: none; pointer-events: auto; }
+  .page.exit-left { transform: translateX(-34px) scale(.985); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 20px; padding: 20px 22px; margin-bottom: 16px;
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    animation: rise .5s cubic-bezier(.22,1,.36,1) both;
+  }
+  .card:nth-child(2) { animation-delay: .06s; }
+  .card:nth-child(3) { animation-delay: .12s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  .card h3 {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+    color: var(--faint); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .card h3::after { content: ""; flex: 1; height: 1px; background: rgba(255,255,255,.07); }
+
+  /* Status */
+  .statusRow { display: flex; align-items: center; gap: 14px; }
+  .dot {
+    width: 14px; height: 14px; border-radius: 50%; flex: 0 0 14px;
+    background: var(--muted);
+    transition: background .4s, box-shadow .4s;
+  }
+  .dot.good { background: var(--good); box-shadow: 0 0 0 4px rgba(52,211,153,.16), 0 0 18px rgba(52,211,153,.5); animation: breathe 2.4s ease-in-out infinite; }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 0 4px rgba(251,191,36,.16), 0 0 18px rgba(251,191,36,.5); }
+  .dot.bad  { background: var(--bad);  box-shadow: 0 0 0 4px rgba(248,113,113,.16), 0 0 18px rgba(248,113,113,.5); }
+  @keyframes breathe { 50% { box-shadow: 0 0 0 7px rgba(52,211,153,.08), 0 0 24px rgba(52,211,153,.55); } }
+  .statusText { font-size: 16px; font-weight: 650; }
+  .statusSub { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.45; }
+
+  /* Banner peringatan capture */
+  .alert {
+    display: none; gap: 12px; align-items: flex-start;
+    background: linear-gradient(135deg, rgba(248,113,113,.14), rgba(248,113,113,.06));
+    border: 1px solid rgba(248,113,113,.4); border-radius: 18px;
+    padding: 16px 18px; margin-bottom: 16px;
+    animation: rise .5s cubic-bezier(.22,1,.36,1) both;
+  }
+  .alert.show { display: flex; }
+  .alert.warnish {
+    background: linear-gradient(135deg, rgba(251,191,36,.12), rgba(251,191,36,.05));
+    border-color: rgba(251,191,36,.4);
+  }
+  .alert .ic { flex: 0 0 22px; margin-top: 1px; }
+  .alert b { font-size: 13.5px; display: block; margin-bottom: 4px; }
+  .alert p { font-size: 12px; color: var(--muted); line-height: 1.55; }
+  .alert code {
+    background: rgba(255,255,255,.09); border-radius: 6px; padding: 1px 6px;
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 11px; color: var(--text);
+  }
+
+  /* Metrik */
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .metric {
+    background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07);
+    border-radius: 15px; padding: 13px 15px;
+    transition: transform .2s, border-color .2s;
+  }
+  .metric:hover { transform: translateY(-2px); border-color: rgba(157,139,255,.35); }
+  .metric .k { font-size: 10px; letter-spacing: 1.1px; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .metric .v { font-size: 17px; font-weight: 700; margin-top: 5px; font-variant-numeric: tabular-nums; }
+  .metric .v small { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  /* Pairing */
+  .idRow { display: flex; align-items: center; gap: 14px; }
+  .idBig {
+    font-size: 30px; font-weight: 800; letter-spacing: 3px; font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #fff, #b9b3e8);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .codeBig {
+    font-size: 44px; font-weight: 800; letter-spacing: 10px; font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, var(--accent2), #6ee7c8);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .copy {
+    margin-left: auto; flex: 0 0 auto;
+    border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06);
+    color: var(--text); border-radius: 12px; padding: 9px 16px; cursor: pointer;
+    font-family: inherit; font-size: 12.5px; font-weight: 600;
+    transition: all .18s;
+  }
+  .copy:hover { background: rgba(125,105,238,.25); border-color: rgba(157,139,255,.5); transform: translateY(-1px); }
+  .copy:active { transform: scale(.96); }
+  .copy.ok { background: rgba(52,211,153,.2); border-color: rgba(52,211,153,.5); color: var(--good); }
+  .hintP { font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.55; }
+
+  /* Kontrol */
+  .btnGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn {
+    position: relative; overflow: hidden;
+    border-radius: 16px; padding: 15px 18px; cursor: pointer;
+    font-family: inherit; font-size: 14px; font-weight: 700; color: var(--text);
+    border: 1px solid var(--card-border); background: var(--card);
+    display: flex; align-items: center; gap: 11px;
+    transition: transform .18s, box-shadow .25s, border-color .25s, background .25s;
+  }
+  .btn svg { width: 18px; height: 18px; flex: 0 0 18px; }
+  .btn:hover { transform: translateY(-2px); border-color: rgba(255,255,255,.2); }
+  .btn:active { transform: scale(.97); }
+  .btn.primary {
+    background: linear-gradient(135deg, #22c55e, #16a34a); border-color: transparent; color: #04170c;
+    box-shadow: 0 8px 24px rgba(34,197,94,.32);
+  }
+  .btn.primary:hover { box-shadow: 0 12px 30px rgba(34,197,94,.45); }
+  .btn.danger {
+    background: linear-gradient(135deg, rgba(248,113,113,.18), rgba(248,113,113,.08));
+    border-color: rgba(248,113,113,.35); color: #fecaca;
+  }
+  .btn.danger:hover { background: rgba(248,113,113,.25); }
+  .btn .sheen {
+    position: absolute; top: 0; left: -80%; width: 60%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.14), transparent);
+    transform: skewX(-20deg); transition: left .5s ease;
+  }
+  .btn:hover .sheen { left: 130%; }
+
+  .foot {
+    flex: 0 0 auto; padding: 10px 26px 14px; font-size: 11px; color: var(--faint);
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translate(-50%, 20px);
+    background: rgba(24,27,40,.92); border: 1px solid rgba(255,255,255,.14);
+    color: var(--text); font-size: 12.5px; font-weight: 600;
+    padding: 10px 20px; border-radius: 13px; opacity: 0; pointer-events: none;
+    transition: all .3s cubic-bezier(.22,1,.36,1); z-index: 50;
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+<body>
+  <div class="aurora"></div>
+  <div class="grain"></div>
+  <div class="shell">
+
+    <aside class="side">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="4" width="19" height="13" rx="2.5"/><path d="M8.5 21h7M12 17v4"/>
+        </svg>
+      </div>
+      <nav class="nav" id="nav">
+        <div class="pill" id="pill"></div>
+        <button class="navbtn on" data-page="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 13a8 8 0 0 1 16 0"/><path d="M8 13a4 4 0 0 1 8 0"/><circle cx="12" cy="13" r="1.4" fill="currentColor" stroke="none"/><path d="M12 14.4V20"/></svg>
+          <span>Status</span>
+        </button>
+        <button class="navbtn" data-page="pairing">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2.2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none"/></svg>
+          <span>Pairing</span>
+        </button>
+        <button class="navbtn" data-page="control">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/></svg>
+          <span>Kontrol</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <div class="caption" id="caption">
+        <div class="title">XyDesk</div>
+        <div class="sub">Control Panel · host Windows</div>
+        <div class="capbtns">
+          <button class="capbtn" id="btnMin" title="Perkecil"><svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.4"><path d="M2 6h8"/></svg></button>
+          <button class="capbtn" id="btnMax" title="Perbesar"><svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.4" fill="none"><rect x="2.5" y="2.5" width="7" height="7" rx="1.2"/></svg></button>
+          <button class="capbtn close" id="btnClose" title="Tutup (ke tray)"><svg viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.4"><path d="M2.5 2.5l7 7M9.5 2.5l-7 7"/></svg></button>
+        </div>
+      </div>
+
+      <div class="pages">
+        <!-- ===== STATUS ===== -->
+        <section class="page on" id="page-status">
+          <div class="alert" id="alertBox">
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"><path d="M12 3l9.5 17H2.5L12 3z"/><path d="M12 9.5v5M12 17.6v.2"/></svg>
+            <div>
+              <b id="alertTitle">Layar akan hitam — salah sesi Windows</b>
+              <p id="alertBody"></p>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Host</h3>
+            <div class="statusRow">
+              <div class="dot" id="sDot"></div>
+              <div>
+                <div class="statusText" id="sText">Memuat…</div>
+                <div class="statusSub" id="sSub"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Capture</h3>
+            <div class="metrics">
+              <div class="metric"><div class="k">Backend</div><div class="v" id="mBackend">—</div></div>
+              <div class="metric"><div class="k">Catatan</div><div class="v" id="mNote" style="font-size:12.5px;font-weight:600">—</div></div>
+              <div class="metric"><div class="k">Sesi</div><div class="v" id="mSession">—</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== PAIRING ===== -->
+        <section class="page" id="page-pairing">
+          <div class="card">
+            <h3>Device ID</h3>
+            <div class="idRow">
+              <div class="idBig" id="idValue">—</div>
+              <button class="copy" id="copyId">Salin</button>
+            </div>
+            <div class="hintP">Masukkan ID ini di aplikasi atau web XyDesk pada perangkat yang mau menyambung.</div>
+          </div>
+          <div class="card">
+            <h3>Kode pairing</h3>
+            <div class="idRow">
+              <div class="codeBig" id="pwValue">—</div>
+              <button class="copy" id="copyPw">Salin</button>
+            </div>
+            <div class="hintP">Kode ini diminta sekali saat pairing. Kode berganti tiap host dimulai ulang.</div>
+          </div>
+        </section>
+
+        <!-- ===== KONTROL ===== -->
+        <section class="page" id="page-control">
+          <div class="card">
+            <h3>Mesin host</h3>
+            <div class="btnGrid">
+              <button class="btn primary" id="btnStart"><span class="sheen"></span>
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5-13-7.5z"/></svg>Nyalakan host</button>
+              <button class="btn danger" id="btnStop">
+                <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Matikan host</button>
+              <button class="btn" id="btnRestart">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/></svg>Mulai ulang</button>
+              <button class="btn" id="btnLog">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 3.5h9l5 5V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1z"/><path d="M14 3.5v5h5M8 13h8M8 16.5h5"/></svg>Buka log host</button>
+            </div>
+          </div>
+          <div class="card">
+            <h3>Lainnya</h3>
+            <div class="btnGrid">
+              <button class="btn" id="btnWeb">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.6 2.6 4 5.6 4 9s-1.4 6.4-4 9c-2.6-2.6-4-5.6-4-9s1.4-6.4 4-9z"/></svg>Buka web app</button>
+              <button class="btn" id="btnTray">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg>Sembunyikan ke tray</button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div class="foot">Tutup = sembunyi ke tray, host tetap jalan · Host hanya menayangkan layar sesi Windows tempat panel ini dibuka</div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+  var post = function (m) { if (window.chrome && chrome.webview) chrome.webview.postMessage(m); };
+
+  /* ---- Navigasi + pill morphing ---- */
+  var pill = document.getElementById('pill');
+  var navBtns = Array.prototype.slice.call(document.querySelectorAll('.navbtn'));
+  var pages = { status: document.getElementById('page-status'),
+                pairing: document.getElementById('page-pairing'),
+                control: document.getElementById('page-control') };
+  var current = 'status';
+
+  function movePill(btn) { pill.style.transform = 'translateY(' + btn.offsetTop + 'px)'; }
+
+  function go(name) {
+    if (name === current || !pages[name]) return;
+    var dir = navBtns.findIndex(function(b){return b.dataset.page===name;}) >
+              navBtns.findIndex(function(b){return b.dataset.page===current;}) ? 1 : -1;
+    pages[current].classList.remove('on');
+    pages[current].classList.toggle('exit-left', dir === 1);
+    var next = pages[name];
+    next.classList.toggle('exit-left', dir === -1);
+    void next.offsetWidth; /* reflow supaya transisi jalan */
+    next.classList.remove('exit-left');
+    next.classList.add('on');
+    navBtns.forEach(function(b){ b.classList.toggle('on', b.dataset.page === name); });
+    movePill(navBtns.filter(function(b){return b.dataset.page===name;})[0]);
+    current = name;
+    post('page:' + name);
+  }
+  navBtns.forEach(function (b) { b.addEventListener('click', function(){ go(b.dataset.page); }); });
+  movePill(navBtns[0]);
+
+  /* ---- Caption ---- */
+  var cap = document.getElementById('caption');
+  cap.addEventListener('mousedown', function (e) { if (e.target === cap || e.target.classList.contains('title') || e.target.classList.contains('sub')) post('drag'); });
+  cap.addEventListener('dblclick', function (e) { if (e.target === cap || e.target.classList.contains('title') || e.target.classList.contains('sub')) post('max'); });
+  document.getElementById('btnMin').onclick = function(){ post('min'); };
+  document.getElementById('btnMax').onclick = function(){ post('max'); };
+  document.getElementById('btnClose').onclick = function(){ post('close'); };
+
+  /* ---- Aksi ---- */
+  document.getElementById('btnStart').onclick = function(){ post('start'); };
+  document.getElementById('btnStop').onclick = function(){ post('stop'); };
+  document.getElementById('btnRestart').onclick = function(){ post('restart'); };
+  document.getElementById('btnLog').onclick = function(){ post('log'); };
+  document.getElementById('btnWeb').onclick = function(){ post('web'); };
+  document.getElementById('btnTray').onclick = function(){ post('close'); };
+
+  function flashCopy(btn) {
+    var t = btn.textContent; btn.textContent = 'Tersalin ✓'; btn.classList.add('ok');
+    setTimeout(function(){ btn.textContent = t; btn.classList.remove('ok'); }, 1400);
+  }
+  document.getElementById('copyId').onclick = function(){ post('copyid'); flashCopy(this); };
+  document.getElementById('copyPw').onclick = function(){ post('copypw'); flashCopy(this); };
+
+  /* ---- Toast ---- */
+  var toastEl = document.getElementById('toast'), toastT = null, toastLast = '';
+  function toast(msg) {
+    if (msg === toastLast) return; /* state dikirim 1x/detik — jangan ulangi */
+    toastLast = msg;
+    toastEl.textContent = msg; toastEl.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 2400);
+  }
+
+  /* ---- State dari native ---- */
+  window.xySetState = function (s) {
+    var dot = document.getElementById('sDot');
+    dot.className = 'dot ' + (s.kind || '');
+    document.getElementById('sText').textContent = s.status || '—';
+    document.getElementById('sSub').textContent = s.sub || '';
+    document.getElementById('mBackend').textContent = s.backend || '—';
+    var noteEl = document.getElementById('mNote');
+    noteEl.textContent = s.note || (s.backend ? 'aman' : '—');
+    noteEl.title = s.note || '';
+    document.getElementById('mSession').innerHTML = (s.procSession !== undefined && s.procSession !== null)
+      ? (s.procSession + ' <small>vs ' + s.activeSession + '</small>') : '—';
+    document.getElementById('idValue').textContent = s.id || '—';
+    document.getElementById('pwValue').textContent = s.code || '—';
+
+    var box = document.getElementById('alertBox');
+    if (s.mismatch) {
+      box.classList.add('show');
+      document.getElementById('alertTitle').textContent =
+        'Host jalan sebagai ' + (s.procUser || 'user lain') + ' (sesi ' + s.procSession + ') — layar aktif milik ' + (s.activeUser || 'user lain') + ' (sesi ' + s.activeSession + ')';
+      document.getElementById('alertBody').innerHTML =
+        'Capture antar-sesi Windows selalu hitam. Tutup panel ini, lalu jalankan XyDesk dari dalam sesi RDP <code>' +
+        (s.activeUser || 'user layar aktif') + '</code> — bukan dari sesi <code>' + (s.procUser || 'lama') + '</code>. ' +
+        'Panel lama di sesi itu harus ditutup dulu (Task Manager bila perlu).';
+    } else {
+      box.classList.remove('show');
+    }
+    if (s.toast) { toast(s.toast); } else { toastLast = ''; }
+  };
+</script>
+</body>
+</html>

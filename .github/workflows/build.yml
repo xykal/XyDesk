@@ -545,6 +545,10 @@ jobs:
           if (Test-Path 'packaging/windows/drivers/*') {
             Copy-Item 'packaging/windows/drivers/*' 'native-windows-x64/drivers/' -Recurse -Force
           }
+          # Loader WebView2 ikut dibundel: panel memakainya untuk kulit HTML/CSS
+          # modern; tanpa runtime di mesin tujuan, panel otomatis fallback GDI.
+          Copy-Item 'packaging/native-host/webview2/WebView2Loader.dll' 'native-windows-x64/WebView2Loader.dll' -Force
+          if (-not (Test-Path 'native-windows-x64/WebView2Loader.dll')) { throw 'WebView2 loader tidak dibundel' }
           if (-not (Test-Path 'native-windows-x64/XyDesk.exe')) { throw 'XyDesk.exe native tidak ada' }
           if (-not (Test-Path 'native-windows-x64/xydesk-host.exe')) { throw 'engine Rust tidak dibundel' }
           Get-ChildItem 'native-windows-x64' -Recurse | ForEach-Object { Write-Host "OUT: $($_.FullName)" }
