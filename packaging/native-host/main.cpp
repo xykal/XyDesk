@@ -53,6 +53,10 @@
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "dwmapi.lib")
+// Probe runtime WebView2 membaca registry (advapi32) dan string pesan web
+// dibebaskan dengan CoTaskMemFree (ole32).
+#pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "ole32.lib")
 #endif
 
 namespace {
