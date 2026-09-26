@@ -57,7 +57,7 @@ void testGeometry100() {
     check(l.window.w == 900 && l.window.h == 560, "ukuran jendela 900x560 pada skala 100");
     check(l.panel.w == 900 && l.panel.h == 560, "panel sama besar dengan jendela (tanpa margin bayangan)");
     check(l.panel.x == 0 && l.panel.y == 0, "tanpa margin bayangan: panel di (0,0)");
-    check(l.radiusPanel == 16 && l.radiusCard == 16 && l.radiusControl == 12, "radius panel/kartu/kontrol");
+    check(l.radiusPanel == 10 && l.radiusCard == 10 && l.radiusControl == 8, "radius desktop lebih tegas: panel/kartu 10, kontrol 8");
 
     const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton,
         l.sideStatus, l.sidePairing, l.sideControl,
@@ -152,7 +152,7 @@ void testDpiScaling() {
     check(bigger.scalePct == 150, "DPI 144 memberi skala 150");
     check(bigger.panel.w == base.panel.w * 3 / 2, "lebar panel ikut skala");
     check(bigger.panel.h == base.panel.h * 3 / 2, "tinggi panel ikut skala");
-    check(bigger.radiusPanel == 24 && bigger.radiusControl == 18, "radius ikut skala");
+    check(bigger.radiusPanel == 15 && bigger.radiusCard == 15 && bigger.radiusControl == 12, "radius ikut skala");
     for (const Rect& rect : {bigger.closeButton, bigger.start, bigger.sidePairing, bigger.idCopy}) {
         check(insidePanel(bigger, rect), "kontrol tetap di dalam panel pada skala 150");
     }

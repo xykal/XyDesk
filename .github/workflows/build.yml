@@ -705,7 +705,7 @@ jobs:
           #    Diperiksa per piksel oleh tool/check_panel_shape.py.
           $snapshot = Join-Path $out 'panel.bmp'
           Invoke-Panel '--panel-snapshot' $snapshot
-          python tool/check_panel_shape.py $snapshot --panel-width 900 --panel-height 560 --margin 0 --background 255,255,255
+          python tool/check_panel_shape.py $snapshot --panel-width 900 --panel-height 560 --margin 0 --radius 10 --background 255,255,255
           if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
 
           # 3) Teks panel: MSVC tanpa /utf-8 pernah mengirim jendela dengan

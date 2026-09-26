@@ -49,6 +49,7 @@ pub struct GdiCapture {
     rgba: Vec<u8>,
     source_name: Option<String>,
     geometry_checked: std::time::Instant,
+    black_streak: u8,
 }
 
 #[cfg(target_os = "windows")]
@@ -80,10 +81,42 @@ impl GdiCapture {
             source_name: crate::desktop_geometry::monitor_rect(nama_perangkat)
                 .map(|_| nama_perangkat.to_owned()),
             geometry_checked: std::time::Instant::now(),
+            black_streak: 0,
         })
     }
     pub fn capture_rect(&self) -> crate::desktop_geometry::CaptureRect {
         self.dalam.rect
+    }
+
+    /// Beralih dari DC monitor ke desktop DC bila driver layar RDP
+    /// mengembalikan frame hitam tanpa error. GetDC(0) adalah jalur kedua;
+    /// bila desktop memang terkunci/salah sesi, telemetry tetap menandainya.
+    fn sample_luma(rgba: &[u8]) -> u8 {
+        let mut sum = 0u64;
+        let mut count = 0u64;
+        for i in (0..rgba.len()).step_by(4096 * 4) {
+            if i + 2 >= rgba.len() {
+                break;
+            }
+            sum += (u64::from(rgba[i]) + u64::from(rgba[i + 1]) + u64::from(rgba[i + 2])) / 3;
+            count += 1;
+        }
+        if count == 0 {
+            255
+        } else {
+            (sum / count) as u8
+        }
+    }
+
+    fn fallback_to_desktop_dc(&mut self) -> Result<(), String> {
+        let name = self.source_name.as_deref().unwrap_or("");
+        let handle = Handle::baru_fallback(name, 0, 0)?;
+        self.width = handle.width as usize;
+        self.height = handle.height as usize;
+        self.rgba = Vec::with_capacity(self.width * self.height * 4);
+        self.dalam = handle;
+        self.geometry_checked = std::time::Instant::now();
+        Ok(())
     }
 
     /// Lebar frame dalam piksel — setelah fallback bisa berubah dari yang diminta.
@@ -122,6 +155,18 @@ impl GdiCapture {
         }
         let bgra = self.dalam.ambil()?;
         crate::pixfmt::bgra_to_rgba(bgra, &mut self.rgba);
+        let luma = Self::sample_luma(&self.rgba);
+        if luma < 8 {
+            self.black_streak = self.black_streak.saturating_add(1);
+            if self.black_streak == 15 && !self.dalam.is_fallback {
+                match self.fallback_to_desktop_dc() {
+                    Ok(()) => eprintln!("[xydesk-host] GDI monitor-DC memberi frame hitam 15 kali; beralih ke desktop-DC GetDC(0)"),
+                    Err(error) => eprintln!("[xydesk-host] GDI monitor-DC hitam; fallback desktop-DC gagal: {error}"),
+                }
+            }
+        } else {
+            self.black_streak = 0;
+        }
         // Sampel pojok bukan bukti seluruh desktop hitam atau sesi terkunci.
         if self.rgba.len() >= 4 && self.rgba.iter().take(100).all(|&b| b == 0) {
             // Cek 100 byte pertama saja — cepat, cukup untuk deteksi.

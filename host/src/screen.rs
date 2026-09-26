@@ -934,6 +934,16 @@ pub fn capture_telemetry() -> serde_json::Value {
     } else {
         "capturing"
     };
+    #[cfg(target_os = "windows")]
+    let (black_frames, session_mismatch, process_session, active_session) = (
+        capture_health::BLACK_FRAMES.load(std::sync::atomic::Ordering::Relaxed),
+        capture_health::SESSION_MISMATCH.load(std::sync::atomic::Ordering::Relaxed),
+        capture_health::PROC_SESSION.load(std::sync::atomic::Ordering::Relaxed),
+        capture_health::ACTIVE_SESSION.load(std::sync::atomic::Ordering::Relaxed),
+    );
+    #[cfg(not(target_os = "windows"))]
+    let (black_frames, session_mismatch, process_session, active_session) =
+        (false, false, u32::MAX, u32::MAX);
     serde_json::json!({
         "state": state,
         "backend": backend_label(),
@@ -941,6 +951,10 @@ pub fn capture_telemetry() -> serde_json::Value {
         "framesCapturedTotal": frames_captured(),
         "armed": capture_armed(),
         "rdp": is_rdp_session(),
+        "blackFrames": black_frames,
+        "sessionMismatch": session_mismatch,
+        "processSession": if process_session == u32::MAX { serde_json::Value::Null } else { serde_json::json!(process_session) },
+        "activeSession": if active_session == u32::MAX { serde_json::Value::Null } else { serde_json::json!(active_session) },
         "lastError": error,
     })
 }

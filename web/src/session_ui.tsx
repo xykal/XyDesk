@@ -660,6 +660,8 @@ export function SessionPanel({
                 <StatRow label="Codec" value={stats.codec || '—'} />
                 <StatRow label="Status video" value={stats.videoState || '—'} />
                 <StatRow label="Capture host" value={capture ? `${capture.state} · ${capture.backend} · ${capture.framesCaptured} frame${capture.lastError ? ` · ${capture.lastError}` : ''}` : 'Menunggu meta host'} />
+                {capture?.sessionMismatch && <p className="spanel-note" role="alert">Host berjalan di sesi Windows {capture.processSession ?? '—'}, tetapi desktop aktif ada di sesi {capture.activeSession ?? '—'}. Capture lintas sesi bisa menghasilkan layar hitam. Jalankan host dari desktop RDP yang sedang aktif.</p>}
+                {!capture?.sessionMismatch && capture?.blackFrames && <p className="spanel-note" role="alert">Host menerima frame, tetapi sampelnya hitam. Desktop mungkin terkunci/secure desktop atau backend capture membaca layar yang salah.</p>}
                 <StatRow label="Penunjuk kontrol" value={stats.cursorState || '—'} />
                 <StatRow label="Pemutar video" value={stats.playerState || '—'} />
                 <StatRow label="Ukuran pemutar" value={stats.playerSize || '—'} />

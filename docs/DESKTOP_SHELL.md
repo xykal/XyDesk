@@ -91,11 +91,11 @@ ke permukaan 32-bit lalu ditempelkan sebagai jendela berlapis
 - Tampil **sama di Windows 10 dan Windows 11** — bukan bergantung pada
   `DWMWA_WINDOW_CORNER_PREFERENCE` yang hanya ada di Windows 11 dan radiusnya
   tidak bisa diatur.
-- Sudut memakai **busur radius 16** (skala radius desain XyDesk 8/12/16/20,
-  lihat `docs/DESIGN.md`), tepinya dihaluskan dengan cakupan piksel — bukan
-  dipotong keras seperti `SetWindowRgn`.
-- Bayangan digambar aplikasi (sebaran 26 px, kekuatan 48%), jadi tepi jendela
-  tetap terbaca di dinding desktop gelap.
+- Sudut panel/kartu memakai **radius 10** dan kontrol radius 8 agar visual desktop
+  terasa lebih tegas, bukan terlalu membulat. Tepi dihaluskan dengan cakupan piksel,
+  bukan dipotong keras seperti `SetWindowRgn`.
+- Bayangan luar sengaja tidak dipakai agar jendela ringan dan bersih; kontras
+  permukaan panel dengan desktop menjadi batas visualnya.
 - Angka tata letak hidup di satu tempat: `packaging/native-host/layout.h`.
   Sumber yang sama dipakai menggambar, hit-test klik, urutan Tab, dan uji.
 - Jendela bisa digeser dari area judul (`WM_NCHITTEST` → `HTCAPTION`), dan
@@ -114,10 +114,10 @@ python tool/check_panel_shape.py panel.bmp                  # baca per piksel
 ```
 
 `--panel-snapshot` menulis panel apa adanya sebagai BMP 32-bit; pemeriksanya
-membuktikan sudut benar-benar busur radius 16, tepinya punya piksel cakupan
-sebagian (bukti penghalusan), dan bayangan memudar habis di dalam margin.
+membuktikan sudut benar-benar busur radius 10, tepinya punya piksel cakupan
+sebagian (bukti penghalusan), dan permukaan tetap opak.
 Tata letak angkanya juga diuji tanpa Windows di
-`packaging/tests/test-native-panel-layout.sh` (79 pemeriksaan, jalan di job
+`packaging/tests/test-native-panel-layout.sh` (114 pemeriksaan, jalan di job
 `Uji Logika Host (Rust)`).
 
 ## Pengembangan & Build

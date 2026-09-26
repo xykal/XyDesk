@@ -57,7 +57,7 @@ def main() -> int:
     parser.add_argument("--panel-width", type=int, default=560)
     parser.add_argument("--panel-height", type=int, default=568)
     parser.add_argument("--margin", type=int, default=24, help="margin bayangan (default 24)")
-    parser.add_argument("--radius", type=int, default=16, help="radius sudut (default 16)")
+    parser.add_argument("--radius", type=int, default=10, help="radius sudut (default 10)")
     parser.add_argument("--background", default="14,16,22", help="warna panel 'R,G,B' (default 14,16,22)")
     args = parser.parse_args()
 

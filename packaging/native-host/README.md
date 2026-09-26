@@ -19,9 +19,9 @@ and any explicitly verified support DLLs.
 
 Panel tidak memakai caption, border, atau pembulatan bawaan Windows. Jendelanya
 `WS_POPUP` berlapis (`WS_EX_LAYERED`), isinya digambar ke permukaan 32-bit lalu
-ditempelkan dengan `UpdateLayeredWindow`. Sudut membulat radius 16, sisi
-dihaluskan dengan cakupan piksel, dan bayangan digambar aplikasi sendiri — sama
-persis di Windows 10 maupun Windows 11. Rincian desain ada di
+ditempelkan dengan `UpdateLayeredWindow`. Sudut panel/kartu radius 10 dan kontrol
+radius 8 memberi bentuk lebih tegas; warna Paper, aksen ungu, dan permukaan lembut
+mengikuti client web. Tepi dihaluskan dengan cakupan piksel — sama di Windows 10/11. Rincian desain ada di
 `docs/DESKTOP_SHELL.md`.
 
 Tata letaknya hidup di `layout.h` (murni angka, tanpa API Windows) supaya angka

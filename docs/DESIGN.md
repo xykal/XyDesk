@@ -108,9 +108,11 @@ Web pindah dari 10/14/20; kartu disatukan ke peran 16.
 | tombol keyboard virtual | 3 (sengaja hampir kotak) | `3px` + komentar `R.key` | — (tidak ada keyboard virtual) |
 | pil | 999 | `999px` | `999px` / `--r-pill` |
 
-Peran bentuk per komponen (disatukan Sep 2026): kartu/kartu berita/dialog/popover/
+Peran bentuk per komponen (disatukan Sep 2026): web/app, kartu/kartu berita/dialog/popover/
 panel modal = 16; input field + tombol CSS + tab strip + segmen = 12; chip kecil,
 badge, tab aktif = 8; chip filter/kategori = pil; tombol keyboard virtual = 3.
+Penyimpangan khusus panel native Windows (panel/kartu 10, kontrol 8) dicatat di
+`docs/DESKTOP_SHELL.md`: bentuk desktop sengaja lebih tegas dan minim pembulatan.
 
 BELUM disatukan (butuh mata operator, jangan diam-diam): **tombol aplikasi = pil
 penuh** (`StadiumBorder`) sementara tombol web/desktop = 12; **input aplikasi =

@@ -225,7 +225,7 @@ export interface HostMeta {
   inputGeometry?: {left:number;top:number;width:number;height:number}|null;
   hardware?: Record<string, unknown>;
   video?: {level:number;requested:number;applied:[number,number]|null;contentRect?:[number,number,number,number]|null;fpsLimit:number;fpsControl?:boolean;fpsRequested?:number};
-  capture?: {state:string;backend:string;framesCaptured:number;framesCapturedTotal:number;armed:boolean;rdp:boolean;lastError?:string|null};
+  capture?: {state:string;backend:string;framesCaptured:number;framesCapturedTotal:number;armed:boolean;rdp:boolean;blackFrames?:boolean;sessionMismatch?:boolean;processSession?:number|null;activeSession?:number|null;lastError?:string|null};
   displays: HostDisplay[];
   wanted: number;
   audio: { available: boolean; pipeline: string };

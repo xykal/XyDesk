@@ -648,7 +648,6 @@ std::wstring targetLabel(Target target) {
 void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     const Rect& card = layout.statusCard;
     fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
-    strokeRounded(surface, card, layout.radiusCard, kEdge, 1);
 
     const COLORREF dotColor = g.statusColor;
     fillCircleOpaque(surface, Rect{layout.statusDot.x - 4, layout.statusDot.y - 4, layout.statusDot.w + 8, layout.statusDot.h + 8},
@@ -667,7 +666,6 @@ void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
 void paintIdentityCard(Surface& surface, const PanelLayout& layout, HDC dc, const Rect& card, const Rect& label,
     const Rect& value, const Rect& copy, const wchar_t* labelText, const std::wstring& valueText, Target copyTarget) {
     fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
-    strokeRounded(surface, card, layout.radiusCard, kEdge, 1);
     drawTextLine(dc, labelText, label, g.fontCaps, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
     const bool hasValue = !valueText.empty();
@@ -967,7 +965,6 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
 // Kartu kesehatan capture: jujur soal backend dan layar hitam/sesi berbeda.
 void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface2);
-    strokeRounded(surface, layout.captureCard, layout.radiusCard, kEdge, 1);
     drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontCaps, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     const std::wstring line1 = g.captureBackend.empty()

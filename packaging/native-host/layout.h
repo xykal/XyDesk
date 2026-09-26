@@ -21,11 +21,11 @@
 
 namespace xydesk::panel {
 
-// Sudut membulat: radius 16 untuk permukaan dan kartu, 12 untuk kontrol,
-// mengikuti skala radius desain XyDesk (8/12/16/20, lihat docs/DESIGN.md).
-constexpr int kRadiusPanel = 16;
-constexpr int kRadiusCard = 16;
-constexpr int kRadiusControl = 12;
+// Bentuk desktop lebih tegas daripada mobile: panel dan kartu 10px,
+// kontrol 8px. Siluet tetap halus tetapi tidak terasa seperti kumpulan pil.
+constexpr int kRadiusPanel = 10;
+constexpr int kRadiusCard = 10;
+constexpr int kRadiusControl = 8;
 
 // Tanpa bayangan: jendela pas sebesar panel (permintaan pemilik). Konstanta
 // bayangan dibiarkan 0 supaya pemakai lama tetap kompilasi.
