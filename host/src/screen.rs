@@ -1019,8 +1019,8 @@ pub mod capture_health {
     /// aktif" dan membuat peringatan salah arah.
     unsafe fn active_screen_session() -> u32 {
         use windows::Win32::System::RemoteDesktop::{
-            WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId, WTSWinStationName,
-            WTS_SESSION_INFOW, WTSActive,
+            WTSActive, WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId,
+            WTSWinStationName, WTS_SESSION_INFOW,
         };
         let mut list: *mut WTS_SESSION_INFOW = std::ptr::null_mut();
         let mut count: u32 = 0;
