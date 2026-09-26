@@ -225,6 +225,11 @@ struct Args {
 
     #[arg(long, value_name = "PORT", default_value_t = 0)]
     control_port: u16,
+    /// Berjalan dari login semua sesi interaktif (HKLM Run): lewat gerbang
+    /// kepemimpinan lintas sesi — bila sesi ini tidak memegang layar aktif,
+    /// standby senyap dan menunggu takeover otomatis.
+    #[arg(long)]
+    autostart: bool,
 }
 
 /// Meta JSON untuk client (layar + audio host) — dikirim lewat data channel
@@ -443,6 +448,40 @@ async fn main() -> Result<()> {
         anyhow::bail!("--token or --managed-auth required");
     }
 
+    // ── Kepemimpinan lintas sesi: satu leader, sisanya standby ────────
+    // Mesin VPS/RDP bisa menjalankan host di beberapa sesi (installer
+    // mendaftarkan startup tiap login interaktif). Hanya instance di sesi
+    // pemegang layar aktif yang boleh leader; yang lain standby dan mengambil
+    // alih otomatis saat giliran mereka — serah terima senyap lewat mutex
+    // bernama + berkas stepdown, tanpa kedip pindah sesi.
+    xydesk_host::screen::evaluate_sessions_now();
+    let mut sessiku = xydesk_host::screen::proc_session();
+    let mut sesi_aktif = xydesk_host::screen::active_session();
+    let mut pemimpin = xydesk_host::leadership::langsung_leader(sessiku, sesi_aktif)
+        && xydesk_host::leadership::coba_mutex();
+    if !pemimpin {
+        eprintln!(
+            "[xydesk-host] standby: sesi proses {sessiku} bukan pemegang layar aktif              ({sesi_aktif}); menunggu takeover senyap…"
+        );
+    }
+    while !pemimpin {
+        if sessiku == sesi_aktif {
+            // Sesi sudah benar tetapi mutex masih dipegang instance di sesi
+            // lama: minta baik-baik supaya turun.
+            xydesk_host::leadership::minta_stepdown(sessiku);
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        xydesk_host::screen::evaluate_sessions_now();
+        sessiku = xydesk_host::screen::proc_session();
+        sesi_aktif = xydesk_host::screen::active_session();
+        pemimpin = xydesk_host::leadership::boleh_promosi(
+            sessiku,
+            sesi_aktif,
+            xydesk_host::leadership::coba_mutex(),
+        );
+    }
+    xydesk_host::leadership::hapus_stepdown();
+
     // ── Control API lokal (panel native C++: packaging/native-host/) ──
     // Keadaan mesin ini dibagikan ke loop signaling di bawah DAN ke server
     // HTTP (lihat control.rs). Token dicetak sekali — hanya shell yang
@@ -602,6 +641,7 @@ async fn main() -> Result<()> {
         let mut heartbeat = tokio::time::interval(std::time::Duration::from_secs(20));
         heartbeat.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
         let mut last_received = std::time::Instant::now();
+        let mut lead_tick = tokio::time::interval(std::time::Duration::from_secs(2));
         loop {
             let incoming = tokio::select! {
                 next=ws.next()=>next,
@@ -619,6 +659,27 @@ async fn main() -> Result<()> {
                         }
                     }
                     if send_msg(&mut ws,&Msg{kind:"ping".into(),..Default::default()}).await.is_err(){break;}
+                    continue;
+                },
+                _=lead_tick.tick()=>{
+                    // Takeover lintas sesi: bila layar aktif pindah ke sesi
+                    // lain dan instance di sana meminta kepemimpinan, turunkan
+                    // diri dan keluar — instance baru melanjutkan.
+                    xydesk_host::screen::evaluate_sessions_now();
+                    let me = xydesk_host::screen::proc_session();
+                    let act = xydesk_host::screen::active_session();
+                    if xydesk_host::leadership::harus_turun(
+                        me,
+                        act,
+                        xydesk_host::leadership::baca_stepdown(),
+                    ) {
+                        eprintln!(
+                            "[xydesk-host] takeover: layar aktif pindah ke sesi {act};                              instance ini turun dan keluar"
+                        );
+                        xydesk_host::leadership::lepas_mutex();
+                        xydesk_host::leadership::hapus_stepdown();
+                        return Ok(());
+                    }
                     continue;
                 }
             };

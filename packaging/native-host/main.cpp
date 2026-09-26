@@ -159,6 +159,7 @@ struct AppState {
     // jujur soal layar hitam / sesi berbeda.
     std::wstring captureBackend;
     std::wstring captureNote;
+    std::wstring captureNote2;
     bool captureWarn = false;
     bool captureSeen = false;
     bool sessionMismatch = false;
@@ -341,24 +342,27 @@ void readCaptureStatus() {
     const int procSession = jsonNumber(json, "proc_session");
     const int activeSession = jsonNumber(json, "active_session");
     std::wstring note;
+    std::wstring note2;
     if (mismatch) {
         // Menunjuk persis: host hidup sebagai siapa di sesi mana, layar aktif
-        // milik siapa — dan apa yang harus dilakukan (tanpa trik pindah sesi;
-        // pemilik menolak, dan antar-user memang tidak mungkin user-mode).
+        // milik siapa. Sejak ronde 7 host terdaftar startup di semua sesi dan
+        // instance sesi aktif mengambil alih otomatis (takeover senyap);
+        // tombol di kartu ini cuma jalan pintas bila takeover belum terjadi.
         note = L"Host jalan sebagai " + (procUser.empty() ? L"?" : procUser) +
-            L" (sesi " + std::to_wstring(procSession) + L"); layar aktif milik " +
+            L" (sesi " + std::to_wstring(procSession) + L"); layar ini milik " +
             (activeUser.empty() ? L"?" : activeUser) + L" (sesi " +
-            std::to_wstring(activeSession) +
-            L"). Capture antar-sesi selalu hitam: tutup XyDesk di sesi lama, jalankan dari sesi " +
-            (activeUser.empty() ? L"aktif" : activeUser) + L".";
+            std::to_wstring(activeSession) + L"). Capture antar-sesi selalu hitam.";
+        note2 = L"Instance di sesi ini mengambil alih otomatis bila host terdaftar startup — atau jalankan sekarang:";
     } else if (jsonFlag(json, "black_frames")) {
         note = L"Capture menghasilkan frame hitam — layar mungkin terkunci atau di secure desktop. Buka kunci PC host.";
     }
     if (backend != g.captureBackend || warn != g.captureWarn || note != g.captureNote ||
+        note2 != g.captureNote2 ||
         mismatch != g.sessionMismatch || procUser != g.procUser || activeUser != g.activeUser) {
         g.captureBackend = backend;
         g.captureWarn = warn;
         g.captureNote = note;
+        g.captureNote2 = note2;
         g.sessionMismatch = mismatch;
         g.procUser = procUser;
         g.activeUser = activeUser;
@@ -600,7 +604,7 @@ struct ButtonPalette {
 ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed, const PanelLayout& layout) {
     const int radius = layout.radiusControl;
     if (!enabled) return ButtonPalette{kSurface, kDisabled, radius, false};
-    if (target == Target::Start) {
+    if (target == Target::Start || target == Target::RunHost) {
         if (pressed) return ButtonPalette{kAccentPressed, kOnAccent, radius, false};
         if (hot) return ButtonPalette{kAccentHover, kOnAccent, radius, false};
         return ButtonPalette{kAccent, kOnAccent, radius, false};
@@ -632,6 +636,7 @@ std::wstring targetLabel(Target target) {
     case Target::Restart: return L"Restart";
     case Target::Web: return L"Buka XyDesk Web";
     case Target::OpenLog: return L"Buka log host";
+    case Target::RunHost: return L"Jalankan host di sesi ini";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     default: return L"";
@@ -974,6 +979,11 @@ void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
         : std::wstring(L"Tidak ada masalah terdeteksi — frame langsung dari sesi aktif.");
     drawTextLine(dc, line2, layout.captureLine2, g.fontSmall, g.captureWarn ? kWarn : kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    if (g.sessionMismatch) {
+        drawTextLine(dc, g.captureNote2, layout.captureLine3, g.fontSmall, kWarn,
+            DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        paintButton(surface, layout, dc, Target::RunHost, layout.runHost);
+    }
 }
 
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
@@ -1009,6 +1019,7 @@ PanelLayout shiftedContent(const PanelLayout& l, int dx) {
     const auto shift = [dx](Rect& r) { r.x += dx; };
     shift(s.statusCard); shift(s.statusDot); shift(s.statusLine1); shift(s.statusLine2);
     shift(s.captureCard); shift(s.captureTitle); shift(s.captureLine1); shift(s.captureLine2);
+    shift(s.captureLine3); shift(s.runHost);
     shift(s.idCard); shift(s.idLabel); shift(s.idValue); shift(s.idCopy);
     shift(s.passwordCard); shift(s.passwordLabel); shift(s.passwordValue); shift(s.passwordCopy);
     shift(s.start); shift(s.stop); shift(s.restart); shift(s.web); shift(s.openLog);
@@ -1439,6 +1450,16 @@ void activateTarget(HWND hwnd, Target target) {
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
+    case Target::RunHost:
+        // Jalan pintas takeover: mulai instance host di sesi panel ini
+        // (peluncur resmi: job object + identitas). Instance tersebut akan
+        // meminta leader lama turun lewat berkas stepdown dan mengambil alih.
+        if (startHost()) {
+            setFlash(L"Host dijalankan di sesi ini — menunggu takeover…", kAccent);
+        } else {
+            setStatus(g.lastError.empty() ? L"Gagal memulai host di sesi ini." : g.lastError, kBad);
+        }
+        break;
     case Target::PageStatus:
         goPage(hwnd, Page::Status);
         break;
@@ -1481,6 +1502,7 @@ std::vector<Target> focusOrder() {
         order.push_back(Target::OpenLog);
         break;
     case Page::Status:
+        if (g.sessionMismatch) order.push_back(Target::RunHost);
         break;
     }
     order.push_back(Target::Minimize);
@@ -1634,7 +1656,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_LBUTTONDOWN: {
-        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam), g.sessionMismatch);
         if (target != Target::None && target != Target::TitleBar && targetEnabled(target)) {
             g.pressed = target;
             SetCapture(hwnd);
@@ -1644,7 +1666,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     }
 
     case WM_LBUTTONUP: {
-        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam), g.sessionMismatch);
         const Target pressed = g.pressed;
         g.pressed = Target::None;
         if (GetCapture() == hwnd) ReleaseCapture();
@@ -1658,7 +1680,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
 
     case WM_LBUTTONDBLCLK: {
         // Kebiasaan Windows: dua klik di area judul = perbesar/pulihkan.
-        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam));
+        const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam), g.sessionMismatch);
         if (target == Target::TitleBar) {
             toggleMaximize(hwnd);
             return 0;
@@ -1906,6 +1928,9 @@ int runPanelSnapshot(const std::wstring& path) {
     g.page = xydesk::panel::Page::Status;
     g.captureBackend = L"gdi-bitblt · sesi aktif";
     g.captureSeen = true;
+    // Bila berkas kesehatan engine ada (mesin sungguhan / uji lapangan),
+    // pakai isinya supaya snapshot mencerminkan keadaan nyata.
+    readCaptureStatus();
     if (!drawPanelToSurface()) return 4;
 
     const Surface& surface = g.surface;

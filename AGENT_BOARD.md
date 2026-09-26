@@ -80,7 +80,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | Ronde 5: WebView2 dicabut sesuai perintah; panel native desain Paper (ikut web: putih + ungu #7c3aed), bisa ditarik 4 arah 720x480-1600x1100, sidebar kolom overlay; website dirapikan (dup CSS dilebur, radius diseragamkan). Ronde 6: deteksi "layar aktif" diperbaiki — sesi RDP aktif didahulukan atas konsol auto-login (panel tak lagi menuduh runneradmin pemilik layar saat owner di RDP; nama user asli disebut); isi dalam dirapikan: ikon sidebar digambar ulang (denyut kompak, gembok pairing, slider bernapas), hierarki font (kaps semibold, nilai besar Consolas), padding kartu diseragamkan; gerbang 4 hijau + 114 cek tata letak | 2026-09-26 |
+| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | Ronde 5: WebView2 dicabut; panel Paper + resize 4 arah; web dirapikan. Ronde 6: deteksi layar aktif dahulukan RDP + rapikan ikon/font. Ronde 7 (permintaan "support semua vps rdp vm pc fisik"): kepemimpinan lintas sesi — installer daftar startup tiap login (HKCU Run), instance di sesi layar aktif jadi leader, takeover senyap mutex+stepdown, panel dapat kartu jujur + tombol jalankan host di sesi ini; mode HD tanpa bar letterbox untuk layar lebar (1948x900); gerbang lokal hijau (fmt/clippy/182 test Rust, 114 cek layout, probe/shape/teks) | 2026-09-26 |
 
 ## Antrean izin push
 

@@ -91,6 +91,17 @@ def main() -> None:
         "      </Component>"
     )
 
+    # Startup host per pemakai (HKCU Run): tiap login interaktif memulai
+    # instance host; kepemimpinan lintas sesi menentukan leader. Nilai
+    # registry ditulis komponen ini dan ikut terhapus saat uninstall.
+    component_xml.append(
+        "      <Component Id=\"cmp_AutoStart\" Directory=\"INSTALLFOLDER\" Guid=\"*\">\n"
+        "        <RegistryValue Root=\"HKCU\" Key=\"Software\\Microsoft\\Windows\\CurrentVersion\\Run\"\n"
+        "                       Name=\"XyDeskHost\" Type=\"string\"\n"
+        "                       Value=\"&quot;[INSTALLFOLDER]xydesk-host.exe&quot; --managed-auth --autostart\" KeyPath=\"yes\" />\n"
+        "      </Component>"
+    )
+
     output = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">

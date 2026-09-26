@@ -964,6 +964,32 @@ pub fn is_rdp_session() -> bool {
     }
 }
 
+/// Sesi Windows tempat proses host ini berjalan (u32::MAX di luar Windows).
+pub fn proc_session() -> u32 {
+    #[cfg(target_os = "windows")]
+    {
+        return capture_health::PROC_SESSION.load(std::sync::atomic::Ordering::Relaxed);
+    }
+    #[cfg(not(target_os = "windows"))]
+    u32::MAX
+}
+
+/// Sesi pemegang layar aktif menurut deteksi terakhir (u32::MAX di luar Windows).
+pub fn active_session() -> u32 {
+    #[cfg(target_os = "windows")]
+    {
+        return capture_health::ACTIVE_SESSION.load(std::sync::atomic::Ordering::Relaxed);
+    }
+    #[cfg(not(target_os = "windows"))]
+    u32::MAX
+}
+
+/// Hitung ulang sesi proses vs sesi pemegang layar (no-op di luar Windows).
+pub fn evaluate_sessions_now() {
+    #[cfg(target_os = "windows")]
+    capture_health::evaluate_sessions();
+}
+
 // ── Kesehatan capture: diagnosa jujur untuk "layar hitam" ───────────────
 // Dua penyebab klasik layar hitam di client padahal koneksi hijau: (1) proses
 // host hidup di sesi yang berbeda dari sesi yang memegang layar (RDP: BitBlt
@@ -1121,7 +1147,7 @@ pub mod capture_health {
         let body = format!(
             "{{\"backend\":\"{backend}\",\"black_frames\":{},\"session_mismatch\":{},\
              \"proc_session\":{},\"active_session\":{},\"proc_user\":\"{proc_user}\",\
-             \"active_user\":\"{active_user}\",\"rdp\":{}}}",
+             \"active_user\":\"{active_user}\",\"rdp\":{},\"role\":\"leader\"}}",
             BLACK_FRAMES.load(Ordering::Relaxed),
             SESSION_MISMATCH.load(Ordering::Relaxed),
             PROC_SESSION.load(Ordering::Relaxed),

@@ -87,6 +87,7 @@ enum class Target {
     Restart,
     Web,
     OpenLog,
+    RunHost,
 };
 
 inline const char* targetName(Target target) {
@@ -105,6 +106,7 @@ inline const char* targetName(Target target) {
     case Target::Restart: return "Restart";
     case Target::Web: return "Web";
     case Target::OpenLog: return "OpenLog";
+    case Target::RunHost: return "RunHost";
     default: return "None";
     }
 }
@@ -155,6 +157,8 @@ struct PanelLayout {
     Rect captureTitle{};
     Rect captureLine1{};
     Rect captureLine2{};
+    Rect captureLine3{};
+    Rect runHost{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -288,6 +292,8 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     l.captureTitle = Rect{l.captureCard.x + px(20), l.captureCard.y + px(12), contentW - px(40), px(16)};
     l.captureLine1 = Rect{l.captureCard.x + px(20), l.captureTitle.bottom() + px(6), contentW - px(40), px(18)};
     l.captureLine2 = Rect{l.captureCard.x + px(20), l.captureLine1.bottom() + px(3), contentW - px(40), px(18)};
+    l.captureLine3 = Rect{l.captureCard.x + px(20), l.captureLine2.bottom() + px(2), contentW - px(40), px(18)};
+    l.runHost = Rect{l.captureCard.x + px(20), l.captureLine3.bottom() + px(10), px(252), px(34)};
 
     // Halaman Pairing: dua kartu identitas.
     const int cardH = px(84);
@@ -336,6 +342,8 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::Web:
     case Target::OpenLog:
         return page == Page::Control;
+    case Target::RunHost:
+        return page == Page::Status;
     default:
         return true;
     }
@@ -343,7 +351,7 @@ inline bool targetOnPage(Target target, Page page) {
 
 // Sasaran klik di koordinat klien jendela. Tombol diperiksa lebih dulu
 // supaya tombol caption di dalam area judul tetap menang.
-inline Target targetAt(const PanelLayout& l, Page page, int x, int y) {
+inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showRunHost) {
     if (l.minimizeButton.contains(x, y)) return Target::Minimize;
     if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;
@@ -359,8 +367,15 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y) {
         if (l.web.contains(x, y)) return Target::Web;
         if (l.openLog.contains(x, y)) return Target::OpenLog;
     }
+    if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
+        return Target::RunHost;
+    }
     if (l.titleBar.contains(x, y)) return Target::TitleBar;
     return Target::None;
+}
+
+inline Target targetAt(const PanelLayout& l, Page page, int x, int y) {
+    return targetAt(l, page, x, y, false);
 }
 
 // ── Rasterisasi lembut ──

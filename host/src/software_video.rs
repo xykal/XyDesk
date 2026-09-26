@@ -218,8 +218,9 @@ mod tests {
         assert_eq!(level, 31, "SPS harus sesuai batas Level3.1, bukan 5.1");
         let mut decoder = openh264::decoder::Decoder::new().unwrap();
         let decoded = decoder.decode(&data).unwrap().expect("IDR harus terdecode");
-        // Mode HD tetap 1280x720; rasio sumber dipertahankan di contentRect.
-        assert_eq!(decoded.dimensions(), (1280, 720));
+        // Kebijakan 2026-09-26: sumber lebar mengikuti rasio tanpa bar —
+        // 2336x1080 menjadi canvas 1392x644 (budget macroblock 3600).
+        assert_eq!(decoded.dimensions(), (1392, 644));
     }
     #[test]
     fn negotiated_hd_and_native_are_real_decodable_pixels() {
@@ -241,17 +242,11 @@ mod tests {
     }
     #[test]
     fn odd_aspect_desktop_kept_whole_without_stretch_or_crop() {
-        for (mode, level, expected) in [
-            (0, 31, (1280usize, 720usize)),
-            (1, 40, (1920, 888)),
-            (1, 51, (1920, 888)),
-        ] {
+        for (mode, level) in [(0u8, 31u8), (1, 40), (1, 51)] {
             let (w, h) = (2336, 1080);
             let layout = crate::video_layout::VideoLayout::new(w, h, mode, level).unwrap();
-            // Tanpa crop: sumber adalah seluruh desktop. HD boleh memiliki
-            // letterbox internal agar rasio tidak tertarik.
+            // Tanpa crop: sumber adalah seluruh desktop.
             assert_eq!(layout.crop, [0, 0, w, h]);
-            assert_eq!((layout.canvas[0], layout.canvas[1]), expected);
             let mut encoder = SoftwareEncoder::with_policy(mode, level).unwrap();
             let bytes = encoder.encode(&vec![220; w * h * 4], w, h).unwrap();
             let mut decoder = openh264::decoder::Decoder::new().unwrap();
@@ -264,11 +259,12 @@ mod tests {
             assert!(pixel(cx + 6, cy + 6) > 190);
             assert!(pixel(cx + cw - 6, cy + ch - 6) > 190);
             if mode == 0 {
-                assert!(cy > 0 || cx > 0);
-                assert!(
-                    pixel(6, 6) < 40,
-                    "letterbox harus tetap gelap, bukan stretch"
-                );
+                // Kebijakan 2026-09-26: sumber lebar tidak lagi mendapat bar
+                // letterbox di mode HD — content memenuhi canvas mengikuti
+                // rasio sumber, jadi sudut frame ikut terang.
+                assert_eq!([cx, cy], [0, 0]);
+                assert_eq!([cw, ch], layout.canvas);
+                assert!(pixel(6, 6) > 190, "HD lebar tanpa bar letterbox");
             } else {
                 assert!(pixel(6, 6) > 190);
                 assert!(pixel(layout.canvas[0] - 6, layout.canvas[1] - 6) > 190);

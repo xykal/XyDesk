@@ -1,24 +1,31 @@
-//! Encoded canvas that carries the WHOLE desktop — tanpa stretch, tanpa crop.
+//! Canvas encode yang memuat SELURUH desktop — tanpa stretch, tanpa crop.
 //!
 //! Keputusan operator 2026-09-20 (menggantikan kebijakan crop 2026-09-19):
-//! frame tidak boleh menarik atau memotong desktop. Letterbox internal
-//! diperbolehkan pada mode HD agar canvas tetap 1280x720.
+//! frame tidak boleh menarik atau memotong desktop. Sejak 2026-09-26 mode HD
+//! tidak lagi memasang bar letterbox untuk sumber lebar (kasus lapangan VPS
+//! RDP 1948x900 yang dikeluhkan pemilik): canvas mengikuti rasio sumber dengan
+//! tinggi 720 selama budget macroblock level memungkinkan, di bawah itu
+//! mengecil proporsional — rasio selalu aman. Sumber sempit (lebih tinggi dari
+//! 16:9) tetap memakai canvas 1280x720 dengan letterbox internal karena batas
+//! macroblock 3600 tidak memuat kotak minimum yang lebih tinggi pada rasio
+//! itu; input memakai contentRect sehingga area hitam tidak menerima klik.
 //! Host meminta mode desktop 16:9 yang didukung secara otomatis (lihat
-//! desktop_mode.rs); bila desktop tetap bukan 16:9, frame dikirim pada rasio
-//! asli desktop, dipetakan ke canvas mode/level tanpa crop atau stretch. Mode HD
-//! (720p) selalu memakai canvas minimum 1280x720 — termasuk bila sumbernya
-//! lebih kecil atau ber-aspek sedikit berbeda — agar tinggi output tidak pernah
-//! turun di bawah 720. Mode lain tidak mengarang detail.
+//! desktop_mode.rs); bila desktop tetap bukan 16:9, aturan di atas berlaku.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
 pub struct VideoLayout {
     pub canvas: [usize; 2],
-    /// Area frame ter-encode yang memuat desktop. Pada HD 720p area ini
+    /// Area frame ter-encode yang memuat desktop. Pada sumber sempit area ini
     /// dipusatkan di canvas 1280x720 agar rasio sumber tidak tertarik.
     pub content: [usize; 4],
     /// Area desktop sumber dalam piksel desktop: selalu seluruh desktop,
     /// karena tidak ada crop yang boleh terjadi. left, top, width, height.
     pub crop: [usize; 4],
 }
+
+fn macroblock(dims: [usize; 2]) -> usize {
+    dims[0].div_ceil(16) * dims[1].div_ceil(16)
+}
+
 impl VideoLayout {
     pub fn new(width: usize, height: usize, mode: u8, level: u8) -> Result<Self, String> {
         if width < 2 || height < 2 {
@@ -31,21 +38,38 @@ impl VideoLayout {
         } else {
             (1920, 1080)
         };
-        // Mode HD adalah kontrak canvas 1280x720, tetapi isi desktop tetap
-        // mempertahankan rasio agar gambar tidak tertarik ke atas/bawah.
-        // Canvas boleh memiliki letterbox internal; input memakai contentRect
-        // sehingga area hitam tidak menerima klik.
-        let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
-        let scale = if mode == 0 { scale } else { scale.min(1.0) };
-        let canvas = if mode == 0 {
+        let aspect = width as f64 / height as f64;
+        // Mode HD: sumber lebar (>= 16:9) mendapat canvas seurutan rasio —
+        // tanpa bar letterbox. Tinggi mulai 720; bila budget macroblock
+        // (3600, kontrak level HD) tidak cukup, mengecil proporsional.
+        let hd_lebar = mode == 0 && aspect >= 16.0 / 9.0;
+        let mut canvas = if hd_lebar {
+            let mut h = 720.0f64;
+            loop {
+                let w = h * aspect;
+                let dims = [(w as usize & !1).max(2), (h as usize & !1).max(2)];
+                if macroblock(dims) <= 3600 {
+                    break dims;
+                }
+                h -= 2.0;
+            }
+        } else if mode == 0 {
             [mw, mh]
         } else {
+            let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
+            let scale = if mode == 0 { scale } else { scale.min(1.0) };
             [
                 (((width as f64 * scale).round() as usize) & !1).max(2),
                 (((height as f64 * scale).round() as usize) & !1).max(2),
             ]
         };
-        let content = if mode == 0 {
+        if mode != 0 && macroblock(canvas) > 3600 && level < 40 {
+            canvas = [mw, mh];
+        }
+        let content = if hd_lebar || mode != 0 {
+            [0, 0, canvas[0], canvas[1]]
+        } else {
+            let scale = (mw as f64 / width as f64).min(mh as f64 / height as f64);
             let cw = (((width as f64 * scale).round() as usize) & !1)
                 .max(2)
                 .min(mw);
@@ -53,8 +77,6 @@ impl VideoLayout {
                 .max(2)
                 .min(mh);
             [(mw - cw) / 2, (mh - ch) / 2, cw, ch]
-        } else {
-            [0, 0, canvas[0], canvas[1]]
         };
         Ok(Self {
             canvas,
@@ -79,16 +101,36 @@ impl VideoLayout {
 mod tests {
     use super::*;
     #[test]
-    fn hd_minimum_tanpa_stretch_tanpa_crop() {
-        // Desktop lebar aneh: seluruhnya dipetakan ke HD tanpa ditarik atau dipotong.
+    fn hd_lebar_tanpa_bar_tanpa_stretch() {
+        // VPS RDP lebar (kasus lapangan 1948x900): canvas mengikuti rasio,
+        // seluruh frame adalah konten — tidak ada bar letterbox.
+        let r = VideoLayout::new(1948, 900, 0, 31).unwrap();
+        assert_eq!(r.content, [0, 0, r.canvas[0], r.canvas[1]]);
+        assert!(macroblock(r.canvas) <= 3600);
+        let aspek_canvas = r.canvas[0] as f64 / r.canvas[1] as f64;
+        assert!((aspek_canvas - 1948.0 / 900.0).abs() < 0.01);
+        // Selama budget macroblock cukup, tinggi HD 720 dipertahankan.
         assert_eq!(
-            VideoLayout::new(2336, 1080, 0, 51).unwrap(),
-            VideoLayout {
-                canvas: [1280, 720],
-                content: [0, 64, 1280, 592],
-                crop: [0, 0, 2336, 1080]
-            }
+            VideoLayout::new(1920, 1080, 0, 31).unwrap().canvas,
+            [1280, 720]
         );
+        // 16:9 murni tetap pas tanpa perubahan bentuk.
+        assert_eq!(
+            VideoLayout::new(940, 529, 0, 31).unwrap().canvas,
+            [1280, 720]
+        );
+    }
+    #[test]
+    fn hd_sempit_letterbox_internal() {
+        // Desktop tinggi: canvas HD 1280x720, konten dipusatkan tanpa stretch.
+        let r = VideoLayout::new(1080, 1920, 0, 31).unwrap();
+        assert_eq!(r.canvas, [1280, 720]);
+        assert_eq!(r.content[2] % 2, 0);
+        assert_eq!(r.content[3] % 2, 0);
+        assert!(r.content[2] < 1280 || r.content[3] < 720);
+    }
+    #[test]
+    fn mode_asli_tanpa_stretch_tanpa_crop() {
         assert_eq!(
             VideoLayout::new(2336, 1080, 1, 51).unwrap().canvas,
             [1920, 888]
@@ -107,8 +149,7 @@ mod tests {
                 crop: [0, 0, 1920, 1200]
             }
         );
-        // Mode 1080 tetap jujur untuk sumber kecil; mode 720 memenuhi
-        // kontrak HD agar RDP kecil seperti 940x529 tidak berhenti di 529p.
+        // Mode 1 jujur untuk sumber kecil; tidak mengarang detail.
         assert_eq!(
             VideoLayout::new(640, 360, 1, 51).unwrap(),
             VideoLayout {
@@ -116,15 +157,6 @@ mod tests {
                 content: [0, 0, 640, 360],
                 crop: [0, 0, 640, 360]
             }
-        );
-        assert_eq!(
-            VideoLayout::new(940, 529, 0, 31).unwrap().canvas,
-            [1280, 720]
-        );
-        // Desktop 16:9 murni tetap pas tanpa perubahan bentuk.
-        assert_eq!(
-            VideoLayout::new(1920, 1080, 1, 31).unwrap().canvas,
-            [1280, 720]
         );
         assert_eq!(
             VideoLayout::new(1920, 1080, 1, 40).unwrap().canvas,

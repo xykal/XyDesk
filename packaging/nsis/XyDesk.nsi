@@ -102,6 +102,9 @@ Section "XyDesk"
   WriteRegStr HKCU "${UNKEY}" "DisplayIcon" "$INSTDIR\xydesk.ico"
   WriteRegDWORD HKCU "${UNKEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNKEY}" "NoRepair" 1
+  # Startup host di setiap login interaktif pemakai ini (konsol maupun RDP):
+  # kepemimpinan lintas sesi memilih instance di sesi pemegang layar aktif.
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "XyDeskHost" '"$INSTDIR\xydesk-host.exe" --managed-auth --autostart'
 
   DetailPrint "Creating Desktop and Start Menu shortcuts..."
   CreateDirectory "$SMPROGRAMS\${PRODUCT}"
@@ -125,6 +128,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\${PRODUCT}"
 
   DeleteRegKey HKCU "${UNKEY}"
+  DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "XyDeskHost"
   DeleteRegKey HKCU "${INSTALLKEY}"
   Delete "$INSTDIR\Uninstall-XyDesk.exe"
   RMDir /r "$INSTDIR"
