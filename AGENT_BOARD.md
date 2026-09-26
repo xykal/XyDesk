@@ -80,7 +80,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | Ronde 4: pemilik masih nilai UI jelek + layar hitam karena host tetap di sesi runneradmin — panel kini berkulit WebView2 (panel.html: aurora, pill morphing, kartu glass, banner salah-sesi bernama user) dengan fallback GDI otomatis, loader WebView2 dibundel; panduan tegas jalankan dari sesi xyadmin | 2026-09-25 |
+| SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | Operator (lintas area; arahan pemilik "bebas aja" + permintaan installer Windows buat dites) | LAGI KERJA | Ronde 5: WebView2 dicabut sesuai perintah; panel native desain Paper (ikut web: putih + ungu #7c3aed), bisa ditarik 4 arah 720x480-1600x1100, sidebar kolom overlay; website dirapikan (dup CSS dilebur, radius diseragamkan) | 2026-09-25 |
 
 ## Antrean izin push
 

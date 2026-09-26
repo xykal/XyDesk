@@ -206,7 +206,17 @@ inline int scalePctFromDpi(int dpi) {
     return clampValue((dpi * 100 + 48) / 96, 75, 400);
 }
 
-inline PanelLayout computeLayout(int dpi) {
+// Ukuran panel boleh ditarik penggunanya (tepi kiri/kanan/atas/bawah).
+// `widthUnits`/`heightUnits` adalah satuan 96-DPI; semua rect konten dihitung
+// darinya sehingga tata letak menyesuaikan. Batas tarik ada di main.cpp
+// (WM_GETMINMAXINFO) — di sini angka berapa pun tetap menghasilkan geometri
+// yang sah.
+constexpr int kPanelMinWidth = 720;
+constexpr int kPanelMinHeight = 480;
+constexpr int kPanelMaxWidth = 1600;
+constexpr int kPanelMaxHeight = 1100;
+
+inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heightUnits = kPanelHeight) {
     const int s = scalePctFromDpi(dpi);
     const auto px = [s](int value) { return scaled(value, s); };
 
@@ -216,8 +226,8 @@ inline PanelLayout computeLayout(int dpi) {
     l.radiusCard = px(kRadiusCard);
     l.radiusControl = px(kRadiusControl);
 
-    const int panelW = px(kPanelWidth);
-    const int panelH = px(kPanelHeight);
+    const int panelW = px(clampValue(widthUnits, kPanelMinWidth, kPanelMaxWidth));
+    const int panelH = px(clampValue(heightUnits, kPanelMinHeight, kPanelMaxHeight));
     const int pad = px(kPadding);
     const int gap = px(kGap);
     l.window = Rect{0, 0, panelW, panelH};
@@ -269,7 +279,11 @@ inline PanelLayout computeLayout(int dpi) {
     l.statusLine1 = Rect{lineX, l.statusCard.y + px(15), lineW, px(20)};
     l.statusLine2 = Rect{lineX, l.statusLine1.bottom() + px(3), lineW, px(18)};
 
-    const int captureH = px(88);
+    // Kartu capture mengisi ruang vertikal yang tersisa (panel bisa ditarik
+    // lebih tinggi); minimum tetap 88 supaya tiga baris selalu muat.
+    const int hintTop = panelH - pad - px(38);
+    const int captureAvail = hintTop - gap - (l.statusCard.bottom() + gap);
+    const int captureH = maxValue(px(88), captureAvail);
     l.captureCard = Rect{contentX, l.statusCard.bottom() + gap, contentW, captureH};
     l.captureTitle = Rect{l.captureCard.x + px(20), l.captureCard.y + px(12), contentW - px(40), px(16)};
     l.captureLine1 = Rect{l.captureCard.x + px(20), l.captureTitle.bottom() + px(6), contentW - px(40), px(18)};

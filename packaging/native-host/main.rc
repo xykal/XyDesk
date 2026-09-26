@@ -1,4 +1,3 @@
 #include "resource.h"
 
 IDI_XYDESK ICON "xydesk.ico"
-IDR_PANEL_HTML RCDATA "panel.html"

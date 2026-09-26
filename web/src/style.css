@@ -1154,6 +1154,8 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
    putih) sehingga tombol "Konek sekarang" tampil sebagai balok pucat —
    sumber utama kesan berantakan halaman ini. */
 .connect-cta {
+  transition: background var(--speed) ease, transform var(--speed) ease,
+    box-shadow var(--speed) ease, opacity var(--speed) ease;
   margin-top: 6px;
   padding: 14px 20px;
   border-radius: var(--radius-md);
@@ -1241,11 +1243,6 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
 .hud-icon-btn:hover { background: rgba(13, 7, 22, 0.85); }
 .hud-mouse { bottom: 18px; right: 18px; }
 
-.session-retry {
-  color: var(--accent-deep);
-  font-weight: 700;
-  font-size: 14px;
-}
 .recent-item {
   display: flex;
   align-items: center;
@@ -1770,8 +1767,6 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
   box-shadow: var(--shadow-md);
 }
 
-.connect-cta { transition: background var(--speed) ease, transform var(--speed) ease, box-shadow var(--speed) ease, opacity var(--speed) ease; }
-.connect-cta:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
 /* ── Input, textarea, dropdown ── */
 input, textarea, select {
@@ -2006,7 +2001,25 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 /* Chip durasi & sisa waktu sesi — pojok kiri atas video. Sesi tamu
    berbatas 2 jam (token signaling), jadi sisanya diperlihatkan jujur;
    merah saat tinggal <= 5 menit. */
-.session-connection-status{position:absolute;z-index:34;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid #ffffff32;border-radius:999px;background:#17121dbd;color:#f8f5ff;box-shadow:0 8px 26px #08060d55;backdrop-filter:blur(12px);font-size:11px;line-height:1;pointer-events:none}.session-connection-status span:not(.session-connection-dot){color:#d6cae5}.session-connection-dot{width:7px;height:7px;border-radius:50%;background:#74e3a0;box-shadow:0 0 0 4px #74e3a025}.session-connection-status.warning{border-color:#f3bf624d}.session-connection-status.warning .session-connection-dot{background:#f3bf62;box-shadow:0 0 0 4px #f3bf6225}.session-freeze-label{color:#f3bf62!important;font-weight:700}.sesi-waktu {
+.session-connection-status {
+  position: absolute;
+  z-index: 34;
+  left: max(12px, env(safe-area-inset-left));
+  top: max(12px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid #ffffff32;
+  border-radius: 999px;
+  background: #17121dbd;
+  color: #f8f5ff;
+  box-shadow: 0 8px 26px #08060d55;
+  backdrop-filter: blur(12px);
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}.session-connection-status span:not(.session-connection-dot){color:#d6cae5}.session-connection-dot{width:7px;height:7px;border-radius:50%;background:#74e3a0;box-shadow:0 0 0 4px #74e3a025}.session-connection-status.warning{border-color:#f3bf624d}.session-connection-status.warning .session-connection-dot{background:#f3bf62;box-shadow:0 0 0 4px #f3bf6225}.session-freeze-label{color:#f3bf62!important;font-weight:700}.sesi-waktu {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -2843,8 +2856,8 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .remote-control-cursor { position: absolute; left: 0; top: 0; width: 36px; height: 48px; z-index: 5; pointer-events: none; will-change: transform; }
 .remote-control-cursor svg { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 2px 2px #000); }
 .remote-session .video-surface { isolation: isolate; }
-.session-audio-notice { position: absolute; left: 12px; bottom: 80px; z-index: 8; max-width: min(310px, 70%); padding: 10px; background: #18191ded; color: #fff; border-radius: 10px; font-size: 12px; }
-.session-audio-notice button { display: block; margin-top: 8px; padding: 8px; color: #fff; background: #6d28d9; border-radius: 6px; }
+.session-audio-notice { position: absolute; left: 12px; bottom: 80px; z-index: 8; max-width: min(310px, 70%); padding: 10px; background: #18191ded; color: #fff; border-radius: 12px; font-size: 12px; }
+.session-audio-notice button { display: block; margin-top: 8px; padding: 8px; color: #fff; background: var(--accent-deep); border-radius: 8px; }
 .hud-mouse button[aria-label="Temukan panah"] { font-size: 28px; }
 
 .remote-session .video-surface video { cursor: none; }
@@ -2978,3 +2991,4 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .session-frame-actions{display:flex;gap:8px;margin-top:10px}
 .session-frame-actions button{padding:6px 12px;border:1px solid #ffffff2e;border-radius:999px;background:#ffffff14;color:#f8f5ff;font-size:12px;font-weight:600;cursor:pointer}
 .session-frame-actions button:hover{background:#ffffff24}
+.connect-cta:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }

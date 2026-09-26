@@ -35,16 +35,13 @@
 
 #include <windows.h>
 #include <shellapi.h>
-#include <dwmapi.h>
 
 #include "resource.h"
 #include "layout.h"
-#include "webview2/WebView2.h"
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
-#include <functional>
 #include <string>
 #include <vector>
 
@@ -52,11 +49,6 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "dwmapi.lib")
-// Probe runtime WebView2 membaca registry (advapi32) dan string pesan web
-// dibebaskan dengan CoTaskMemFree (ole32).
-#pragma comment(lib, "advapi32.lib")
-#pragma comment(lib, "ole32.lib")
 #endif
 
 namespace {
@@ -81,22 +73,25 @@ constexpr UINT kFlashDurationMs = 2600;
 constexpr UINT WM_DPICHANGED = 0x02E0;
 #endif
 
-// ── Palet Quiet Surface (panel host) ──
-constexpr COLORREF kBackground = RGB(14, 16, 22);
-constexpr COLORREF kSurface = RGB(24, 27, 36);
-constexpr COLORREF kSurface2 = RGB(31, 35, 46);
-constexpr COLORREF kSurface3 = RGB(41, 46, 60);
-constexpr COLORREF kSurfacePressed = RGB(23, 26, 34);
-constexpr COLORREF kEdge = RGB(48, 53, 68);
-constexpr COLORREF kText = RGB(244, 246, 250);
-constexpr COLORREF kMuted = RGB(157, 166, 181);
-constexpr COLORREF kDisabled = RGB(96, 104, 120);
-constexpr COLORREF kAccent = RGB(125, 105, 238);
-constexpr COLORREF kAccentHover = RGB(143, 126, 248);
-constexpr COLORREF kAccentPressed = RGB(104, 86, 205);
-constexpr COLORREF kGood = RGB(91, 202, 132);
-constexpr COLORREF kWarn = RGB(245, 183, 77);
-constexpr COLORREF kBad = RGB(238, 104, 115);
+// ── Palet "Paper" — dicerminkan dari web/src/style.css (kanonik sejak
+// unifikasi Sep 2026: web = acuan). Latar terang, aksen ungu #7c3aed, status
+// memakai varian teks-terang tokens.dart supaya kontras di atas putih. ──
+constexpr COLORREF kBackground = RGB(255, 255, 255); // --bg
+constexpr COLORREF kSurface = RGB(255, 255, 255);    // kartu putih + garis tepi
+constexpr COLORREF kSurface2 = RGB(245, 243, 255);   // --overlay
+constexpr COLORREF kSurface3 = RGB(233, 229, 250);   // overlay ditekan/hover
+constexpr COLORREF kSurfacePressed = RGB(237, 233, 254);
+constexpr COLORREF kEdge = RGB(228, 228, 231);       // garis tepi zinc-200
+constexpr COLORREF kText = RGB(24, 24, 27);          // --ink
+constexpr COLORREF kMuted = RGB(82, 82, 91);         // --ink-soft
+constexpr COLORREF kDisabled = RGB(154, 154, 162);   // --text-low
+constexpr COLORREF kOnAccent = RGB(255, 255, 255);   // teks di atas ungu
+constexpr COLORREF kAccent = RGB(124, 58, 237);      // --accent #7c3aed
+constexpr COLORREF kAccentHover = RGB(139, 92, 246);
+constexpr COLORREF kAccentPressed = RGB(91, 33, 182); // --accent-deep
+constexpr COLORREF kGood = RGB(22, 115, 71);         // --success
+constexpr COLORREF kWarn = RGB(133, 84, 0);          // --warning
+constexpr COLORREF kBad = RGB(165, 42, 54);          // --danger
 
 constexpr int kTrayOpen = 1010;
 constexpr int kTrayStart = 1011;
@@ -156,9 +151,6 @@ struct AppState {
     bool animOn = false;
     bool trackingMouse = false;
     bool layered = true;
-    // Mode UI: true = jendela biasa (non-layered) dengan isi WebView2;
-    // false = panel GDI berlapis seperti sebelumnya (fallback otomatis).
-    bool webMode = false;
     // Kesehatan capture dari engine (berkas capture.json): buat kartu Status
     // jujur soal layar hitam / sesi berbeda.
     std::wstring captureBackend;
@@ -173,6 +165,10 @@ struct AppState {
     // Perbesar = panel dizoom proporsional (bukan maximized Win32, karena
     // jendela ini WS_POPUP berlapis). zoomPct dikalikan ke DPI efektif.
     int zoomPct = 100;
+    // Ukuran panel dalam satuan 96-DPI; pengguna bisa menarik tepi jendela
+    // (kiri/kanan/atas/bawah) untuk mengubahnya.
+    int unitsW = xydesk::panel::kPanelWidth;
+    int unitsH = xydesk::panel::kPanelHeight;
     bool maximized = false;
     RECT normalRect{};
     bool haveNormalRect = false;
@@ -198,7 +194,6 @@ void showTrayMenu(HWND hwnd);
 bool startHost();
 void stopHost();
 void renderPanel();
-void pushWebState();
 
 // ── Berkas mesin: ± sama seperti sebelumnya -------------------------------
 
@@ -602,9 +597,9 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
     const int radius = layout.radiusControl;
     if (!enabled) return ButtonPalette{kSurface, kDisabled, radius, false};
     if (target == Target::Start) {
-        if (pressed) return ButtonPalette{kAccentPressed, kText, radius, false};
-        if (hot) return ButtonPalette{kAccentHover, kText, radius, false};
-        return ButtonPalette{kAccent, kText, radius, false};
+        if (pressed) return ButtonPalette{kAccentPressed, kOnAccent, radius, false};
+        if (hot) return ButtonPalette{kAccentHover, kOnAccent, radius, false};
+        return ButtonPalette{kAccent, kOnAccent, radius, false};
     }
     if (pressed) return ButtonPalette{kSurfacePressed, kText, radius, false};
     if (hot) return ButtonPalette{kSurface3, kText, radius, true};
@@ -643,11 +638,12 @@ std::wstring targetLabel(Target target) {
 
 void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     const Rect& card = layout.statusCard;
-    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface);
+    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
+    strokeRounded(surface, card, layout.radiusCard, kEdge, 1);
 
     const COLORREF dotColor = g.statusColor;
     fillCircleOpaque(surface, Rect{layout.statusDot.x - 4, layout.statusDot.y - 4, layout.statusDot.w + 8, layout.statusDot.h + 8},
-        mixColor(kSurface, dotColor, 0.28f));
+        mixColor(kSurface2, dotColor, 0.22f));
     fillCircleOpaque(surface, layout.statusDot, dotColor);
 
     const std::wstring line1 = g.flashText.empty() ? g.statusText : g.flashText;
@@ -661,7 +657,8 @@ void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
 
 void paintIdentityCard(Surface& surface, const PanelLayout& layout, HDC dc, const Rect& card, const Rect& label,
     const Rect& value, const Rect& copy, const wchar_t* labelText, const std::wstring& valueText, Target copyTarget) {
-    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface);
+    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
+    strokeRounded(surface, card, layout.radiusCard, kEdge, 1);
     drawTextLine(dc, labelText, label, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
     const bool hasValue = !valueText.empty();
@@ -888,6 +885,19 @@ void tickAnimation(HWND hwnd) {
 }
 
 void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
+    // Kolom sidebar bernada overlay (token web) + garis pemisah tipis, biar
+    // navigasi terbaca sebagai wilayah sendiri di atas latar putih. Kolom
+    // sengaja mulai setelah padding kiri (x=12) supaya bingkai putih panel
+    // tetap terlihat utuh di sekelilingnya.
+    const Rect column{layout.sideStatus.x, layout.titleBar.bottom(),
+        layout.sideStatus.w + xydesk::panel::scaled(6, layout.scalePct),
+        layout.panel.bottom() - layout.titleBar.bottom()};
+    fillRectOpaque(surface, column, mixColor(kBackground, kSurface2, 0.55f));
+    HGDIOBJ oldPen = SelectObject(surface.dc, CreatePen(PS_SOLID, 1, kEdge));
+    MoveToEx(surface.dc, column.right(), column.y, nullptr);
+    LineTo(surface.dc, column.right(), column.bottom());
+    DeleteObject(SelectObject(surface.dc, oldPen));
+
     const struct {
         Page page;
         Target target;
@@ -925,7 +935,8 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
 
 // Kartu kesehatan capture: jujur soal backend dan layar hitam/sesi berbeda.
 void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
-    fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface);
+    fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface2);
+    strokeRounded(surface, layout.captureCard, layout.radiusCard, kEdge, 1);
     drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     const std::wstring line1 = g.captureBackend.empty()
@@ -996,15 +1007,22 @@ bool drawPanelToSurface() {
         const int bottom = std::min(p.bottom(), p.y + glowH);
         for (int y = p.y; y < bottom; ++y) {
             const float t = 1.0f - static_cast<float>(y - p.y) / static_cast<float>(glowH);
-            const float amount = 0.045f * t * t;
+            // Bell 4t(1-t) dikuadratkan: pendar mulai dari NOL di tepi atas
+            // (garis tepi panel tetap putih murni), memuncak di tengah, lalu
+            // habis sebelum kartu pertama.
+            const float bell = 4.0f * t * (1.0f - t);
+            const float amount = 0.05f * bell * bell;
             std::uint32_t* row = surface.pixels + static_cast<size_t>(y) * surface.width;
             for (int x = p.x; x < p.right(); ++x) {
                 const std::uint32_t px = row[x];
-                const auto lift = [&amount](std::uint32_t c) {
-                    return std::min(255u, c + static_cast<std::uint32_t>(amount * static_cast<float>(255 - c)));
+                // Campur ke ungu aksen (124,58,237), bukan naik ke putih.
+                const auto tint = [&amount](std::uint32_t c, std::uint32_t target) {
+                    const int v = static_cast<int>(c) +
+                        static_cast<int>(amount * (static_cast<float>(static_cast<int>(target) - static_cast<int>(c))));
+                    return static_cast<std::uint32_t>(v < 0 ? 0 : (v > 255 ? 255 : v));
                 };
-                row[x] = 0xFF000000u | (lift((px >> 16) & 0xFF) << 16) |
-                    (lift((px >> 8) & 0xFF) << 8) | lift(px & 0xFF);
+                row[x] = 0xFF000000u | (tint((px >> 16) & 0xFF, 124) << 16) |
+                    (tint((px >> 8) & 0xFF, 58) << 8) | tint(px & 0xFF, 237);
             }
         }
     }
@@ -1049,10 +1067,6 @@ bool drawPanelToSurface() {
 
 void renderPanel() {
     if (!g.window) return;
-    if (g.webMode) {
-        pushWebState();
-        return;
-    }
     if (!drawPanelToSurface()) return;
     Surface& surface = g.surface;
 
@@ -1129,7 +1143,7 @@ void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
     // letak (termasuk font) membesar proporsional lewat jalur skala yang
     // sudah teruji; tidak ada gambar yang perlu digambar ulang khusus.
     const UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
-    g.layout = xydesk::panel::computeLayout(static_cast<int>(effective));
+    g.layout = xydesk::panel::computeLayout(static_cast<int>(effective), g.unitsW, g.unitsH);
     g.pillY = sidebarItemY(g.layout, g.page); // posisi instan saat DPI/zoom
     createFonts();
     if (remeasure) {
@@ -1483,6 +1497,23 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     POINT client{static_cast<LONG>(static_cast<short>(LOWORD(lParam))),
         static_cast<LONG>(static_cast<short>(HIWORD(lParam)))};
     ScreenToClient(hwnd, &client);
+    // Tepi jendela = gagang ubah ukuran (kecuali sedang dizoom penuh).
+    // Windows otomatis memberi kursor panah dua dari kode HT* ini.
+    if (!g.maximized) {
+        const int grip = xydesk::panel::scaled(6, g.layout.scalePct);
+        const bool left = client.x < grip;
+        const bool right = client.x >= g.layout.window.w - grip;
+        const bool top = client.y < grip;
+        const bool bottom = client.y >= g.layout.window.h - grip;
+        if (top && left) return HTTOPLEFT;
+        if (top && right) return HTTOPRIGHT;
+        if (bottom && left) return HTBOTTOMLEFT;
+        if (bottom && right) return HTBOTTOMRIGHT;
+        if (left) return HTLEFT;
+        if (right) return HTRIGHT;
+        if (top) return HTTOP;
+        if (bottom) return HTBOTTOM;
+    }
     const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y);
     switch (target) {
     case Target::Minimize:
@@ -1507,334 +1538,6 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     }
 }
 
-// ── Kulit WebView2 ─────────────────────────────────────────────────────────
-// Panel modern digambar Microsoft Edge WebView2 (Chromium): HTML+CSS ada di
-// panel.html (tertanam sebagai resource RC), state host didorong lewat
-// ExecuteScript, perintah tombol masuk lewat WebMessage. Kalau loader atau
-// WebView2 Runtime tidak ada (Windows lama / instalasi dipangkas), panel
-// otomatis memakai kulit GDI berlapis di bawah ini — logika host, tray, zoom,
-// dan gerbang CI tetap satu jalur.
-
-constexpr UINT kWebFailedMessage = WM_APP + 13;
-
-typedef HRESULT(STDAPICALLTYPE* CreateWebEnvFn)(PCWSTR browserExecutableFolder,
-    PCWSTR userDataFolder, ICoreWebView2EnvironmentOptions* options,
-    ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler* handler);
-
-HMODULE g_webLoader = nullptr;
-CreateWebEnvFn g_createWebEnv = nullptr;
-ICoreWebView2Controller* g_webController = nullptr;
-ICoreWebView2* g_webView = nullptr;
-bool g_webReady = false;
-
-bool hasRuntimeVersion(HKEY root, const wchar_t* sub) {
-    HKEY key = nullptr;
-    if (RegOpenKeyExW(root, sub, 0, KEY_READ, &key) != ERROR_SUCCESS) return false;
-    wchar_t pv[64] = {};
-    DWORD size = sizeof(pv);
-    DWORD type = 0;
-    const LONG read = RegQueryValueExW(key, L"pv", nullptr, &type,
-        reinterpret_cast<LPBYTE>(pv), &size);
-    RegCloseKey(key);
-    return read == ERROR_SUCCESS && type == REG_SZ && pv[0] != 0
-        && wcscmp(pv, L"0.0.0.0") != 0;
-}
-
-bool webViewAvailable() {
-    wchar_t exePath[MAX_PATH] = {};
-    GetModuleFileNameW(nullptr, exePath, MAX_PATH);
-    std::wstring dir(exePath);
-    const size_t cut = dir.find_last_of(L"\\/");
-    if (cut != std::wstring::npos) dir.resize(cut + 1);
-    g_webLoader = LoadLibraryW((dir + L"WebView2Loader.dll").c_str());
-    if (!g_webLoader) g_webLoader = LoadLibraryW(L"WebView2Loader.dll");
-    if (!g_webLoader) return false;
-    g_createWebEnv = reinterpret_cast<CreateWebEnvFn>(
-        GetProcAddress(g_webLoader, "CreateCoreWebView2EnvironmentWithOptions"));
-    if (!g_createWebEnv) return false;
-    const wchar_t* evergreen[] = {
-        L"SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
-        L"SOFTWARE\\Microsoft\\EdgeUpdate\\Clients\\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}",
-    };
-    return hasRuntimeVersion(HKEY_LOCAL_MACHINE, evergreen[0])
-        || hasRuntimeVersion(HKEY_LOCAL_MACHINE, evergreen[1])
-        || hasRuntimeVersion(HKEY_CURRENT_USER, evergreen[1]);
-}
-
-std::wstring panelHtmlFromResource() {
-    HMODULE mod = GetModuleHandleW(nullptr);
-    HRSRC info = FindResourceW(mod, MAKEINTRESOURCEW(IDR_PANEL_HTML), RT_RCDATA);
-    if (!info) return L"<!DOCTYPE html><meta charset=utf-8><body style='background:#0b0d14;color:#eef0fa;font:14px sans-serif;padding:24px'>panel.html tidak termuat di EXE.</body>";
-    HGLOBAL data = LoadResource(mod, info);
-    const DWORD size = SizeofResource(mod, info);
-    const char* bytes = data ? static_cast<const char*>(LockResource(data)) : nullptr;
-    if (!bytes || size == 0) return L"<!DOCTYPE html><meta charset=utf-8><body style='background:#0b0d14;color:#eef0fa;font:14px sans-serif;padding:24px'>panel.html kosong.</body>";
-    const int need = MultiByteToWideChar(CP_UTF8, 0, bytes, static_cast<int>(size), nullptr, 0);
-    std::wstring wide(static_cast<size_t>(need), L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, bytes, static_cast<int>(size), &wide[0], need);
-    return wide;
-}
-
-std::wstring jsQuote(const std::wstring& in) {
-    static const wchar_t kHex[] = L"0123456789abcdef";
-    std::wstring out = L"\"";
-    for (const wchar_t ch : in) {
-        switch (ch) {
-        case L'\\': out += L"\\\\"; break;
-        case L'"': out += L"\\\""; break;
-        case L'\n': out += L"\\n"; break;
-        case L'\r': out += L"\\r"; break;
-        case L'\t': out += L"\\t"; break;
-        default:
-            if (ch < 0x20 || ch == 0x2028 || ch == 0x2029) {
-                wchar_t buf[7] = {L'\\', L'u', kHex[(ch >> 12) & 15],
-                    kHex[(ch >> 8) & 15], kHex[(ch >> 4) & 15], kHex[ch & 15], 0};
-                out += buf;
-            } else {
-                out += ch;
-            }
-        }
-    }
-    out += L'"';
-    return out;
-}
-
-
-// GUID eksplisit dari MIDL_INTERFACE di WebView2.h — __uuidof tidak tersedia
-// di mingw-w64, dan dengan konstanta ini QI identik di MSVC maupun mingw.
-constexpr GUID kIID_IUnknownW2 = {0x00000000, 0x0000, 0x0000, {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
-constexpr GUID kIID_EnvDone = {0x4e8a3389, 0xc9d8, 0x4bd2, {0xb6, 0xb5, 0x12, 0x4f, 0xee, 0x6c, 0xc1, 0x4d}};
-constexpr GUID kIID_CtlDone = {0x6c4819f3, 0xc9b7, 0x4260, {0x81, 0x27, 0xc9, 0xf5, 0xbd, 0xe7, 0xf6, 0x8c}};
-constexpr GUID kIID_MsgRecv = {0x57213f19, 0x00e6, 0x49fa, {0x8e, 0x07, 0x89, 0x8e, 0xa0, 0x1e, 0xcb, 0xd2}};
-constexpr GUID kIID_NavDone = {0xd33a35bf, 0x1c49, 0x4f98, {0x93, 0xab, 0x00, 0x6e, 0x05, 0x33, 0xfe, 0x1c}};
-
-struct WebMsgHandler;
-struct WebNavHandler;
-
-struct WebCtlHandler final : ICoreWebView2CreateCoreWebView2ControllerCompletedHandler {
-    ULONG refs = 1;
-    HWND hwnd;
-    explicit WebCtlHandler(HWND h) : hwnd(h) {}
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
-        if (!out) return E_POINTER;
-        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_CtlDone)) {
-            *out = static_cast<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *out = nullptr;
-        return E_NOINTERFACE;
-    }
-    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
-    ULONG STDMETHODCALLTYPE Release() override {
-        const ULONG r = --refs;
-        if (!r) delete this;
-        return r;
-    }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Controller* controller) override;
-};
-
-struct WebEnvHandler final : ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler {
-    ULONG refs = 1;
-    HWND hwnd;
-    explicit WebEnvHandler(HWND h) : hwnd(h) {}
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
-        if (!out) return E_POINTER;
-        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_EnvDone)) {
-            *out = static_cast<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *out = nullptr;
-        return E_NOINTERFACE;
-    }
-    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
-    ULONG STDMETHODCALLTYPE Release() override {
-        const ULONG r = --refs;
-        if (!r) delete this;
-        return r;
-    }
-    HRESULT STDMETHODCALLTYPE Invoke(HRESULT result, ICoreWebView2Environment* env) override {
-        if (FAILED(result) || !env) {
-            PostMessageW(hwnd, kWebFailedMessage, 0, 0);
-            return S_OK;
-        }
-        env->CreateCoreWebView2Controller(hwnd, new WebCtlHandler(hwnd));
-        return S_OK;
-    }
-};
-
-void handleWebMessage(HWND hwnd, const std::wstring& msg);
-
-struct WebMsgHandler final : ICoreWebView2WebMessageReceivedEventHandler {
-    ULONG refs = 1;
-    HWND hwnd;
-    explicit WebMsgHandler(HWND h) : hwnd(h) {}
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
-        if (!out) return E_POINTER;
-        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_MsgRecv)) {
-            *out = static_cast<ICoreWebView2WebMessageReceivedEventHandler*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *out = nullptr;
-        return E_NOINTERFACE;
-    }
-    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
-    ULONG STDMETHODCALLTYPE Release() override {
-        const ULONG r = --refs;
-        if (!r) delete this;
-        return r;
-    }
-    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2*, ICoreWebView2WebMessageReceivedEventArgs* args) override {
-        if (!args) return S_OK;
-        LPWSTR text = nullptr;
-        if (SUCCEEDED(args->TryGetWebMessageAsString(&text)) && text) {
-            handleWebMessage(hwnd, text);
-            CoTaskMemFree(text);
-        }
-        return S_OK;
-    }
-};
-
-struct WebNavHandler final : ICoreWebView2NavigationCompletedEventHandler {
-    ULONG refs = 1;
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** out) override {
-        if (!out) return E_POINTER;
-        if (IsEqualIID(riid, kIID_IUnknownW2) || IsEqualIID(riid, kIID_NavDone)) {
-            *out = static_cast<ICoreWebView2NavigationCompletedEventHandler*>(this);
-            AddRef();
-            return S_OK;
-        }
-        *out = nullptr;
-        return E_NOINTERFACE;
-    }
-    ULONG STDMETHODCALLTYPE AddRef() override { return ++refs; }
-    ULONG STDMETHODCALLTYPE Release() override {
-        const ULONG r = --refs;
-        if (!r) delete this;
-        return r;
-    }
-    HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2*, ICoreWebView2NavigationCompletedEventArgs*) override {
-        g_webReady = true;
-        pushWebState();
-        return S_OK;
-    }
-};
-
-HRESULT STDMETHODCALLTYPE WebCtlHandler::Invoke(HRESULT result, ICoreWebView2Controller* controller) {
-    if (FAILED(result) || !controller) {
-        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
-        return S_OK;
-    }
-    controller->AddRef();
-    g_webController = controller;
-    if (FAILED(controller->get_CoreWebView2(&g_webView)) || !g_webView) {
-        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
-        return S_OK;
-    }
-    g_webView->AddRef();
-    ICoreWebView2Settings* settings = nullptr;
-    if (SUCCEEDED(g_webView->get_Settings(&settings)) && settings) {
-        settings->put_AreDevToolsEnabled(FALSE);
-        settings->put_AreDefaultContextMenusEnabled(FALSE);
-        settings->put_IsStatusBarEnabled(FALSE);
-        settings->Release();
-    }
-    g_webView->add_WebMessageReceived(new WebMsgHandler(hwnd), nullptr);
-    g_webView->add_NavigationCompleted(new WebNavHandler(), nullptr);
-    const std::wstring html = panelHtmlFromResource();
-    g_webView->NavigateToString(html.c_str());
-    controller->put_IsVisible(TRUE);
-    RECT rc{};
-    GetClientRect(hwnd, &rc);
-    controller->put_Bounds(rc);
-    return S_OK;
-}
-
-void handleWebMessage(HWND hwnd, const std::wstring& msg) {
-    if (msg == L"start") {
-        if (!g.running) startHost();
-    } else if (msg == L"stop") {
-        stopHost();
-    } else if (msg == L"restart") {
-        stopHost();
-        startHost();
-    } else if (msg == L"log") {
-        activateTarget(hwnd, Target::OpenLog);
-    } else if (msg == L"web") {
-        activateTarget(hwnd, Target::Web);
-    } else if (msg == L"copyid") {
-        activateTarget(hwnd, Target::CopyId);
-    } else if (msg == L"copypw") {
-        activateTarget(hwnd, Target::CopyPassword);
-    } else if (msg == L"min") {
-        ShowWindow(hwnd, SW_MINIMIZE);
-    } else if (msg == L"max") {
-        activateTarget(hwnd, Target::Maximize);
-    } else if (msg == L"close") {
-        activateTarget(hwnd, Target::Close);
-    } else if (msg == L"drag") {
-        ReleaseCapture();
-        SendMessageW(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
-    } else if (msg.compare(0, 5, L"page:") == 0) {
-        const std::wstring page = msg.substr(5);
-        g.page = page == L"pairing" ? Page::Pairing
-            : (page == L"control" ? Page::Control : Page::Status);
-    }
-    pushWebState();
-}
-
-void pushWebState() {
-    if (!g_webView || !g_webReady) return;
-    const wchar_t* kind = g.captureWarn ? L"warn" : (g.running ? L"good" : L"bad");
-    const std::wstring sub = g.running
-        ? std::wstring(L"xydesk-host.exe aktif") + (g.logPath.empty() ? std::wstring() : (L" · " + g.logPath))
-        : std::wstring(L"Engine mati — tekan \u201CNyalakan host\u201D");
-    std::wstring script = L"window.xySetState && window.xySetState({";
-    script += L"status:" + jsQuote(g.flashText.empty() ? g.statusText : g.flashText) + L",";
-    script += L"kind:" + jsQuote(kind) + L",";
-    script += L"sub:" + jsQuote(sub) + L",";
-    script += L"backend:" + jsQuote(g.captureBackend) + L",";
-    script += L"note:" + jsQuote(g.captureNote) + L",";
-    script += L"mismatch:";
-    script += g.sessionMismatch ? L"true" : L"false";
-    script += L",";
-    script += L"procUser:" + jsQuote(g.procUser) + L",";
-    script += L"activeUser:" + jsQuote(g.activeUser) + L",";
-    script += L"procSession:" + (g.procSession >= 0 ? std::to_wstring(g.procSession) : std::wstring(L"null")) + L",";
-    script += L"activeSession:" + (g.activeSession >= 0 ? std::to_wstring(g.activeSession) : std::wstring(L"null")) + L",";
-    script += L"id:" + jsQuote(g.deviceId) + L",";
-    script += L"code:" + jsQuote(g.pairingCode) + L",";
-    script += L"toast:" + jsQuote(g.flashText) + L"});";
-    g_webView->ExecuteScript(script.c_str(), nullptr);
-}
-
-void initWebView(HWND hwnd) {
-    if (!g_createWebEnv || FAILED(g_createWebEnv(nullptr, nullptr, nullptr, new WebEnvHandler(hwnd)))) {
-        PostMessageW(hwnd, kWebFailedMessage, 0, 0);
-    }
-}
-
-void resizeWebView(HWND hwnd) {
-    if (!g_webController) return;
-    RECT rc{};
-    GetClientRect(hwnd, &rc);
-    g_webController->put_Bounds(rc);
-}
-
-void releaseWebView() {
-    g_webReady = false;
-    if (g_webView) {
-        g_webView->Release();
-        g_webView = nullptr;
-    }
-    if (g_webController) {
-        g_webController->Close();
-        g_webController->Release();
-        g_webController = nullptr;
-    }
-}
 
 LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     // Explorer mengirim pesan ini saat taskbar/tray restart (Explorer crash):
@@ -1849,7 +1552,6 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.window = hwnd;
         g.layout = xydesk::panel::computeLayout(static_cast<int>(windowDpi(hwnd)));
         createFonts();
-        if (g.webMode) initWebView(hwnd);
         g.logPath = hostLogPath();
         readIdentity();
         addTrayIcon(hwnd);
@@ -1871,16 +1573,17 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     }
 
     case WM_GETMINMAXINFO: {
+        // Panel boleh ditarik (permintaan pemilik); batasnya dari layout.h.
         auto* info = reinterpret_cast<MINMAXINFO*>(lParam);
-        info->ptMinTrackSize.x = g.layout.window.w;
-        info->ptMinTrackSize.y = g.layout.window.h;
-        info->ptMaxTrackSize.x = g.layout.window.w;
-        info->ptMaxTrackSize.y = g.layout.window.h;
+        const int s = g.layout.scalePct > 0 ? g.layout.scalePct : 100;
+        info->ptMinTrackSize.x = xydesk::panel::scaled(xydesk::panel::kPanelMinWidth, s);
+        info->ptMinTrackSize.y = xydesk::panel::scaled(xydesk::panel::kPanelMinHeight, s);
+        info->ptMaxTrackSize.x = xydesk::panel::scaled(xydesk::panel::kPanelMaxWidth, s);
+        info->ptMaxTrackSize.y = xydesk::panel::scaled(xydesk::panel::kPanelMaxHeight, s);
         return 0;
     }
 
     case WM_NCHITTEST:
-        if (g.webMode) return HTCLIENT; // WebView2 yang menangani klik
         return handleHitTest(hwnd, lParam);
 
     case WM_MOUSEMOVE:
@@ -1993,21 +1696,24 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_QUERYENDSESSION:
         return TRUE;
 
-    case kWebFailedMessage:
-        // WebView2 gagal dibuat (runtime hilang setelah probe / kebijakan
-        // mesin): jatuh ke kulit GDI di jendela biasa tanpa drama.
-        if (g.webMode) {
-            releaseWebView();
-            g.webMode = false;
-            g.layered = false;
-            renderPanel();
-            InvalidateRect(hwnd, nullptr, TRUE);
-        }
+    case WM_SIZE: {
+        // Pengguna menarik tepi: hitung ulang satuan ukuran lalu tata ulang.
+        if (wParam == SIZE_MINIMIZED || g.layout.scalePct <= 0) return 0;
+        const int cx = static_cast<int>(LOWORD(lParam));
+        const int cy = static_cast<int>(HIWORD(lParam));
+        if (cx <= 0 || cy <= 0) return 0;
+        const int s = g.layout.scalePct;
+        const int newW = (cx * 100 + s / 2) / s;
+        const int newH = (cy * 100 + s / 2) / s;
+        if (newW == g.unitsW && newH == g.unitsH) return 0;
+        g.unitsW = newW;
+        g.unitsH = newH;
+        const UINT dpi = static_cast<UINT>(static_cast<unsigned long long>(windowDpi(hwnd)) * g.zoomPct / 100);
+        g.layout = xydesk::panel::computeLayout(static_cast<int>(dpi), g.unitsW, g.unitsH);
+        g.pillY = sidebarItemY(g.layout, g.page);
+        renderPanel();
         return 0;
-
-    case WM_SIZE:
-        resizeWebView(hwnd);
-        return 0;
+    }
 
     case WM_ENDSESSION:
         if (wParam) {
@@ -2087,7 +1793,6 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         KillTimer(hwnd, kTimer);
         KillTimer(hwnd, kAnimTimer);
         g.animOn = false;
-        releaseWebView();
         removeTrayIcon();
         stopHost();
         if (g.fontTitle) DeleteObject(g.fontTitle);
@@ -2255,8 +1960,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
 
     SetProcessDPIAware();
     g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
-    // Kulit WebView2 hanya bila loader + runtime tersedia di mesin ini.
-    g.webMode = webViewAvailable();
 
     WNDCLASSEXW wc{};
     wc.cbSize = sizeof(wc);
@@ -2280,18 +1983,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const int x = workArea.left + ((workArea.right - workArea.left) - g.layout.window.w) / 2;
     const int y = workArea.top + ((workArea.bottom - workArea.top) - g.layout.window.h) / 2;
 
-    const DWORD exStyle = g.webMode ? WS_EX_APPWINDOW : (WS_EX_LAYERED | WS_EX_APPWINDOW);
-    HWND window = CreateWindowExW(exStyle, kClassName, kWindowTitle,
+    HWND window = CreateWindowExW(WS_EX_LAYERED | WS_EX_APPWINDOW, kClassName, kWindowTitle,
         WS_POPUP | WS_SYSMENU, x, y, g.layout.window.w, g.layout.window.h,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
-    if (g.webMode) {
-        // Jendela biasa (bukan berlapis): sudut membulat diserahkan ke DWM
-        // (Windows 11 / Server 2025). Di Server 2022 atribut ini gagal dan
-        // sudut tetap siku — dapat ditutupi CSS nanti, bukan masalah fungsi.
-        DWM_WINDOW_CORNER_PREFERENCE pref = DWMWCP_ROUND;
-        DwmSetWindowAttribute(window, DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof(pref));
-    }
 
     applyDpi(window, windowDpi(window), false);
     ShowWindow(window, show);
