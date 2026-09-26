@@ -257,7 +257,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     const auto sidebarItem = [&](Rect& item, Rect& icon, Rect& label) {
         item = Rect{sideX, itemY, sideW, itemH};
         icon = Rect{item.x + (sideW - px(24)) / 2, item.y + px(10), px(24), px(24)};
-        label = Rect{item.x + px(4), icon.bottom() + px(5), sideW - px(8), px(14)};
+        label = Rect{item.x + px(4), icon.bottom() + px(5), sideW - px(8), px(12)};
         itemY = item.bottom() + itemGap;
     };
     sidebarItem(l.sideStatus, l.sideStatusIcon, l.sideStatusLabel);
@@ -294,13 +294,13 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     const int copyW = px(76);
     const int copyH = px(34);
     l.idCard = Rect{contentX, topY, contentW, cardH};
-    l.idLabel = Rect{l.idCard.x + px(18), l.idCard.y + px(14), contentW - px(140), px(16)};
-    l.idValue = Rect{l.idCard.x + px(18), l.idCard.y + px(36), contentW - px(126), px(32)};
+    l.idLabel = Rect{l.idCard.x + px(20), l.idCard.y + px(14), contentW - px(140), px(16)};
+    l.idValue = Rect{l.idCard.x + px(20), l.idCard.y + px(36), contentW - px(126), px(34)};
     l.idCopy = Rect{l.idCard.right() - px(18) - copyW, l.idCard.y + (cardH - copyH) / 2, copyW, copyH};
 
     l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, contentW, cardH};
-    l.passwordLabel = Rect{l.passwordCard.x + px(18), l.passwordCard.y + px(14), contentW - px(140), px(16)};
-    l.passwordValue = Rect{l.passwordCard.x + px(18), l.passwordCard.y + px(36), contentW - px(126), px(32)};
+    l.passwordLabel = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(14), contentW - px(140), px(16)};
+    l.passwordValue = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(36), contentW - px(126), px(34)};
     l.passwordCopy = Rect{
         l.passwordCard.right() - px(18) - copyW,
         l.passwordCard.y + (cardH - copyH) / 2,

@@ -34,6 +34,7 @@
 #endif
 
 #include <windows.h>
+#include <cmath>
 #include <shellapi.h>
 
 #include "resource.h"
@@ -137,6 +138,9 @@ struct AppState {
     HFONT fontSmall = nullptr;
     HFONT fontMono = nullptr;
     HFONT fontLogo = nullptr;
+    HFONT fontSemi = nullptr;  // 14 semibold: teks status utama
+    HFONT fontCaps = nullptr;  // 11 semibold: judul kartu & label sidebar
+    HFONT fontValue = nullptr; // 26 semibold mono: ID & kode pairing
     Surface surface;
     PanelLayout layout;
     Target hot = Target::None;
@@ -647,7 +651,7 @@ void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     fillCircleOpaque(surface, layout.statusDot, dotColor);
 
     const std::wstring line1 = g.flashText.empty() ? g.statusText : g.flashText;
-    drawTextLine(dc, line1, layout.statusLine1, g.fontBody, kText,
+    drawTextLine(dc, line1, layout.statusLine1, g.fontSemi, kText,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
     const std::wstring logLine = g.logPath.empty() ? std::wstring(L"Log host belum dibuat") : (L"Log: " + g.logPath);
@@ -659,10 +663,10 @@ void paintIdentityCard(Surface& surface, const PanelLayout& layout, HDC dc, cons
     const Rect& value, const Rect& copy, const wchar_t* labelText, const std::wstring& valueText, Target copyTarget) {
     fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
     strokeRounded(surface, card, layout.radiusCard, kEdge, 1);
-    drawTextLine(dc, labelText, label, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    drawTextLine(dc, labelText, label, g.fontCaps, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
     const bool hasValue = !valueText.empty();
-    drawTextLine(dc, hasValue ? valueText : std::wstring(L"Belum tersedia"), value, g.fontMono,
+    drawTextLine(dc, hasValue ? valueText : std::wstring(L"Belum tersedia"), value, g.fontValue,
         hasValue ? kText : kDisabled, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
     const bool enabled = targetEnabled(copyTarget);
@@ -697,7 +701,8 @@ void paintButton(Surface& surface, const PanelLayout& layout, HDC dc, Target tar
 // dipakai untuk semua segmen, lalu dipulihkan — tidak ada pena bocor.
 void drawGlyphSegments(HDC dc, COLORREF color, int thickness,
     const std::initializer_list<std::pair<POINT, POINT>>& segments) {
-    const HGDIOBJ previousPen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
+    const HGDIOBJ previousPen = SelectObject(dc,
+        CreatePen(PS_SOLID | PS_JOIN_ROUND | PS_ENDCAP_ROUND, thickness, color));
     for (const auto& segment : segments) {
         MoveToEx(dc, segment.first.x, segment.first.y, nullptr);
         LineTo(dc, segment.second.x, segment.second.y);
@@ -794,40 +799,61 @@ void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
     const int cy = xydesk::panel::centerY(icon);
     switch (page) {
     case Page::Status: {
-        // Denyut aktivitas: datar – puncak – lembah – datar.
+        // Denyut aktivitas: datar – puncak – lembah – datar (amplitudo 2/3
+        // kotak biar tidak menusuk).
+        const int amp = (y1 - y0) / 3;
         drawGlyphSegments(dc, color, thickness, {
             {{x0, cy}, {x0 + (x1 - x0) / 4, cy}},
-            {{x0 + (x1 - x0) / 4, cy}, {cx, y0}},
-            {{cx, y0}, {x0 + 3 * (x1 - x0) / 4, y1}},
-            {{x0 + 3 * (x1 - x0) / 4, y1}, {x1, cy}}});
+            {{x0 + (x1 - x0) / 4, cy}, {cx, cy - amp}},
+            {{cx, cy - amp}, {x0 + 3 * (x1 - x0) / 4, cy + amp}},
+            {{x0 + 3 * (x1 - x0) / 4, cy + amp}, {x1, cy}}});
         break;
     }
     case Page::Pairing: {
-        // Kunci: lingkaran kecil + gagang bergerigi.
-        const int r = (y1 - y0) / 2;
-        const int ringCx = x0 + r + 1;
-        const HGDIOBJ pen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
-        Arc(dc, ringCx - r, y0, ringCx + r, y0 + 2 * r, ringCx - r, cy, ringCx - r, cy);
-        MoveToEx(dc, ringCx + r - 1, cy, nullptr);
-        LineTo(dc, x1, cy);
-        MoveToEx(dc, x1 - thickness - 1, cy, nullptr);
-        LineTo(dc, x1 - thickness - 1, y1);
-        MoveToEx(dc, cx + r, cy, nullptr);
-        LineTo(dc, cx + r, y1 - 2);
+        // Gembok: badan persegi membulat + lengkung belenggu + titik kunci.
+        const int bodyW = (x1 - x0) * 4 / 5;
+        const int bodyH = (y1 - y0) * 3 / 5;
+        const int bx0 = cx - bodyW / 2;
+        const int by0 = y1 - bodyH;
+        const int sr = bodyW / 3;
+        const HGDIOBJ pen = SelectObject(dc,
+            CreatePen(PS_SOLID | PS_JOIN_ROUND | PS_ENDCAP_ROUND, thickness, color));
+        const HGDIOBJ brush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+        RoundRect(dc, bx0, by0, bx0 + bodyW + 1, y1 + 1, thickness * 2, thickness * 2);
+        // Belenggu: setengah lingkaran atas via polyline — deterministik dan
+        // tidak menarik garis penghubung dari posisi pena sebelumnya.
+        POINT arc[13];
+        for (int i = 0; i < 13; ++i) {
+            const double a = 3.14159265358979323846 * (1.0 + double(i) / 12.0);
+            arc[i].x = cx + long(sr * cos(a) + 0.5);
+            arc[i].y = by0 + long(sr * sin(a) + 0.5);
+        }
+        Polyline(dc, arc, 13);
+        const HGDIOBJ solid = SelectObject(dc, CreateSolidBrush(color));
+        const int ky = (by0 + y1) / 2;
+        Ellipse(dc, cx - thickness, ky - thickness, cx + thickness + 1, ky + thickness + 1);
+        DeleteObject(SelectObject(dc, solid));
+        SelectObject(dc, brush);
         if (pen) DeleteObject(SelectObject(dc, pen));
         break;
     }
     case Page::Control: {
-        // Slider: tiga rel mendatar dengan knobs di posisi selang-seling.
-        const int knob = std::max(3, xydesk::panel::scaled(5, s));
-        const HGDIOBJ pen = SelectObject(dc, CreatePen(PS_SOLID, thickness, color));
+        // Slider: tiga rel mendatar; knob bulat penuh dengan NAPAS di kiri-
+        // kanannya (rel tidak menabrak knob) supaya terbaca rapi.
+        const int knob = std::max(4, xydesk::panel::scaled(6, s));
+        const int gapk = knob / 2 + thickness;
+        const HGDIOBJ pen = SelectObject(dc,
+            CreatePen(PS_SOLID | PS_JOIN_ROUND | PS_ENDCAP_ROUND, thickness, color));
         const HGDIOBJ brush = SelectObject(dc, CreateSolidBrush(color));
         const int rows[3] = {y0 + 1, cy, y1 - 1};
-        const int knobs[3] = {x0 + (x1 - x0) / 3, x0 + 2 * (x1 - x0) / 3, x0 + (x1 - x0) / 2};
+        const int knobs[3] = {x0 + (x1 - x0) / 4, x0 + 3 * (x1 - x0) / 4, cx};
         for (int i = 0; i < 3; ++i) {
             MoveToEx(dc, x0, rows[i], nullptr);
+            LineTo(dc, knobs[i] - gapk, rows[i]);
+            MoveToEx(dc, knobs[i] + gapk, rows[i], nullptr);
             LineTo(dc, x1 + 1, rows[i]);
-            Ellipse(dc, knobs[i] - knob / 2, rows[i] - knob / 2, knobs[i] + knob / 2 + 1, rows[i] + knob / 2 + 1);
+            Ellipse(dc, knobs[i] - knob / 2, rows[i] - knob / 2,
+                knobs[i] + knob / 2 + 1, rows[i] + knob / 2 + 1);
         }
         if (pen) DeleteObject(SelectObject(dc, pen));
         if (brush) DeleteObject(SelectObject(dc, brush));
@@ -929,7 +955,7 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
             strokeRounded(surface, entry.item, layout.radiusControl, kAccent, xydesk::panel::scaled(2, layout.scalePct));
         }
         paintSidebarIcon(dc, entry.page, entry.icon, active ? kText : (hot ? kText : kMuted));
-        drawTextCentered(dc, entry.text, entry.label, g.fontSmall, active ? kText : kMuted);
+        drawTextCentered(dc, entry.text, entry.label, g.fontCaps, active ? kAccent : kMuted);
     }
 }
 
@@ -937,7 +963,7 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
 void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface2);
     strokeRounded(surface, layout.captureCard, layout.radiusCard, kEdge, 1);
-    drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontSmall, kMuted,
+    drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontCaps, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     const std::wstring line1 = g.captureBackend.empty()
         ? std::wstring(L"Engine belum melaporkan capture")
@@ -1106,9 +1132,17 @@ void createFonts() {
     if (g.fontSmall) DeleteObject(g.fontSmall);
     if (g.fontMono) DeleteObject(g.fontMono);
     if (g.fontLogo) DeleteObject(g.fontLogo);
-    g.fontTitle = make(-xydesk::panel::scaled(20, s), FW_SEMIBOLD, L"Segoe UI");
-    g.fontBody = make(-xydesk::panel::scaled(15, s), FW_NORMAL, L"Segoe UI");
-    g.fontSmall = make(-xydesk::panel::scaled(13, s), FW_NORMAL, L"Segoe UI");
+    if (g.fontSemi) DeleteObject(g.fontSemi);
+    if (g.fontCaps) DeleteObject(g.fontCaps);
+    if (g.fontValue) DeleteObject(g.fontValue);
+    // Hirarki tipografi mengikuti web: judul tebal, status semibold, label
+    // kecil kapital, angka pairing besar monospasi.
+    g.fontTitle = make(-xydesk::panel::scaled(20, s), FW_BOLD, L"Segoe UI");
+    g.fontBody = make(-xydesk::panel::scaled(14, s), FW_NORMAL, L"Segoe UI");
+    g.fontSmall = make(-xydesk::panel::scaled(12, s), FW_NORMAL, L"Segoe UI");
+    g.fontSemi = make(-xydesk::panel::scaled(15, s), FW_SEMIBOLD, L"Segoe UI");
+    g.fontCaps = make(-xydesk::panel::scaled(11, s), FW_SEMIBOLD, L"Segoe UI");
+    g.fontValue = make(-xydesk::panel::scaled(26, s), FW_SEMIBOLD, L"Consolas");
     g.fontMono = make(-xydesk::panel::scaled(20, s), FW_SEMIBOLD, L"Consolas");
     g.fontLogo = make(-xydesk::panel::scaled(17, s), FW_BOLD, L"Segoe UI");
 }
@@ -1800,6 +1834,9 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         if (g.fontSmall) DeleteObject(g.fontSmall);
         if (g.fontMono) DeleteObject(g.fontMono);
         if (g.fontLogo) DeleteObject(g.fontLogo);
+        if (g.fontSemi) DeleteObject(g.fontSemi);
+        if (g.fontCaps) DeleteObject(g.fontCaps);
+        if (g.fontValue) DeleteObject(g.fontValue);
         destroySurface(g.surface);
         g.window = nullptr;
         PostQuitMessage(0);

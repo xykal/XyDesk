@@ -982,19 +982,19 @@ pub mod capture_health {
     static PROC_USER: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
     static ACTIVE_USER: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
 
-    /// Nama user pemilik sesi (WTSUserName) — biar diagnosa bisa bilang
-    /// "host jalan sebagai runneradmin, layar aktif milik xyadmin".
-    unsafe fn session_user(session: u32) -> String {
-        use windows::Win32::System::RemoteDesktop::{
-            WTSFreeMemory, WTSQuerySessionInformationW, WTSUserName,
-        };
+    /// Info string sebuah sesi (nama user, nama stasiun, dsb.).
+    unsafe fn session_string(
+        session: u32,
+        class: windows::Win32::System::RemoteDesktop::WTS_INFO_CLASS,
+    ) -> String {
+        use windows::Win32::System::RemoteDesktop::{WTSFreeMemory, WTSQuerySessionInformationW};
         if session == u32::MAX {
             return String::new();
         }
         let mut ptr = windows::core::PWSTR::null();
         let mut bytes = 0u32;
         // windows-rs 0.61: argumen pertama handle server (None = mesin ini).
-        if WTSQuerySessionInformationW(None, session, WTSUserName, &mut ptr, &mut bytes).is_err()
+        if WTSQuerySessionInformationW(None, session, class, &mut ptr, &mut bytes).is_err()
             || ptr.0.is_null()
         {
             return String::new();
@@ -1005,16 +1005,61 @@ pub mod capture_health {
         name
     }
 
-    /// Bandingkan sesi proses dengan sesi yang memegang layar konsol aktif.
+    /// Nama user pemilik sesi (WTSUserName) — biar diagnosa bisa bilang
+    /// "host jalan sebagai runneradmin, layar aktif milik xyadmin".
+    unsafe fn session_user(session: u32) -> String {
+        use windows::Win32::System::RemoteDesktop::WTSUserName;
+        session_string(session, WTSUserName)
+    }
+
+    /// Sesi yang benar-benar memegang layar yang dipakai orang: sesi RDP yang
+    /// berstatus aktif didahulukan atas konsol fisik. Konsol bisa saja isi
+    /// auto-login layanan (mis. runneradmin di VPS CI) sementara pengguna
+    /// sungguhan bekerja lewat RDP — konsol-lama tidak boleh disebut "layar
+    /// aktif" dan membuat peringatan salah arah.
+    unsafe fn active_screen_session() -> u32 {
+        use windows::Win32::System::RemoteDesktop::{
+            WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId, WTSWinStationName,
+            WTS_SESSION_INFOW, WTSActive,
+        };
+        let mut list: *mut WTS_SESSION_INFOW = std::ptr::null_mut();
+        let mut count: u32 = 0;
+        // windows-rs 0.61: (server, reserved, version, list, count).
+        if WTSEnumerateSessionsW(None, 0, 1, &mut list, &mut count).is_err() || list.is_null() {
+            return WTSGetActiveConsoleSessionId();
+        }
+        let mut console = u32::MAX;
+        let mut rdp = u32::MAX;
+        for i in 0..count as usize {
+            let info = &*list.add(i);
+            if info.State != WTSActive {
+                continue;
+            }
+            let station = session_string(info.SessionId, WTSWinStationName);
+            if station.eq_ignore_ascii_case("console") {
+                console = info.SessionId;
+            } else if rdp == u32::MAX {
+                rdp = info.SessionId;
+            }
+        }
+        WTSFreeMemory(list as *mut core::ffi::c_void);
+        if rdp != u32::MAX {
+            rdp
+        } else if console != u32::MAX {
+            console
+        } else {
+            WTSGetActiveConsoleSessionId()
+        }
+    }
+
+    /// Bandingkan sesi proses dengan sesi pemegang layar aktif (RDP didahulukan).
     pub fn evaluate_sessions() {
         unsafe {
-            use windows::Win32::System::RemoteDesktop::{
-                ProcessIdToSessionId, WTSGetActiveConsoleSessionId,
-            };
+            use windows::Win32::System::RemoteDesktop::ProcessIdToSessionId;
             use windows::Win32::System::Threading::GetCurrentProcessId;
             let mut proc = 0u32;
             let _ = ProcessIdToSessionId(GetCurrentProcessId(), &mut proc);
-            let active = WTSGetActiveConsoleSessionId();
+            let active = active_screen_session();
             PROC_SESSION.store(proc, Ordering::Relaxed);
             ACTIVE_SESSION.store(active, Ordering::Relaxed);
             *PROC_USER.lock().unwrap() = session_user(proc);
