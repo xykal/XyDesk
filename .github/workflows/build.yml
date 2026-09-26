@@ -695,7 +695,7 @@ jobs:
           Write-Host ($layout | ConvertTo-Json -Compress)
           if ($layout.windowWidth -ne 900 -or $layout.windowHeight -ne 560) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
           if ($layout.panelWidth -ne 900 -or $layout.panelHeight -ne 560) { throw 'Ukuran panel tidak sesuai' }
-          if ($layout.radiusPanel -ne 16) { throw "Radius sudut panel bukan 16: $($layout.radiusPanel)" }
+          if ($layout.radiusPanel -ne 10) { throw "Radius sudut panel bukan 10: $($layout.radiusPanel)" }
           if ($layout.shadowMargin -ne 0) { throw "Panel harus tanpa bayangan (margin 0): $($layout.shadowMargin)" }
           $hits = ($layout.hits -join ',')
           if ($hits -ne 'Minimize,Maximize,Close,PageStatus,PagePairing,Start,CopyId,None') { throw "Hit-test panel tidak sesuai: $hits" }
