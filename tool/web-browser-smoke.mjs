@@ -187,11 +187,7 @@ try{
 
 
  await page.evaluate(async()=>{
-  const React=await import('/node_modules/.vite/deps/react.js');
-  const {createRoot}=await import('/node_modules/.vite/deps/react-dom_client.js');
-  const {ConnectionMorph}=await import('/src/connection_morph.tsx');
-  const mount=document.createElement('div');mount.id='morph-fixture';mount.style.cssText='position:fixed;inset:0;z-index:9999;background:#100b17;display:grid;place-items:center';document.body.append(mount);
-  createRoot(mount).render(React.createElement(ConnectionMorph));
+  const {mountMorph}=await import('/test/connection-morph-fixture.tsx');mountMorph();
  });
  const morph=page.locator('#morph-fixture .connection-morph-motion');await morph.waitFor();
  for(const [time,label] of [[0,'phone'],[2.5,'pc'],[4.5,'tablet']]){
