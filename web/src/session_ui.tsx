@@ -603,7 +603,7 @@ export function SessionPanel({
       className={`spanel session-settings${railCollapsed ? ' no-rail' : ''}`}
       ref={drawerRef}
       aria-label="Pengaturan sesi"
-      onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();onClose();}}}
+      onKeyDown={e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();onClose();}}}
       onPointerDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >

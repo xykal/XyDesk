@@ -3148,3 +3148,10 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .session-settings .spanel-disconnect{color:#9b2626;background:#fbeaea;border:1px solid #e6baba;min-height:44px;width:100%;margin-top:18px}
 .session-settings .spanel-close:hover{color:#202a34;background:#e9edf1}
 @media(prefers-reduced-motion:reduce){.session-settings *{animation:none!important;transition:none!important}}
+
+.session-settings{backdrop-filter:none!important;contain:layout paint}
+@media(orientation:landscape) and (max-height:600px){.remote-session .srail{grid-auto-flow:row;grid-template-rows:none;grid-auto-rows:48px;grid-auto-columns:auto}}
+/* Navigation must remain clickable over mapped input; keyboard and drawer sit above both. */
+.video-surface>.srail,.video-surface>.srail-reveal{z-index:20}
+.video-surface>.keyboard-shell{z-index:60}
+.video-surface.mapping-studio-active>.srail,.video-surface.mapping-studio-active>.srail-reveal,.video-surface.mapping-studio-active>.srail-keyboard{visibility:hidden}

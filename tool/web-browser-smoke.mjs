@@ -45,6 +45,9 @@ try{
  assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'DIALOG');
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);
  await page.screenshot({path:'browser-evidence/menu-fullscreen-portrait.png'});
+ await page.setViewportSize({width:844,height:390});
+ const landscapeMenu=await menuDialog.boundingBox();assert.equal(landscapeMenu.width,844);assert.equal(landscapeMenu.height,390);
+ await page.screenshot({path:'browser-evidence/menu-fullscreen-landscape.png'});
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
  await page.setViewportSize({width:1366,height:900});
  assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
@@ -134,7 +137,9 @@ try{
    await drawer.getByRole('tab',{name:'Video',exact:true}).click();
    await page.screenshot({path:`browser-evidence/session-video-${viewport.width}.png`});
  }
- await drawer.getByRole('tab',{name:'Kontrol',exact:true}).click();
+ await drawer.getByRole('tab',{name:'Video',exact:true}).focus();
+ await page.keyboard.press('ArrowRight');
+ assert.equal(await drawer.getByRole('tab',{name:'Kontrol',exact:true}).getAttribute('aria-selected'),'true');
  await page.screenshot({path:'browser-evidence/session-control-desktop.png'});
  await drawer.getByRole('tab',{name:'Statistik',exact:true}).click();
  await page.screenshot({path:'browser-evidence/session-statistics-desktop.png'});
