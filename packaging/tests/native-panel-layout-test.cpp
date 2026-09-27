@@ -205,8 +205,9 @@ void testCompactAndCollapsed() {
             {l.toggleSidebar,Target::ToggleSidebar},{l.settings,Target::Settings},{l.profile,Target::Profile},{l.help,Target::Help}};
         for(const auto& t:common){check(insidePanel(l,t.rect),"header tool inside panel");check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(t.rect),xydesk::panel::centerY(t.rect))==t.target,"header tool hit test");}
         check(insidePanel(l,l.connectionQr)&&l.connectionQr.bottom()<l.hint.y,"QR action fits compact layout");
-        const struct{Rect rect;Target target;} screens[]={{l.sideConnections,Target::PageConnections},{l.sideSettings,Target::PageSettings},{l.sideAccount,Target::PageAccount},{l.sideHelp,Target::PageHelp}};
+        const struct{Rect rect;Target target;} screens[]={{l.sideConnections,Target::PageConnections}};
         for(const auto& screen:screens){check(insidePanel(l,screen.rect),"new navigation inside window");check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(screen.rect),xydesk::panel::centerY(screen.rect))==screen.target,"new screen hit target");}
+        check(l.sideSettings.w==0&&l.sideAccount.w==0&&l.sideHelp.w==0,"utility pages have no duplicate sidebar hit areas");
         check(l.title.right()<l.settings.x,"caption tools do not overlap title");
         check(l.idCard.w<=xydesk::panel::scaled(560,l.scalePct),"identity block compact");
         check(insidePanel(l,l.deviceLink)&&insidePanel(l,l.copyLink),"link inside panel");

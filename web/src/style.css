@@ -3160,3 +3160,42 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .session-settings,.mobile-navigation-screen{--ring:0 0 0 2px #536170;scrollbar-color:#a7b0ba transparent}
 .session-settings :focus-visible,.mobile-navigation-screen :focus-visible{box-shadow:none!important;outline:2px solid #334155;outline-offset:2px}
 .mapping-button,.stick-caption,.stick-knob{text-shadow:none!important}
+
+/* Session surfaces retain XyDesk's original dark ink palette, not white controls. */
+.video-surface .spanel.session-settings{
+ --session-surface:color-mix(in srgb,var(--black) 97%,transparent);
+ --session-card:#241d30;--session-edge:#4b405b;--session-text:#efe9fb;--session-muted:#bdb4c9;
+ background:var(--session-surface);color:var(--session-text);border-color:var(--session-edge);
+ scrollbar-color:#72667e transparent;
+}
+.session-settings .spanel-head,.session-settings .spanel-tabs{background:#191320;border-color:var(--session-edge)}
+.session-settings .spanel-tab,.session-settings .spanel-close,.session-settings .display-chips button,.session-settings .spanel-seg button{background:var(--session-card);color:var(--session-text);border-color:var(--session-edge)}
+.session-settings .spanel-tab.on,.session-settings .display-chips button.active,.session-settings .spanel-seg button.on{background:#e6e1ed!important;color:#201a29!important;border-color:#e6e1ed!important}
+.session-settings .spanel-card{background:var(--session-card);color:var(--session-text);border-color:var(--session-edge)}
+.session-settings .spanel-section,.session-settings .spanel-note,.session-settings .spanel-copy small,.session-settings .stat-line,.session-settings .statistics-panel .stat-line>span,.session-settings .statistics-panel details{color:var(--session-muted)}
+.session-settings .spanel-note{color:var(--session-muted)!important}
+.session-settings .stat-line strong,.session-settings .statistics-grid strong{color:var(--session-text)}
+.session-settings .statistics-path{border-color:var(--session-edge)}
+.session-settings .spanel-seg{background:#120e19}
+.session-settings .spanel-switch{background:#554c60;border-color:#776b85}
+.session-settings .spanel-switch.on{background:#ded7e8;border-color:#ded7e8}
+.session-settings .spanel-switch.on i{background:#282130}
+.session-settings input[type=range]{accent-color:#d8cfe5}
+.session-settings .spanel-close:hover{background:#393043;color:white}
+.session-settings .spanel-disconnect{background:#392027;color:#ffc5ca;border-color:#7c444e}
+.session-settings :focus-visible{outline-color:#eee6f8!important}
+.session-settings *{scrollbar-color:#72667e transparent}
+
+/* Only paint alpha changes; key labels, hit areas and input behavior stay intact. */
+.keyboard-shell{background:rgb(232 235 239 / var(--keyboard-fill,1))!important;backdrop-filter:none!important}
+.keyboard-shell .vkb,.keyboard-toolbar,.keyboard-settings,.native-keyboard{background:transparent!important}
+.keyboard-shell .vkb-key,.keyboard-toolbar>button,.keyboard-shell .vkb-layers button,.native-keyboard textarea,.native-keyboard button,.keyboard-settings select{background:rgb(255 255 255 / var(--keyboard-fill,1))!important;color:#1d252e;text-shadow:0 0 2px #fff;opacity:1!important}
+.keyboard-shell .vkb-key.mod{background:rgb(215 221 229 / var(--keyboard-fill,1))!important}
+.keyboard-shell .vkb-key.mod.on,.keyboard-shell .vkb-layers button[aria-pressed=true]{background:rgb(48 58 70 / var(--keyboard-fill,1))!important;color:white;text-shadow:0 1px 2px #18202a}
+.keyboard-shell .vkb-key:active{outline:2px solid #455466;outline-offset:-3px}
+.keyboard-transparency{display:grid;grid-template-columns:1fr auto;gap:8px;color:#1d252e;text-shadow:0 0 2px white}
+.keyboard-transparency input{grid-column:1/-1;width:100%;min-height:32px;accent-color:#35414f}
+.connection-morph{width:160px;height:140px;color:#eee7f8}
+.connection-morph svg{width:100%;height:100%}
+.connection-morph-static{display:none}
+@media(prefers-reduced-motion:reduce){.connection-morph-motion{display:none}.connection-morph-static{display:block}}

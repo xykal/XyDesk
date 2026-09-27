@@ -5,6 +5,7 @@
 // session_panels.dart (empat tab panel) di aplikasi — protokol inputnya
 // sama persis (host/src/input.rs), hanya medianya yang beda.
 import { useEffect, useState, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { InputCodec } from './rtc';
 import { relayReasonText } from './session_guidance';
 import type { SessionStats, HostMeta } from './rtc';
@@ -236,16 +237,18 @@ function keyboardRows(layer:'abc'|'numbers'|'fn'|'full'):KeySpec[][] {
 export function VirtualKeyboard({send,onClose}:{send:Send;onClose?:()=>void}) {
   const [mode,setMode]=useState<'virtual'|'native'>(()=>{try{return localStorage.getItem('xydesk.keyboard.mode')==='native'?'native':'virtual';}catch{return 'virtual';}});
   const [settings,setSettings]=useState(false);
+  const [transparency,setTransparency]=useState(()=>{try{const value=Number(localStorage.getItem('xydesk.keyboard.transparency'));return Number.isFinite(value)?Math.min(90,Math.max(0,value)):0;}catch{return 0;}});
+  const keyboardStyle={'--keyboard-fill':String(1-transparency/100)} as CSSProperties;
   const [draft,setDraft]=useState('');
   const composing=useRef(false);
   const commit=()=>{if(!composing.current&&draft){send(InputCodec.text(draft));setDraft('');}};
   const key=(vk:number)=>{send(InputCodec.key(vk,true));send(InputCodec.key(vk,false));};
-  return <section className="keyboard-shell" aria-label="Keyboard remote" onPointerDown={e=>e.stopPropagation()}>
+  return <section className="keyboard-shell" style={keyboardStyle} aria-label="Keyboard remote" onPointerDown={e=>e.stopPropagation()}>
     <div className="keyboard-toolbar"><span>{mode==='virtual'?'Keyboard virtual':'Keyboard HP · ketik lalu kirim'}</span>
       <button type="button" aria-label="Pengaturan keyboard" aria-expanded={settings} onClick={()=>setSettings(v=>!v)}><IcSliders/></button>
       <button type="button" aria-label="Tutup keyboard" onClick={onClose}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button>
     </div>
-    {settings&&<label className="keyboard-settings">Jenis keyboard <select value={mode} onChange={e=>{const next=e.target.value==='native'?'native':'virtual';setMode(next);try{localStorage.setItem('xydesk.keyboard.mode',next);}catch{}}}><option value="virtual">Virtual · tombol lengkap</option><option value="native">Keyboard HP · teks / IME</option></select></label>}
+    {settings&&<div onKeyDown={e=>e.stopPropagation()}><label className="keyboard-settings keyboard-transparency">Transparansi background <output>{transparency}%</output><input aria-label="Transparansi background keyboard" type="range" min="0" max="90" step="5" value={transparency} onChange={e=>{const value=Number(e.target.value);setTransparency(value);try{localStorage.setItem('xydesk.keyboard.transparency',String(value));}catch{}}}/></label><label className="keyboard-settings">Jenis keyboard <select value={mode} onChange={e=>{const next=e.target.value==='native'?'native':'virtual';setMode(next);try{localStorage.setItem('xydesk.keyboard.mode',next);}catch{}}}><option value="virtual">Virtual · tombol lengkap</option><option value="native">Keyboard HP · teks / IME</option></select></label></div>}
     {mode==='virtual'?<VirtualKeyGrid send={send}/>:<div className="native-keyboard"><textarea autoFocus aria-label="Teks untuk PC" placeholder="Ketik di keyboard HP, lalu Kirim teks" value={draft} maxLength={4000} onChange={e=>setDraft(e.target.value)} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();commit();}}}/><div><button type="button" disabled={!draft} onClick={commit}>Kirim teks</button><button type="button" onClick={()=>key(0x08)}>Backspace PC</button><button type="button" onClick={()=>key(0x0d)}>Enter PC</button></div></div>}
   </section>;
 }

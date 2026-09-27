@@ -79,6 +79,7 @@ import {
 } from './version';
 import { vkFromCode } from './vk';
 import BillingPage from './Billing';
+import { ConnectionMorph } from './connection_morph';
 import { VirtualKeyboard, transportLabel, SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
 import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
@@ -2836,9 +2837,9 @@ function ConnectScreen({
         {connected && videoPlaybackBlocked && <button className="video-playback-recovery" type="button" onPointerDown={e=>e.stopPropagation()} onClick={resumeVideo}>Browser menahan pemutaran. Ketuk untuk tampilkan video.</button>}
         {sessionOpen && !connected && <div className="session-connecting" role="region" aria-label="Pemulihan sesi">
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
-          {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
-          <h2 aria-live="polite">{fasePesan||labels[phase]||'Lanjutkan sesi perangkat'}</h2>
-          <p>ID {hostId||'belum dipilih'} · Halaman sesi tetap terbuka saat koneksi terputus.</p>
+          {['pairing','negotiating'].includes(phase)&&<ConnectionMorph/>}
+          <h2 aria-live="polite">{['pairing','negotiating'].includes(phase)?'Menghubungkan perangkat…':fasePesan||labels[phase]||'Lanjutkan sesi perangkat'}</h2>
+          <p>{['pairing','negotiating'].includes(phase)?'Menyiapkan layar jarak jauh.':'Siap melanjutkan koneksi lu.'}</p>
           {!['pairing','negotiating'].includes(phase)&&<div className="session-resume-form">
             {!/^\d{9}$/.test(hostId.replace(/[\s-]/g,''))&&<label>ID perangkat<input inputMode="numeric" value={hostId} onChange={e=>setHostId(e.target.value)} autoComplete="off"/></label>}
             {!savedAccess&&<label>Password pairing<input ref={pinRef} type="password" value={pin} onChange={e=>setPin(e.target.value)} autoComplete="off" onKeyDown={e=>{if(e.key==='Enter'&&canConnect)void connect();}}/><small>Akses tersimpan tidak tersedia atau sudah dicabut. Password tidak disimpan.</small></label>}

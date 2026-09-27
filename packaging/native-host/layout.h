@@ -303,9 +303,6 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     sidebarItem(l.sidePairing, l.sidePairingIcon, l.sidePairingLabel);
     sidebarItem(l.sideControl, l.sideControlIcon, l.sideControlLabel);
 
-    sidebarItem(l.sideSettings, l.sideSettingsIcon, l.sideSettingsLabel);
-    sidebarItem(l.sideAccount, l.sideAccountIcon, l.sideAccountLabel);
-    sidebarItem(l.sideHelp, l.sideHelpIcon, l.sideHelpLabel);
 
     // ── Area konten di kanan sidebar ──
     const int contentX = sideX + sideW + px(8);
@@ -417,9 +414,9 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;
     if (l.sideConnections.contains(x,y)) return Target::PageConnections;
-    if (l.sideSettings.contains(x,y)) return Target::PageSettings;
-    if (l.sideAccount.contains(x,y)) return Target::PageAccount;
-    if (l.sideHelp.contains(x,y)) return Target::PageHelp;
+
+
+
     if (l.sideStatus.contains(x, y)) return Target::PageStatus;
     if (l.sidePairing.contains(x, y)) return Target::PagePairing;
     if (l.sideControl.contains(x, y)) return Target::PageControl;

@@ -163,6 +163,14 @@ try{
  await settledScreenshot({path:'browser-evidence/touch-keyboard.png'});
 
  await page.getByRole('button',{name:'Pengaturan keyboard',exact:true}).click();
+ const opacity=page.getByRole('slider',{name:'Transparansi background keyboard'});
+ await opacity.focus();await page.keyboard.press('Home');
+ for(let i=0;i<13;i++)await page.keyboard.press('ArrowRight');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('xydesk.keyboard.transparency')),'65');
+ const keyboardPaint=await key.evaluate(el=>({background:getComputedStyle(el).backgroundColor,opacity:getComputedStyle(el).opacity}));
+ assert.ok(keyboardPaint.background.endsWith('0.35)'),keyboardPaint.background);
+ assert.equal(keyboardPaint.opacity,'1');
+ await settledScreenshot({path:'browser-evidence/keyboard-transparent.png'});
  await page.getByLabel('Jenis keyboard').selectOption('native');
  await page.getByLabel('Teks untuk PC').fill('Halo PC');
  await page.getByRole('button',{name:'Kirim teks',exact:true}).click();
@@ -172,12 +180,30 @@ try{
  results.push('Rail hides/restores and native keyboard text composer sends once');
  await page.goto(base+'/connect?device=123456789');
  await page.getByRole('region',{name:'Pemulihan sesi'}).waitFor();
- assert.ok((await page.getByRole('region',{name:'Pemulihan sesi'}).textContent()).includes('123456789'));
+ assert.equal((await page.getByRole('region',{name:'Pemulihan sesi'}).textContent()).includes('123456789'),false,'connection view does not print the device ID');
  await page.getByRole('region',{name:'Pemulihan sesi'}).getByLabel(/^Password pairing/).waitFor();
  assert.equal(new URL(page.url()).searchParams.has('password'),false);
  results.push('ID-only connect link reaches scoped session/password prompt without password in URL');
 
 
+ await page.evaluate(async()=>{
+  const React=await import('/node_modules/.vite/deps/react.js');
+  const {createRoot}=await import('/node_modules/.vite/deps/react-dom_client.js');
+  const {ConnectionMorph}=await import('/src/connection_morph.tsx');
+  const mount=document.createElement('div');mount.id='morph-fixture';mount.style.cssText='position:fixed;inset:0;z-index:9999;background:#100b17;display:grid;place-items:center';document.body.append(mount);
+  createRoot(mount).render(React.createElement(ConnectionMorph));
+ });
+ const morph=page.locator('#morph-fixture .connection-morph-motion');await morph.waitFor();
+ for(const [time,label] of [[0,'phone'],[2.5,'pc'],[4.5,'tablet']]){
+  await morph.evaluate((el,t)=>{el.pauseAnimations();el.setCurrentTime(t);},time);
+  const width=await morph.locator('rect').evaluate(el=>el.width.animVal.value);
+  assert.ok(label==='phone'?width<50:label==='pc'?width>120:width>80&&width<100);
+  await settledScreenshot({path:`browser-evidence/loading-${label}.png`});
+ }
+ await page.emulateMedia({reducedMotion:'reduce'});
+ assert.equal(await morph.isVisible(),false);
+ assert.equal(await page.locator('.connection-morph-static').isVisible(),true);
+ results.push('Keyboard background transparency preserves opaque text; continuous device morph and reduced-motion fallback');
  assert.deepEqual(errors,[],'No browser page errors');
  await writeFile('browser-evidence/results.json',JSON.stringify({passed:results,browserErrors:errors,scope:'Synthetic media + editor/menu. No real host, RDP or OAuth acceptance.'},null,2));
  console.log(results.join('\n'));

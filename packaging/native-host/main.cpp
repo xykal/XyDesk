@@ -894,9 +894,9 @@ void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
 float sidebarItemY(const PanelLayout& layout, Page page) {
     switch (page) {
     case Page::Connections: return static_cast<float>(layout.sideConnections.y);
-    case Page::Settings: return static_cast<float>(layout.sideSettings.y);
-    case Page::Account: return static_cast<float>(layout.sideAccount.y);
-    case Page::Help: return static_cast<float>(layout.sideHelp.y);
+    case Page::Settings: return -1.0f;
+    case Page::Account: return -1.0f;
+    case Page::Help: return -1.0f;
     case Page::Pairing: return static_cast<float>(layout.sidePairing.y);
     case Page::Control: return static_cast<float>(layout.sideControl.y);
     case Page::Status:
@@ -968,17 +968,16 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
         {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Akses host"},
         {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol host"},
         {Page::Connections, Target::PageConnections, layout.sideConnections, layout.sideConnectionsIcon, layout.sideConnectionsLabel, L"Koneksi"},
-        {Page::Settings, Target::PageSettings, layout.sideSettings, layout.sideSettingsIcon, layout.sideSettingsLabel, L"Pengaturan"},
-        {Page::Account, Target::PageAccount, layout.sideAccount, layout.sideAccountIcon, layout.sideAccountLabel, L"Akun"},
-        {Page::Help, Target::PageHelp, layout.sideHelp, layout.sideHelpIcon, layout.sideHelpLabel, L"Bantuan"},
     };
 
     // Pill aktif meluncur (morphing) antar item; tingginya sama dengan item.
     if (g.pillY < 0.0f) g.pillY = sidebarItemY(layout, g.page);
     const Rect pill{layout.sideStatus.x, static_cast<int>(g.pillY + 0.5f),
         layout.sideStatus.w, layout.sideStatus.h};
+    if (g.pillY >= 0.0f) {
     fillRoundedOpaque(surface, pill, layout.radiusControl, mixColor(kSurface2, kAccent, 0.30f));
     strokeRounded(surface, pill, layout.radiusControl, mixColor(kEdge, kAccent, 0.55f), 1);
+    }
 
     for (const auto& entry : items) {
         const bool active = g.page == entry.page;
@@ -1185,7 +1184,7 @@ bool drawPanelToSurface() {
     const struct {Target target;Rect rect;const wchar_t* glyph;} tools[]={
         {Target::ToggleSidebar,g.layout.toggleSidebar,L"\uE700"},{Target::Settings,g.layout.settings,L"\uE713"},
         {Target::Profile,g.layout.profile,L"\uE77B"},{Target::Help,g.layout.help,L"\uE897"}};
-    for(const auto& tool:tools){if(g.hot==tool.target||g.focused==tool.target)fillRoundedOpaque(surface,tool.rect,g.layout.radiusControl,kSurface3);drawTextCentered(dc,tool.glyph,tool.rect,g.fontIcons,kText);}
+    for(const auto& tool:tools){const bool selected=(tool.target==Target::Settings&&g.page==Page::Settings)||(tool.target==Target::Profile&&g.page==Page::Account)||(tool.target==Target::Help&&g.page==Page::Help);if(selected||g.hot==tool.target||g.focused==tool.target)fillRoundedOpaque(surface,tool.rect,g.layout.radiusControl,kSurface3);drawTextCentered(dc,tool.glyph,tool.rect,g.fontIcons,kText);}
 
     SelectObject(dc, previousFont);
     GdiFlush();
@@ -1825,7 +1824,7 @@ std::vector<Target> focusOrder() {
         break;
     }
     order.push_back(Target::Minimize);
-    for(auto target:{Target::PageConnections,Target::PageSettings,Target::PageAccount,Target::PageHelp})order.push_back(target);
+    order.push_back(Target::PageConnections);
     order.push_back(Target::Maximize);
     order.push_back(Target::Close);
     return order;
