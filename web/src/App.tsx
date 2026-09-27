@@ -2880,7 +2880,7 @@ function ConnectScreen({
               <strong>{g.title}</strong>
               <p>{g.detail}</p>
               <div className="session-frame-actions">
-                <button type="button" onClick={() => setPanelOpen(true)}>{g.action}</button>
+                <button type="button" onClick={() => {setPanelTab('gambar');setPanelOpen(true);setKbOpen(false);}}>{g.action}</button>
               </div>
             </div>
           );

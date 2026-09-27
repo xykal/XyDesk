@@ -13,6 +13,10 @@ for(let attempt=0;attempt<30;attempt++){
 }
 const browser=await chromium.launch();
 const errors=[];const results=[];let page;
+async function settledScreenshot(options){
+ await page.evaluate(()=>document.getAnimations().filter(a=>a.effect?.getTiming().iterations!==Infinity).forEach(a=>a.finish()));
+ await page.screenshot(options);
+}
 try{
  page=await browser.newPage({viewport:{width:1366,height:900}});
  page.on('pageerror',e=>errors.push(e.message));
@@ -34,7 +38,7 @@ try{
  results.push('Real canvas MediaStream attaches to empty video, plays and presents 160x90 frames');
  await page.evaluate(()=>{window.fixtureStop();clearInterval(window.fixtureTimer);window.fixtureStream.getTracks().forEach(t=>t.stop());document.querySelector('#fixture-video').remove();});
  assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
- await page.screenshot({path:'browser-evidence/navigation-desktop.png'});
+ await settledScreenshot({path:'browser-evidence/navigation-desktop.png'});
  await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Buka menu',exact:true}).click();
  const menu=page.getByRole('navigation',{name:'Menu utama'});
@@ -44,10 +48,10 @@ try{
  const bounds=await menuDialog.boundingBox();assert.equal(bounds.x,0);assert.equal(bounds.y,0);assert.equal(bounds.width,390);assert.equal(bounds.height,844);
  assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'DIALOG');
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);
- await page.screenshot({path:'browser-evidence/menu-fullscreen-portrait.png'});
+ await settledScreenshot({path:'browser-evidence/menu-fullscreen-portrait.png'});
  await page.setViewportSize({width:844,height:390});
  const landscapeMenu=await menuDialog.boundingBox();assert.equal(landscapeMenu.width,844);assert.equal(landscapeMenu.height,390);
- await page.screenshot({path:'browser-evidence/menu-fullscreen-landscape.png'});
+ await settledScreenshot({path:'browser-evidence/menu-fullscreen-landscape.png'});
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
  await page.setViewportSize({width:1366,height:900});
  assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
@@ -64,7 +68,7 @@ try{
  await page.locator('.mapping-editor .mapping-options').getByRole('button',{name:'A',exact:true}).click();
  await page.getByLabel('Nama kontrol',{exact:true}).fill('Tes tombol');
  await page.getByLabel('Teks pada tombol',{exact:true}).fill('JUMP');
- await page.screenshot({path:'browser-evidence/editor-desktop.png'});
+ await settledScreenshot({path:'browser-evidence/editor-desktop.png'});
  await page.getByRole('button',{name:'Pindahkan panel ke sisi lain'}).click();
  assert.equal(await page.locator('.studio-panel.left').count(),1);
  await page.getByRole('button',{name:'Simpan',exact:true}).click();
@@ -92,7 +96,7 @@ try{
  await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).click();
  await page.getByRole('button',{name:'Mouse',exact:true}).click();
- await page.screenshot({path:'browser-evidence/editor-mobile.png'});
+ await settledScreenshot({path:'browser-evidence/editor-mobile.png'});
  const panel=await page.locator('.studio-panel').boundingBox();
  assert.ok(panel.x>=0&&panel.x+panel.width<=391,'mobile inspector stays within viewport');
  results.push('Mobile inspector fits 390px viewport');
@@ -101,7 +105,7 @@ try{
  await menu.waitFor({state:'visible'});
  assert.equal(await page.getByRole('navigation',{name:'Aplikasi remote'}).isVisible(),false);
  assert.equal(await page.getByRole('button',{name:'Control Studio',exact:true}).count(),1);
- await page.screenshot({path:'browser-evidence/menu-mobile.png'});
+ await settledScreenshot({path:'browser-evidence/menu-mobile.png'});
  await page.keyboard.press('Escape');
  results.push('Mobile fullscreen navigation has no duplicate desktop links');
  // Mount real exported session components without a host or credentials.
@@ -116,7 +120,7 @@ try{
  await page.getByRole('button',{name:'Sembunyikan rail',exact:true}).click();
  assert.equal(await mapping.count(),mappingCount,'hiding rail preserves mapped controls');
  assert.equal(await mapping.evaluateAll(items=>items.every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(el).backgroundImage==='none')),true,'input controls have no background');
- await page.screenshot({path:'browser-evidence/controls-transparent.png'});
+ await settledScreenshot({path:'browser-evidence/controls-transparent.png'});
  assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
  await page.getByRole('button',{name:'Tampilkan rail',exact:true}).click();
  await page.getByRole('toolbar',{name:'Kontrol sesi'}).waitFor();
@@ -135,14 +139,14 @@ try{
     const body=drawer.getByRole('tabpanel');assert.equal(await body.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'no horizontal overflow');
    }
    await drawer.getByRole('tab',{name:'Video',exact:true}).click();
-   await page.screenshot({path:`browser-evidence/session-video-${viewport.width}.png`});
+   await settledScreenshot({path:`browser-evidence/session-video-${viewport.width}.png`});
  }
  await drawer.getByRole('tab',{name:'Video',exact:true}).focus();
  await page.keyboard.press('ArrowRight');
  assert.equal(await drawer.getByRole('tab',{name:'Kontrol',exact:true}).getAttribute('aria-selected'),'true');
- await page.screenshot({path:'browser-evidence/session-control-desktop.png'});
+ await settledScreenshot({path:'browser-evidence/session-control-desktop.png'});
  await drawer.getByRole('tab',{name:'Statistik',exact:true}).click();
- await page.screenshot({path:'browser-evidence/session-statistics-desktop.png'});
+ await settledScreenshot({path:'browser-evidence/session-statistics-desktop.png'});
  await page.emulateMedia({reducedMotion:'reduce'});
  assert.equal(await drawer.evaluate(el=>getComputedStyle(el).animationName),'none');
  await page.emulateMedia({reducedMotion:'no-preference'});
@@ -156,7 +160,7 @@ try{
  const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
  assert.equal(await page.locator('.touch-layout .vkb-row').evaluateAll(rows=>rows.every(row=>row.scrollWidth<=row.clientWidth+1&&row.getBoundingClientRect().right<=innerWidth)),true,'every touch row fits without horizontal scrolling');
  assert.equal(await page.locator('.srail-keyboard').isVisible(),false,'floating keyboard toggle does not cover typing keys');
- await page.screenshot({path:'browser-evidence/touch-keyboard.png'});
+ await settledScreenshot({path:'browser-evidence/touch-keyboard.png'});
 
  await page.getByRole('button',{name:'Pengaturan keyboard',exact:true}).click();
  await page.getByLabel('Jenis keyboard').selectOption('native');
@@ -178,7 +182,7 @@ try{
  await writeFile('browser-evidence/results.json',JSON.stringify({passed:results,browserErrors:errors,scope:'Synthetic media + editor/menu. No real host, RDP or OAuth acceptance.'},null,2));
  console.log(results.join('\n'));
 }catch(error){
- if(page)await page.screenshot({path:'browser-evidence/failure.png'}).catch(()=>{});
+ if(page)await settledScreenshot({path:'browser-evidence/failure.png'}).catch(()=>{});
  throw error;
 }finally{
  await writeFile('browser-evidence/page-errors.json',JSON.stringify(errors,null,2));

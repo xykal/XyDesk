@@ -3155,3 +3155,8 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .video-surface>.srail,.video-surface>.srail-reveal{z-index:20}
 .video-surface>.keyboard-shell{z-index:60}
 .video-surface.mapping-studio-active>.srail,.video-surface.mapping-studio-active>.srail-reveal,.video-surface.mapping-studio-active>.srail-keyboard{visibility:hidden}
+
+/* Keep legacy purple focus rings and text relief out of the monochrome session UI. */
+.session-settings,.mobile-navigation-screen{--ring:0 0 0 2px #536170;scrollbar-color:#a7b0ba transparent}
+.session-settings :focus-visible,.mobile-navigation-screen :focus-visible{box-shadow:none!important;outline:2px solid #334155;outline-offset:2px}
+.mapping-button,.stick-caption,.stick-knob{text-shadow:none!important}
