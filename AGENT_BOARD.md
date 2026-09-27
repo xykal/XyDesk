@@ -1,5 +1,10 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
+## 27 Sep 2026 — web session UI LIVE, 96b3bfd
+
+Right full-height five-category drawer, independently hidden rail/mapped controls, transparent white-outline input controls, full-viewport mobile menu and functional short transitions deployed. Actions [36310218985](https://github.com/xykal/XyDesk/actions/runs/36310218985) **success**, 10 browser scenarios / zero page errors; live JS/CSS hashes match CI. Evidence/limitations: `docs/qa/session-ui-2026-09-27.md`. Streaming/input/adaptive/coordination frozen and unchanged. Native remains unsigned 9503314 with known high-DPI caveat; real HP/host/OAuth acceptance not claimed. This entry supersedes older web/menu status below.
+
+
 ## 27 Sep 2026 — native panel/package SELESAI, kandidat 1b873c3
 
 Source executable `1b873c3a615b0cbad43f8f76a0499626d9ce4700`. Release portable [36301838178](https://github.com/xykal/XyDesk/actions/runs/36301838178) dan NSIS [36302323685](https://github.com/xykal/XyDesk/actions/runs/36302323685) **success**. Integrasi launcher/WinHTTP dengan engine nyata di loopback, layout/parser/contract, regresi Windows/Linux dan install/reinstall/uninstall lolos. Detail/hash/artifact: `docs/qa/native-panel-settings-2026-09-27.md`. Workspace deliverables: `XyDesk-native-1b873c3/` (EXE, portable ZIP, checksum, laporan, panduan).
