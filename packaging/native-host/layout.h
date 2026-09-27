@@ -163,6 +163,7 @@ struct PanelLayout {
     Rect closeButton{};
 
     // Sidebar: tiga tombol halaman, masing-masing dengan area ikon + label.
+    Rect homeAccess, homeConnections;
     Rect sideConnections, sideConnectionsIcon, sideConnectionsLabel;
     Rect sideSettings, sideSettingsIcon, sideSettingsLabel;
     Rect sideAccount, sideAccountIcon, sideAccountLabel;
@@ -325,7 +326,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     // lebih tinggi); minimum tetap 88 supaya tiga baris selalu muat.
     const int hintTop = panelH - pad - px(38);
     const int captureAvail = hintTop - gap - (l.statusCard.bottom() + gap);
-    const int captureH = minValue(px(176), maxValue(px(88), captureAvail));
+    const int captureH = minValue(px(144), maxValue(px(88), captureAvail));
     l.captureCard = Rect{contentX, l.statusCard.bottom() + gap, contentW, captureH};
     l.captureTitle = Rect{l.captureCard.x + px(20), l.captureCard.y + px(12), contentW - px(40), px(16)};
     l.captureLine1 = Rect{l.captureCard.x + px(20), l.captureTitle.bottom() + px(6), contentW - px(40), px(18)};
@@ -369,6 +370,10 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // Petunjuk di dasar konten, milik semua halaman.
     l.hint = Rect{contentX, panelH - pad - px(38), contentW, px(38)};
+    const int homeY=l.captureCard.bottom()+px(16),homeHeight=minValue(px(224),l.hint.y-homeY-px(14));
+    const int homeHalf=(contentW-px(16))/2;
+    l.homeAccess={contentX+px(24),homeY+homeHeight-px(52),px(160),px(36)};
+    l.homeConnections={contentX+homeHalf+px(40),l.homeAccess.y,px(160),px(36)};
     return l;
 }
 
@@ -399,6 +404,8 @@ inline bool targetOnPage(Target target, Page page) {
 // Sasaran klik di koordinat klien jendela. Tombol diperiksa lebih dulu
 // supaya tombol caption di dalam area judul tetap menang.
 inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showRunHost) {
+    if(page==Page::Status&&l.homeAccess.contains(x,y))return Target::PagePairing;
+    if(page==Page::Status&&l.homeConnections.contains(x,y))return Target::PageConnections;
     if (l.toggleSidebar.contains(x, y)) return Target::ToggleSidebar;
     if (l.settings.contains(x, y)) return Target::Settings;
     if (l.profile.contains(x, y)) return Target::Profile;

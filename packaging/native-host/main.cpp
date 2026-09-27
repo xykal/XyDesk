@@ -723,6 +723,8 @@ std::wstring targetLabel(Target target) {
     case Target::RunHost: return L"Jalankan host di sesi ini";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
+    case Target::PagePairing:return L"Buka akses host";
+    case Target::PageConnections:return L"Lihat koneksi";
     case Target::CopyLink: return L"Salin link";
     case Target::ConnectionQr: return L"QR koneksi";
     default: return L"";
@@ -1056,45 +1058,32 @@ void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
     const int y=l.connectionQr.bottom()+px(24);Rect note{l.statusCard.x,y,l.statusCard.w,l.hint.y-y-px(16)};
     if(note.h>=px(144)){fillRoundedOpaque(surface,note,l.radiusCard,kSurface2);
         workspaceText(dc,L"Akses yang tetap di bawah kendali lu",{note.x+px(24),y+px(24),note.w-px(48),px(32)},g.fontSemi);
-        workspaceText(dc,L"1. Bagikan link atau QR perangkat ini.\
-2. Browser memakai izin tersimpan yang valid, atau meminta password pairing.\
-3. Ubah password lewat Pengaturan untuk mencabut izin browser lama.",{note.x+px(24),y+px(66),note.w-px(48),note.h-px(80)},g.fontBody,kMuted);
+        workspaceText(dc,L"1. Bagikan link atau QR perangkat ini.\n2. Browser memakai izin tersimpan yang valid, atau meminta password pairing.\n3. Ubah password lewat Pengaturan untuk mencabut izin browser lama.",{note.x+px(24),y+px(66),note.w-px(48),note.h-px(80)},g.fontBody,kMuted);
     }
 }
 void paintScreenAside(Surface& surface,const PanelLayout& l,HDC dc,Page page){
     const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};const int x=l.statusCard.x+px(656),width=l.statusCard.right()-x;if(width<px(170))return;
     Rect card{x,l.statusCard.y,width,px(300)};fillRoundedOpaque(surface,card,l.radiusCard,kSurface2);
     const wchar_t* title=page==Page::Settings?L"Tentang pengaturan":page==Page::Account?L"Privasi akun":L"Catatan penting";
-    const wchar_t* body=page==Page::Settings?L"Password baru mencabut izin browser lama.\
-\
-Tidak perlu mengubah bitrate yang sudah nyaman.\
-\
-Status penerapan tampil di halaman ini.":page==Page::Account?L"Login dibuka di browser sistem.\
-\
-Sesi disimpan oleh Windows Credential Manager.\
-\
-Keluar dari aplikasi tidak menghapus cookie Google di browser.":L"X menyembunyikan aplikasi ke tray.\
-\
-Hentikan mematikan host.\
-\
-Status koneksi dan perangkat ada di halaman Koneksi.";
+    const wchar_t* body=page==Page::Settings?L"Password baru mencabut izin browser lama.\n\nTidak perlu mengubah bitrate yang sudah nyaman.\n\nStatus penerapan tampil di halaman ini.":page==Page::Account?L"Login dibuka di browser sistem.\n\nSesi disimpan oleh Windows Credential Manager.\n\nKeluar dari aplikasi tidak menghapus cookie Google di browser.":L"X menyembunyikan aplikasi ke tray.\n\nHentikan mematikan host.\n\nStatus koneksi dan perangkat ada di halaman Koneksi.";
     workspaceText(dc,title,{x+px(20),card.y+px(24),width-px(40),px(48)},g.fontSemi);
     workspaceText(dc,body,{x+px(20),card.y+px(80),width-px(40),px(204)},g.fontBody,kMuted);
 }
 
 void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
     const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};
-    const int y=l.captureCard.bottom()+px(16),height=l.hint.y-y-px(14);if(height<px(136))return;
+    const int y=l.captureCard.bottom()+px(16),height=std::min(px(224),l.hint.y-y-px(14));if(height<px(136))return;
     const int half=(l.statusCard.w-px(16))/2;
     Rect left{l.statusCard.x,y,half,height},right{left.right()+px(16),y,l.statusCard.w-half-px(16),height};
     fillRoundedOpaque(surface,left,l.radiusCard,kSurface2);fillRoundedOpaque(surface,right,l.radiusCard,kSurface2);
     workspaceText(dc,L"AKSES KE PC INI",{left.x+px(24),y+px(22),half-px(48),px(20)},g.fontCaps,kMuted);
     workspaceText(dc,g.deviceId.empty()?L"ID belum tersedia":g.deviceId,{left.x+px(24),y+px(56),half-px(48),px(38)},g.fontValue);
-    workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(106),half-px(48),height-px(120)},g.fontBody,kMuted);
+    workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(106),half-px(48),std::max(px(50),height-px(180))},g.fontBody,kMuted);
     workspaceText(dc,L"KONEKSI",{right.x+px(24),y+px(22),right.w-px(48),px(20)},g.fontCaps,kMuted);
     const std::wstring label=!sessionView.known?L"Menunggu status":sessionView.active?L"1 perangkat terhubung":L"Tidak ada sesi aktif";
     workspaceText(dc,label,{right.x+px(24),y+px(56),right.w-px(48),px(50)},g.fontSemi);
-    workspaceText(dc,sessionView.active?(sessionView.name.empty()?L"Nama perangkat tidak dilaporkan":sessionView.name):L"Detail nama, platform dan durasi ada di halaman Koneksi.",{right.x+px(24),y+px(110),right.w-px(48),height-px(124)},g.fontBody,kMuted);
+    workspaceText(dc,sessionView.active?(sessionView.name.empty()?L"Nama perangkat tidak dilaporkan":sessionView.name):L"Detail nama, platform dan durasi ada di halaman Koneksi.",{right.x+px(24),y+px(110),right.w-px(48),std::max(px(50),height-px(180))},g.fontBody,kMuted);
+    paintButton(surface,l,dc,Target::PagePairing,l.homeAccess);paintButton(surface,l,dc,Target::PageConnections,l.homeConnections);
 }
 
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
@@ -2306,7 +2295,19 @@ bool saveWindowEvidence(HWND hwnd,const std::wstring& path){
     RECT bounds{};GetWindowRect(hwnd,&bounds);const int width=bounds.right-bounds.left,height=bounds.bottom-bounds.top;
     HDC dc=CreateCompatibleDC(nullptr);BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;info.bmiHeader.biSizeImage=width*height*4;
     void* pixels=nullptr;HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&pixels,nullptr,0);if(!bitmap){DeleteDC(dc);return false;}auto old=SelectObject(dc,bitmap);
-    const BOOL rendered=PrintWindow(hwnd,dc,0);GdiFlush();
+    // Compose the actual window surface and real child controls through WM_PRINT.
+    // CI desktop can be narrower than the test window; no screen clipping/readback.
+    std::memset(pixels,0,info.bmiHeader.biSizeImage);
+    SendMessageW(hwnd,WM_PRINTCLIENT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT);
+    RECT parent{};GetWindowRect(hwnd,&parent);
+    for(const auto& entry:embeddedPages)if(IsWindowVisible(entry.second)){
+        RECT child{};GetWindowRect(entry.second,&child);int saved=SaveDC(dc);
+        SetViewportOrgEx(dc,child.left-parent.left,child.top-parent.top,nullptr);
+        IntersectClipRect(dc,0,0,child.right-child.left,child.bottom-child.top);
+        SendMessageW(entry.second,WM_PRINT,reinterpret_cast<WPARAM>(dc),PRF_CLIENT|PRF_CHILDREN|PRF_ERASEBKGND);
+        RestoreDC(dc,saved);
+    }
+    const BOOL rendered=TRUE;GdiFlush();
     BITMAPFILEHEADER header{};header.bfType=0x4D42;header.bfOffBits=sizeof(header)+sizeof(BITMAPINFOHEADER);header.bfSize=header.bfOffBits+info.bmiHeader.biSizeImage;
     HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);bool ok=false;
     if(file!=INVALID_HANDLE_VALUE){DWORD n=0;ok=WriteFile(file,&header,sizeof(header),&n,nullptr)&&WriteFile(file,&info.bmiHeader,sizeof(BITMAPINFOHEADER),&n,nullptr)&&WriteFile(file,pixels,info.bmiHeader.biSizeImage,&n,nullptr)&&n==info.bmiHeader.biSizeImage;CloseHandle(file);}
@@ -2314,7 +2315,7 @@ bool saveWindowEvidence(HWND hwnd,const std::wstring& path){
 }
 int runWorkspaceEvidence(HWND hwnd,const std::wstring& directory){
     g.deviceId=L"123456789";g.pairingCode=L"TESTONLY";g.statusText=L"Pratinjau offline · engine tidak dijalankan";
-    g.captureBackend=L"Fixture UI, bukan sesi capture";
+    g.captureBackend=L"Fixture UI, bukan sesi capture";g.captureWarn=true;g.captureNote=L"Tidak menjalankan capture dalam pratinjau offline.";
     sessionView.known=true;
     const auto style=GetWindowLongPtrW(hwnd,GWL_STYLE),extended=GetWindowLongPtrW(hwnd,GWL_EXSTYLE);
     if(!(style&WS_THICKFRAME)||(extended&WS_EX_LAYERED))return 30;
