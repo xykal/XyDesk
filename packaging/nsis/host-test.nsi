@@ -32,7 +32,7 @@ VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright 2026 XySpace Tech"
 !define MUI_ICON "..\windows\xydesk.ico"
 !define MUI_UNICON "..\windows\xydesk.ico"
 !define MUI_ABORTWARNING
-!define MUI_WELCOMEPAGE_TEXT "Memasang paket uji engine Windows x64 yang terpisah dari XyDesk lama.$\r$\n$\r$\nDriver layar dibundel. Control Panel native berjalan tanpa terminal atau PowerShell; driver yang sudah ada dipertahankan. Tidak membuka RDP. Host hanya dimulai setelah Anda menekan Mulai host.$\r$\n$\r$\nIdentitas uji disimpan terpisah dan tetap ada setelah uninstall."
+!define MUI_WELCOMEPAGE_TEXT "Memasang paket uji engine Windows x64 yang terpisah dari XyDesk lama.$\r$\n$\r$\nDriver layar dibundel. Control Panel native berjalan tanpa terminal atau PowerShell; driver yang sudah ada dipertahankan. Tidak membuka RDP. Host otomatis mulai ketika Control Panel dibuka.$\r$\n$\r$\nIdentitas mengikuti akun Windows dan dapat dipakai instalasi XyDesk lain pada akun yang sama. Identitas tetap ada setelah uninstall."
 !define MUI_FINISHPAGE_TEXT "Paket uji berhasil dipasang.$\r$\n$\r$\nJalankan XyDesk Control Panel dari Desktop atau Start Menu. Biarkan RDP terbuka pada pengujian pertama.$\r$\n$\r$\nBaca Panduan Uji Manual sebelum menguji capture dan input."
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${PAYLOAD}\LICENSE-XyDesk.txt"

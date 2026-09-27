@@ -1,12 +1,31 @@
 SATU PINTU: XYDESK CONTROL PANEL
 Desktop hanya berisi satu shortcut: "XyDesk Control Panel" — aplikasi native C++
-dengan surface gelap yang tenang untuk Start/Stop/status/ID/kode pairing. Tidak
+dengan panel terang netral untuk Start/Stop/status/ID/kode pairing. Tidak
 ada terminal dan tidak ada PowerShell untuk pemakaian normal. Host berjalan
 sebagai user Windows yang membuka panel; tidak ada pemindahan ke akun lain.
 Status aktif tetap bukan bukti streaming; statistik live terlihat di web.
 
 Start Menu hanya menyediakan Control Panel, panduan, dan uninstall. Untuk
 pemakaian normal cukup Control Panel; skrip teknis internal tidak perlu dibuka.
+
+PANEL HOST BARU — 27 SEPTEMBER 2026
+- Hamburger melipat sidebar. Jendela tetap luas; kartu ID/password lebih ringkas.
+- Logo memakai resource XyDesk asli. Ikon atas: pengaturan, profil Windows, bantuan.
+- Halaman Akses host menyediakan link ID-only dan Salin link. Tidak ada password
+  permanen di URL; web memakai izin browser yang valid atau meminta password.
+- Pengaturan memakai IPC privat + API loopback terautentikasi, bukan log/file
+  publik. Bitrate diterapkan pada engine yang berjalan; klien dapat mengubahnya.
+  Target panel tidak dipertahankan setelah engine restart. Default engine 8 Mbps
+  berbeda dari Auto adaptif web yang mulai 1 Mbps.
+- Password kustom/acak disimpan engine. Mengubah password mencabut akses browser
+  yang tersimpan. Jika timeout, periksa status host sebelum mengulangi perubahan.
+- Profil menunjukkan akun Windows dan proses host, bukan status login Google.
+  Login web tetap terpisah.
+- Identitas mengikuti akun Windows (atau XYDESK_HOME bila sengaja diatur).
+  Paket ini tidak otomatis membuat identitas uji terpisah. Perubahan password
+  dapat memengaruhi instalasi lain yang memakai identitas pada akun yang sama.
+- Untuk koneksi sekitar 2 Mbps, mulai dari web 720p/30 fps/Auto atau manual 1 Mbps.
+  Tidak ada janji latency 0 ms. Gamepad analog host belum didukung.
 
 MODE DRIVER / VIRTUAL DISPLAY — BELUM MENJADI ALUR NATIVE
 

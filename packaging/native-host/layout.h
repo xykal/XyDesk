@@ -277,7 +277,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     int itemY = l.titleBar.bottom() + px(8);
     const auto sidebarItem = [&](Rect& item, Rect& icon, Rect& label) {
         item = Rect{sideX, itemY, sideW, itemH};
-        icon = Rect{item.x + (sideW - px(24)) / 2, item.y + px(10), px(24), px(24)};
+        icon = Rect{item.x + (sideW - px(24)) / 2, item.y + px(collapsed ? 20 : 10), px(24), px(24)};
         label = Rect{item.x + px(4), icon.bottom() + px(5), collapsed ? 0 : sideW - px(8), px(12)};
         itemY = item.bottom() + itemGap;
     };
@@ -331,7 +331,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
         copyW,
         copyH};
 
-    l.deviceLink = Rect{contentX, l.passwordCard.bottom() + gap, contentW - px(96), px(52)};
+    l.deviceLink = Rect{contentX, l.passwordCard.bottom() + gap, identityW - px(96), px(52)};
     l.copyLink = Rect{l.deviceLink.right() + px(12), l.deviceLink.y + px(8), px(76), px(34)};
 
     // Halaman Kontrol: dua baris tombol aksi.

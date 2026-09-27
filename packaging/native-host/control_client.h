@@ -1,5 +1,8 @@
 #pragma once
 // Only inherited private IPC supplies this capability. Never discover it from files/logs.
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00
+#endif
 #include <windows.h>
 #include <winhttp.h>
 #include <vector>

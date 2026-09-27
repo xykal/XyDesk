@@ -27,6 +27,8 @@ jobs:
             host/target
           key: manual-host-linux-${{ hashFiles('host/Cargo.lock') }}
           restore-keys: manual-host-linux-
+      - name: Native geometry, parser and private bootstrap contracts
+        run: packaging/tests/test-native-panel-layout.sh
       - name: Format dan tes Rust terkunci
         working-directory: host
         run: cargo fmt --check && cargo test --locked -j 2
@@ -75,9 +77,34 @@ jobs:
           $exe = Join-Path $out 'XyDesk Control Panel.exe'
           $res = Join-Path $out 'xydesk.res'
           Copy-Item 'packaging/native-host/xydesk.ico' (Join-Path $out 'xydesk.ico')
-          $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /utf-8 /std:c++20 /O2 /EHsc /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
+          $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /utf-8 /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw 'Native C++ Control Panel gagal dikompilasi' }
+          $include = (Resolve-Path 'packaging/native-host').Path
+          $testSource = (Resolve-Path 'packaging/tests/native-control-client-test.cpp').Path
+          $testExe = Join-Path $out 'control-client-test.exe'
+          $cmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /EHsc /MT /DUNICODE /D_UNICODE /I`"$include`" `"$testSource`" /Fe:`"$testExe`""
+          cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'Control client test compile failed' }
+          $env:XYDESK_HOME = Join-Path $env:RUNNER_TEMP ('panel-client-' + [guid]::NewGuid())
+          New-Item -ItemType Directory -Path $env:XYDESK_HOME | Out-Null
+          try {
+            & $testExe (Resolve-Path 'host/target/x86_64-pc-windows-msvc/release/xydesk-host.exe').Path
+            if ($LASTEXITCODE -ne 0) { throw 'Native control integration failed' }
+          } finally { Remove-Item $env:XYDESK_HOME -Recurse -Force; Remove-Item Env:XYDESK_HOME }
+          foreach ($mode in @('pairing','collapsed')) {
+            $image = Join-Path $out "$mode.bmp"
+            $p = Start-Process -FilePath $exe -ArgumentList @("--panel-$mode-snapshot", "`"$image`"") -PassThru
+            if (-not $p.WaitForExit(10000)) { $p.Kill(); throw 'Snapshot timeout' }
+            if ($p.ExitCode -ne 0) { throw 'Snapshot failed' }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-panel-evidence-${{ github.sha }}
+          path: native-control-panel/*.bmp
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Regresi pustaka host Windows (tanpa sesi RDP)
         working-directory: host
         run: cargo test --locked --release --target x86_64-pc-windows-msvc --lib -j 2

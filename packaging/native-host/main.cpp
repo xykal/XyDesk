@@ -1481,6 +1481,7 @@ void showTrayMenu(HWND hwnd) {
 }
 
 struct SettingsState {
+    bool readyShown=false;
     std::future<std::string> pending;
     unsigned pid=0;
     int requestedBitrate=-1;
@@ -1517,7 +1518,8 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
         const bool ready=controlChannel.endpoint.has_value()&&g.running;
         const bool busy=state->pending.valid();
         for(int id:{IDC_APPLY_BITRATE,IDC_APPLY_PASSWORD,IDC_NEW_PASSWORD,IDC_BITRATE,IDC_PASSWORD})EnableWindow(GetDlgItem(hwnd,id),ready&&!busy);
-        if(!ready&&!busy)SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kontrol privat belum tersedia. Mulai/restart engine dari panel ini.");
+        if(!ready&&!busy){state->readyShown=false;SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kontrol privat belum tersedia. Mulai/restart engine dari panel ini.");}
+        else if(ready&&!busy&&!state->readyShown){state->readyShown=true;SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kanal privat siap. Pilih bitrate atau isi password baru.");}
         return TRUE;
     }
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
@@ -1526,6 +1528,7 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
     }
     if(message!=WM_COMMAND||state->pending.valid()||!controlChannel.endpoint)return FALSE;
     const int id=LOWORD(wParam);std::string body;
+    state->requestedBitrate=-1;
     if(id==IDC_APPLY_BITRATE){
         const auto index=SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_GETCURSEL,0,0);
         if(index<0||index>=8){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Pilih target bitrate terlebih dahulu.");return TRUE;}
@@ -1542,7 +1545,7 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
         body="{\"action\":\"set-password\",\"password\":"+xydesk::panel_control::quoteJson(text)+"}";
         SecureZeroMemory(text.data(),text.size());SetDlgItemTextW(hwnd,IDC_PASSWORD,L"");
     }else return FALSE;
-    const auto endpoint=*controlChannel.endpoint;state->pid=endpoint.pid;
+    const auto endpoint=*controlChannel.endpoint;state->pid=endpoint.pid;state->readyShown=true;
     try{state->pending=std::async(std::launch::async,[endpoint,body=std::move(body)]()mutable{return xydesk::panel_control::action(endpoint,std::move(body));});SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Menerapkan melalui kanal privat...");}
     catch(...){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Worker pengaturan tidak dapat dimulai.");}
     return TRUE;

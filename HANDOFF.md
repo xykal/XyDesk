@@ -1,5 +1,10 @@
 # HANDOFF — Catatan Lintas Role
 
+## 27 Sep 2026 — native settings implemented; preparing candidate package
+
+Operator “gas” authorizes this native continuation. Baseline `d4ef781` passed [Validate Web Host 36301577792](https://github.com/xykal/XyDesk/actions/runs/36301577792), including actual C++ private launcher/WinHTTP requests to an isolated engine, plus Linux geometry/bootstrap tests and Windows screenshots. Sidebar collapse, authentic logo, compact pairing + ID-only link, Windows profile/help, live bitrate and persistent password dialog implemented. Small link/icon/readiness corrections and release-mode packaging gates follow. See `docs/qa/native-panel-settings-2026-09-27.md`. Web remains executable `19fcd58`; no new stable release, APK, or analog gamepad driver. Package must not be called available before Prepare Host Windows/NSIS succeeds.
+
+
 ## 27 Sep 2026 — batch web low-bandwidth LIVE; native masih terbuka
 
 Izin operator “gas”. Web executable `19fcd583c58c52984acfc10ae43ec0e66989d39f`, Actions [36300640365](https://github.com/xykal/XyDesk/actions/runs/36300640365) sukses unit/build/8 browser scenarios/deploy. Production `/assets/index-BeG1LObb.js` diverifikasi via curl. Detail/batas bukti: `docs/qa/session-controls-low-bandwidth-2026-09-27.md`.
