@@ -33,6 +33,9 @@ try{
  await page.waitForFunction(()=>{const v=document.querySelector('#fixture-video');return v&&!v.paused&&v.videoWidth===160&&v.videoHeight===90&&v.readyState>=2;});
  results.push('Real canvas MediaStream attaches to empty video, plays and presents 160x90 frames');
  await page.evaluate(()=>{window.fixtureStop();clearInterval(window.fixtureTimer);window.fixtureStream.getTracks().forEach(t=>t.stop());document.querySelector('#fixture-video').remove();});
+ assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
+ await page.screenshot({path:'browser-evidence/navigation-desktop.png'});
+ await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Buka menu',exact:true}).click();
  const menu=page.getByRole('navigation',{name:'Menu utama'});
  await menu.waitFor({state:'visible'});
@@ -41,7 +44,9 @@ try{
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);
  await page.screenshot({path:'browser-evidence/menu-desktop.png'});
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
- results.push('Hamburger navigation belongs to header, not a modal; Escape closes');
+ await page.setViewportSize({width:1366,height:900});
+ assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
+ results.push('Desktop navigation has no hamburger; narrow-screen menu belongs to header and Escape closes');
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).click();
  // Custom dialog must stay in fullscreen and never invoke window.confirm.
  await page.getByRole('button',{name:'Batal',exact:true}).click();
