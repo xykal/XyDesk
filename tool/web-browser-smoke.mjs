@@ -109,7 +109,7 @@ try{
  await page.goto(base+'/connect?device=123456789');
  await page.getByRole('region',{name:'Pemulihan sesi'}).waitFor();
  assert.ok((await page.getByRole('region',{name:'Pemulihan sesi'}).textContent()).includes('123456789'));
- await page.getByLabel('Password pairing',{exact:true}).waitFor();
+ await page.getByRole('region',{name:'Pemulihan sesi'}).getByLabel(/^Password pairing/).waitFor();
  assert.equal(new URL(page.url()).searchParams.has('password'),false);
  results.push('ID-only connect link reaches scoped session/password prompt without password in URL');
 
