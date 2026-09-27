@@ -12,7 +12,10 @@
 //! pairing.
 
 use std::fs;
+use std::io::{self, Write};
+use std::path::Path;
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -57,18 +60,107 @@ const PW_CHARS: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789
 
 /// Muat ID perangkat yang sudah ada, atau buat + simpan yang baru.
 /// Mengembalikan 9 digit (tanpa spasi).
-pub fn load_or_create_device_id() -> String {
-    let path = config_dir().join("device_id");
-    if let Ok(raw) = fs::read_to_string(&path) {
-        let id: String = raw.chars().filter(|c| c.is_ascii_digit()).collect();
-        if id.len() == ID_LEN {
-            return id;
+pub fn load_or_create_device_id() -> io::Result<String> {
+    let dir = config_dir();
+    let _guard = lock_identity(&dir, Duration::from_secs(3))?;
+    load_value(&dir.join("device_id"), valid_id, generate_id)
+}
+
+/// Baca/buat pasangan di satu critical section, sebelum lease signaling.
+pub fn load_or_create_identity() -> io::Result<(String, String)> {
+    load_identity_at(&config_dir())
+}
+
+fn load_identity_at(dir: &Path) -> io::Result<(String, String)> {
+    let _guard = lock_identity(dir, Duration::from_secs(3))?;
+    let id = load_value(&dir.join("device_id"), valid_id, generate_id)?;
+    let password = load_value(&dir.join("password"), valid_password, generate_password)?;
+    Ok((id, password))
+}
+
+fn valid_id(id: &str) -> bool {
+    id.len() == ID_LEN && id.bytes().all(|b| b.is_ascii_digit())
+}
+fn valid_password(pw: &str) -> bool {
+    pw.chars().count() >= PW_MIN_LEN && !pw.chars().any(char::is_control)
+}
+
+fn lock_identity(dir: &Path, timeout: Duration) -> io::Result<fs::File> {
+    fs::create_dir_all(dir)?;
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    // Jangan hapus/rename lockfile: semua proses harus mengunci inode/file sama.
+    let file = options.open(dir.join("identity.lock"))?;
+    let deadline = Instant::now() + timeout;
+    loop {
+        match file.try_lock() {
+            Ok(()) => return Ok(file),
+            Err(fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(fs::TryLockError::WouldBlock) => {
+                return Err(io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    "identitas sedang dipakai proses lain",
+                ));
+            }
+            Err(fs::TryLockError::Error(error)) => return Err(error),
         }
     }
-    let id = generate_id();
-    let _ = fs::create_dir_all(config_dir());
-    let _ = fs::write(&path, &id);
-    id
+}
+
+fn load_value(
+    path: &Path,
+    valid: fn(&str) -> bool,
+    generate: fn() -> String,
+) -> io::Result<String> {
+    match fs::read_to_string(path) {
+        Ok(raw) => {
+            let value = raw.trim();
+            if !valid(value) {
+                // Jangan regenerasi diam-diam: data rusak bukan profil baru.
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "berkas identitas tidak valid; pulihkan dari cadangan",
+                ));
+            }
+            Ok(value.to_owned())
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            let value = generate();
+            atomic_write(path, value.as_bytes())?;
+            Ok(value)
+        }
+        Err(error) => Err(error),
+    }
+}
+
+fn atomic_write(path: &Path, data: &[u8]) -> io::Result<()> {
+    let temp = path.with_extension(format!(
+        "{}-{:016x}.tmp",
+        std::process::id(),
+        rand::random::<u64>()
+    ));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let mut file = options.open(&temp)?;
+    let result = file.write_all(data).and_then(|()| file.sync_all());
+    drop(file); // Windows tidak boleh mengganti file yang masih terbuka tanpa share-delete.
+    let result = result.and_then(|()| fs::rename(&temp, path));
+    if result.is_err() {
+        let _ = fs::remove_file(temp);
+    }
+    result
 }
 
 /// Generate ID perangkat 9 digit acak.
@@ -93,18 +185,10 @@ pub fn format_id(id: &str) -> String {
 }
 
 /// Muat password yang sudah ada, atau buat + simpan yang baru.
-pub fn load_or_create_password() -> String {
-    let path = config_dir().join("password");
-    if let Ok(raw) = fs::read_to_string(&path) {
-        let pw = raw.trim().to_string();
-        if pw.len() >= PW_MIN_LEN {
-            return pw;
-        }
-    }
-    let pw = generate_password();
-    let _ = fs::create_dir_all(config_dir());
-    let _ = fs::write(&path, &pw);
-    pw
+pub fn load_or_create_password() -> io::Result<String> {
+    let dir = config_dir();
+    let _guard = lock_identity(&dir, Duration::from_secs(3))?;
+    load_value(&dir.join("password"), valid_password, generate_password)
 }
 
 /// Generate password acak ([`PW_GEN_LEN`] karakter, tanpa karakter
@@ -235,9 +319,10 @@ pub fn set_password(pw: &str) -> std::io::Result<()> {
             "password tidak boleh berisi karakter kontrol (Enter/Tab/ESC)",
         ));
     }
-    fs::create_dir_all(config_dir())?;
+    let dir = config_dir();
+    let _guard = lock_identity(&dir, Duration::from_secs(3))?;
     crate::remembered::revoke_all()?;
-    fs::write(config_dir().join("password"), pw)
+    atomic_write(&dir.join("password"), pw.as_bytes())
 }
 
 /// Direktori konfigurasi host (lintas platform, tanpa crate tambahan).
@@ -308,6 +393,27 @@ pub(crate) async fn lock_home_env_async() -> HomeEnvGuard {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lock_identitas_memiliki_deadline_dan_bisa_diambil_ulang() {
+        let dir = std::env::temp_dir().join(format!("xydesk-id-lock-{}", rand::random::<u64>()));
+        let guard = lock_identity(&dir, Duration::from_millis(20)).unwrap();
+        let error = lock_identity(&dir, Duration::from_millis(20)).unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+        drop(guard);
+        drop(lock_identity(&dir, Duration::from_millis(20)).unwrap());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn tulis_atomic_gagal_tidak_menghapus_identitas_lama() {
+        let dir = std::env::temp_dir().join(format!("xydesk-id-atomic-{}", rand::random::<u64>()));
+        fs::create_dir_all(dir.join("destination")).unwrap();
+        assert!(atomic_write(&dir.join("destination"), b"fixture").is_err());
+        assert!(dir.join("destination").is_dir());
+        assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+        fs::remove_dir_all(dir).unwrap();
+    }
 
     #[test]
     fn charset_tanpa_karakter_yang_mudah_tertukar() {
@@ -415,7 +521,7 @@ mod tests {
         assert!(set_password("\tkode").is_err());
         // Spasi di ujung dibuang, spasi di tengah boleh.
         assert!(set_password("  Kopi Pagi 2026  ").is_ok());
-        assert_eq!(load_or_create_password(), "Kopi Pagi 2026");
+        assert_eq!(load_or_create_password().unwrap(), "Kopi Pagi 2026");
         // 6 KARAKTER, bukan 6 byte.
         assert!(set_password("ééé").is_err());
         let _ = std::fs::remove_dir_all(&dir);
@@ -430,7 +536,7 @@ mod tests {
         // Campuran besar-kecil harus bisa disimpan (yang dulu ditolak layar
         // karena generator hanya huruf besar).
         assert!(set_password("XyDesk2026").is_ok());
-        let pw = load_or_create_password();
+        let pw = load_or_create_password().unwrap();
         assert_eq!(pw, "XyDesk2026");
         // Campuran besar/kecil = peka-kasus: bentuk lain harus DITOLAK.
         assert!(verify_password("XyDesk2026", &pw));

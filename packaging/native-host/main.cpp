@@ -39,12 +39,16 @@
 
 #include "resource.h"
 #include "layout.h"
+#include "engine_json.h"
+#include <limits>
 
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <string>
 #include <vector>
+#include <future>
+#include <chrono>
 
 #if defined(_MSC_VER)
 #pragma comment(lib, "user32.lib")
@@ -61,7 +65,7 @@ using xydesk::panel::Target;
 
 constexpr wchar_t kClassName[] = L"XyDeskNativeControlPanel";
 constexpr wchar_t kWindowTitle[] = L"XyDesk Control Panel";
-constexpr wchar_t kWebUrl[] = L"https://app.xydesk.my.id";
+constexpr wchar_t kWebUrl[] = L"https://remote.xydesk.my.id/devices";
 constexpr wchar_t kEngineName[] = L"xydesk-host.exe";
 
 constexpr UINT kTrayMessage = WM_APP + 11;
@@ -155,7 +159,7 @@ struct AppState {
     bool animOn = false;
     bool trackingMouse = false;
     bool layered = true;
-    // Kesehatan capture dari engine (berkas capture.json): buat kartu Status
+    // Kesehatan capture dari engine (heartbeat publik per PID): buat kartu Status
     // jujur soal layar hitam / sesi berbeda.
     std::wstring captureBackend;
     std::wstring captureNote;
@@ -189,6 +193,7 @@ struct AppState {
     HANDLE job = nullptr;
     HANDLE logFile = nullptr;
     bool running = false;
+    bool startRequested = false;
 };
 
 AppState g;
@@ -199,6 +204,7 @@ void showTrayMenu(HWND hwnd);
 bool startHost();
 void stopHost();
 void renderPanel();
+void setStatus(const std::wstring& text, COLORREF color);
 
 // ── Berkas mesin: ± sama seperti sebelumnya -------------------------------
 
@@ -237,24 +243,27 @@ std::wstring quote(const std::wstring& value) {
 }
 
 std::wstring jsonString(const std::string& json, const char* key) {
-    const std::string needle = std::string("\"") + key + "\":\"";
-    const auto start = json.find(needle);
-    if (start == std::string::npos) return L"";
-    const auto valueStart = start + needle.size();
-    const auto end = json.find('"', valueStart);
-    if (end == std::string::npos) return L"";
-    std::wstring result;
-    for (size_t i = valueStart; i < end; ++i) {
-        result.push_back(static_cast<wchar_t>(static_cast<unsigned char>(json[i])));
-    }
+    const auto object = xydesk::engine_json::parse(json);
+    if (!object) return L"";
+    const auto found = object->find(key);
+    if (found == object->end()) return L"";
+    const auto value = std::get_if<std::string>(&found->second);
+    if (!value || value->empty()) return L"";
+    const int size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value->data(), static_cast<int>(value->size()), nullptr, 0);
+    if (!size) return L"";
+    std::wstring result(size, L'\0');
+    if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value->data(), static_cast<int>(value->size()), result.data(), size) != size) return L"";
     return result;
 }
 
-bool readIdentity() {
+struct IdentityResult { std::wstring id; std::wstring password; };
+std::future<IdentityResult> identityFuture;
+
+IdentityResult readIdentityBounded() {
     SECURITY_ATTRIBUTES sa{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
     HANDLE readPipe = nullptr;
     HANDLE writePipe = nullptr;
-    if (!CreatePipe(&readPipe, &writePipe, &sa, 0)) return false;
+    if (!CreatePipe(&readPipe, &writePipe, &sa, 0)) return {};
     SetHandleInformation(readPipe, HANDLE_FLAG_INHERIT, 0);
 
     const std::wstring command = quote(enginePath()) + L" --identity-json";
@@ -271,68 +280,116 @@ bool readIdentity() {
     CloseHandle(writePipe);
     if (!started) {
         CloseHandle(readPipe);
-        return false;
+        return {};
     }
 
     std::string output;
     char buffer[1024];
     DWORD got = 0;
-    while (ReadFile(readPipe, buffer, sizeof(buffer), &got, nullptr) && got) {
-        output.append(buffer, buffer + got);
+    const ULONGLONG deadline = GetTickCount64() + 5000;
+    bool completed = false;
+    while (GetTickCount64() < deadline && output.size() <= 8192) {
+        DWORD available = 0;
+        if (!PeekNamedPipe(readPipe, nullptr, 0, nullptr, &available, nullptr)) {
+            completed = WaitForSingleObject(pi.hProcess, 0) == WAIT_OBJECT_0;
+            break;
+        }
+        if (available) {
+            const DWORD want = std::min<DWORD>(available, sizeof(buffer));
+            if (!ReadFile(readPipe, buffer, want, &got, nullptr)) break;
+            output.append(buffer, buffer + got);
+        } else if (WaitForSingleObject(pi.hProcess, 0) == WAIT_OBJECT_0) {
+            completed = true;
+            break;
+        } else {
+            Sleep(10); // worker saja; thread UI tidak menunggu pipe
+        }
     }
     CloseHandle(readPipe);
-    WaitForSingleObject(pi.hProcess, 5000);
+    if (!completed || output.size() > 8192) {
+        TerminateProcess(pi.hProcess, 1);
+        WaitForSingleObject(pi.hProcess, 1000);
+    }
     DWORD exitCode = 1;
     GetExitCodeProcess(pi.hProcess, &exitCode);
     CloseHandle(pi.hThread);
     CloseHandle(pi.hProcess);
-    if (exitCode != 0) return false;
-
-    const std::wstring id = jsonString(output, "deviceId");
-    const std::wstring password = jsonString(output, "password");
-    if (id.empty() || password.empty()) return false;
-    g.deviceId = id;
-    g.pairingCode = password;
-    return true;
+    if (!completed || exitCode != 0 || output.size() > 8192) return {};
+    IdentityResult result{jsonString(output, "deviceId"), jsonString(output, "password")};
+    return result;
 }
 
 bool jsonFlag(const std::string& json, const char* key) {
-    const std::string needle = std::string("\"") + key + "\":true";
-    return json.find(needle) != std::string::npos;
+    const auto object = xydesk::engine_json::parse(json);
+    if (!object) return false;
+    const auto found = object->find(key);
+    if (found == object->end()) return false;
+    const auto value = std::get_if<bool>(&found->second);
+    return value && *value;
 }
 
 int jsonNumber(const std::string& json, const char* key) {
-    const std::string needle = std::string("\"") + key + "\":";
-    const auto start = json.find(needle);
-    if (start == std::string::npos) return -1;
-    return std::atoi(json.c_str() + start + needle.size());
+    const auto object = xydesk::engine_json::parse(json);
+    if (!object) return -1;
+    const auto found = object->find(key);
+    if (found == object->end()) return -1;
+    const auto value = std::get_if<std::int64_t>(&found->second);
+    if (!value || *value < 0 || *value > std::numeric_limits<int>::max()) return -1;
+    return static_cast<int>(*value);
 }
 
-// Engine menulis capture.json sekali setiap beberapa detik: backend capture,
-// apakah frame hitam semua (layar terkunci / secure desktop), dan apakah
-// proses hidup di sesi yang berbeda dari sesi yang memegang layar aktif
-// (klasik RDP: BitBlt dari sesi lain selalu hitam). Panel menampilkan ini
-// apa adanya supaya layar hitam di client tidak jadi misteri.
+// Heartbeat publik per PID; wajib cocok dengan umur proses dan segar <=5s.
+// File lama/tidak lengkap tidak boleh membuat UI mengaku host siap.
 void readCaptureStatus() {
+    auto stale = [] {
+        g.captureSeen = false;
+        g.captureBackend.clear();
+        g.captureNote2.clear();
+        g.sessionMismatch = false;
+        g.procSession = g.activeSession = -1;
+        g.captureWarn = true;
+        g.captureNote = L"Status engine belum tersedia atau sudah kedaluwarsa.";
+        if (g.running) setStatus(g.captureNote, kWarn);
+    };
+    if (!g.process || !g.running) { stale(); return; }
+    const DWORD pid = GetProcessId(g.process);
     // Sama dengan config_dir() engine: XYDESK_HOME dulu, lalu USERPROFILE\.xydesk.
     const std::wstring path = [&] {
         wchar_t home[MAX_PATH]{};
         DWORD n = GetEnvironmentVariableW(L"XYDESK_HOME", home, ARRAYSIZE(home));
-        if (n && n < ARRAYSIZE(home)) return std::wstring(home, n) + L"\\capture.json";
+        if (n && n < ARRAYSIZE(home)) return std::wstring(home, n) + L"\\runtime-" + std::to_wstring(pid) + L".json";
         n = GetEnvironmentVariableW(L"USERPROFILE", home, ARRAYSIZE(home));
         const std::wstring base = n && n < ARRAYSIZE(home)
             ? std::wstring(home, n)
             : moduleDirectory();
-        return base + L"\\.xydesk\\capture.json";
+        return base + L"\\.xydesk\\runtime-" + std::to_wstring(pid) + L".json";
     }();
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+    HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
         nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE) return;
+    if (file == INVALID_HANDLE_VALUE) { stale(); return; }
+    FILETIME written{}, now{}, born{}, exited{}, kernel{}, user{};
+    LARGE_INTEGER size{};
+    GetSystemTimeAsFileTime(&now);
+    auto ticks = [](FILETIME t) { return (static_cast<ULONGLONG>(t.dwHighDateTime) << 32) | t.dwLowDateTime; };
+    const bool fresh = GetFileTime(file, nullptr, nullptr, &written) && GetFileSizeEx(file, &size)
+        && size.QuadPart > 0 && size.QuadPart <= 16384
+        && GetProcessTimes(g.process, &born, &exited, &kernel, &user)
+        && ticks(written) >= ticks(born) && ticks(written) <= ticks(now)
+        && ticks(now) - ticks(written) <= 5ULL * 10000000;
+    if (!fresh) { CloseHandle(file); stale(); return; }
     std::string json;
     char buffer[1024];
     DWORD got = 0;
-    while (ReadFile(file, buffer, sizeof(buffer), &got, nullptr) && got) json.append(buffer, buffer + got);
+    while (json.size() <= 16384 && ReadFile(file, buffer, sizeof(buffer), &got, nullptr) && got) json.append(buffer, buffer + got);
     CloseHandle(file);
+    if (json.empty() || json.size() > 16384 || json.back() != '}' || jsonNumber(json, "pid") != static_cast<int>(pid)) { stale(); return; }
+    const std::wstring state = jsonString(json, "state");
+    if (state == L"ready") setStatus(L"Host siap menerima pairing", kGood);
+    else if (state == L"streaming") setStatus(L"Sesi remote aktif", kGood);
+    else if (state == L"standby") setStatus(L"Standby — sesi lain akun ini memegang host", kWarn);
+    else if (state == L"connecting") setStatus(L"Menghubungkan signaling…", kMuted);
+    else if (state == L"starting") setStatus(L"Engine sedang memulai…", kMuted);
+    else { stale(); return; }
 
     const std::wstring backend = jsonString(json, "backend");
     const bool mismatch = jsonFlag(json, "session_mismatch");
@@ -344,15 +401,10 @@ void readCaptureStatus() {
     std::wstring note;
     std::wstring note2;
     if (mismatch) {
-        // Menunjuk persis: host hidup sebagai siapa di sesi mana, layar aktif
-        // milik siapa. Sejak ronde 7 host terdaftar startup di semua sesi dan
-        // instance sesi aktif mengambil alih otomatis (takeover senyap);
-        // tombol di kartu ini cuma jalan pintas bila takeover belum terjadi.
-        note = L"Host jalan sebagai " + (procUser.empty() ? L"?" : procUser) +
-            L" (sesi " + std::to_wstring(procSession) + L"); layar ini milik " +
-            (activeUser.empty() ? L"?" : activeUser) + L" (sesi " +
-            std::to_wstring(activeSession) + L"). Capture antar-sesi selalu hitam.";
-        note2 = L"Instance di sesi ini mengambil alih otomatis bila host terdaftar startup — atau jalankan sekarang:";
+        note = L"Host ada di sesi " + std::to_wstring(procSession) +
+            L"; sesi aktif akun ini adalah " + std::to_wstring(activeSession) +
+            L". Menunggu perpindahan leadership; tidak menangkap layar lintas sesi.";
+        note2 = L"Koordinasi hanya untuk sesi milik akun Windows yang sama.";
     } else if (jsonFlag(json, "black_frames")) {
         note = L"Capture menghasilkan frame hitam — layar mungkin terkunci atau di secure desktop. Buka kunci PC host.";
     }
@@ -935,9 +987,9 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
         const Rect& label;
         const wchar_t* text;
     } items[] = {
-        {Page::Status, Target::PageStatus, layout.sideStatus, layout.sideStatusIcon, layout.sideStatusLabel, L"Status"},
-        {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Pairing"},
-        {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol"},
+        {Page::Status, Target::PageStatus, layout.sideStatus, layout.sideStatusIcon, layout.sideStatusLabel, L"Ringkasan"},
+        {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Akses host"},
+        {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol host"},
     };
 
     // Pill aktif meluncur (morphing) antar item; tingginya sama dengan item.
@@ -1171,7 +1223,10 @@ UINT windowDpi(HWND hwnd) {
 
 void centerWindow(HWND hwnd) {
     RECT workArea{};
-    if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0)) {
+    MONITORINFO monitor{sizeof(MONITORINFO)};
+    if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+        workArea = monitor.rcWork;
+    } else if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0)) {
         workArea = RECT{0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
     }
     const int x = workArea.left + ((workArea.right - workArea.left) - g.layout.window.w) / 2;
@@ -1184,7 +1239,17 @@ void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
     // Zoom perbesar ikut dikalikan ke DPI efektif sehingga seluruh tata
     // letak (termasuk font) membesar proporsional lewat jalur skala yang
     // sudah teruji; tidak ada gambar yang perlu digambar ulang khusus.
-    const UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
+    UINT effective = static_cast<UINT>(static_cast<unsigned long long>(dpi) * g.zoomPct / 100);
+    MONITORINFO monitor{sizeof(MONITORINFO)};
+    if (GetMonitorInfoW(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor)) {
+        const int availableW = std::max(1, static_cast<int>(monitor.rcWork.right - monitor.rcWork.left) - 24);
+        const int availableH = std::max(1, static_cast<int>(monitor.rcWork.bottom - monitor.rcWork.top) - 24);
+        const int fitDpi = std::max(72, std::min(availableW * 96 / xydesk::panel::kPanelMinWidth, availableH * 96 / xydesk::panel::kPanelMinHeight));
+        effective = std::min(effective, static_cast<UINT>(fitDpi));
+        const int scale = xydesk::panel::scalePctFromDpi(static_cast<int>(effective));
+        g.unitsW = std::min(g.unitsW, std::max(xydesk::panel::kPanelMinWidth, availableW * 100 / scale));
+        g.unitsH = std::min(g.unitsH, std::max(xydesk::panel::kPanelMinHeight, availableH * 100 / scale));
+    }
     g.layout = xydesk::panel::computeLayout(static_cast<int>(effective), g.unitsW, g.unitsH);
     g.pillY = sidebarItemY(g.layout, g.page); // posisi instan saat DPI/zoom
     createFonts();
@@ -1266,6 +1331,9 @@ bool createJob() {
 }
 
 void stopHost() {
+    g.startRequested = false;
+    g.captureSeen = false;
+    g.captureBackend.clear();
     if (g.job) TerminateJobObject(g.job, 0);
     closeHostHandles();
     setStatus(L"Host berhenti", kMuted);
@@ -1283,11 +1351,16 @@ bool startHost() {
         setStatus(g.lastError, kBad);
         return false;
     }
-    if ((g.deviceId.empty() || g.pairingCode.empty()) && !readIdentity()) {
-        g.lastError = L"Identitas host tidak dapat dibaca.";
-        setStatus(g.lastError, kBad);
-        return false;
+    if (g.deviceId.empty() || g.pairingCode.empty()) {
+        g.startRequested = true;
+        if (!identityFuture.valid()) {
+            try { identityFuture = std::async(std::launch::async, readIdentityBounded); }
+            catch (...) { g.startRequested = false; setStatus(L"Pembaca identitas tidak dapat dimulai.", kBad); return false; }
+        }
+        setStatus(L"Membaca identitas host…", kMuted);
+        return true;
     }
+    g.startRequested = false;
     if (!createJob()) {
         g.lastError = L"Windows tidak mengizinkan pengawasan proses host.";
         setStatus(g.lastError, kBad);
@@ -1336,7 +1409,7 @@ bool startHost() {
         return false;
     }
     g.running = true;
-    setStatus(L"Host aktif sebagai user Windows ini", kGood);
+    setStatus(L"Proses host dimulai — menunggu status engine", kMuted);
     return true;
 }
 
@@ -1606,7 +1679,6 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.layout = xydesk::panel::computeLayout(static_cast<int>(windowDpi(hwnd)));
         createFonts();
         g.logPath = hostLogPath();
-        readIdentity();
         addTrayIcon(hwnd);
         setStatus(L"Menyalakan host…", kMuted);
         SetTimer(hwnd, kTimer, 1000, nullptr);
@@ -1794,10 +1866,21 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             return 0;
         }
         if (wParam == kTimer) {
+            if (identityFuture.valid() && identityFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+                IdentityResult identity;
+                try { identity = identityFuture.get(); } catch (...) { identity = {}; }
+                g.deviceId = identity.id;
+                g.pairingCode = identity.password;
+                const bool start = g.startRequested;
+                g.startRequested = false;
+                if (g.deviceId.empty() || g.pairingCode.empty()) {
+                    setStatus(L"Identitas gagal dibaca atau timeout. Coba Mulai host lagi.", kBad);
+                } else if (start) { startHost(); }
+            }
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
                 g.flashText.clear();
-                g.statusColor = g.running ? kGood : kMuted;
+                g.statusColor = kMuted;
                 renderPanel();
             }
             if (g.process) {
@@ -2047,7 +2130,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
 
-    applyDpi(window, windowDpi(window), false);
+    applyDpi(window, windowDpi(window), true);
     ShowWindow(window, show);
     UpdateWindow(window);
     SetForegroundWindow(window);

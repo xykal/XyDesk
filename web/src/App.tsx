@@ -1,3 +1,7 @@
+import {PUBLIC_ORIGIN, REMOTE_ORIGIN, routeHref} from './site_routes';
+import {readDestination, rememberDestination, forgetDestination, sessionPath} from './session_restore';
+import {MouseHud} from './mouse_hud';
+import {ConnectionAttempt} from './connection_attempt';
 import {browserAccessScope,ensureGuestAccess,loadHostAccess,saveHostAccess,forgetHostAccess,mayRetrySession,retryDelay} from './guest_access';
 import {AdaptiveVideo} from './adaptive_video';
 import { flushSync } from 'react-dom';
@@ -79,8 +83,8 @@ import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
 import { WhatsAppIcon, TelegramIcon, XIcon, FacebookIcon } from './brand-icons';
 
-type StaticRoute = '/' | '/connect' | '/download' | '/legal' | '/news' | '/billing' | '/history' | '/controls';
-type Route = StaticRoute | NewsDetailRoute;
+type StaticRoute = '/' | '/connect' | '/download' | '/legal' | '/news' | '/billing' | '/history' | '/devices' | '/controls' | '/auth/callback';
+type Route = StaticRoute | NewsDetailRoute | {page: 'device'|'session'; deviceId:string};
 interface NewsDetailRoute {
   page: 'news-detail';
   slug: string;
@@ -91,7 +95,7 @@ type AuthStep = 'closed' | 'login' | 'otp';
 // ![keterangan](https://app.xydesk.my.id/news/shots/....jpg).
 // Hanya gambar dari domain sendiri yang dirender — sesuai docs/NEWS_STYLE.md;
 // baris lain tetap tampil sebagai paragraf biasa.
-const NEWS_IMAGE_BLOCK = /^!\[([^\]]*)\]\((https:\/\/(app\.)?xydesk\.my\.id\/[^)\s]+)\)$/;
+const NEWS_IMAGE_BLOCK = /^!\[([^\]]*)\]\((https:\/\/((app|www|remote)\.)?xydesk\.my\.id\/[^)\s]+)\)$/;
 
 const TOKEN_KEY = 'xydesk.web.jwt';const GUEST_TOKEN_KEY = 'xydesk.web.guestJwt';
 const LAST_HOST_KEY = 'xydesk.web.lastHost';
@@ -129,11 +133,27 @@ const downloads = [
 
 function routePath(r: Route): string {
   if (typeof r === 'string') return r;
-  return `/news/${r.slug}`;
+  return r.page==='news-detail'?`/news/${r.slug}`:r.page==='device'?`/devices/${r.deviceId}`:sessionPath(r.deviceId);
 }
 
 function currentRoute(): Route {
   const raw = window.location.pathname.replace(/\/$/, '') || '/';
+  const session=/^\/session(?:\/(\d{9}))?$/.exec(raw);
+  if(session)return {page:'session',deviceId:session[1]||''};
+  const device=/^\/devices\/(\d{9})$/.exec(raw);
+  if(device)return {page:'device',deviceId:device[1]};
+  let restored:ReturnType<typeof readDestination>=null;try{restored=readDestination(localStorage,browserAccessScope());}catch{}
+  if(raw.startsWith('/session/'))return {page:'session',deviceId:''};
+  if(raw.startsWith('/devices/'))return '/devices';
+  if(raw==='/'&&window.location.hostname==='remote.xydesk.my.id') {
+    if(restored){window.history.replaceState({},'',sessionPath(restored.deviceId,restored.fragment));return {page:'session',deviceId:restored.deviceId};}
+    return '/devices';
+  }
+  if(['/connect','/history'].includes(raw)&&isSessionFragment(window.location.hash)) {
+    let last='';try{last=(localStorage.getItem(LAST_HOST_KEY)||'').replace(/[^0-9]/g,'');}catch{}
+    return {page:'session',deviceId:restored?.deviceId||(/^\d{9}$/.test(last)?last:'')};
+  }
+
   // Share short link /n/:slug (news.xydesk.my.id/n/:slug) — also handle locally for OG preview / direct link
   if (raw.startsWith('/n/')) {
     const slug = decodeURIComponent(raw.slice('/n/'.length));
@@ -146,6 +166,8 @@ function currentRoute(): Route {
     return '/news';
   }
   switch (raw) {
+    case '/devices': return '/devices';
+    case '/auth/callback': return '/auth/callback';
     case '/connect':
       return '/connect';
     case '/history':
@@ -175,9 +197,12 @@ function useRoute(): [Route, (r: Route) => void] {
       window.scrollTo(0, 0);
     };
     window.addEventListener('popstate', onChange);
-    return () => window.removeEventListener('popstate', onChange);
+    window.addEventListener('hashchange', onChange);
+    return () => {window.removeEventListener('popstate', onChange);window.removeEventListener('hashchange', onChange);};
   }, []);
   const navigate = useCallback((r: Route) => {
+    const href=routeHref(routePath(r));
+    if(new URL(href,window.location.origin).origin!==window.location.origin){window.location.assign(href);return;}
     window.history.pushState({}, '', routePath(r));
     setRoute(r);
     window.scrollTo(0, 0);
@@ -187,20 +212,18 @@ function useRoute(): [Route, (r: Route) => void] {
 
 export default function App() {
   const [route, navigate] = useRoute();
-  const isConnect = route === '/connect';
-
-  if (isConnect) {
-    return (
-      <>
-        <SiteHeader route={route} navigate={navigate} bare />
-        <RemoteApp />
-      </>
-    );
-  }
+  const sessionRoute=typeof route==='object'&&route.page==='session'?route:null;
+  const deviceRoute=typeof route==='object'&&route.page==='device'?route:null;
+  const remote=!!sessionRoute||!!deviceRoute||['/connect','/devices','/history','/controls','/auth/callback'].includes(String(route));
+  if(remote) return <div className="remote-workspace">
+    <header className="remote-header"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk <small>Remote</small></strong></a>
+      <nav aria-label="Aplikasi remote">{([['/devices','Perangkat'],['/history','Riwayat'],['/controls','Kontrol']] as const).map(([path,label])=><a key={path} href={path} aria-current={route===path||(path==='/devices'&&deviceRoute)?'page':undefined} onClick={e=>{e.preventDefault();navigate(path);}}>{label}</a>)}</nav>
+      <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button></header>
+    {route==='/devices'||route==='/history'||deviceRoute?<SessionHistoryPage view={deviceRoute?'detail':route==='/history'?'history':'devices'} deviceId={deviceRoute?.deviceId}/>:route==='/controls'?<ControlMappingPage navigate={navigate}/>:<RemoteApp key={sessionRoute?.deviceId??'new'} reconnectDevice={sessionRoute?{deviceId:sessionRoute.deviceId,name:`PC ${sessionRoute.deviceId}`} :undefined} restoreScreen={!!sessionRoute}/>}
+  </div>;
 
   let page: React.ReactNode;
-  if (route === '/history') page = <SessionHistoryPage renderReconnect={item=><RemoteApp reconnectDevice={item}/>} />;
-  else if (route === '/download') page = <DownloadPage />;
+  if (route === '/download') page = <DownloadPage />;
   else if (route === '/legal') page = <LegalPage />;
   else if (route === '/billing') page = <BillingPage />;
   else if (route === '/controls') page = <ControlMappingPage navigate={navigate} />;
@@ -1657,7 +1680,7 @@ function NewsDetailPage({
     </main>
   );
 }
-function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:string}}={}) {
+function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{deviceId:string;name:string};restoreScreen?:boolean}={}) {
   const [jwt, setJwt] = useState<string | null>(() =>
     localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(GUEST_TOKEN_KEY),
   );
@@ -1669,16 +1692,28 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [editingName, setEditingName] = useState<string | null>(null);
+  const [accountWarning, setAccountWarning] = useState('');
 
   useEffect(() => {
+    setAccountWarning('');
+    setProfile(null);
     if (!jwt || sessionStorage.getItem(GUEST_TOKEN_KEY) === jwt) return;
-    me(jwt)
-      .then((r) => setProfile(r.user))
-      .catch(() => {
+    const request = new AbortController();
+    const current = () => !request.signal.aborted && localStorage.getItem(TOKEN_KEY) === jwt;
+    me(jwt, request.signal).then(r => {
+      if (current()) setProfile(r.user);
+    }).catch(error => {
+      if (!current()) return;
+      if (error instanceof ApiError && error.status === 401) {
         localStorage.removeItem(TOKEN_KEY);
-    window.dispatchEvent(new Event('xydesk-account-changed'));
+        clearStoredGoogleIdToken();
+        window.dispatchEvent(new Event('xydesk-account-changed'));
         setJwt(null);
-      });
+      } else {
+        setAccountWarning('Profil belum dapat dimuat. Sesi akun tetap disimpan; periksa koneksi dan coba lagi.');
+      }
+    });
+    return () => request.abort();
   }, [jwt]);
 
   // Kembali dari halaman login Google (redirect flow): tukar id_token
@@ -1689,8 +1724,9 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
     const idToken = consumeGoogleRedirect();
     if (idToken) {
       storeGoogleIdToken(idToken);
-      void doGoogle(idToken).then(() => {
-        const kembali = consumeGoogleReturn();
+      void doGoogle(idToken).then(ok => {
+        if(!ok)return;
+        const kembali = consumeGoogleReturn() || (window.location.origin===REMOTE_ORIGIN?'/devices':'/');
         if (kembali && kembali !== window.location.pathname) {
           window.history.pushState({}, '', kembali);
           window.dispatchEvent(new PopStateEvent('popstate'));
@@ -1709,10 +1745,11 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
     setAuthStep('closed');
   };
 
-  const ensureToken = useCallback(async () => {
+  const ensureToken = useCallback(async (signal?: AbortSignal) => {
+    if (signal?.aborted) throw signal.reason;
     const member=localStorage.getItem(TOKEN_KEY);
     if (member) return member;
-    const token=await ensureGuestAccess(createGuestSession);
+    const token=await ensureGuestAccess(refresh => createGuestSession(refresh, signal), signal);
     setJwt(token);
     return token;
   }, [jwt]);
@@ -1749,14 +1786,18 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
     try {
       const session = await signInWithGoogle(idToken);
       finishAuth(session.token, session.user);
+      return true;
     } catch (e) {
       setError(e instanceof ApiError ? e.message : 'Login Google gagal.');
+      setAuthStep('login');
+      return false;
     } finally {
       setBusy(false);
     }
   };
 
   const signOut = () => {
+    clearStoredGoogleIdToken();
     localStorage.removeItem(TOKEN_KEY);
     window.dispatchEvent(new Event('xydesk-account-changed'));
     sessionStorage.removeItem(GUEST_TOKEN_KEY);
@@ -1785,6 +1826,7 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
 
   return (
     <main className="connect-page">
+      {accountWarning && <p role="status">{accountWarning}</p>}
       <div className="connect-account-bar">
         {profile ? (
           <div className="account-chip">
@@ -1835,7 +1877,8 @@ function RemoteApp({reconnectDevice}:{reconnectDevice?:{deviceId:string;name:str
       </div>
       <ConnectScreen
         initialHostId={reconnectDevice?.deviceId}
-        returnPath={reconnectDevice?'/history':'/connect'}
+        restoreScreen={restoreScreen||window.location.pathname.startsWith('/session')||isSessionFragment(window.location.hash)}
+        onLogin={()=>setAuthStep('login')}
         ensureToken={ensureToken}
         accountName={(profile?.name || profile?.email || '').trim()}
       />
@@ -1940,7 +1983,7 @@ function GoogleButton() {
   // Redirect flow: tanpa popup/iframe — aman untuk Safari iOS dan in-app
   // browser yang memblokir popup GIS (gejala "mentok di about:blank").
   return (
-    <button type="button" className="google-btn" onClick={() => beginGoogleLogin()}>
+    <button type="button" className="google-btn" onClick={() => beginGoogleLogin(window.location.pathname+(isSessionFragment(window.location.hash)?window.location.hash:''))}>
       <svg viewBox="0 0 48 48" width="18" height="18" aria-hidden>
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -2045,19 +2088,21 @@ function EyeOffIcon() {
 function ConnectScreen({
   ensureToken,
   accountName,
+  onLogin,
   initialHostId,
-  returnPath='/connect',
+  restoreScreen=false,
 }: {
-  ensureToken: () => Promise<string>;
+  ensureToken: (signal?: AbortSignal) => Promise<string>;
   accountName: string;
+  onLogin: ()=>void;
   initialHostId?:string;
-  returnPath?:'/connect'|'/history';
+  restoreScreen?:boolean;
 }) {
   const [hostId, setHostId] = useState(() => initialHostId ?? localStorage.getItem(LAST_HOST_KEY) ?? '');
   const [pin, setPin] = useState('');
   const [phase, setPhase] = useState<RtcPhase | ''>('');
-  const sessionFragmentRef = useRef('');
-  const [sessionOpen, setSessionOpen] = useState(false);
+  const sessionFragmentRef = useRef(isSessionFragment(window.location.hash)?window.location.hash:'');
+  const [sessionOpen, setSessionOpen] = useState(restoreScreen);
   const historyAttempt = useRef<{item:HistoryItem;token:string|null;done:boolean}|null>(null);
   const [recents, setRecents] = useState<RecentEntry[]>(loadRecents);
   const [recentsOpen, setRecentsOpen] = useState(false);
@@ -2068,7 +2113,7 @@ function ConnectScreen({
   const canScanQr =
     typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   const [kbOpen, setKbOpen] = useState(false);
-  const [padOpen, setPadOpen] = useState(true);
+  const [padOpen, setPadOpen] = useState(false);
   const [trackpad, setTrackpad] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const [panelOpen, setPanelOpen] = useState(false);
   // Password pairing bisa diperlihatkan — sengaja huruf besar semua di sisi
@@ -2116,7 +2161,8 @@ function ConnectScreen({
   const prefsRef = useRef(DEFAULT_PREFS as SessionPrefs);
   const sessionRef = useRef<RtcSession | null>(null);
   useEffect(()=>()=>{sessionRef.current?.cancelWallpaper();},[accountName]);
-  const retryRef = useRef({ tries: 0, timer: 0 as ReturnType<typeof setTimeout> | 0, wasConnected: false });
+  const attempts = useRef(new ConnectionAttempt());
+  const retryRef = useRef({ tries: 0, wasConnected: false });
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
@@ -2206,7 +2252,7 @@ function ConnectScreen({
     const refresh = connected ? window.setInterval(paintCursor, 1000) : 0;
     paintCursor();
     if (surfaceRef.current) observer.observe(surfaceRef.current);
-    if (connected) setHudToast('Ketuk = klik kiri • tahan diam = klik kanan • geser = gerak. Gunakan HUD kiri untuk drag.');
+    if (connected) setHudToast('Ketuk = klik kiri • tahan diam = klik kanan • geser = gerak. Tahan tombol Klik kiri pada dock untuk drag.');
     return () => {
       reset(); observer.disconnect();
       clearInterval(refresh); cancelAnimationFrame(cursorRaf.current); cursorRaf.current = 0;
@@ -2216,7 +2262,7 @@ function ConnectScreen({
   }, [connected]);
 
   useEffect(()=>{paintCursor();},[prefs.cursorSize,prefs.cursorInVideo]);
-  const canConnect = hostId.replace(/[\s-]/g, '').length === 9 && (pin.length >= 6 || !!savedAccess) && !['pairing', 'negotiating'].includes(phase);
+  const canConnect = /^\d{9}$/.test(hostId.replace(/[\s-]/g, '')) && (pin.length >= 6 || !!savedAccess) && !['pairing', 'negotiating'].includes(phase);
 
   // Layout sesi selalu memenuhi viewport; fullscreen browser hanya dari gesture.
   const [fullscreenOn, setFullscreenOn] = useState(false);
@@ -2224,7 +2270,9 @@ function ConnectScreen({
     if (!sessionOpen) return;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = overflow; };
+    const background=Array.from(document.querySelectorAll<HTMLElement>('.remote-header,.connect-account-bar')).map(el=>({el,inert:el.inert}));
+    background.forEach(({el})=>{el.inert=true;});
+    return () => { document.body.style.overflow = overflow;background.forEach(({el,inert})=>{el.inert=inert;}); };
   }, [sessionOpen]);
   useEffect(() => {
     const onFsChange = () => setFullscreenOn(document.fullscreenElement === surfaceRef.current && !!surfaceRef.current);
@@ -2283,12 +2331,31 @@ function ConnectScreen({
     void capturePreview();
   },[connected,hostMeta]);
 
-  const connect = async (isRetry = false) => {
+  const connect = async (isRetry = false, automatic = false) => {
+    if(!/^\d{9}$/.test(hostId.replace(/[\s-]/g,''))||(!savedAccess&&pin.length<6)){setSessionOpen(true);return;}
+
+    keyOwners.current?.reset();
+    pointerRef.current?.reset();
+    finishHistory('interrupted');
+    const previous = sessionRef.current;
+    sessionRef.current = null;
+    const signal = attempts.current.begin();
+    previous?.stop();
+    setRemoteVideoStream(null);
+    if (videoRef.current) videoRef.current.srcObject = null;
+    if (audioRef.current) audioRef.current.srcObject = null;
+    setStats(null);
+    setConnectedAt(null);
     setHostMeta(null);
     flushSync(()=>setSessionOpen(true));
+    if(!/^#session\/[0-9a-f]{64}$/.test(sessionFragmentRef.current))sessionFragmentRef.current=newSessionFragment();
+    const target=hostId.replace(/[\s-]/g,'');
+    window.history.replaceState({},'',sessionPath(target,sessionFragmentRef.current));
+    if(!rememberDestination(localStorage,target,sessionFragmentRef.current,browserAccessScope()))setHudToast('Browser tidak dapat menyimpan tujuan sesi. Simpan alamat halaman ini untuk kembali.');
+
     historyAttempt.current={item:{id:crypto.randomUUID(),deviceId:hostId.replace(/[\s-]/g,''),name:`PC ${hostId}`,startedAt:Date.now(),endedAt:Date.now(),state:'failed',specs:{},preview:null},token:accountHistoryToken(),done:false};
     const attemptId = historyAttempt.current.item.id;
-    if(!isRetry && surfaceRef.current){
+    if(!isRetry && !automatic && surfaceRef.current){
       const current=()=>historyAttempt.current?.item.id===attemptId && !historyAttempt.current.done;
       void enterSessionLandscape(surfaceRef.current,current).then(result=>{
         if(!current())return;
@@ -2296,7 +2363,7 @@ function ConnectScreen({
         else if(result==='fullscreen')setHudToast('Fullscreen aktif. Kunci landscape tidak tersedia; putar HP secara manual.');
       });
     }
-    localStorage.setItem(LAST_HOST_KEY, hostId);
+    try { localStorage.setItem(LAST_HOST_KEY, hostId); } catch { /* preferensi opsional; koneksi tetap berjalan */ }
     setPhase('pairing');
     setFasePesan(null);
     if (!isRetry) {
@@ -2306,13 +2373,14 @@ function ConnectScreen({
     }
     // Klik Konek adalah gesture untuk fullscreen; retry otomatis tidak memaksanya.
     try {
-      const jwt = await ensureToken();
-      if(historyAttempt.current?.item.id!==attemptId || historyAttempt.current.done) return;
+      const jwt = await ensureToken(signal);
+      if(!attempts.current.isCurrent(signal) || historyAttempt.current?.item.id!==attemptId || historyAttempt.current.done) return;
       const session = new RtcSession();
       // Label perangkat untuk pesan `pair`: nama akun bila login, kalau
       // tidak kosongkan supaya rtc.ts memakai tebakan browser + OS.
       session.selfName = accountName;
       sessionRef.current = session;
+      signal.addEventListener('abort', () => session.stop(), {once: true});
       const accessScope=browserAccessScope();
       session.onRememberedAccess=token=>{
         if(sessionRef.current!==session||browserAccessScope()!==accessScope||!rememberBrowser)return;
@@ -2340,7 +2408,8 @@ function ConnectScreen({
           saveRecent(hostId);
           setRecents(loadRecents());
           if (!sessionFragmentRef.current) sessionFragmentRef.current = newSessionFragment();
-          window.history.replaceState({}, '', returnPath + sessionFragmentRef.current);
+          window.history.replaceState({}, '', sessionPath(hostId.replace(/[\s-]/g,''),sessionFragmentRef.current));
+          rememberDestination(localStorage,hostId.replace(/[\s-]/g,''),sessionFragmentRef.current,browserAccessScope());
           setHudToast(document.fullscreenElement===surfaceRef.current?'Sesi layar penuh aktif. Jika masih tegak, putar HP ke landscape.':'Sesi aktif. Gunakan tombol layar penuh jika browser menolak permintaan otomatis.');
         }
         // Reconnect otomatis HANYA bila sesi pernah live lalu putus
@@ -2354,7 +2423,7 @@ function ConnectScreen({
           setRetryInfo(
             `Koneksi terputus — mencoba ulang (${retryRef.current.tries}/10)…`,
           );
-          retryRef.current.timer = setTimeout(() => void connect(true), wait);
+          attempts.current.schedule(signal, () => void connect(true), wait);
         } else if (['ended','error','peer-offline'].includes(next) && retryRef.current.tries >= 10) {
           setRetryInfo('Gagal menyambung ulang. Coba konek manual.');
         }
@@ -2413,7 +2482,10 @@ function ConnectScreen({
       // Sebelumnya ini jatuh ke `ended` ("Sesi berakhir") — terdengar seperti
       // akhir normal, padahal tidak ada sesi yang pernah dimulai, dan tombol
       // Konek tidak memberi tahu apa yang harus diperbaiki.
-      if(historyAttempt.current?.item.id!==attemptId || historyAttempt.current.done) return;
+      if(!attempts.current.isCurrent(signal) || historyAttempt.current?.item.id!==attemptId || historyAttempt.current.done) return;
+      const failed = sessionRef.current;
+      sessionRef.current = null;
+      failed?.stop();
       setPhase('error');
       setFasePesan(
         'Tidak dapat menghubungi server XyDesk. Periksa koneksi internet, ' +
@@ -2423,42 +2495,75 @@ function ConnectScreen({
       if(retryRef.current.wasConnected && retryRef.current.tries<10 && !(err instanceof ApiError && [401,403].includes(err.status))) {
         retryRef.current.tries+=1;
         setRetryInfo(`Server belum dapat dijangkau — mencoba ulang (${retryRef.current.tries}/10)…`);
-        retryRef.current.timer=setTimeout(()=>void connect(true),retryDelay(retryRef.current.tries));
+        attempts.current.schedule(signal, ()=>void connect(true), retryDelay(retryRef.current.tries));
       }
       console.warn('[xydesk] connect gagal:', err);
     }
   };
 
-  const historyAutoStarted=useRef(false);
-  useEffect(()=>{if(returnPath!=='/history'||!savedAccess||historyAutoStarted.current)return;const timer=setTimeout(()=>{historyAutoStarted.current=true;void connect();},0);return()=>clearTimeout(timer);},[returnPath,savedAccess]);
-  const disconnect = useCallback(() => {
+  const restoreStarted=useRef(false);
+  useEffect(()=>{
+    if(!restoreScreen||!savedAccess||restoreStarted.current)return;
+    const timer=setTimeout(()=>{restoreStarted.current=true;void connect(false,true);},0);
+    return()=>clearTimeout(timer);
+  },[restoreScreen,savedAccess]);
+  const teardown = useCallback((preserveDestination:boolean) => {
     keyOwners.current?.reset();
-    finishHistory(historyAttempt.current && retryRef.current.wasConnected ? 'ended' : 'cancelled');
-    setSessionOpen(false);
-    if (retryRef.current.timer) clearTimeout(retryRef.current.timer);
-    retryRef.current.tries = 10; // blok retry setelah putus manual
     pointerRef.current?.reset();
-    sessionRef.current?.stop();
-    sessionRef.current = null;
+    finishHistory(historyAttempt.current && retryRef.current.wasConnected ? 'ended' : 'cancelled');
+    retryRef.current.tries = 10; // blok retry sebelum callback abort
+    const stopping=sessionRef.current;
+    sessionRef.current=null;
+    attempts.current.cancel();
+    stopping?.stop();
     if (videoRef.current) videoRef.current.srcObject = null;
     if (audioRef.current) audioRef.current.srcObject = null;
-    setRemoteVideoStream(null);
-    setAudioMessage('');
-    setKbOpen(false);
-    setPadOpen(false);
-    setPanelOpen(false);
-    setStats(null);
-    setConnectedAt(null);
-    setHudToast('');
-    setPhase('');
-    setFasePesan(null);
-    sessionFragmentRef.current = '';
-    if (isSessionFragment(window.location.hash)) {
-      window.history.replaceState({}, '', returnPath);
+    if(!preserveDestination){
+      setSessionOpen(false);
+      setRemoteVideoStream(null);
+      setAudioMessage('');
+      setKbOpen(false);
+      setPadOpen(false);
+      setPanelOpen(false);
+      setStats(null);
+      setConnectedAt(null);
+      setHudToast('');
+      setPhase('');
+      setFasePesan(null);
+
+      forgetDestination(localStorage,sessionFragmentRef.current);
+      sessionFragmentRef.current = '';
+      window.history.replaceState({}, '', '/devices');
+      window.dispatchEvent(new PopStateEvent('popstate'));
     }
     void leaveSessionFullscreen(surfaceRef.current);
   }, []);
-  useEffect(() => disconnect, [disconnect]);
+  const disconnect=useCallback(()=>teardown(false),[teardown]);
+  useEffect(()=>()=>teardown(true),[teardown]);
+  useEffect(()=>{
+    const initialScope=browserAccessScope();
+    const changed=()=>{if(browserAccessScope()!==initialScope){
+      teardown(true);forgetDestination(localStorage,sessionFragmentRef.current);restoreStarted.current=true;
+      if(window.location.pathname.startsWith('/session')||isSessionFragment(window.location.hash)) {
+        setSessionOpen(true);setPhase('ended');setRemoteVideoStream(null);setFasePesan('Akun berubah. Periksa akses lalu sambungkan ulang.');
+      }
+    }};
+    window.addEventListener('storage',changed);window.addEventListener('xydesk-account-changed',changed);
+    return()=>{window.removeEventListener('storage',changed);window.removeEventListener('xydesk-account-changed',changed);};
+  },[teardown]);
+  const latestConnect=useRef(connect);latestConnect.current=connect;
+  useEffect(()=>{
+    const scope=browserAccessScope();
+    const isSession=()=>window.location.pathname.startsWith('/session')||isSessionFragment(window.location.hash);
+    const hide=()=>{teardown(true);if(isSession()){setPhase('ended');setRemoteVideoStream(null);}};
+    const show=(event:PageTransitionEvent)=>{
+      if(!event.persisted||!isSession())return;
+      setSessionOpen(true);setPhase('ended');
+      if(browserAccessScope()===scope&&loadHostAccess(hostId.replace(/[\s-]/g,'')))void latestConnect.current(false,true);
+    };
+    window.addEventListener('pagehide',hide);window.addEventListener('pageshow',show);
+    return()=>{window.removeEventListener('pagehide',hide);window.removeEventListener('pageshow',show);};
+  },[teardown,hostId]);
 
   const send = (bytes:Uint8Array,owner='virtual',repeat=false) => {
     if(bytes[0]===5&&bytes.length>=4)keyOwners.current!.set(bytes[1]|bytes[2]<<8,bytes[3]===1,owner,repeat);
@@ -2711,11 +2816,17 @@ function ConnectScreen({
         onContextMenu={(e) => e.preventDefault()}
       >
         <video ref={videoRef} autoPlay playsInline muted onLoadedMetadata={paintCursor} onResize={paintCursor} />
-        {sessionOpen && !connected && <div className="session-connecting" role="status">
+        {sessionOpen && !connected && <div className="session-connecting" role="region" aria-label="Pemulihan sesi">
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
-          <h2>{(phase==='error'&&fasePesan)||labels[phase]||'Menyiapkan sesi…'}</h2>
-          {!['pairing','negotiating'].includes(phase)&&<button className="btn primary" onClick={()=>void connect()}>Coba lagi</button>}
+          <h2 aria-live="polite">{fasePesan||labels[phase]||'Lanjutkan sesi perangkat'}</h2>
+          <p>ID {hostId||'belum dipilih'} · Halaman sesi tetap terbuka saat koneksi terputus.</p>
+          {!['pairing','negotiating'].includes(phase)&&<div className="session-resume-form">
+            {!/^\d{9}$/.test(hostId.replace(/[\s-]/g,''))&&<label>ID perangkat<input inputMode="numeric" value={hostId} onChange={e=>setHostId(e.target.value)} autoComplete="off"/></label>}
+            {!savedAccess&&<label>Password pairing<input ref={pinRef} type="password" value={pin} onChange={e=>setPin(e.target.value)} autoComplete="off" onKeyDown={e=>{if(e.key==='Enter'&&canConnect)void connect();}}/><small>Akses tersimpan tidak tersedia atau sudah dicabut. Password tidak disimpan.</small></label>}
+            <button className="btn primary" disabled={!canConnect} onClick={()=>void connect()}>Sambungkan ulang</button>
+            {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun untuk memakai akses tersimpan</button>}
+          </div>}
           <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
         </div>}
         <div className="remote-input-area" aria-hidden="true" hidden={!connected} />
@@ -2791,9 +2902,9 @@ function ConnectScreen({
             setMicOn(true);
           }}
           kbOpen={kbOpen}
-          onKeyboard={() => setKbOpen((v) => !v)}
+          onKeyboard={() => {setKbOpen(v=>!v);setPanelOpen(false);setPadOpen(false);}}
           padOpen={padOpen}
-          onPad={() => setPadOpen((v) => !v)}
+          onPad={() => {setPadOpen(v=>!v);setPanelOpen(false);setKbOpen(false);}}
           trackpad={trackpad}
           onTrackpad={toggleTrackpad}
           onClipboardPush={() => void clipboardPush()}
@@ -2801,7 +2912,7 @@ function ConnectScreen({
           onFullscreen={toggleFullscreen}
           fullscreenOn={fullscreenOn}
           panelOpen={panelOpen}
-          onPanel={() => setPanelOpen((v) => !v)}
+          onPanel={() => {setPanelOpen(v=>!v);setKbOpen(false);setPadOpen(false);}}
           onDisconnect={disconnect}
         />
 
@@ -2842,6 +2953,13 @@ function ConnectScreen({
             }}
           />
         )}
+        {!padOpen&&!kbOpen&&!panelOpen&&<MouseHud trackpad={trackpad} onSwitch={toggleTrackpad} onCustomize={()=>setPadOpen(true)}
+          onMouse={(e,button,down)=>{e.preventDefault();e.stopPropagation();if(down){e.currentTarget.setPointerCapture(e.pointerId);pointerRef.current?.sync();}pointerRef.current?.button(button,down,'dock:'+e.pointerId);}}
+          onMouseClick={button=>{pointerRef.current?.sync();pointerRef.current?.button(button,true,'dock-key');pointerRef.current?.button(button,false,'dock-key');}}
+          onScroll={delta=>send(InputCodec.scroll(0,prefs.reverseScroll?-delta:delta))}
+          onWindows={(owner,down)=>keyOwners.current?.set(91,down,'dock:'+owner)}
+          onRelease={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}}
+          onCenter={()=>{pointerRef.current?.center();paintCursor();}}/>}
         {padOpen && <CustomControlMapping onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');

@@ -38,7 +38,7 @@ PASANG DAN MULAI
 3. Jika panel ditutup dengan tombol X, host tetap berjalan di system tray.
    Klik kanan ikon XyDesk untuk Buka Control Panel, Mulai/Hentikan host,
    Buka XyDesk Web, atau Keluar XyDesk.
-4. Gunakan https://app.xydesk.my.id dan salin Device ID/kode pairing dari panel.
+4. Gunakan https://remote.xydesk.my.id dan salin Device ID/kode pairing dari panel.
    Jangan membagikan kode pairing, token, atau file identitas.
 5. Uji suara PC, keyboard, pointer/klik di tengah dan empat sudut, serta
    pelepasan tombol ketika sesi ditutup.

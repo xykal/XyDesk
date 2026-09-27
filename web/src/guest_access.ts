@@ -18,9 +18,10 @@ function fresh(token:string|null){
  try {const p=JSON.parse(atob(token!.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));return p.guest===true&&typeof p.exp==='number'&&p.exp>Date.now()/1000+60;}catch{return false;}
 }
 let inflight:Promise<string>|null=null;
-export function ensureGuestAccess(issue:(refresh?:string)=>Promise<{token:string;refresh?:string}>):Promise<string>{
- if(inflight)return inflight;
- inflight=(async()=>{
+export function ensureGuestAccess(issue:(refresh?:string)=>Promise<{token:string;refresh?:string}>, signal?:AbortSignal):Promise<string>{
+ if(!signal && inflight)return inflight;
+ const task=(async()=>{
+  if(signal?.aborted)throw signal.reason;
   let cached:string|null=null,refresh:string|null=null;
   try{cached=sessionStorage.getItem(ACCESS_KEY);refresh=localStorage.getItem(REFRESH_KEY);}catch{}
   if(fresh(cached))return cached!;
@@ -31,10 +32,13 @@ export function ensureGuestAccess(issue:(refresh?:string)=>Promise<{token:string
    // A rotated server key can invalidate a browser identity, not its host-side grant.
    response=await issue();
   }
+  if(signal?.aborted)throw signal.reason;
   if(typeof response.token!=='string'||!response.token)throw Error('Respons sesi tamu tidak valid.');
   try{if(response.refresh)localStorage.setItem(REFRESH_KEY,response.refresh);sessionStorage.setItem(ACCESS_KEY,response.token);}catch{}
   return response.token;
- })().finally(()=>{inflight=null;});
+ })();
+ if(signal)return task;
+ inflight=task.finally(()=>{inflight=null;});
  return inflight;
 }
 export function mayRetrySession(phase:string,allowed:boolean,wasConnected:boolean,tries:number){return allowed&&wasConnected&&tries<10&&['error','ended','peer-offline'].includes(phase);}

@@ -90,3 +90,9 @@ test('badan dan status respons tetap utuh setelah dibungkus CORS', async () => {
   assert.equal(res.status, 201);
   assert.equal(await res.text(), '{"ok":true}');
 });
+
+test('domain publik dan remote diizinkan tanpa wildcard subdomain',()=>{
+  const env={CORS_ORIGINS:'https://www.xydesk.my.id,https://remote.xydesk.my.id'};
+  for(const origin of ['https://www.xydesk.my.id','https://remote.xydesk.my.id'])assert.equal(cors(origin,env).headers.get('Access-Control-Allow-Origin'),origin);
+  assert.equal(cors('https://remote.xydesk.my.id.evil.test',env).headers.get('Access-Control-Allow-Origin'),null);
+});

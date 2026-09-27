@@ -54,11 +54,11 @@ class Bitmap:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("bitmap", type=Path)
-    parser.add_argument("--panel-width", type=int, default=560)
-    parser.add_argument("--panel-height", type=int, default=568)
-    parser.add_argument("--margin", type=int, default=24, help="margin bayangan (default 24)")
+    parser.add_argument("--panel-width", type=int, default=1100)
+    parser.add_argument("--panel-height", type=int, default=720)
+    parser.add_argument("--margin", type=int, default=0, help="margin bayangan (default 0)")
     parser.add_argument("--radius", type=int, default=10, help="radius sudut (default 10)")
-    parser.add_argument("--background", default="14,16,22", help="warna panel 'R,G,B' (default 14,16,22)")
+    parser.add_argument("--background", default="255,255,255", help="warna panel 'R,G,B' (default 255,255,255)")
     args = parser.parse_args()
 
     bitmap = Bitmap(args.bitmap)

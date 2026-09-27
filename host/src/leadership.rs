@@ -1,17 +1,9 @@
-//! Kepemimpinan host lintas sesi: satu LEADER per mesin, sisanya STANDBY.
+//! Satu leader per akun Windows, lintas sesi console/RDP akun yang sama.
 //!
-//! Kasus lapangan (VPS GitHub Actions): host auto-login di sesi konsol
-//! (akun layanan runneradmin) sementara pemilik bekerja di sesi RDP-nya
-//! sendiri. Windows melarang proses menangkap layar sesi user lain, jadi
-//! satu-satunya jalan yang benar: host jalan di TIAP sesi interaktif
-//! (installer mendaftarkan HKLM Run) dan instance di sesi pemegang layar
-//! aktif menjadi leader — memegang capture, signaling, dan control API —
-//! sementara instance lain standby menunggu takeover. Serah terima lewat
-//! mutex bernama + berkas permintaan stepdown: senyap, tanpa kedip pindah
-//! sesi, tanpa schtasks.
-//!
-//! Logika keputusan sengaja fungsi murni biar bisa diuji unit di Linux;
-//! mekanisme Windows (mutex + berkas) ada di belakang cfg.
+//! File lock eksklusif di profil identitas memakai share_mode(0), sehingga
+//! berlaku lintas sesi tanpa namespace Global atau ACL lintas user. Direktori
+//! XYDESK_HOME bila disetel harus privat untuk akun pemilik, seperti password
+//! dan grant yang sudah disimpan di direktori itu.
 
 /// Keputusan startup murni: instance boleh langsung jadi leader hanya bila
 /// ia hidup di sesi yang memegang layar aktif.
@@ -19,110 +11,98 @@ pub fn langsung_leader(sessiku: u32, sesi_aktif: u32) -> bool {
     sessiku == sesi_aktif
 }
 
-/// Promosi dari standby: boleh hanya bila sesi ini pemegang layar DAN mutex
-/// kepemimpinan berhasil direbut (leader lama sudah turun).
-pub fn boleh_promosi(sessiku: u32, sesi_aktif: u32, mutex_dapat: bool) -> bool {
-    sessiku == sesi_aktif && mutex_dapat
-}
-
-/// Leader wajib turun bila ada permintaan stepdown dari sesi pemegang layar
-/// aktif sementara leader sendiri tidak di sesi itu.
-pub fn harus_turun(sessiku: u32, sesi_aktif: u32, peminta: Option<u32>) -> bool {
-    peminta.is_some_and(|p| p == sesi_aktif && sessiku != sesi_aktif)
-}
-
-/// Rebut mutex kepemimpinan mesin ini. `false` = instance lain sedang leader.
-pub fn coba_mutex() -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        return mech::coba_mutex();
+/// Jangan mengevaluasi akuisisi yang memiliki efek samping sebelum eligibility.
+/// Guard generik membuat urutan akuisisi/pelepasan dapat diuji tanpa Win32.
+fn acquire_if_eligible<T>(
+    sessiku: u32,
+    sesi_aktif: u32,
+    acquire: impl FnOnce() -> Option<T>,
+) -> Option<T> {
+    if langsung_leader(sessiku, sesi_aktif) {
+        acquire()
+    } else {
+        None
     }
-    #[cfg(not(target_os = "windows"))]
-    true
 }
 
-/// Lepaskan mutex kepemimpinan (saat turun jabatan / keluar).
-pub fn lepas_mutex() {
+/// File membuka slot sampai guard dilepas, termasuk jalur keluar dengan error.
+pub struct LeaderGuard {
     #[cfg(target_os = "windows")]
-    mech::lepas_mutex();
+    _lock: std::fs::File,
 }
 
-/// Tulis permintaan stepdown (dibaca leader di tick loop-nya).
-pub fn minta_stepdown(sesi_peminta: u32) {
-    #[cfg(target_os = "windows")]
-    mech::tulis_stepdown(sesi_peminta);
-    #[cfg(not(target_os = "windows"))]
-    let _ = sesi_peminta;
+/// Identitas berasal dari WTS, bukan label jaringan yang dikirim client.
+pub fn same_account(user: &str, domain: &str, owner: &str, owner_domain: &str) -> bool {
+    !user.is_empty()
+        && !owner.is_empty()
+        && !domain.is_empty()
+        && !owner_domain.is_empty()
+        && user.eq_ignore_ascii_case(owner)
+        && domain.eq_ignore_ascii_case(owner_domain)
 }
 
-/// Sesi yang meminta stepdown, bila ada permintaan tertulis.
-pub fn baca_stepdown() -> Option<u32> {
+/// Ambil slot hanya untuk sesi yang berhak. `None` juga berarti slot sibuk
+/// atau Win32 menolak pembuatan objek; pemanggil tetap standby.
+pub fn try_acquire(sessiku: u32, sesi_aktif: u32) -> Option<LeaderGuard> {
     #[cfg(target_os = "windows")]
-    {
-        return mech::baca_stepdown();
+    if sessiku == u32::MAX || sesi_aktif == u32::MAX {
+        return None;
     }
-    #[cfg(not(target_os = "windows"))]
-    None
+    acquire_if_eligible(sessiku, sesi_aktif, || {
+        #[cfg(target_os = "windows")]
+        {
+            mech::try_acquire()
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            Some(LeaderGuard {})
+        }
+    })
 }
 
-/// Bersihkan berkas permintaan setelah kepemimpinan pindah tangan.
-pub fn hapus_stepdown() {
-    #[cfg(target_os = "windows")]
-    mech::hapus_stepdown();
+/// Membatalkan auth/connect yang macet ketika sesi akun yang aktif berubah.
+pub async fn until_session_changes() {
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        crate::screen::evaluate_sessions_now();
+        if crate::screen::proc_session() != crate::screen::active_session() {
+            return;
+        }
+    }
 }
 
 #[cfg(target_os = "windows")]
 mod mech {
-    use std::sync::atomic::{AtomicIsize, Ordering};
-
-    static MUTEX: AtomicIsize = AtomicIsize::new(0);
-
-    pub fn coba_mutex() -> bool {
-        use windows::core::w;
-        use windows::Win32::Foundation::{CloseHandle, GetLastError, ERROR_ALREADY_EXISTS};
-        use windows::Win32::System::Threading::CreateMutexW;
-        unsafe {
-            match CreateMutexW(None, false, w!("Local\\XyDesk-Host-Leader")) {
-                Ok(h) => {
-                    if GetLastError() == ERROR_ALREADY_EXISTS {
-                        let _ = CloseHandle(h);
-                        false
-                    } else {
-                        MUTEX.store(h.0 as isize, Ordering::SeqCst);
-                        true
-                    }
-                }
-                Err(_) => false,
+    use super::LeaderGuard;
+    pub fn try_acquire() -> Option<LeaderGuard> {
+        let dir = crate::identity::config_dir();
+        if let Err(error) = std::fs::create_dir_all(&dir) {
+            eprintln!("[leader] direktori identitas tidak tersedia: {error}");
+            return None;
+        }
+        match try_acquire_path(&dir.join("leader.lock")) {
+            Ok(guard) => guard,
+            Err(error) => {
+                eprintln!("[leader] file lock tidak dapat dibuka: {error}");
+                None
             }
         }
     }
 
-    pub fn lepas_mutex() {
-        use windows::Win32::Foundation::{CloseHandle, HANDLE};
-        let h = MUTEX.swap(0, Ordering::SeqCst);
-        if h != 0 {
-            unsafe {
-                let _ = CloseHandle(HANDLE(h as _));
-            }
+    pub(super) fn try_acquire_path(path: &std::path::Path) -> std::io::Result<Option<LeaderGuard>> {
+        use std::os::windows::fs::OpenOptionsExt;
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .share_mode(0)
+            .open(path)
+        {
+            Ok(file) => Ok(Some(LeaderGuard { _lock: file })),
+            Err(error) if matches!(error.raw_os_error(), Some(32 | 33)) => Ok(None),
+            Err(error) => Err(error),
         }
-    }
-
-    fn stepdown_path() -> std::path::PathBuf {
-        crate::identity::config_dir().join("stepdown.json")
-    }
-
-    pub fn tulis_stepdown(sesi: u32) {
-        let _ = std::fs::write(stepdown_path(), format!("{{\"sesi\":{sesi}}}"));
-    }
-
-    pub fn baca_stepdown() -> Option<u32> {
-        let body = std::fs::read_to_string(stepdown_path()).ok()?;
-        let v: serde_json::Value = serde_json::from_str(&body).ok()?;
-        v.get("sesi").and_then(|s| s.as_u64()).map(|s| s as u32)
-    }
-
-    pub fn hapus_stepdown() {
-        let _ = std::fs::remove_file(stepdown_path());
     }
 }
 
@@ -139,20 +119,96 @@ mod tests {
     }
 
     #[test]
-    fn promosi_butuh_sesi_benar_dan_mutex() {
-        assert!(boleh_promosi(2, 2, true));
-        assert!(!boleh_promosi(2, 2, false)); // leader lama belum turun
-        assert!(!boleh_promosi(1, 2, true)); // sesi salah: jangan rampas
+    fn standby_tidak_memanggil_akuisisi_mutex() {
+        let guard = acquire_if_eligible(1, 2, || -> Option<()> {
+            panic!("standby tidak boleh menyentuh mutex");
+        });
+        assert!(guard.is_none());
     }
 
     #[test]
-    fn turun_hanya_untuk_peminta_dari_layar_aktif() {
-        // Leader di konsol (1), layar aktif RDP (2), permintaan dari 2 → turun.
-        assert!(harus_turun(1, 2, Some(2)));
-        // Permintaan dari sesi yang BUKAN pemegang layar → diabaikan.
-        assert!(!harus_turun(1, 2, Some(3)));
-        // Leader sudah di sesi aktif → tidak ada yang boleh menggusur.
-        assert!(!harus_turun(2, 2, Some(3)));
-        assert!(!harus_turun(1, 2, None));
+    fn sesi_aktif_mencoba_sekali_dan_menghormati_slot_sibuk() {
+        let mut calls = 0;
+        let guard = acquire_if_eligible(2, 2, || -> Option<()> {
+            calls += 1;
+            None
+        });
+        assert!(guard.is_none());
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn standby_dapat_promosi_setelah_sesi_berubah_dan_guard_dilepas() {
+        use std::cell::Cell;
+        struct Slot<'a>(&'a Cell<bool>);
+        impl Drop for Slot<'_> {
+            fn drop(&mut self) {
+                self.0.set(false);
+            }
+        }
+        let held = Cell::new(false);
+        let acquire = || {
+            if held.replace(true) {
+                None
+            } else {
+                Some(Slot(&held))
+            }
+        };
+        assert!(acquire_if_eligible(1, 2, acquire).is_none());
+        assert!(
+            !held.get(),
+            "standby tidak boleh meninggalkan slot terambil"
+        );
+        let first = acquire_if_eligible(1, 1, acquire).expect("promosi pertama");
+        assert!(held.get());
+        assert!(acquire_if_eligible(1, 1, acquire).is_none());
+        drop(first);
+        assert!(!held.get());
+        let second = acquire_if_eligible(1, 1, acquire).expect("slot bisa dipakai ulang");
+        drop(second);
+        assert!(!held.get());
+    }
+
+    #[test]
+    fn guard_dilepas_saat_pemilik_keluar_dengan_error() {
+        use std::cell::Cell;
+        struct Guard<'a>(&'a Cell<usize>);
+        impl Drop for Guard<'_> {
+            fn drop(&mut self) {
+                self.0.set(self.0.get() + 1);
+            }
+        }
+        fn run(drops: &Cell<usize>) -> Result<(), &'static str> {
+            let _leader = acquire_if_eligible(2, 2, || Some(Guard(drops))).ok_or("slot sibuk")?;
+            Err("startup gagal")
+        }
+        let drops = Cell::new(0);
+        assert_eq!(run(&drops), Err("startup gagal"));
+        assert_eq!(drops.get(), 1);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn guard_file_win32_eksklusif_dan_dapat_diambil_ulang() {
+        let path = std::env::temp_dir().join(format!(
+            "xydesk-leader-test-{}-{}.lock",
+            std::process::id(),
+            rand::random::<u64>()
+        ));
+        let first = mech::try_acquire_path(&path).unwrap().unwrap();
+        assert!(mech::try_acquire_path(&path).unwrap().is_none());
+        drop(first);
+        let second = mech::try_acquire_path(&path).unwrap().unwrap();
+        drop(second);
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn pemilik_sesi_harus_akun_dan_domain_yang_sama() {
+        assert!(same_account("Alice", "PC", "alice", "pc"));
+        assert!(!same_account("alice", "domain-a", "alice", "domain-b"));
+        assert!(!same_account("bob", "PC", "alice", "PC"));
+        assert!(!same_account("", "PC", "", "PC"));
+        assert!(!same_account("alice", "", "alice", ""));
     }
 }

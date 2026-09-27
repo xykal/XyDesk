@@ -17,7 +17,7 @@ routes = [
 [vars]
 # OAuth Web khusus admin; tidak mengganti client web/APK yang ada.
 ADMIN_GOOGLE_CLIENT_ID = "495336144977-bbtbsdunjrfsfcgki96h6vgq0i5rvs8a.apps.googleusercontent.com"
-CORS_ORIGINS = "https://app.xydesk.my.id,https://xydesk-admin.pages.dev,https://admin.xydesk.my.id"
+CORS_ORIGINS = "https://www.xydesk.my.id,https://remote.xydesk.my.id,https://app.xydesk.my.id,https://xydesk-admin.pages.dev,https://admin.xydesk.my.id"
 # Client ID OAuth tipe "Desktop app" untuk shell Electron. Client ID bukan
 # rahasia (ia ikut terkirim di URL browser pengguna), jadi aman sebagai var.
 # Pasangannya, GOOGLE_DESKTOP_CLIENT_SECRET, adalah secret wrangler dan

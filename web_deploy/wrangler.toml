@@ -5,8 +5,10 @@ compatibility_date = "2026-08-17"
 workers_dev = true
 preview_urls = true
 
-# Domain aplikasi. Backend tetap di https://signal.xydesk.my.id.
+# Situs publik dan aplikasi remote. app menjadi redirect legacy. Backend tetap di https://signal.xydesk.my.id.
 routes = [
+  { pattern = "www.xydesk.my.id", custom_domain = true },
+  { pattern = "remote.xydesk.my.id", custom_domain = true },
   { pattern = "app.xydesk.my.id", custom_domain = true }
 ]
 

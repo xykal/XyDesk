@@ -1,3 +1,4 @@
+import {pageRedirect} from './domain_routes.js';
 // XyDesk Web — Worker renderer OpenGraph.
 //
 // Tugasnya satu: saat crawler sosial (WhatsApp/Telegram/FB/X) meminta
@@ -10,7 +11,7 @@
 // (lingkungan dev), fallback ke API publik berita.
 
 const NEWS_API = 'https://news.xydesk.my.id';
-const SITE = 'https://app.xydesk.my.id';
+const SITE = 'https://www.xydesk.my.id';
 
 const BOT_PATTERNS = [
   /facebookexternalhit/i,
@@ -137,8 +138,12 @@ export default {
   async fetch(request, env) {
     const ua = request.headers.get('user-agent') || '';
     const url = new URL(request.url);
+    const redirect=pageRedirect(url);
+    if(redirect)return Response.redirect(redirect,308);
+    if(url.hostname==='remote.xydesk.my.id'&&url.pathname==='/robots.txt')return new Response('User-agent: *\nDisallow: /\n',{headers:{'content-type':'text/plain'}});
 
-    if (isBot(ua)) {
+
+    if (isBot(ua) && url.hostname!=='remote.xydesk.my.id') {
       if (url.pathname.startsWith('/news/')) {
         const slug = decodeURIComponent(url.pathname.slice('/news/'.length)).trim();
         if (slug) {
@@ -162,6 +167,11 @@ export default {
     let res = await env.ASSETS.fetch(request);
     if (res.status === 404) {
       res = await env.ASSETS.fetch(new Request(`${SITE}/index.html`, request));
+    }
+    if(url.hostname==='remote.xydesk.my.id') {
+      const headers=new Headers(res.headers);headers.set('X-Robots-Tag','noindex, nofollow');
+      if(!/\.[a-z0-9]+$/i.test(url.pathname))headers.set('Cache-Control','no-store');
+      return new Response(res.body,{status:res.status,headers});
     }
     return res;
   },

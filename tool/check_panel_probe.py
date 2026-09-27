@@ -17,8 +17,8 @@ def main() -> int:
     parser.add_argument("--json", required=True)
     parser.add_argument("--expect", required=True,
                         help="Daftar target hit yang diharapkan, dipisah koma.")
-    parser.add_argument("--panel-width", type=int, default=900)
-    parser.add_argument("--panel-height", type=int, default=560)
+    parser.add_argument("--panel-width", type=int, default=1100)
+    parser.add_argument("--panel-height", type=int, default=720)
     args = parser.parse_args()
 
     with open(args.json, "r", encoding="utf-8") as handle:

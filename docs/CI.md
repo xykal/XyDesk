@@ -7,6 +7,7 @@ perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
 
 | Berkas | Pemicu | Hasil |
 |---|---|---|
+| `.github/workflows/validate-web-host.yml` | **manual** (`workflow_dispatch`) | web test/build, host Linux/Windows unit/clippy + startup konkuren, parser panel/IPC privat, kandidat Windows + panel probe; tidak deploy/rilis, artefak 3 hari |
 | `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja — tidak otomatis oleh push | gerbang mutu per-area, APK Android, satu bundle Windows native C++ + engine Rust, bundle Web |
 | `.github/workflows/deploy-signaling.yml` | **manual** (`workflow_dispatch`) | deploy Cloudflare Worker API/signaling |
 | `.github/workflows/deploy-web.yml` | Build `main` sukses, manual recovery | deploy bundle Flutter Web terverifikasi ke Cloudflare Static Assets |
@@ -15,8 +16,32 @@ perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
 | `.github/workflows/prepare-host-nsis.yml` | **manual** (`workflow_dispatch`) | installer NSIS Native C++ x64 test dari payload terverifikasi |
 | `.github/workflows/prepare-windows-installer.yml` | **manual** (`workflow_dispatch`) | MSI WiX + NSIS EXE Windows x64 dari bundle Build Native C++ yang sama |
 | `.github/workflows/deploy-news.yml` | **manual** (`workflow_dispatch`) | deploy Worker berita + migrasi D1 |
-| `.github/workflows/test-lab.yml` | **manual** (`workflow_dispatch`) | uji lab perangkat |
+| ~~`.github/workflows/test-lab.yml`~~ | **dihapus dari source 27 Sep 2026 atas arahan pemilik** | lab RDP/Tailscale diganti pengujian manual di perangkat pemilik; tidak menahan runner |
 | ~~`.github/workflows/verify-push-auth.yml`~~ | **dihapus** operator 5 Sep 2026 (`b4ce4a4`) — resep pemulihan ada di bawah | dulu: audit izin push, commit wajib memuat `Izin: <ID>` berstatus `DISETUJUI` di `AGENT_BOARD.md` |
+
+## Pengujian web + host tanpa runner interaktif
+
+Fokus saat ini adalah web dan host; integrasi platform lain ditunda. Pengujian
+Windows/RDP/audio/input dijalankan pemilik di mesin sendiri dengan
+[`WEB-HOST-MANUAL-QA.md`](WEB-HOST-MANUAL-QA.md). Build/kompilasi tetap melalui
+Actions setelah izin; unit test, gerbang build, dan workflow packaging manual
+tidak dihapus. Workflow `test-vdd-setup.yml` adalah gerbang pengujian driver
+terpisah, bukan lab RDP/Tailscale yang dihapus.
+
+Menghapus file workflow tidak membatalkan run yang sudah berjalan atau
+mencabut secret/node Tailscale. Periksa dan batalkan run lama bila masih aktif;
+review kredensial yang khusus lab secara terpisah. Penghapusan baru berlaku
+di branch remote setelah perubahan dipush.
+
+**Perhatian:** Build sukses dapat memicu `deploy-web.yml` dan `release.yml`
+melalui `workflow_run` sesuai syarat masing-masing. Jangan memperlakukan
+dispatch Build sebagai validasi tanpa efek produksi. Untuk kandidat uji, pilih
+`Validate Web Host` setelah izin. Nama workflow ini tidak cocok dengan
+listener `workflow_run: workflows: [Build]`, tidak memakai credential produksi,
+tidak menaikkan versi, dan tidak menyediakan runner RDP interaktif. Saat ini
+baru kandidat source lokal, belum pernah dijalankan. Artefak Windows debug
+bernama `validation-only-windows-<sha>`; gabungkan panel dan engine di satu
+folder untuk QA pemilik, bukan distribusi produksi.
 
 ## Kebijakan pemicu (sejak 3 Sep 2026): push TIDAK memicu actions
 

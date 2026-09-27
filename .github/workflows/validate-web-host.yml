@@ -1,0 +1,136 @@
+name: Validate Web Host
+
+# Validasi saja: nama ini sengaja bukan Build, agar tidak memicu deploy/rilis.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: validate-web-host-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm test
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      - name: Regresi API (CORS), tanpa deploy
+        run: node --test
+        working-directory: cloudflare
+      - name: Regresi berita/domain publik, tanpa deploy
+        run: node --test
+        working-directory: news
+  host:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: NASM Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y nasm
+      - name: NASM Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command nasm -ErrorAction SilentlyContinue)) {
+            choco install nasm --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'NASM gagal dipasang' }
+            'C:\Program Files\NASM' >> $env:GITHUB_PATH
+          }
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            host/target
+          key: validate-host-${{ runner.os }}-${{ hashFiles('host/Cargo.lock') }}
+          restore-keys: validate-host-${{ runner.os }}-
+      - run: cargo fmt --check
+        working-directory: host
+      - run: cargo clippy --locked --lib --bin xydesk-host -j 2 -- -D warnings
+        working-directory: host
+      - name: Semua unit test library (termasuk guard Windows)
+        run: cargo test --locked --lib -j 2
+        working-directory: host
+      - name: Integrasi host tanpa perangkat Windows
+        if: runner.os == 'Linux'
+        run: cargo test --locked --tests -j 2
+        working-directory: host
+      - name: Startup identitas konkuren Windows (tanpa signaling/capture)
+        if: runner.os == 'Windows'
+        run: cargo test --locked --test identity_startup -j 2
+        working-directory: host
+      - name: Engine kandidat Windows (bukan rilis)
+        if: runner.os == 'Windows'
+        run: cargo build --locked --bin xydesk-host -j 2
+        working-directory: host
+      - uses: actions/setup-python@v5
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.14'
+      - name: IPC privat antarproses dan otorisasi control (loopback saja)
+        if: runner.os == 'Windows'
+        run: python tool/check_control_ipc.py --engine host/target/debug/xydesk-host.exe
+      - name: Tata letak panel dan parser JSON
+        if: runner.os == 'Linux'
+        run: packaging/tests/test-native-panel-layout.sh
+      - name: Kompilasi panel native Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vcvars = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -find 'VC/Auxiliary/Build/vcvars64.bat' | Select-Object -First 1
+          if (-not $vcvars) { throw 'MSVC x64 tidak ditemukan' }
+          New-Item -ItemType Directory -Force -Path 'validation-panel' | Out-Null
+          $src = (Resolve-Path 'packaging/native-host/main.cpp').Path
+          $rc = (Resolve-Path 'packaging/native-host/main.rc').Path
+          $res = Join-Path $PWD 'validation-panel/xydesk.res'
+          $exe = Join-Path $PWD 'validation-panel/XyDesk.exe'
+          $srcDir = (Resolve-Path 'packaging/native-host').Path
+          $cmd = "call `"$vcvars`" && cd /d `"$srcDir`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /utf-8 /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
+          cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'Panel gagal dikompilasi' }
+          $probe = Join-Path $PWD 'validation-panel/probe.json'
+          $process = Start-Process -FilePath $exe -ArgumentList @('--panel-probe', "`"$probe`"") -PassThru
+          if (-not $process.WaitForExit(10000)) { $process.Kill(); throw 'Panel probe timeout' }
+          if ($process.ExitCode -ne 0 -or -not (Test-Path $probe)) { throw 'Panel probe gagal' }
+          python tool/check_panel_probe.py $probe
+          if ($LASTEXITCODE -ne 0) { throw 'Geometri panel tidak sesuai' }
+          $snapshot = Join-Path $PWD 'validation-panel/snapshot.bmp'
+          $imageProcess = Start-Process -FilePath $exe -ArgumentList @('--panel-snapshot', "`"$snapshot`"") -PassThru
+          if (-not $imageProcess.WaitForExit(10000)) { $imageProcess.Kill(); throw 'Snapshot panel timeout' }
+          if ($imageProcess.ExitCode -ne 0) { throw 'Snapshot panel gagal' }
+          python tool/check_panel_shape.py $snapshot
+          if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
+        with:
+          name: validation-only-windows-${{ github.sha }}
+          retention-days: 3
+          if-no-files-found: error
+          path: |
+            validation-panel/XyDesk.exe
+            validation-panel/probe.json
+            validation-panel/snapshot.bmp
+            host/target/debug/xydesk-host.exe

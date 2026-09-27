@@ -17,3 +17,10 @@ cxx="${CXX:-g++}"
     -o "$binary"
 
 "$binary"
+
+json_binary="$out_dir/native-engine-json-test"
+"$cxx" -std=c++20 -O2 -Wall -Wextra -Werror \
+    -I "$root/packaging/native-host" \
+    "$root/packaging/tests/native-engine-json-test.cpp" \
+    -o "$json_binary"
+"$json_binary"

@@ -61,6 +61,8 @@ pub const TOKEN_HEADER: &str = "x-xydesk-token";
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EngineState {
+    /// Proses hidup, tetapi slot leader akun berada pada sesi lain.
+    Standby,
     /// Proses baru lahir; belum selesai memuat identitas.
     Starting,
     /// Menghubungkan WebSocket signaling.

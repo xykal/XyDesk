@@ -156,8 +156,9 @@ export const InputCodec = {
     // Pemotongan HANYA bila teksnya kepanjangan. Sama seperti klien Dart:
     // membersihkan ekor walau tidak memotong akan menghapus karakter
     // terakhir yang sah dan membuat seluruh pesan ditolak penerima.
-    if (end > 64 * 1024) {
-      end = 64 * 1024;
+    // Limit host adalah 64 KiB TOTAL, termasuk opcode.
+    if (end > 64 * 1024 - 1) {
+      end = 64 * 1024 - 1;
       // Mundur berdasar byte pertama yang DIBUANG, bukan yang terakhir
       // diikutkan — lihat penjelasan di klien Dart.
       while (end > 0 && (utf8[end] & 0xc0) === 0x80) end--;
@@ -315,6 +316,7 @@ export class RtcSession {
   private resumedAccess = false;
   private hostId = '';
   private stopped = false;
+  private readonly requestAbort = new AbortController();
   private recoveryAttempt = 0;
   private recovering = false;
   private audioTransceiver?: RTCRtpTransceiver;
@@ -444,7 +446,9 @@ export class RtcSession {
     this.hostId = hostId.replace(/[\s-]/g, '');
     this.deviceId = `web-${crypto.randomUUID()}`;
     this.wsFailed = false;
-    this.token = await signalToken(jwt, this.deviceId);
+    if (this.stopped) return;
+    this.setPhase('pairing');
+    this.token = await signalToken(jwt, this.deviceId, this.requestAbort.signal);
     if (this.stopped) return;
 
     this.setPhase('pairing');
@@ -576,7 +580,7 @@ export class RtcSession {
     const iceServers: RTCIceServer[] = [
       { urls: ['stun:stun.cloudflare.com:3478'] },
     ];
-    const relay = await turnIce(this.deviceId, this.token);
+    const relay = await turnIce(this.deviceId, this.token, this.requestAbort.signal);
     if (this.stopped) return;
     // Relay dicatat apa adanya. Ketiadaan relay tidak menggagalkan sesi —
     // banyak jaringan memang tersambung langsung — tetapi ia tidak boleh
@@ -609,6 +613,7 @@ export class RtcSession {
     this.input = pc.createDataChannel('input');
     this.input.binaryType = 'arraybuffer';
     this.input.bufferedAmountLowThreshold=512;
+    this.input.onbufferedamountlow = () => this.flushAbsoluteMove();
     this.input.onmessage = (ev) => {
       // Balasan biner: 0x08 CLIPBOARD_SET (isi papan klip PC).
       if (ev.data instanceof ArrayBuffer) {
@@ -667,6 +672,7 @@ export class RtcSession {
       else if (ev.track.kind === 'audio') this.onAudioTrack(stream);
     };
     pc.onconnectionstatechange = () => {
+      if (this.stopped || this.pc !== pc) return;
       if (pc.connectionState === 'connected') {
         this.recoveryAttempt = 0;
         this.recovering = false;
@@ -682,14 +688,26 @@ export class RtcSession {
 
     this.receiverLevel=await receiverH264Level();
     if(this.stopped)return;
-    const offer = await pc.createOffer();
-    try{await pc.setLocalDescription({...offer,sdp:offerWithH264Level(offer.sdp||'',this.receiverLevel)});}
-    catch{this.receiverLevel='1f';await pc.setLocalDescription(offer);}
-    this.send({
-      type: 'offer',
-      to: this.hostId,
-      sdp: { type: 'offer', sdp: offer.sdp ?? '' },
-    });
+    await this.sendLocalOffer(pc, false);
+  }
+
+  private async sendLocalOffer(pc: RTCPeerConnection, restart: boolean) {
+    const current = () => !this.stopped && this.pc === pc;
+    const offer = await pc.createOffer(restart ? {iceRestart: true} : undefined);
+    if (!current()) return;
+    let applied = {...offer, sdp: offerWithH264Level(offer.sdp || '', this.receiverLevel)};
+    try {
+      await pc.setLocalDescription(applied);
+    } catch (error) {
+      if (!current()) return;
+      if (applied.sdp === offer.sdp) throw error;
+      this.receiverLevel = '1f';
+      applied = {...offer, sdp: offer.sdp || ''};
+      await pc.setLocalDescription(applied);
+    }
+    if (!current()) return;
+    this.send({type: 'offer', to: this.hostId,
+      sdp: {type: 'offer', sdp: pc.localDescription?.sdp ?? applied.sdp}});
   }
 
   private async recoverConnection() {
@@ -712,13 +730,7 @@ export class RtcSession {
         });
       }
       pc.restartIce();
-      const offer = await pc.createOffer({ iceRestart: true });
-      await pc.setLocalDescription({...offer,sdp:offerWithH264Level(offer.sdp||'',this.receiverLevel)});
-      this.send({
-        type: 'offer',
-        to: this.hostId,
-        sdp: { type: 'offer', sdp: offer.sdp ?? '' },
-      });
+      await this.sendLocalOffer(pc, true);
     } catch {
       if (this.recoveryAttempt >= 2) this.fail(PESAN_ICE_GAGAL);
     } finally {
@@ -728,7 +740,7 @@ export class RtcSession {
 
   private flushAbsoluteMove(){
     if(this.meta?.inputGeometry===null){this.pendingAbsoluteMove=undefined;return;}
-    const dc=this.pointerInput?.readyState==='open'?this.pointerInput:this.input;
+    const dc=this.input;
     if(this.pendingAbsoluteMove&&dc?.readyState==='open'&&dc.bufferedAmount<=1024){
       dc.send(this.pendingAbsoluteMove.slice().buffer);this.pendingAbsoluteMove=undefined;
     }
@@ -737,9 +749,10 @@ export class RtcSession {
     if(this.meta?.inputGeometry===null)this.pendingAbsoluteMove=undefined;
     const pointerEvent=event[0]===1||event[0]===2||event[0]===4;
     if(this.meta?.inputGeometry===null && (pointerEvent||(event[0]===3&&event[2]===1))){this.pendingAbsoluteMove=undefined;return;}
-    // Pointer packets use the lossy unordered channel. Fall back to the
-    // reliable channel during the short data-channel opening race.
-    const pointer=this.pointerInput?.readyState==='open'?this.pointerInput:this.input;
+    // Posisi terakhir dan klik harus satu urutan reliable. Kanal pointer
+    // tetap dinegosiasikan untuk kompatibilitas, tetapi web tidak mengirim
+    // gerak di kanal lain: paket terlambat tidak boleh menyalip klik.
+    const pointer=this.input;
     const dc=pointerEvent?pointer:this.input;
     if(dc?.readyState!=='open')return;
     if(pointerEvent && event[0]===2){
@@ -826,7 +839,7 @@ export class RtcSession {
               ? Math.max(0, (frames - this.lastFrames) / dt)
               : 0;
           if (frames !== undefined) {
-            if (previousFrames < 0 || frames > previousFrames) {
+            if (frames > 0 && (previousFrames < 0 || frames > previousFrames)) {
               this.lastDecodedAt = now;
               this.noFrameWarning = false;
             } else if (this.lastDecodedAt > 0 && now - this.lastDecodedAt >= 3500 && bytes > previousBytes) {
@@ -911,7 +924,7 @@ export class RtcSession {
         stats.audioBytesReceived = audioReports.reduce((sum, x) => sum + Number(x.bytesReceived ?? 0), 0);
         const energy = audioReports.filter(x => typeof x.totalAudioEnergy === 'number');
         if (energy.length) stats.audioEnergy = energy.reduce((sum, x) => sum + Number(x.totalAudioEnergy), 0);
-        if (stats.width > 0 && stats.height > 0 && this.lastDecodedAt > 0) this.clearNoFrameWatchdog();
+        if (stats.width > 0 && stats.height > 0 && this.lastFrames > 0 && this.lastDecodedAt > 0) this.clearNoFrameWatchdog();
         stats.noFrameWarning = this.noFrameWarning;
         stats.relayState = this.relay.state;
         stats.relayServers = this.relay.servers;
@@ -989,6 +1002,8 @@ export class RtcSession {
   private closeTransport() {
     if (this.stopped) return;
     this.stopped = true;
+    this.requestAbort.abort();
+    this.wallpaperTransfer.cancel();
     this.clearWatchdog();
     this.clearNoFrameWatchdog();
     this.noFrameWarning = false;

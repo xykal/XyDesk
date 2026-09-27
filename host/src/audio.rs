@@ -156,24 +156,56 @@ pub fn set_master_volume(vol: f32) -> bool {
     }
 }
 
-/// Mulai sumber audio loopback; channel berisi paket Opus (20 ms per paket).
-/// Thread berhenti sendiri bila receiver di-drop.
-pub fn spawn_audio_source() -> mpsc::Receiver<Vec<u8>> {
+/// Paket menyimpan urutan capture agar drop tidak menyusutkan clock RTP.
+#[derive(Debug)]
+pub struct AudioPacket {
+    pub data: Vec<u8>,
+    pub sequence: u64,
+    pub captured_at: std::time::Instant,
+}
+
+/// Drop membatalkan producer walaupun endpoint sedang diam tanpa paket.
+pub struct CaptureSource {
+    rx: mpsc::Receiver<AudioPacket>,
+    stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+impl CaptureSource {
+    pub fn recv_timeout(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<AudioPacket, mpsc::RecvTimeoutError> {
+        self.rx.recv_timeout(timeout)
+    }
+}
+impl Drop for CaptureSource {
+    fn drop(&mut self) {
+        self.stop.store(true, std::sync::atomic::Ordering::Release);
+    }
+}
+fn spawn_source(microphone: bool) -> CaptureSource {
+    let (tx, rx) = mpsc::sync_channel(4);
+    let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     #[cfg(target_os = "windows")]
     {
-        let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
+        let cancelled = stop.clone();
         std::thread::spawn(move || {
-            if let Err(e) = windows::capture_loop(tx) {
-                eprintln!("[xydesk-host] audio loopback gagal: {e}");
+            if let Err(error) = windows::capture(tx, cancelled, microphone) {
+                eprintln!("[xydesk-host] sumber audio berhenti: {error}");
             }
         });
-        rx
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let (_tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
-        rx
+        let _ = microphone;
+        drop(tx);
     }
+    CaptureSource { rx, stop }
+}
+pub fn spawn_audio_source() -> CaptureSource {
+    spawn_source(false)
+}
+pub fn spawn_mic_source() -> CaptureSource {
+    spawn_source(true)
 }
 
 /// Sink pemutar audio mic client. Kirim paket Opus; thread render memutar.
@@ -195,26 +227,6 @@ pub fn spawn_audio_sink() -> mpsc::SyncSender<Vec<u8>> {
     }
 }
 
-/// Mulai sumber audio mikrofon host (host → client); channel berisi paket
-/// Opus (20 ms, mono). Thread berhenti sendiri bila receiver di-drop.
-pub fn spawn_mic_source() -> mpsc::Receiver<Vec<u8>> {
-    #[cfg(target_os = "windows")]
-    {
-        let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
-        std::thread::spawn(move || {
-            if let Err(e) = windows::mic_capture_loop(tx) {
-                eprintln!("[xydesk-host] mic host gagal: {e}");
-            }
-        });
-        rx
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        let (_tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
-        rx
-    }
-}
-
 // ── Implementasi Windows: WASAPI ─────────────────────────────────────────
 #[cfg(target_os = "windows")]
 mod windows {
@@ -227,7 +239,8 @@ mod windows {
         AUDCLNT_STREAMFLAGS_LOOPBACK,
     };
     use windows::Win32::System::Com::{
-        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CLSCTX_ALL, COINIT_MULTITHREADED,
+        CoCreateInstance, CoInitializeEx, CoTaskMemFree, CoUninitialize, CLSCTX_ALL,
+        COINIT_MULTITHREADED,
     };
 
     use crate::pcmconv::{Sampel, Sumber};
@@ -239,17 +252,22 @@ mod windows {
     /// dimute) dan boleh diisi nol tanpa membaca memori perangkat.
     const BUFFERFLAGS_SILENT: u32 = 0x2;
 
-    fn init_com() -> anyhow::Result<()> {
+    struct ComGuard(std::marker::PhantomData<std::rc::Rc<()>>);
+    impl Drop for ComGuard {
+        fn drop(&mut self) {
+            unsafe { CoUninitialize() };
+        }
+    }
+    fn init_com() -> anyhow::Result<ComGuard> {
         unsafe {
             CoInitializeEx(None, COINIT_MULTITHREADED)
                 .ok()
                 .map_err(|e| anyhow::anyhow!("CoInitializeEx gagal: {e:?}"))?;
         }
-        Ok(())
+        Ok(ComGuard(std::marker::PhantomData))
     }
 
     fn device() -> anyhow::Result<windows::Win32::Media::Audio::IMMDevice> {
-        init_com()?;
         let enumerator: IMMDeviceEnumerator = unsafe {
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| anyhow::anyhow!("MMDeviceEnumerator: {e:?}"))?
@@ -263,7 +281,6 @@ mod windows {
     }
 
     fn device_by_id(id: &str) -> anyhow::Result<windows::Win32::Media::Audio::IMMDevice> {
-        init_com()?;
         let enumerator: IMMDeviceEnumerator = unsafe {
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| anyhow::anyhow!("MMDeviceEnumerator: {e:?}"))?
@@ -280,7 +297,6 @@ mod windows {
 
     /// Perangkat capture default (mikrofon) — jalur mic host → client.
     fn capture_device() -> anyhow::Result<windows::Win32::Media::Audio::IMMDevice> {
-        init_com()?;
         let enumerator: IMMDeviceEnumerator = unsafe {
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| anyhow::anyhow!("MMDeviceEnumerator: {e:?}"))?
@@ -296,7 +312,7 @@ mod windows {
     /// Benar bila ada minimal satu perangkat capture aktif (mikrofon).
     pub fn mic_available() -> bool {
         use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
-        let _ = init_com();
+        let Ok(_com) = init_com() else { return false };
         let enumerator: IMMDeviceEnumerator =
             match unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) } {
                 Ok(e) => e,
@@ -336,7 +352,9 @@ mod windows {
         use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
         use windows::Win32::System::Com::STGM_READ;
         use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
-        let _ = init_com();
+        let Ok(_com) = init_com() else {
+            return Vec::new();
+        };
         let enumerator: IMMDeviceEnumerator =
             match unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) } {
                 Ok(e) => e,
@@ -433,7 +451,9 @@ mod windows {
     pub fn list_inputs_detailed() -> Vec<(String, String)> {
         use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
         use windows::Win32::System::Com::STGM_READ;
-        let _ = init_com();
+        let Ok(_com) = init_com() else {
+            return Vec::new();
+        };
         let enumerator: IMMDeviceEnumerator =
             match unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) } {
                 Ok(e) => e,
@@ -492,11 +512,13 @@ mod windows {
     /// `capture_available()` supaya VM tanpa audio device tidak dilaporkan
     /// "tersedia" padahal `capture_loop` bakal gagal terus.
     pub fn has_default_output() -> bool {
+        let Ok(_com) = init_com() else { return false };
         device().is_ok()
     }
 
     /// Volume master 0.0–1.0 dari perangkat output default.
     pub fn master_volume() -> Option<f32> {
+        let _com = init_com().ok()?;
         use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
         let device = device().ok()?;
         let vol: IAudioEndpointVolume = unsafe { device.Activate(CLSCTX_ALL, None).ok()? };
@@ -504,6 +526,7 @@ mod windows {
     }
 
     pub fn set_master_volume(vol: f32) -> bool {
+        let Ok(_com) = init_com() else { return false };
         use windows::Win32::Media::Audio::Endpoints::IAudioEndpointVolume;
         let Ok(device) = device() else { return false };
         let Ok(volume) = (unsafe { device.Activate::<IAudioEndpointVolume>(CLSCTX_ALL, None) })
@@ -579,14 +602,12 @@ mod windows {
         }
     }
 
-    pub fn capture_loop(tx: SyncSender<Vec<u8>>) -> anyhow::Result<()> {
-        capture(tx, false)
-    }
-    pub fn mic_capture_loop(tx: SyncSender<Vec<u8>>) -> anyhow::Result<()> {
-        capture(tx, true)
-    }
-    fn capture(tx: SyncSender<Vec<u8>>, microphone: bool) -> anyhow::Result<()> {
-        init_com()?;
+    pub fn capture(
+        tx: SyncSender<super::AudioPacket>,
+        stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+        microphone: bool,
+    ) -> anyhow::Result<()> {
+        let _com = init_com()?;
         let device = if microphone {
             capture_device()?
         } else {
@@ -616,9 +637,12 @@ mod windows {
         let mut encoder = crate::opus_ffi::Encoder::new(SAMPLE_RATE, usize::from(channels))
             .map_err(|e| anyhow::anyhow!("opus encoder: {e}"))?;
         unsafe { client.Start()? };
-        loop {
+        let mut sequence = 0u64;
+        while !stop.load(std::sync::atomic::Ordering::Acquire) {
             // The return value is FRAMES in the next packet, not packet count.
-            while unsafe { capture.GetNextPacketSize()? } != 0 {
+            while !stop.load(std::sync::atomic::Ordering::Acquire)
+                && unsafe { capture.GetNextPacketSize()? } != 0
+            {
                 let mut data = std::ptr::null_mut();
                 let mut frames = 0;
                 let mut flags = 0;
@@ -636,19 +660,29 @@ mod windows {
                         .encode(&samples, &mut out)
                         .map_err(|e| anyhow::anyhow!("opus encode: {e}"))?;
                     out.truncate(n);
-                    if tx.send(out).is_err() {
-                        return Ok(());
+                    sequence = sequence.wrapping_add(1);
+                    let packet = super::AudioPacket {
+                        data: out,
+                        sequence,
+                        captured_at: std::time::Instant::now(),
+                    };
+                    // Jangan menahan thread WASAPI di belakang jaringan lambat.
+                    match tx.try_send(packet) {
+                        Ok(()) | Err(std::sync::mpsc::TrySendError::Full(_)) => {}
+                        Err(std::sync::mpsc::TrySendError::Disconnected(_)) => return Ok(()),
                     }
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
+        unsafe { client.Stop()? };
+        Ok(())
     }
 
     /// Loop render: decode Opus → tulis ke IAudioRenderClient.
     /// Virtual cable input → recording endpoint untuk aplikasi Windows.
     pub fn render_loop(rx: Receiver<Vec<u8>>) -> anyhow::Result<()> {
-        init_com()?;
+        let _com = init_com()?;
         crate::virtual_mic::ensure_virtual_mic();
         // Prioritas: virtual cable input (biar jadi mic input di Windows)
         // Speaker playback is NOT an input to Discord/Zoom/game. Fail clearly
@@ -739,6 +773,23 @@ mod windows {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn drop_sumber_membatalkan_producer_walaupun_tidak_ada_paket() {
+        use std::sync::{
+            atomic::{AtomicBool, Ordering},
+            mpsc, Arc,
+        };
+        let (_tx, rx) = mpsc::sync_channel(4);
+        let stop = Arc::new(AtomicBool::new(false));
+        let source = super::CaptureSource {
+            rx,
+            stop: stop.clone(),
+        };
+        assert!(!stop.load(Ordering::Acquire));
+        drop(source);
+        assert!(stop.load(Ordering::Acquire));
+    }
+
     #[test]
     #[cfg(not(target_os = "windows"))]
     fn mic_tidak_tersedia_di_platform_non_windows() {

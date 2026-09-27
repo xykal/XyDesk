@@ -1058,28 +1058,46 @@ pub mod capture_health {
     /// sungguhan bekerja lewat RDP — konsol-lama tidak boleh disebut "layar
     /// aktif" dan membuat peringatan salah arah.
     unsafe fn active_screen_session() -> u32 {
+        use windows::Win32::System::RemoteDesktop::ProcessIdToSessionId;
         use windows::Win32::System::RemoteDesktop::{
-            WTSActive, WTSEnumerateSessionsW, WTSFreeMemory, WTSGetActiveConsoleSessionId,
-            WTSWinStationName, WTS_SESSION_INFOW,
+            WTSActive, WTSDomainName, WTSEnumerateSessionsW, WTSFreeMemory, WTSWinStationName,
+            WTS_SESSION_INFOW,
         };
+        use windows::Win32::System::Threading::GetCurrentProcessId;
+        let mut own_session = u32::MAX;
+        if ProcessIdToSessionId(GetCurrentProcessId(), &mut own_session).is_err() {
+            return u32::MAX;
+        }
+        let owner = session_user(own_session);
+        let owner_domain = session_string(own_session, WTSDomainName);
+        if owner.is_empty() {
+            return u32::MAX;
+        }
         let mut list: *mut WTS_SESSION_INFOW = std::ptr::null_mut();
         let mut count: u32 = 0;
         // windows-rs 0.61: (server, reserved, version, list, count).
         if WTSEnumerateSessionsW(None, 0, 1, &mut list, &mut count).is_err() || list.is_null() {
-            return WTSGetActiveConsoleSessionId();
+            return u32::MAX;
         }
         let mut console = u32::MAX;
         let mut rdp = u32::MAX;
         for i in 0..count as usize {
             let info = &*list.add(i);
-            if info.State != WTSActive {
+            if info.State != WTSActive
+                || !crate::leadership::same_account(
+                    &session_user(info.SessionId),
+                    &session_string(info.SessionId, WTSDomainName),
+                    &owner,
+                    &owner_domain,
+                )
+            {
                 continue;
             }
             let station = session_string(info.SessionId, WTSWinStationName);
             if station.eq_ignore_ascii_case("console") {
                 console = info.SessionId;
-            } else if rdp == u32::MAX {
-                rdp = info.SessionId;
+            } else {
+                rdp = rdp.min(info.SessionId);
             }
         }
         WTSFreeMemory(list as *mut core::ffi::c_void);
@@ -1088,7 +1106,7 @@ pub mod capture_health {
         } else if console != u32::MAX {
             console
         } else {
-            WTSGetActiveConsoleSessionId()
+            u32::MAX
         }
     }
 
@@ -1097,7 +1115,7 @@ pub mod capture_health {
         unsafe {
             use windows::Win32::System::RemoteDesktop::ProcessIdToSessionId;
             use windows::Win32::System::Threading::GetCurrentProcessId;
-            let mut proc = 0u32;
+            let mut proc = u32::MAX;
             let _ = ProcessIdToSessionId(GetCurrentProcessId(), &mut proc);
             let active = active_screen_session();
             PROC_SESSION.store(proc, Ordering::Relaxed);
@@ -1260,7 +1278,7 @@ mod windows {
         ) -> Result<Vec<u8>, String> {
             let out = match self {
                 EncoderKind::Nvenc(enc) => {
-                    crate::pixfmt::rgba_to_nv12(rgba_tight, width, height, nv12);
+                    crate::pixfmt::rgba_to_nv12(rgba_tight, width, height, nv12)?;
                     let result = enc.encode(nv12);
                     if result.is_ok() {
                         crate::video_policy::record(Some((width, height)));

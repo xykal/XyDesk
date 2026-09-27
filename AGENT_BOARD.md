@@ -80,6 +80,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20260927-OPERATOR-HARDEN | Operator - XyDesk Team | Web + host + panel + CI | LAGI KERJA | Kandidat source WH-01–17 tersedia; per akun Windows. Kandidat UX/restore/dock mouse/panel 1100×720 + www/remote tersedia lokal; pemeriksaan statis saja. CI/visual/DNS/OAuth BELUM DIUJI/diterapkan; push/deploy ditahan. | 2026-09-27 |
 
 
 ## Antrean izin push
@@ -260,3 +261,33 @@ UXFINISH SESI-20260919-OPERATOR-UXFINISH — SELESAI: web89 + browser history/co
 | ID Sesi | Agent | Status | Hasil | Bukti |
 |---|---|---|---|---|
 | SESI-20260925-OPERATOR-PANELUX | Operator - XyDesk Team | SELESAI | Host RDP mencoba desktop-DC GetDC(0) jika monitor-DC GDI memberi 15 frame hitam; telemetry melaporkan sesi proses/layar dan sampel hitam ke Statistik web. Panel native mengikuti Paper web dengan permukaan kartu tanpa garis dan radius 10/8. | `cargo fmt --check` + `cargo test` 195/195 + `cargo clippy -D warnings` hijau; panel layout 114/114; web production build + Node 24 tests 110/110. Push `17127c8`, `26c36fb`, `7f83247`; Build `36255979612` **11/11 SUCCESS**: https://github.com/xykal/XyDesk/actions/runs/36255979612. Run awal `36255071755` dan `36255510259` gagal di gerbang radius/bukti antialias (diperbaiki sebelum run akhir); run kedua juga terkena satu test timing Worker yang fluktuatif, run akhir lulus. Runtime capture di RDP Windows milik pemilik tetap menunggu uji lapangan. |
+
+### Audit awal — 27 September 2026
+
+| ID Sesi | Agent | Status | Hasil | Bukti |
+|---|---|---|---|---|
+| SESI-20260927-SENA-AUDIT | Sena - XySpace Team | SELESAI LOKAL; belum commit/push | Audit statis baseline f5fd41f; laporan dan handoff, tanpa perubahan aplikasi/versi/produksi | `docs/AUDIT-2026-09-27.md`; tidak menjalankan test/build/CI, tidak memakai kredensial |
+
+### Fokus web + host, lab manual — 27 September 2026
+
+| ID Sesi | Agent | Status | Hasil | Bukti |
+|---|---|---|---|---|
+| SESI-20260927-OPERATOR-WEBHOST | Operator - XyDesk Team | SELESAI LOKAL; belum commit/push | Arahan chat: audit web + host dan hapus Test Lab. Workflow lab dihapus, fokus roadmap/CI diperbarui, 17 temuan statis + checklist manual. Tidak memperbaiki kode runtime/auth, bump, build, dispatch, atau deploy. | `docs/AUDIT-WEB-HOST-2026-09-27.md`, `docs/WEB-HOST-MANUAL-QA.md`; git diff --check dan pemeriksaan scope statis. Test suite/browser/Windows belum dijalankan. |
+
+### Kandidat perbaikan host batch 1 — 27 September 2026
+
+| ID Sesi | Agent | Status | Hasil | Bukti |
+|---|---|---|---|---|
+| SESI-20260927-OPERATOR-HOSTFIX1 | Operator - XyDesk Team | SELESAI PATCH LOKAL; verifikasi CI/perangkat MENUNGGU | Arahan chat “mulai/gas”: kandidat WH-01 dan WH-03, regresi capture/pixfmt/guard. WH-02 tidak diubah ACL/namespace-nya. Source web belum disentuh; tanpa commit/push/dispatch/deploy/bump. | `docs/qa/host-batch-1-2026-09-27.md`; rustfmt --check lima source + git diff --check lolos. Test/build belum dijalankan. |
+
+## Otorisasi push source — 2026-09-27
+
+Operator mengizinkan commit/push kandidat source setelah implementasi disiapkan.
+Otorisasi ini menggantikan hold push sebelumnya; bukan persetujuan deploy, rilis,
+bump versi, atau dispatch workflow. Build/type-check/unit/integration/browser dan
+acceptance Windows tetap BELUM DIUJI. Push tidak memicu workflow pada konfigurasi
+saat ini; validasi Actions dan aktivasi DNS/OAuth/domain tetap tahap terpisah.
+Pemeriksaan pra-push: diff whitespace bersih, tidak ditemukan kecocokan secret
+yang disuplai atau pola umum GitHub token/private key pada file yang berubah,
+dan origin/main masih sama dengan baseline lokal saat fetch. Pemeriksaan ini
+bukan jaminan keamanan menyeluruh atau bukti kelulusan runtime.

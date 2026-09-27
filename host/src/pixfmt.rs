@@ -14,6 +14,23 @@
 //! `screen.rs` tanpa satu pun pengujian — persis jenis kode yang paling
 //! gampang rusak diam-diam.
 
+/// Frame rapat harus memiliki dimensi positif dan tepat empat byte per piksel.
+/// Periksa sebelum alokasi/indeks: frame kosong saat pergantian backend bukan
+/// frame hitam yang sah, dan ukuran yang meluap tidak boleh membungkus ke nol.
+pub fn validate_rgba(rgba: &[u8], width: usize, height: usize) -> Result<(), String> {
+    if width == 0 || height == 0 {
+        return Err("dimensi capture harus positif".into());
+    }
+    let expected = width
+        .checked_mul(height)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .ok_or("dimensi capture meluap")?;
+    if rgba.len() != expected {
+        return Err("panjang RGBA tidak cocok dengan dimensi capture".into());
+    }
+    Ok(())
+}
+
 /// RGBA8 (baris rapat, 4 byte/piksel) → NV12 (BT.601 full-range, 2x2).
 ///
 /// Keluaran diletakkan di `out` (dipakai ulang antar frame; ukuran akhir
@@ -26,13 +43,20 @@
 ///
 /// # Kontrak
 /// `width` dan `height` **wajib genap**. Pemanggil (`screen.rs`) menjaminnya:
-/// NVENC baru dipilih bila resolusi genap. Dimensi ganjil ditolak
-/// sebelum konversi pada debug maupun release agar tidak melewati batas plane.
-pub fn rgba_to_nv12(rgba: &[u8], width: usize, height: usize, out: &mut Vec<u8>) {
-    assert!(
-        width.is_multiple_of(2) && height.is_multiple_of(2),
-        "rgba_to_nv12 butuh dimensi genap, dapat {width}x{height}"
-    );
+/// NVENC baru dipilih bila resolusi genap. Frame cacat/dimensi ganjil ditolak
+/// tanpa mengubah `out`, bukan panic di thread capture.
+pub fn rgba_to_nv12(
+    rgba: &[u8],
+    width: usize,
+    height: usize,
+    out: &mut Vec<u8>,
+) -> Result<(), String> {
+    validate_rgba(rgba, width, height)?;
+    if !width.is_multiple_of(2) || !height.is_multiple_of(2) {
+        return Err(format!(
+            "rgba_to_nv12 butuh dimensi genap, dapat {width}x{height}"
+        ));
+    }
     let size = width * height * 3 / 2;
     out.resize(size, 0);
     let (y_out, uv_part) = out.split_at_mut(width * height);
@@ -70,6 +94,7 @@ pub fn rgba_to_nv12(rgba: &[u8], width: usize, height: usize, out: &mut Vec<u8>)
             uv_dst[uv + 1] = c_v.clamp(0, 255) as u8;
         }
     }
+    Ok(())
 }
 
 /// BGRA (baris rapat) → RGBA, ditulis ke `out` yang dipakai ulang.
@@ -114,6 +139,33 @@ pub fn rgb_nonzero_pixels(pixels: &[u8]) -> usize {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn frame_cacat_ditolak_sebelum_output_diubah() {
+        for (rgba, width, height) in [
+            (Vec::new(), 2, 2),
+            (vec![0; 15], 2, 2),
+            (vec![0; 17], 2, 2),
+            (Vec::new(), 0, 2),
+            (Vec::new(), 2, 0),
+            (Vec::new(), usize::MAX, 2),
+            (Vec::new(), usize::MAX / 2, 1),
+            (vec![0; 24], 3, 2),
+        ] {
+            let mut out = vec![77; 6];
+            assert!(rgba_to_nv12(&rgba, width, height, &mut out).is_err());
+            assert_eq!(
+                out,
+                vec![77; 6],
+                "input invalid tidak mengubah frame sebelumnya"
+            );
+        }
+    }
+
+    #[test]
+    fn validasi_rgba_tidak_mengharuskan_dimensi_genap() {
+        assert!(validate_rgba(&[0; 12], 3, 1).is_ok());
+    }
+
+    #[test]
     fn diagnostik_rgb_mengabaikan_alpha_dan_memeriksa_seluruh_buffer() {
         let mut frame = vec![0; 4096];
         assert_eq!(super::rgb_nonzero_pixels(&frame), 0);
@@ -144,7 +196,7 @@ mod tests {
         for (w, h) in [(2, 2), (16, 10), (320, 180), (1920, 1080)] {
             let src = frame_solid(w, h, [10, 20, 30]);
             let mut out = Vec::new();
-            rgba_to_nv12(&src, w, h, &mut out);
+            rgba_to_nv12(&src, w, h, &mut out).unwrap();
             assert_eq!(out.len(), w * h * 3 / 2, "ukuran {w}x{h}");
         }
     }
@@ -160,7 +212,7 @@ mod tests {
             let (w, h) = (4, 4);
             let src = frame_solid(w, h, rgb);
             let mut out = Vec::new();
-            rgba_to_nv12(&src, w, h, &mut out);
+            rgba_to_nv12(&src, w, h, &mut out).unwrap();
             let (y, uv) = out.split_at(w * h);
             assert!(y.iter().all(|&v| v == y_harap), "Y {rgb:?} harus {y_harap}");
             assert!(uv.iter().all(|&c| c == 128), "U/V {rgb:?} harus netral 128");
@@ -181,7 +233,7 @@ mod tests {
             let (w, h) = (2, 2);
             let src = frame_solid(w, h, rgb);
             let mut out = Vec::new();
-            rgba_to_nv12(&src, w, h, &mut out);
+            rgba_to_nv12(&src, w, h, &mut out).unwrap();
             let (y, uv) = out.split_at(w * h);
             assert_eq!(y, &[y_harap; 4], "Y {rgb:?}");
             assert_eq!(uv, &uv_harap, "U/V {rgb:?}");
@@ -202,7 +254,7 @@ mod tests {
             255, 255, 255, 255, // putih → Y 255
         ];
         let mut out = Vec::new();
-        rgba_to_nv12(&src, w, h, &mut out);
+        rgba_to_nv12(&src, w, h, &mut out).unwrap();
         let (y, uv) = out.split_at(w * h);
         assert_eq!(y, &[77, 149, 29, 255], "Y per piksel");
         assert_eq!(uv, &[128, 128], "U/V rata-rata 2x2");
@@ -216,7 +268,7 @@ mod tests {
         let (w, h) = (8, 6);
         let src = frame_solid(w, h, [200, 60, 120]);
         let mut out = Vec::new();
-        rgba_to_nv12(&src, w, h, &mut out);
+        rgba_to_nv12(&src, w, h, &mut out).unwrap();
         let uv = &out[w * h..];
         assert!(!uv.is_empty());
         let pasangan = [uv[0], uv[1]];
@@ -231,9 +283,9 @@ mod tests {
         // `out` dipakai ulang antar frame: ukurannya menyesuaikan, tidak
         // menyisakan byte frame lama yang lebih besar.
         let mut out = vec![9u8; 64];
-        rgba_to_nv12(&frame_solid(2, 2, [0, 0, 0]), 2, 2, &mut out);
+        rgba_to_nv12(&frame_solid(2, 2, [0, 0, 0]), 2, 2, &mut out).unwrap();
         assert_eq!(out.len(), 6, "mengecil ke 2x2x3/2");
-        rgba_to_nv12(&frame_solid(4, 4, [0, 0, 0]), 4, 4, &mut out);
+        rgba_to_nv12(&frame_solid(4, 4, [0, 0, 0]), 4, 4, &mut out).unwrap();
         assert_eq!(out.len(), 24, "membesar ke 4x4x3/2");
     }
 
@@ -262,11 +314,12 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "dimensi genap")]
     fn dimensi_ganjil_ditolak_di_semua_build() {
         // Kontrak terdokumentasi: dimensi ganjil bukan input yang sah.
         let src = frame_solid(3, 2, [0, 0, 0]);
         let mut out = Vec::new();
-        rgba_to_nv12(&src, 3, 2, &mut out);
+        assert!(rgba_to_nv12(&src, 3, 2, &mut out)
+            .unwrap_err()
+            .contains("dimensi genap"));
     }
 }

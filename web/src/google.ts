@@ -3,7 +3,7 @@
 // Kenapa redirect, bukan popup GIS: popup Google Identity Services sering
 // macet di about:blank pada Safari iOS, in-app browser (WA/IG), dan browser
 // dengan popup blocker. Redirect flow bebas popup: halaman pindah ke
-// accounts.google.com, kembali ke /connect dengan id_token di URL fragment.
+// accounts.google.com, kembali ke /auth/callback dengan id_token di URL fragment.
 // Fragment tidak pernah dikirim ke server — dibaca client, diverifikasi
 // signature + audience di Worker (/auth/google), lalu dibuang dari URL.
 //
@@ -13,8 +13,9 @@ export const GOOGLE_CLIENT_ID =
   (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? '';
 
 const STATE_KEY = 'xydesk.google.state';
+const NONCE_KEY = 'xydesk.google.nonce';
 const RETURN_KEY = 'xydesk.google.return';
-const RETURN_PATH = '/connect';
+const RETURN_PATH = '/auth/callback';
 
 /// Arahkan browser ke halaman login Google. Tidak ada popup.
 /// `returnPath` (opsional): setelah login sukses, kembali ke halaman ini —
@@ -25,6 +26,7 @@ export function beginGoogleLogin(returnPath?: string): void {
   const state = crypto.randomUUID();
   const nonce = crypto.randomUUID();
   sessionStorage.setItem(STATE_KEY, state);
+  sessionStorage.setItem(NONCE_KEY, nonce);
   if (returnPath && returnPath !== RETURN_PATH) {
     sessionStorage.setItem(RETURN_KEY, returnPath);
   } else {
@@ -46,7 +48,7 @@ export function beginGoogleLogin(returnPath?: string): void {
 export function consumeGoogleReturn(): string | null {
   const p = sessionStorage.getItem(RETURN_KEY);
   sessionStorage.removeItem(RETURN_KEY);
-  return p;
+  return p && p.startsWith('/') && !p.startsWith('//') && !p.includes('\\') && !/[\u0000-\u001f\u007f]/.test(p) ? p : null;
 }
 
 /// Baca id_token dari fragment saat kembali dari Google.
@@ -59,12 +61,16 @@ export function consumeGoogleRedirect(): string | null {
   const idToken = params.get('id_token');
   const state = params.get('state');
   const saved = sessionStorage.getItem(STATE_KEY);
+  const nonce = sessionStorage.getItem(NONCE_KEY);
   sessionStorage.removeItem(STATE_KEY);
+  sessionStorage.removeItem(NONCE_KEY);
 
   // Bersihkan fragment dari URL apa pun hasilnya (jangan tinggalkan token).
   window.history.replaceState({}, '', window.location.pathname);
 
-  if (!idToken || !state || state !== saved) return null;
+  if (!idToken || !state || state !== saved || !nonce) return null;
+  // Korelasi callback saja; signature/audience/expiry tetap diverifikasi server.
+  if (decodeJwtPayload(idToken)?.nonce !== nonce) return null;
   return idToken;
 }
 

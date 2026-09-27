@@ -215,19 +215,21 @@ struct Args {
     /// Tinggi frame benchmark (default 180; pakai 1080 untuk 1080p)
     #[arg(long, value_name = "PX", default_value_t = xydesk_host::screen::TEST_HEIGHT)]
     bench_h: usize,
-    /// Port control API lokal untuk shell desktop (127.0.0.1 saja).
-    /// 0 = port efemeral (default; shell membaca alamat + token dari stdout).
     /// Ukur backend capture di mesin ini (±2,5 detik per backend) lalu keluar
     /// tanpa memulai signaling maupun control API. Alat diagnosis layar hitam
     /// di lapangan: backend mana yang benar-benar menghasilkan frame di sini.
     #[arg(long)]
     capture_test: bool,
 
+    /// Port control API lokal (127.0.0.1). 0 = port efemeral.
     #[arg(long, value_name = "PORT", default_value_t = 0)]
     control_port: u16,
-    /// Berjalan dari login semua sesi interaktif (HKLM Run): lewat gerbang
-    /// kepemimpinan lintas sesi — bila sesi ini tidak memegang layar aktif,
-    /// standby senyap dan menunggu takeover otomatis.
+    /// Windows: handle pipe privat warisan launcher untuk JSON control bootstrap.
+    /// Jangan gunakan stdout/stderr. Token tidak pernah ditulis ke log startup.
+    #[arg(long, value_name = "HANDLE")]
+    control_info_handle: Option<usize>,
+    /// Startup dari login pemakai installer (HKCU Run). Instance menunggu
+    /// bila bukan sesi layar aktif; ini bukan jaminan takeover antar-user.
     #[arg(long)]
     autostart: bool,
 }
@@ -421,11 +423,9 @@ async fn main() -> Result<()> {
     }
 
     // ── Identitas: ID perangkat (stabil) + password pairing (persisten) ──
-    let device_id = args
-        .id
-        .clone()
-        .unwrap_or_else(xydesk_host::identity::load_or_create_device_id);
-    let password = xydesk_host::identity::load_or_create_password();
+    let (stored_id, password) = xydesk_host::identity::load_or_create_identity()
+        .context("identitas host tidak dapat dibaca/disimpan")?;
+    let device_id = args.id.clone().unwrap_or(stored_id);
 
     if args.identity_json {
         println!(
@@ -448,54 +448,44 @@ async fn main() -> Result<()> {
         anyhow::bail!("--token or --managed-auth required");
     }
 
-    // ── Kepemimpinan lintas sesi: satu leader, sisanya standby ────────
-    // Mesin VPS/RDP bisa menjalankan host di beberapa sesi (installer
-    // mendaftarkan startup tiap login interaktif). Hanya instance di sesi
-    // pemegang layar aktif yang boleh leader; yang lain standby dan mengambil
-    // alih otomatis saat giliran mereka — serah terima senyap lewat mutex
-    // bernama + berkas stepdown, tanpa kedip pindah sesi.
-    xydesk_host::screen::evaluate_sessions_now();
-    let mut sessiku = xydesk_host::screen::proc_session();
-    let mut sesi_aktif = xydesk_host::screen::active_session();
-    let mut pemimpin = xydesk_host::leadership::langsung_leader(sessiku, sesi_aktif)
-        && xydesk_host::leadership::coba_mutex();
-    if !pemimpin {
-        eprintln!(
-            "[xydesk-host] standby: sesi proses {sessiku} bukan pemegang layar aktif              ({sesi_aktif}); menunggu takeover senyap…"
-        );
-    }
-    while !pemimpin {
-        if sessiku == sesi_aktif {
-            // Sesi sudah benar tetapi mutex masih dipegang instance di sesi
-            // lama: minta baik-baik supaya turun.
-            xydesk_host::leadership::minta_stepdown(sessiku);
-        }
-        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        xydesk_host::screen::evaluate_sessions_now();
-        sessiku = xydesk_host::screen::proc_session();
-        sesi_aktif = xydesk_host::screen::active_session();
-        pemimpin = xydesk_host::leadership::boleh_promosi(
-            sessiku,
-            sesi_aktif,
-            xydesk_host::leadership::coba_mutex(),
-        );
-    }
-    xydesk_host::leadership::hapus_stepdown();
+    // Identitas per akun; file lock mengoordinasikan sesi akun yang sama.
+    let mut pemimpin: Option<xydesk_host::leadership::LeaderGuard> = None;
 
     // ── Control API lokal (panel native C++: packaging/native-host/) ──
     // Keadaan mesin ini dibagikan ke loop signaling di bawah DAN ke server
-    // HTTP (lihat control.rs). Token dicetak sekali — hanya shell yang
-    // men-spawn proses ini yang membacanya.
+    // HTTP (lihat control.rs). Bearer tidak ditulis ke stdout/log.
     let control = Arc::new(Mutex::new(ControlState::new(
         device_id.clone(),
         password.clone(),
         args.url.clone(),
     )));
     let control_server = xydesk_host::control::start(control.clone(), args.control_port).await?;
+    if let Some(handle) = args.control_info_handle {
+        xydesk_host::control_ipc::publish(handle, &control_server)
+            .context("bootstrap control IPC gagal; tidak ada fallback log")?;
+    }
+    {
+        let control = control.clone();
+        tokio::spawn(async move {
+            let mut tick = tokio::time::interval(std::time::Duration::from_secs(1));
+            tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+            loop {
+                tick.tick().await;
+                let (state, started) = {
+                    let st = recover_lock(&control);
+                    (st.state, st.started_at_ms)
+                };
+                let value = xydesk_host::panel_status::snapshot(state, started);
+                let _ =
+                    tokio::task::spawn_blocking(move || xydesk_host::panel_status::write(&value))
+                        .await;
+            }
+        });
+    }
+
     println!(
-        "[control] http://127.0.0.1:{} token={}",
-        control_server.addr.port(),
-        control_server.token
+        "[control] http://127.0.0.1:{} (token tidak dicatat ke log)",
+        control_server.addr.port()
     );
 
     println!(
@@ -504,13 +494,13 @@ async fn main() -> Result<()> {
     );
     println!();
     println!("  ╔══════════════════════════════════════════╗");
-    println!("  ║   XyDesk Host — siap menerima koneksi    ║");
+    println!("  ║   XyDesk Host — memulai layanan akun    ║");
     println!("  ╠══════════════════════════════════════════╣");
     println!(
         "  ║   ID       : {:<26}║",
         xydesk_host::identity::format_id(&device_id)
     );
-    println!("  ║   Password : {:<26}║", password);
+    println!("  Password pairing hanya ditampilkan di panel/--identity-json, bukan log.");
     println!("  ╚══════════════════════════════════════════╝");
     println!();
     println!("  Ketik ID + Password ini di aplikasi XyDesk di HP.");
@@ -549,16 +539,38 @@ async fn main() -> Result<()> {
     // oleh pemakai.
     let mut attempt: u32 = 0;
     loop {
+        xydesk_host::screen::evaluate_sessions_now();
+        let me = xydesk_host::screen::proc_session();
+        let active_session = xydesk_host::screen::active_session();
+        if me != active_session {
+            pemimpin = None;
+        }
+        if pemimpin.is_none() {
+            pemimpin = xydesk_host::leadership::try_acquire(me, active_session);
+        }
+        if pemimpin.is_none() {
+            recover_lock(&control).state = EngineState::Standby;
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            continue;
+        }
         // Sesi media mati bersama koneksi signaling — mulai bersih tiap putaran.
         let mut active: Option<Arc<Session>> = None;
         recover_lock(&control).state = EngineState::Connecting;
 
         let token = if args.managed_auth {
-            match xydesk_host::host_auth::token(&device_id).await {
+            let auth = tokio::select! {
+                result = xydesk_host::host_auth::token(&device_id) => result,
+                _ = xydesk_host::leadership::until_session_changes() => {
+                    pemimpin = None;
+                    continue;
+                }
+            };
+            match auth {
                 Ok(token) => token,
                 Err(error) => {
                     attempt = attempt.saturating_add(1);
                     eprintln!("[xydesk-host] {error}; identitas dipertahankan, mencoba lagi");
+                    pemimpin = None;
                     tokio::time::sleep(reconnect_delay(attempt)).await;
                     continue;
                 }
@@ -576,7 +588,18 @@ async fn main() -> Result<()> {
             HeaderValue::from_str(&format!("Bearer {token}"))?,
         );
 
-        let mut ws = match connect_async(req).await {
+        let connection = tokio::select! {
+            result = tokio::time::timeout(std::time::Duration::from_secs(15), connect_async(req)) => {
+                result.unwrap_or_else(|_| Err(tokio_tungstenite::tungstenite::Error::Io(
+                    std::io::Error::new(std::io::ErrorKind::TimedOut, "signaling connect timeout")
+                )))
+            }
+            _ = xydesk_host::leadership::until_session_changes() => {
+                pemimpin = None;
+                continue;
+            }
+        };
+        let mut ws = match connection {
             Ok((ws, _)) => ws,
             // Server menolak token (HTTP 401/403) — token host berumur pendek
             // (≈5 menit). Sambung ulang dengan token lama percuma; keluar agar
@@ -587,6 +610,7 @@ async fn main() -> Result<()> {
                     "[xydesk-host] signaling menolak token (HTTP {code}) — keluar; supervisor akan meminta token baru"
                 );
                 if args.managed_auth {
+                    pemimpin = None;
                     attempt = attempt.saturating_add(1);
                     tokio::time::sleep(reconnect_delay(attempt)).await;
                     continue;
@@ -601,6 +625,7 @@ async fn main() -> Result<()> {
                     );
                     return Err(anyhow::anyhow!("signaling tak terjangkau: {e}"));
                 }
+                pemimpin = None;
                 let delay = reconnect_delay(attempt);
                 eprintln!(
                     "[xydesk-host] gagal hubung signaling: {e} — sambung ulang dalam {} dtk",
@@ -610,6 +635,12 @@ async fn main() -> Result<()> {
                 continue;
             }
         };
+        xydesk_host::screen::evaluate_sessions_now();
+        if xydesk_host::screen::proc_session() != xydesk_host::screen::active_session() {
+            drop(ws);
+            pemimpin = None;
+            continue;
+        }
         attempt = 0;
         println!("[xydesk-host] terhubung ke {}", args.url);
 
@@ -662,23 +693,14 @@ async fn main() -> Result<()> {
                     continue;
                 },
                 _=lead_tick.tick()=>{
-                    // Takeover lintas sesi: bila layar aktif pindah ke sesi
-                    // lain dan instance di sana meminta kepemimpinan, turunkan
-                    // diri dan keluar — instance baru melanjutkan.
+                    // Akun sama, sesi aktif berubah: tutup media/socket lalu
+                    // lepaskan lease. Proses tetap hidup dalam standby.
                     xydesk_host::screen::evaluate_sessions_now();
                     let me = xydesk_host::screen::proc_session();
                     let act = xydesk_host::screen::active_session();
-                    if xydesk_host::leadership::harus_turun(
-                        me,
-                        act,
-                        xydesk_host::leadership::baca_stepdown(),
-                    ) {
-                        eprintln!(
-                            "[xydesk-host] takeover: layar aktif pindah ke sesi {act};                              instance ini turun dan keluar"
-                        );
-                        xydesk_host::leadership::lepas_mutex();
-                        xydesk_host::leadership::hapus_stepdown();
-                        return Ok(());
+                    if me != act {
+                        eprintln!("[xydesk-host] sesi aktif akun berubah; media ditutup sebelum melepas leader");
+                        break;
                     }
                     continue;
                 }
@@ -1499,69 +1521,19 @@ async fn main() -> Result<()> {
                         });
                     }
 
-                    // Audio forward (host → client): WASAPI loopback → paket Opus
-                    // → track audio. Berjalan di task sendiri; thread capture
-                    // blocking dijembatani ke channel tokio (kapasitas kecil —
-                    // paket lama dibuang, latency menang).
-                    if let Some(audio_track) = audio_track {
-                        tokio::spawn(async move {
-                            println!("[xydesk-host] audio loopback aktif (opus 48kHz stereo)");
-                            let packets = xydesk_host::audio::spawn_audio_source();
-                            let (atx, mut arx) = tokio::sync::mpsc::channel::<Vec<u8>>(1);
-                            std::thread::spawn(move || {
-                                while let Ok(pkt) = packets.recv() {
-                                    if atx.blocking_send(pkt).is_err() {
-                                        break;
-                                    }
-                                }
-                            });
-                            while let Some(pkt) = arx.recv().await {
-                                let sample = webrtc::media::Sample {
-                                    data: bytes::Bytes::from(pkt),
-                                    timestamp: std::time::SystemTime::now(),
-                                    duration: std::time::Duration::from_millis(20),
-                                    packet_timestamp: 0,
-                                    prev_dropped_packets: 0,
-                                    prev_padding_packets: 0,
-                                };
-                                if let Err(e) = audio_track.write_sample(&sample).await {
-                                    eprintln!("[xydesk-host] kirim paket audio gagal: {e}");
-                                    break;
-                                }
-                            }
-                        });
+                    if let Some(track) = audio_track {
+                        tokio::spawn(xydesk_host::audio_forward::pump(
+                            session.clone(),
+                            track,
+                            xydesk_host::audio::spawn_audio_source(),
+                        ));
                     }
-
-                    // Mic host (host → client): WASAPI eCapture → Opus mono → track
-                    // audio kedua (stream `mic`). Otomatis — hanya menyala bila ada
-                    // mikrofon yang terdeteksi. Jalur mirror dari forward di atas.
-                    if let Some(mic_track) = mic_track {
-                        tokio::spawn(async move {
-                            println!("[xydesk-host] mic host aktif (opus 48kHz mono)");
-                            let packets = xydesk_host::audio::spawn_mic_source();
-                            let (mtx, mut mrx) = tokio::sync::mpsc::channel::<Vec<u8>>(1);
-                            std::thread::spawn(move || {
-                                while let Ok(pkt) = packets.recv() {
-                                    if mtx.blocking_send(pkt).is_err() {
-                                        break;
-                                    }
-                                }
-                            });
-                            while let Some(pkt) = mrx.recv().await {
-                                let sample = webrtc::media::Sample {
-                                    data: bytes::Bytes::from(pkt),
-                                    timestamp: std::time::SystemTime::now(),
-                                    duration: std::time::Duration::from_millis(20),
-                                    packet_timestamp: 0,
-                                    prev_dropped_packets: 0,
-                                    prev_padding_packets: 0,
-                                };
-                                if let Err(e) = mic_track.write_sample(&sample).await {
-                                    eprintln!("[xydesk-host] kirim paket mic gagal: {e}");
-                                    break;
-                                }
-                            }
-                        });
+                    if let Some(track) = mic_track {
+                        tokio::spawn(xydesk_host::audio_forward::pump(
+                            session.clone(),
+                            track,
+                            xydesk_host::audio::spawn_mic_source(),
+                        ));
                     }
 
                     // Phone mic → virtual cable recording endpoint. One bounded
@@ -1665,6 +1637,12 @@ async fn main() -> Result<()> {
         // tetap hidup: putus-sambung tidak mereset rem brute force.
         if let Err(error) = close_signaling_session(&mut active, &paired, &control).await {
             eprintln!("[xydesk-host] penutupan media gagal: {error:#}");
+        }
+
+        drop(ws);
+        xydesk_host::screen::evaluate_sessions_now();
+        if xydesk_host::screen::proc_session() != xydesk_host::screen::active_session() {
+            pemimpin = None;
         }
 
         // Keluar dari while = koneksi putus. Sambung ulang dalam proses

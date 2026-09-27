@@ -11,7 +11,7 @@
 // Semua ukuran di bawah ditulis untuk 96 DPI (skala 100) dan dikalikan
 // `scalePct` saat dipakai, supaya di layar 125%/150% tata letaknya tetap utuh.
 //
-// Bentuk sejak 25 Sep (umpan balik pemilik): panel LEBAR (900x560) dengan
+// Bentuk sejak 27 Sep (umpan balik pemilik): panel LEBAR (1100x720) dengan
 // sidebar ikon di kiri dan tiga halaman (Status, Pairing, Kontrol), TANPA
 // bayangan di luar jendela — sudut membulat dan tepi halus tetap digambar
 // sendiri biar tidak terlihat seperti kotak Windows bawaan.
@@ -33,14 +33,14 @@ constexpr int kShadowMargin = 0;
 constexpr int kShadowSpread = 0;
 constexpr int kShadowStrength = 0;
 
-constexpr int kPanelWidth = 900;
-constexpr int kPanelHeight = 560;
+constexpr int kPanelWidth = 1100;
+constexpr int kPanelHeight = 720;
 constexpr int kPadding = 20;
 constexpr int kGap = 12;
 
 // Lebar sidebar ikon; konten mengisi sisanya.
 constexpr int kSidebarX = 12;
-constexpr int kSidebarWidth = 84;
+constexpr int kSidebarWidth = 104;
 constexpr int kSidebarItemHeight = 64;
 constexpr int kSidebarGap = 6;
 constexpr int kCaptionHeight = 64;
@@ -408,7 +408,7 @@ inline float roundedRectCoverage(float px, float py, const Rect& r, float radius
     return clampValue(0.5f - distance, 0.0f, 1.0f);
 }
 
-// Bayangan lembut di luar bentuk. Sejak 25 Sep panel tidak memakai bayangan
+// Bayangan lembut di luar bentuk. Sejak 27 Sep panel tidak memakai bayangan
 // (permintaan pemilik); fungsi dipertahankan karena uji matematis memakainya
 // dan suatu saat bayangan bisa dinyalakan lagi lewat `spread` > 0.
 inline float roundedRectShadow(float px, float py, const Rect& r, float radius, float spread, float strength) {

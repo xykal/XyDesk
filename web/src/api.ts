@@ -1,3 +1,4 @@
+import {request} from './request';
 // Klien API XyDesk — bicara ke Worker yang sama dengan aplikasi
 // mobile/desktop (auth OTP/Google, signal-token, TURN, WebSocket signaling).
 //
@@ -34,12 +35,12 @@ export class ApiError extends Error {
   }
 }
 
-async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  return request(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, async res => {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new ApiError(
@@ -49,6 +50,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
     );
   }
   return data as T;
+  }, signal);
 }
 
 export function requestOtp(email: string, name?: string) {
@@ -58,8 +60,8 @@ export function requestOtp(email: string, name?: string) {
   );
 }
 
-export function createGuestSession(refresh?:string) {
-  return post<{ token: string; refresh?:string; guest: true }>('/auth/guest', refresh?{refresh}:{});
+export function createGuestSession(refresh?:string, signal?: AbortSignal) {
+  return post<{ token: string; refresh?:string; guest: true }>('/auth/guest', refresh?{refresh}:{}, signal);
 }
 
 export function verifyOtp(email: string, otp: string) {
@@ -71,24 +73,24 @@ export function signInWithGoogle(idToken: string) {
   return post<AuthSession>('/auth/google', { id_token: idToken });
 }
 
-export async function me(token: string) {
-  const res = await fetch(`${API_BASE}/auth/me`, {
+export function me(token: string, signal?: AbortSignal) {
+  return request(`${API_BASE}/auth/me`, {
     headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new ApiError(res.status, 'unauthorized', 'Sesi berakhir.');
-  return (await res.json()) as { user: UserProfile };
+  }, async res => {
+    if (!res.ok) throw new ApiError(res.status, res.status === 401 ? 'unauthorized' : 'profile-unavailable',
+      res.status === 401 ? 'Sesi berakhir.' : 'Profil sementara tidak dapat dimuat.');
+    return (await res.json()) as { user: UserProfile };
+  }, signal);
 }
 
-/// Tukar JWT sesi menjadi token signaling 5 menit untuk deviceId ini.
-export async function signalToken(token: string, deviceId: string) {
-  const res = await fetch(
-    `${API_BASE}/signal-token?id=${encodeURIComponent(deviceId)}`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  if (!res.ok) {
-    throw new ApiError(res.status, 'signal-token', 'Gagal mendapat izin signaling.');
-  }
-  return (await res.text()).trim();
+/// Tukar JWT menjadi tiket signaling yang hanya berlaku untuk device ini.
+export function signalToken(token: string, deviceId: string, signal?: AbortSignal) {
+  return request(`${API_BASE}/signal-token?id=${encodeURIComponent(deviceId)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }, async res => {
+    if (!res.ok) throw new ApiError(res.status, 'signal-token', 'Gagal mendapat izin signaling.');
+    return (await res.text()).trim();
+  }, signal);
 }
 
 /// Ganti nama tampilan profil.
@@ -134,11 +136,12 @@ export interface TurnIceResult {
 export async function turnIce(
   deviceId: string,
   token: string,
+  signal?: AbortSignal,
 ): Promise<TurnIceResult> {
   try {
-    const res = await fetch(
+    return await request<TurnIceResult>(
       `${API_BASE}/turn-ice?id=${encodeURIComponent(deviceId)}&token=${encodeURIComponent(token)}`,
-    );
+      {}, async res => {
     const body = (await res.json().catch(() => ({}))) as {
       iceServers?: RTCIceServer[];
       error?: string;
@@ -146,7 +149,7 @@ export async function turnIce(
       hint?: string;
       degraded?: boolean;
     };
-    const servers = (body.iceServers ?? []).filter((server) => server.urls);
+    const servers = Array.isArray(body.iceServers) ? body.iceServers.filter(server => server && server.urls) : [];
     if (!res.ok) {
       return {
         servers: [],
@@ -164,7 +167,9 @@ export async function turnIce(
       return { servers, ok: false, reason: body.degraded ? 'providers-failed' : 'no-servers' };
     }
     return { servers, ok: true, reason: 'ok' };
-  } catch {
+    }, signal);
+  } catch (error) {
+    if (signal?.aborted) throw error;
     return {
       servers: [],
       ok: false,

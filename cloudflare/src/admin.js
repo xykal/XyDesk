@@ -340,7 +340,7 @@ async function handleLogin(request, env) {
 
 function corsHeaders(request, env) {
   const origin = request.headers.get('Origin') || ''
-  const configured = String(env.CORS_ORIGINS || 'https://app.xydesk.my.id,https://xydesk-admin.pages.dev,https://admin.xydesk.my.id').split(',').map(s=>s.trim()).filter(Boolean)
+  const configured = String(env.CORS_ORIGINS || 'https://www.xydesk.my.id,https://remote.xydesk.my.id,https://app.xydesk.my.id,https://xydesk-admin.pages.dev,https://admin.xydesk.my.id').split(',').map(s=>s.trim()).filter(Boolean)
   const allow = configured.includes(origin) ? origin : ''
   return {
     'Access-Control-Allow-Origin': adminOrigin(request,env) ? origin : allow,

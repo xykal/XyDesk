@@ -17,13 +17,15 @@ const source = readFileSync(new URL('../src/api.ts', import.meta.url), 'utf8')
   .replace(/import\.meta\.env\.VITE_SIGNAL_API/g, "'https://signal.test'")
   .replace(/import\.meta\.env\.VITE_SIGNAL_WS/g, 'undefined')
   .replace(/import\.meta\.env\.DEV/g, 'false')
+  .replace(/^import .*$/gm, '')
   .replace(/^export /gm, '');
-const { code } = await transformWithOxc(`${source}\nexports.turnIce = turnIce;`, 'api.ts');
+const requestSource = readFileSync(new URL('../src/request.ts', import.meta.url), 'utf8').replace(/^export /gm, '');
+const { code } = await transformWithOxc(`${requestSource}\n${source}\nexports.turnIce = turnIce; exports.me = me; exports.ApiError = ApiError;`, 'api.ts');
 
 function loadTurnIce(fetchImpl) {
   const exports = {};
   vm.runInNewContext(code, {
-    exports, fetch: fetchImpl, Response, console, TextEncoder, TextDecoder, Uint8Array, URL,
+    exports, fetch: fetchImpl, Response, AbortController, DOMException, setTimeout, clearTimeout, console, TextEncoder, TextDecoder, Uint8Array, URL,
   });
   return exports.turnIce;
 }
@@ -104,3 +106,11 @@ test('balasan bukan JSON tidak melempar ke pemanggil', async () => {
   assert.equal(result.ok, false);
   assert.equal(result.reason, 'http-502');
 });
+
+for (const status of [401, 403, 500]) {
+  test(`profile API preserves HTTP ${status} instead of treating all failures as logout`, async () => {
+    const exports = {};
+    vm.runInNewContext(code, {exports, fetch: async () => jsonResponse({}, status), Response, AbortController, DOMException, setTimeout, clearTimeout, console, TextEncoder, TextDecoder, Uint8Array, URL});
+    await assert.rejects(exports.me('fixture'), error => error instanceof exports.ApiError && error.status === status);
+  });
+}

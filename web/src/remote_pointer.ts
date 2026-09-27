@@ -55,6 +55,7 @@ export class RemotePointer {
     this.emit({ type: 'move', ...this.cursor });
   }
   applyHostPosition(x:number,y:number){if(!this.contacts.size)this.cursor={x:clamp(x),y:clamp(y)};}
+  center() { this.position(.5,.5); }
   sync() { this.position(this.cursor.x, this.cursor.y); }
   down(id: number, x: number, y: number, button: number, trackpad: boolean, at: number, touch=false): boolean {
     const r = this.rect();

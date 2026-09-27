@@ -6,6 +6,27 @@
 
 ---
 
+## Fokus pemilik — 27 September 2026
+
+Matangkan **web + host Windows/panel native** terlebih dahulu: capture nyata,
+negosiasi video, lifecycle sesi, input, audio, dan observabilitas. Penyambungan
+platform lain ditunda; kontrak web–host tetap diuji sejak awal agar kedua sisi
+tidak berkembang sendiri-sendiri. Audit terperinci: `docs/AUDIT-WEB-HOST-2026-09-27.md`.
+Lab RDP/Tailscale Actions dihapus dari source; acceptance dilakukan pemilik
+di perangkat sendiri (`docs/WEB-HOST-MANUAL-QA.md`). Build/kompilasi tetap
+melalui CI setelah izin. Status historis di bawah bukan snapshot kesiapan rilis.
+
+Keputusan arsitektur pemilik: **per akun Windows**, koordinasi hanya antar-sesi
+console/RDP akun yang sama; akun lain terisolasi. Kandidat source WH-01–17
+tersedia lokal; CI dan acceptance belum dijalankan. Jangan pakai status historis
+sebagai bukti. Lihat `docs/qa/web-host-hardening-2026-09-27.md`.
+
+Tambahan UX disetujui: domain publik `www.xydesk.my.id`, aplikasi
+`remote.xydesk.my.id`, halaman perangkat/detail/riwayat/sesi terpisah,
+restore otomatis dengan izin sah dan kedua panel diperbesar. Kandidat source
+tersedia; infrastruktur dan acceptance belum diterapkan. Rincian:
+`docs/qa/ui-navigation-domains-2026-09-27.md`.
+
 ## Kenyataan yang harus diterima sekarang
 
 XyDesk hari ini adalah **UI kerangka yang sangat rapi**, tapi belum punya

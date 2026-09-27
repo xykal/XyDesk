@@ -693,8 +693,8 @@ jobs:
           Invoke-Panel '--panel-probe' $probe
           $layout = Get-Content $probe -Raw | ConvertFrom-Json
           Write-Host ($layout | ConvertTo-Json -Compress)
-          if ($layout.windowWidth -ne 900 -or $layout.windowHeight -ne 560) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
-          if ($layout.panelWidth -ne 900 -or $layout.panelHeight -ne 560) { throw 'Ukuran panel tidak sesuai' }
+          if ($layout.windowWidth -ne 1100 -or $layout.windowHeight -ne 720) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
+          if ($layout.panelWidth -ne 1100 -or $layout.panelHeight -ne 720) { throw 'Ukuran panel tidak sesuai' }
           if ($layout.radiusPanel -ne 10) { throw "Radius sudut panel bukan 10: $($layout.radiusPanel)" }
           if ($layout.shadowMargin -ne 0) { throw "Panel harus tanpa bayangan (margin 0): $($layout.shadowMargin)" }
           $hits = ($layout.hits -join ',')
@@ -705,7 +705,7 @@ jobs:
           #    Diperiksa per piksel oleh tool/check_panel_shape.py.
           $snapshot = Join-Path $out 'panel.bmp'
           Invoke-Panel '--panel-snapshot' $snapshot
-          python tool/check_panel_shape.py $snapshot --panel-width 900 --panel-height 560 --margin 0 --radius 10 --background 255,255,255
+          python tool/check_panel_shape.py $snapshot --panel-width 1100 --panel-height 720 --margin 0 --radius 10 --background 255,255,255
           if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
 
           # 3) Teks panel: MSVC tanpa /utf-8 pernah mengirim jendela dengan

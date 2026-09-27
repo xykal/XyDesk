@@ -2428,3 +2428,107 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 - `9869711` mengganti seluruh pola itu dengan blok `if` biasa, termasuk pemilihan SID task. Parser PS1 + Windows CI + NSIS PASS.
 - Prerelease final: `uxhd11-9869711`, release 392654807, installer 4.868.173 byte SHA256 `1dbd815338f251969b60ac5df4ac9d255bc93d2fc2034021893bae35df0e6d34`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd11-9869711/XyDesk-Host-Test-Setup-x64.exe
 - `releases/latest` tetap v6.8.5; hardware/session user belum tervalidasi.
+
+## Audit statis — 27 September 2026
+
+- [ ] Client Flutter: konfirmasi lanjutan item pra-welcome 25 September; `id sudah online` belum ditangani khusus di `rtc_service.dart`, dan connect belum menunggu welcome. Lihat A1 pada `docs/AUDIT-2026-09-27.md`; belum diuji runtime.
+- [ ] CI/Release: tambahkan cakupan admin + lockfile; evaluasi test/clippy Windows dan penghentian lab saat pengujian selesai. Lihat A2/A3/A6; perubahan dan dispatch memerlukan sesi/izin terpisah.
+- [ ] Docs & Audit: selaraskan pembuka ROADMAP, diagram ARCHITECTURE, serta komentar trigger CI dengan keadaan source (A4).
+- Backend/Edge: A5 mengonfirmasi catatan hardening Hub 25 September; bukan temuan bypass publik. Tidak menambahkan item duplikat.
+- Host Engine: acceptance Windows/RDP/audio/input tetap terbuka; angka CI historis tidak diverifikasi ulang pada sesi ini.
+
+## Fokus web + host — audit 27 September 2026
+
+Arahan pemilik: matangkan web + host dahulu; integrasi platform lain ditunda.
+Sumber: `docs/AUDIT-WEB-HOST-2026-09-27.md`. Semua temuan berikut statis,
+belum direproduksi di browser/Windows pada sesi ini. Jangan klaim sudah fix.
+
+- [ ] Host Engine: WH-01 frame kosong pada fallback GDI; WH-02 desain koordinasi lintas sesi/user; WH-03 mutex diambil oleh standby yang belum eligible. P1, dahulukan capture dan ownership. Perubahan ACL/auth lintas user perlu persetujuan desain keamanan khusus.
+- [ ] Web: WH-04 SDP aktual vs signaling; WH-05 deadline/cancel token; WH-06 timer retry ganda; WH-15 first-frame warning. Tambahkan regresi sebelum perubahan visual lain.
+- [ ] Host + Web: WH-09 batas clipboard dan WH-10 ordering posisi/klik lintas kanal. Pertahankan kompatibilitas protokol atau negosiasikan capability secara eksplisit.
+- [ ] Host Engine: WH-07 cancellation audio forward, WH-08 COM guard. Verifikasi teardown dan thread/handle di Windows asli, termasuk sumber audio diam.
+- [ ] Desktop Shell: WH-11 deadline baca identitas, WH-12 readiness/freshness telemetry, WH-17 sensor bearer pada log dukungan bersama Host Engine.
+- [ ] Web / review auth terpisah: WH-13 race `/auth/me` dan logout akibat gangguan jaringan; WH-14 nonce OAuth + sisa token Google pada logout utama. Tidak mengubah auth produksi dalam sesi audit.
+- [ ] CI/Release: WH-16 gerbang kandidat tanpa efek deploy/rilis, cakupan Windows. Workflow lab RDP/Tailscale sudah dihapus LOKAL; belum push. Jangan menghapus unit test atau workflow policy VDD.
+- [ ] Pemilik: acceptance melalui `docs/WEB-HOST-MANUAL-QA.md` pada artefak dengan SHA tercatat. Periksa run lab remote aktif dan kredensial/node khusus lab jika diperlukan; belum disentuh sesi ini.
+
+Bahan artikel: tidak ada perubahan visual produk atau rilis. Perubahan operasional
+menghilangkan kebutuhan menahan runner untuk tes interaktif; validasi perangkat
+berpindah ke mesin pemilik. Screenshot produk tidak dibuat karena tidak ada UI
+yang diubah/dijalankan. Audit bukan bahan klaim peningkatan performa yang sudah terbukti.
+
+## Implementasi kandidat host batch 1 — 27 September 2026
+
+Sesi `SESI-20260927-OPERATOR-HOSTFIX1`, role Operator. Laporan:
+`docs/qa/host-batch-1-2026-09-27.md`.
+
+- [ ] Host Engine / CI: WH-01 dan WH-03 sudah dipatch LOKAL, **menunggu verifikasi**, bukan ditutup. Jalankan workflow build-only yang sudah ada `prepare-host-windows.yml` pada SHA patch setelah izin; ia memuat test Linux dan Windows library. Jangan dispatch Build umum karena rantai deploy/rilis.
+- [ ] Pemilik: setelah artefak lolos CI, lakukan tes manual capture/fallback RDP, geometri, standby → aktif, dan resource soak. Tidak ada klaim layar hitam lapangan sudah selesai.
+- [ ] Operator / keamanan: WH-02 tetap terbuka. Tidak mengganti Local menjadi Global, tidak membuka ACL bersama, tidak menyatukan identitas lintas user. Butuh model ownership yang disetujui.
+- [ ] Web: batch berikutnya tetap WH-04/05/06; source web belum disentuh dalam patch host.
+- [ ] Host Engine (temuan review terpisah): `gdi.rs::Handle::drop` masih memanggil DeleteObject bitmap sebelum menghapus memory DC yang menyeleksinya. Tinjau pelepasan bitmap terpilih dan ukur handle GDI pada soak test; tidak mengklaim kebocoran sudah diukur atau diperbaiki dalam batch ini.
+
+Bukti sesi: rustfmt --check untuk lima source dan git diff --check lolos;
+13 fungsi regresi baru ditulis (1 test lama diganti), belum dieksekusi.
+Tidak compile/test lokal, tidak commit/push/dispatch/deploy/bump.
+Dampak pengguna yang dituju: transisi fallback tidak memasukkan frame kosong,
+dan standby tidak menyandera slotnya sendiri. Belum ada screenshot build baru;
+jangan diterbitkan sebagai keberhasilan Windows nyata sebelum acceptance.
+
+
+## Kandidat 27 September — Operator HARDEN, push ditahan
+
+- Seluruh WH-01–17 memiliki kandidat source lokal; bukan hasil CI/Windows PASS.
+  Matriks lengkap, risiko dan bahan artikel ada di
+  `docs/qa/web-host-hardening-2026-09-27.md`; laporan batch 1 adalah sejarah.
+- Keputusan pemilik: per akun Windows. Tidak ada Global mutex, broker lintas
+  user, shared ACL atau takeover layar akun lain.
+- CI/Release: setelah izin push/dispatch terpisah, gunakan `Validate Web Host`
+  (bukan Build umum) pada SHA kandidat. Perbaiki hasil type-check/clippy/test
+  sebelum menganggap pekerjaan terverifikasi. Gerbang lokal hanya
+  formatting/sintaks/review, tidak compile atau unit test.
+- Pemilik: M01–M22 masih BELUM DIUJI; catat SHA/run/hash dan bukti tersensor.
+  Tidak ada RDP/Tailscale runner, credential dipakai, bump versi atau deploy.
+- Batasan tambahan terbuka di laporan: first-run identitas konkuren, parser
+  password kustom native, kompatibilitas konsumen lama token control stdout,
+  driver WASAPI blocking, dan pengukuran performa. Jangan disembunyikan
+  sebagai "semua runtime sudah selesai".
+
+
+### Lanjutan HARDEN — tiga celah tambahan mendapat kandidat
+
+Pemilik menyetujui lanjut lokal. First-run identitas kini diserialisasi dengan
+lock bounded + penulisan atomic/fail-closed; parser panel mendukung escape dan
+Unicode valid; bearer control memakai pipe privat opsional (lihat
+`docs/CONTROL-IPC.md`). Catatan keterbatasan tiga butir sebelumnya adalah
+sejarah review, bukan status source terbaru. Test multiprocess, parser dan
+IPC disiapkan pada workflow validasi; belum dijalankan. Tidak ada push,
+compile/test lokal, dispatch, versi atau deploy. Jangan menutup acceptance
+sampai hasil CI dan perangkat tersedia.
+
+
+### Kandidat UX/domain — pemilik memilih remote, restore otomatis, kedua panel diperbesar
+
+- Source lokal: www untuk publik; remote untuk perangkat/riwayat/detail/sesi;
+  legacy app redirect. Sesi punya route yang bisa direfresh, auto-reconnect
+  hanya dengan grant sah; credential tidak ditaruh pada URL/metadata tujuan.
+- Dock mouse kini dipakai, berlabel dan dapat diatur; editor custom/panel sesi
+  diperbesar. Host default 1100×720 dengan fit work area/DPI dan sidebar lebih jelas.
+- Belum build/test Actions, visual browser/Windows, DNS, OAuth Console atau deploy.
+  OAuth callback baru per-origin perlu didaftarkan; storage origin app tidak
+  otomatis pindah ke remote. CI validation-only kini mencakup API/news dan
+  artefak snapshot fixture panel; bukan bukti runtime live.
+- Laporan lengkap + UX01–UX12: `docs/qa/ui-navigation-domains-2026-09-27.md`.
+  Push/dispatch tetap ditahan. Versi tidak diubah.
+
+## Otorisasi push source — 2026-09-27
+
+Operator mengizinkan commit/push kandidat source setelah implementasi disiapkan.
+Otorisasi ini menggantikan hold push sebelumnya; bukan persetujuan deploy, rilis,
+bump versi, atau dispatch workflow. Build/type-check/unit/integration/browser dan
+acceptance Windows tetap BELUM DIUJI. Push tidak memicu workflow pada konfigurasi
+saat ini; validasi Actions dan aktivasi DNS/OAuth/domain tetap tahap terpisah.
+Pemeriksaan pra-push: diff whitespace bersih, tidak ditemukan kecocokan secret
+yang disuplai atau pola umum GitHub token/private key pada file yang berubah,
+dan origin/main masih sama dengan baseline lokal saat fetch. Pemeriksaan ini
+bukan jaminan keamanan menyeluruh atau bukti kelulusan runtime.

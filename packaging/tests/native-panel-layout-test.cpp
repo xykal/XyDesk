@@ -6,7 +6,7 @@
 // apakah skala DPI bekerja. Semua ini dijalankan di CI Linux sehingga
 // kesalahan tata letak ketahuan sebelum masuk ke runner Windows.
 //
-// Sejak 25 Sep panel lebar 900x560 dengan sidebar + tiga halaman dan TANPA
+// Sejak 27 Sep panel lebar 1100x720 dengan sidebar + tiga halaman dan TANPA
 // bayangan — uji ikut bentuk baru itu.
 //
 // Bangun dan jalankan: packaging/tests/test-native-panel-layout.sh
@@ -54,8 +54,8 @@ bool overlaps(const Rect& a, const Rect& b) {
 void testGeometry100() {
     const PanelLayout l = xydesk::panel::computeLayout(96);
     check(l.scalePct == 100, "DPI 96 memberi skala 100");
-    check(l.window.w == 900 && l.window.h == 560, "ukuran jendela 900x560 pada skala 100");
-    check(l.panel.w == 900 && l.panel.h == 560, "panel sama besar dengan jendela (tanpa margin bayangan)");
+    check(l.window.w == 1100 && l.window.h == 720, "ukuran jendela 1100x720 pada skala 100");
+    check(l.panel.w == 1100 && l.panel.h == 720, "panel sama besar dengan jendela (tanpa margin bayangan)");
     check(l.panel.x == 0 && l.panel.y == 0, "tanpa margin bayangan: panel di (0,0)");
     check(l.radiusPanel == 10 && l.radiusCard == 10 && l.radiusControl == 8, "radius desktop lebih tegas: panel/kartu 10, kontrol 8");
 

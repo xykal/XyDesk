@@ -36,6 +36,82 @@
 //!   itu keterbatasan yang diketahui, bukan kerusakan — dan tetap lebih baik
 //!   daripada layar hitam.
 
+// Alur fallback yang sama dipakai Win32 dan fixture regresi tanpa desktop.
+#[cfg(any(target_os = "windows", test))]
+trait PixelSource {
+    fn rect(&self) -> crate::desktop_geometry::CaptureRect;
+    fn is_fallback(&self) -> bool;
+    fn read_rgba(&mut self, rgba: &mut Vec<u8>) -> Result<(), String>;
+    /// Gagal membuka fallback tidak boleh mengubah sumber lama.
+    fn switch_to_desktop(&mut self, name: &str) -> Result<(), String>;
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn sample_luma(rgba: &[u8]) -> u8 {
+    let mut sum = 0u64;
+    let mut count = 0u64;
+    for i in (0..rgba.len()).step_by(4096 * 4) {
+        if i + 2 >= rgba.len() {
+            break;
+        }
+        sum += (u64::from(rgba[i]) + u64::from(rgba[i + 1]) + u64::from(rgba[i + 2])) / 3;
+        count += 1;
+    }
+    if count == 0 {
+        255
+    } else {
+        (sum / count) as u8
+    }
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn read_pixels(source: &mut impl PixelSource, rgba: &mut Vec<u8>) -> Result<(), String> {
+    source.read_rgba(rgba)?;
+    let rect = source.rect();
+    crate::pixfmt::validate_rgba(rgba, rect.width as usize, rect.height as usize)
+}
+
+#[cfg(any(target_os = "windows", test))]
+fn grab_pixels(
+    source: &mut impl PixelSource,
+    name: &str,
+    rgba: &mut Vec<u8>,
+    black_streak: &mut u8,
+) -> Result<(), String> {
+    let original_rect = source.rect();
+    read_pixels(source, rgba)?;
+    if sample_luma(rgba) < 8 {
+        *black_streak = black_streak.saturating_add(1);
+        if *black_streak == 15 && !source.is_fallback() {
+            match source.switch_to_desktop(name) {
+                Ok(()) => {
+                    // Pemanggil telah membangun encoder dan input geometry
+                    // dari rect lama. Jangan mengirim frame dengan kontrak baru
+                    // sampai supervisor membuka ulang seluruh pipeline.
+                    if source.rect() != original_rect {
+                        return Err("geometri berubah saat fallback; buka ulang capture".into());
+                    }
+                    // Handle baru belum berisi piksel. Ambil frame sungguhan,
+                    // bukan buffer kosong atau frame gelap dari sumber lama.
+                    read_pixels(source, rgba)?;
+                    if sample_luma(rgba) >= 8 {
+                        *black_streak = 0;
+                    }
+                    eprintln!("[xydesk-host] GDI monitor-DC memberi frame hitam 15 kali; frame desktop-DC GetDC(0) sudah diambil");
+                }
+                Err(error) => {
+                    eprintln!(
+                        "[xydesk-host] GDI monitor-DC hitam; fallback desktop-DC gagal: {error}"
+                    );
+                }
+            }
+        }
+    } else {
+        *black_streak = 0;
+    }
+    Ok(())
+}
+
 /// Sumber frame GDI: memegang handle + buffer, menghasilkan RGBA rapat.
 ///
 /// Hanya ada di Windows. Tidak ada stub untuk platform lain karena satu-satunya
@@ -43,13 +119,12 @@
 #[cfg(target_os = "windows")]
 pub struct GdiCapture {
     dalam: Handle,
-    width: usize,
-    height: usize,
     /// Buffer RGBA yang dipakai ulang antar frame (satu alokasi per sesi).
     rgba: Vec<u8>,
     source_name: Option<String>,
     geometry_checked: std::time::Instant,
     black_streak: u8,
+    last_warn: Option<std::time::Instant>,
 }
 
 #[cfg(target_os = "windows")]
@@ -75,66 +150,26 @@ impl GdiCapture {
         let height = dalam.height as usize;
         Ok(Self {
             dalam,
-            width,
-            height,
             rgba: Vec::with_capacity(width * height * 4),
             source_name: crate::desktop_geometry::monitor_rect(nama_perangkat)
                 .map(|_| nama_perangkat.to_owned()),
             geometry_checked: std::time::Instant::now(),
             black_streak: 0,
+            last_warn: None,
         })
     }
     pub fn capture_rect(&self) -> crate::desktop_geometry::CaptureRect {
         self.dalam.rect
     }
 
-    /// Beralih dari DC monitor ke desktop DC bila driver layar RDP
-    /// mengembalikan frame hitam tanpa error. GetDC(0) adalah jalur kedua;
-    /// bila desktop memang terkunci/salah sesi, telemetry tetap menandainya.
-    fn sample_luma(rgba: &[u8]) -> u8 {
-        let mut sum = 0u64;
-        let mut count = 0u64;
-        for i in (0..rgba.len()).step_by(4096 * 4) {
-            if i + 2 >= rgba.len() {
-                break;
-            }
-            sum += (u64::from(rgba[i]) + u64::from(rgba[i + 1]) + u64::from(rgba[i + 2])) / 3;
-            count += 1;
-        }
-        if count == 0 {
-            255
-        } else {
-            (sum / count) as u8
-        }
-    }
-
-    fn fallback_to_desktop_dc(&mut self) -> Result<(), String> {
-        let name = self.source_name.as_deref().unwrap_or("");
-        let handle = Handle::baru_fallback(name, 0, 0)?;
-        self.width = handle.width as usize;
-        self.height = handle.height as usize;
-        self.rgba = Vec::with_capacity(self.width * self.height * 4);
-        self.dalam = handle;
-        self.geometry_checked = std::time::Instant::now();
-        Ok(())
-    }
-
-    /// Lebar frame dalam piksel — setelah fallback bisa berubah dari yang diminta.
+    /// Lebar frame saat sumber dibuka; perubahan geometri meminta restart.
     pub fn width(&self) -> usize {
-        if self.width == 0 {
-            self.dalam.width as usize
-        } else {
-            self.width
-        }
+        self.dalam.width as usize
     }
 
-    /// Tinggi frame dalam piksel.
+    /// Tinggi frame saat sumber dibuka.
     pub fn height(&self) -> usize {
-        if self.height == 0 {
-            self.dalam.height as usize
-        } else {
-            self.height
-        }
+        self.dalam.height as usize
     }
 
     /// Ambil satu frame; kembalikan `(rgba, width, height)`.
@@ -153,38 +188,23 @@ impl GdiCapture {
                 return Err("geometri desktop berubah; buka ulang capture".into());
             }
         }
-        let bgra = self.dalam.ambil()?;
-        crate::pixfmt::bgra_to_rgba(bgra, &mut self.rgba);
-        let luma = Self::sample_luma(&self.rgba);
-        if luma < 8 {
-            self.black_streak = self.black_streak.saturating_add(1);
-            if self.black_streak == 15 && !self.dalam.is_fallback {
-                match self.fallback_to_desktop_dc() {
-                    Ok(()) => eprintln!("[xydesk-host] GDI monitor-DC memberi frame hitam 15 kali; beralih ke desktop-DC GetDC(0)"),
-                    Err(error) => eprintln!("[xydesk-host] GDI monitor-DC hitam; fallback desktop-DC gagal: {error}"),
-                }
-            }
-        } else {
-            self.black_streak = 0;
-        }
+        grab_pixels(
+            &mut self.dalam,
+            self.source_name.as_deref().unwrap_or(""),
+            &mut self.rgba,
+            &mut self.black_streak,
+        )?;
         // Sampel pojok bukan bukti seluruh desktop hitam atau sesi terkunci.
         if self.rgba.len() >= 4 && self.rgba.iter().take(100).all(|&b| b == 0) {
             // Cek 100 byte pertama saja — cepat, cukup untuk deteksi.
             // Log hanya sekali per 5 detik biar tidak spam.
-            static mut LAST_WARN: Option<std::time::Instant> = None;
             let now = std::time::Instant::now();
-            let should_warn = unsafe {
-                if let Some(last) = LAST_WARN {
-                    now.duration_since(last).as_secs() >= 5
-                } else {
-                    true
-                }
-            };
-            if should_warn {
+            if self
+                .last_warn
+                .is_none_or(|last| now.duration_since(last).as_secs() >= 5)
+            {
                 eprintln!("[xydesk-host] GDI: sampel pojok bernilai nol; bukan bukti seluruh frame hitam. Gunakan --capture-test untuk hitungan RGB seluruh frame");
-                unsafe {
-                    LAST_WARN = Some(now);
-                }
+                self.last_warn = Some(now);
             }
         }
         let w = self.width();
@@ -420,6 +440,28 @@ impl Handle {
     }
 }
 
+#[cfg(target_os = "windows")]
+impl PixelSource for Handle {
+    fn rect(&self) -> crate::desktop_geometry::CaptureRect {
+        self.rect
+    }
+
+    fn is_fallback(&self) -> bool {
+        self.is_fallback
+    }
+
+    fn read_rgba(&mut self, rgba: &mut Vec<u8>) -> Result<(), String> {
+        crate::pixfmt::bgra_to_rgba(self.ambil()?, rgba);
+        Ok(())
+    }
+
+    fn switch_to_desktop(&mut self, name: &str) -> Result<(), String> {
+        let replacement = Self::baru_fallback(name, 0, 0)?;
+        *self = replacement;
+        Ok(())
+    }
+}
+
 /// Pelepas handle GDI.
 #[cfg(target_os = "windows")]
 impl Drop for Handle {
@@ -427,11 +469,13 @@ impl Drop for Handle {
         use windows::Win32::Foundation::HWND;
         use windows::Win32::Graphics::Gdi::{DeleteDC, DeleteObject, ReleaseDC};
         unsafe {
-            if !self.bmp.is_invalid() {
-                let _ = DeleteObject(windows::Win32::Graphics::Gdi::HGDIOBJ(self.bmp.0));
-            }
+            // Bitmap masih terseleksi pada mem DC. Lepaskan DC dahulu;
+            // DeleteObject pada bitmap yang masih dipilih dapat gagal/bocor.
             if !self.mem.is_invalid() {
                 let _ = DeleteDC(self.mem);
+            }
+            if !self.bmp.is_invalid() {
+                let _ = DeleteObject(windows::Win32::Graphics::Gdi::HGDIOBJ(self.bmp.0));
             }
             if !self.screen.is_invalid() {
                 if self.is_fallback {
@@ -449,6 +493,172 @@ use windows::Win32::Graphics::Gdi::SelectObject;
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::desktop_geometry::CaptureRect;
+
+    struct Source {
+        rect: CaptureRect,
+        next_rect: CaptureRect,
+        fallback: bool,
+        fail_switch: bool,
+        fail_read: bool,
+        empty_read: bool,
+        dark: bool,
+        reads: usize,
+        switches: usize,
+    }
+
+    impl Source {
+        fn new() -> Self {
+            let rect = CaptureRect {
+                left: -2,
+                top: 0,
+                width: 2,
+                height: 2,
+            };
+            Self {
+                rect,
+                next_rect: rect,
+                fallback: false,
+                fail_switch: false,
+                fail_read: false,
+                empty_read: false,
+                dark: true,
+                reads: 0,
+                switches: 0,
+            }
+        }
+    }
+
+    impl PixelSource for Source {
+        fn rect(&self) -> CaptureRect {
+            self.rect
+        }
+        fn is_fallback(&self) -> bool {
+            self.fallback
+        }
+        fn read_rgba(&mut self, rgba: &mut Vec<u8>) -> Result<(), String> {
+            self.reads += 1;
+            if self.fallback && self.fail_read {
+                return Err("DC lepas".into());
+            }
+            if self.fallback && self.empty_read {
+                rgba.clear();
+                return Ok(());
+            }
+            let value = if self.fallback || !self.dark { 80 } else { 0 };
+            *rgba = vec![value; self.rect.width as usize * self.rect.height as usize * 4];
+            Ok(())
+        }
+        fn switch_to_desktop(&mut self, _name: &str) -> Result<(), String> {
+            self.switches += 1;
+            if self.fail_switch {
+                return Err("desktop DC tidak tersedia".into());
+            }
+            self.fallback = true;
+            self.rect = self.next_rect;
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn frame_ke_15_mengambil_piksel_baru_bukan_buffer_kosong() {
+        let mut source = Source::new();
+        let mut rgba = Vec::new();
+        let mut streak = 0;
+        for _ in 0..14 {
+            grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap();
+            assert_eq!(rgba, vec![0; 16]);
+            assert_eq!(source.switches, 0);
+        }
+        grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap();
+        assert_eq!(source.switches, 1);
+        assert_eq!(source.reads, 16, "15 frame monitor + satu frame desktop DC");
+        assert_eq!(rgba, vec![80; 16]);
+        assert_eq!(streak, 0);
+        // Frame transisi memenuhi kontrak RGBA dan konversi input NVENC.
+        crate::pixfmt::validate_rgba(&rgba, 2, 2).unwrap();
+        let mut nv12 = Vec::new();
+        crate::pixfmt::rgba_to_nv12(&rgba, 2, 2, &mut nv12).unwrap();
+        assert_eq!(nv12.len(), 6);
+    }
+
+    #[test]
+    fn fallback_gagal_mempertahankan_frame_lama_yang_utuh() {
+        let mut source = Source::new();
+        source.fail_switch = true;
+        let mut rgba = Vec::new();
+        let mut streak = 14;
+        grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap();
+        assert!(!source.fallback);
+        assert_eq!(rgba, vec![0; 16]);
+        assert_eq!(source.reads, 1);
+        assert_eq!(source.switches, 1);
+    }
+
+    #[test]
+    fn piksel_fallback_kosong_tidak_pernah_diteruskan_ke_encoder() {
+        let mut source = Source::new();
+        source.empty_read = true;
+        let mut rgba = Vec::new();
+        let mut streak = 14;
+        assert!(grab_pixels(&mut source, "display", &mut rgba, &mut streak).is_err());
+        assert_eq!(source.reads, 2);
+    }
+
+    #[test]
+    fn baca_desktop_dc_gagal_bukan_sukses_dengan_piksel_monitor_lama() {
+        let mut source = Source::new();
+        source.fail_read = true;
+        let mut rgba = Vec::new();
+        let mut streak = 14;
+        assert_eq!(
+            grab_pixels(&mut source, "display", &mut rgba, &mut streak),
+            Err("DC lepas".into())
+        );
+    }
+
+    #[test]
+    fn geometri_fallback_berubah_meminta_restart_pipeline() {
+        for rect in [
+            CaptureRect {
+                left: 0,
+                top: 0,
+                width: 2,
+                height: 2,
+            },
+            CaptureRect {
+                left: -2,
+                top: 0,
+                width: 4,
+                height: 2,
+            },
+        ] {
+            let mut source = Source::new();
+            source.next_rect = rect;
+            let mut rgba = Vec::new();
+            let mut streak = 14;
+            let error = grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap_err();
+            assert!(error.contains("geometri berubah"));
+            assert_eq!(source.reads, 1, "jangan encode memakai geometri input lama");
+        }
+    }
+
+    #[test]
+    fn frame_terang_memutus_streak_dan_desktop_dc_tidak_diulang() {
+        let mut source = Source::new();
+        source.dark = false;
+        let mut rgba = Vec::new();
+        let mut streak = 14;
+        grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap();
+        assert_eq!(streak, 0);
+        assert_eq!(source.switches, 0);
+        source.fallback = true;
+        streak = 14;
+        grab_pixels(&mut source, "display", &mut rgba, &mut streak).unwrap();
+        assert_eq!(source.switches, 0);
+    }
+
     #[test]
     fn konversi_warna_dilakukan_di_primitif_bukan_di_pemanggil() {
         let src = include_str!("gdi.rs");

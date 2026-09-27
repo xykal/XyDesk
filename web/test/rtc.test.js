@@ -45,7 +45,7 @@ function setup(overrides = {}) {
   const exports = {};
   vm.runInNewContext(source, {
     exports, api: { signalToken: async () => 'local-token', WS_URL: 'ws://local/ws', turnIce: async () => ({ servers: [], ok: false, reason: 'no-servers' }), ...overrides },
-    WebSocket: Socket, RTCPeerConnection: PeerConnection, crypto: webcrypto, setTimeout, clearTimeout,
+    AbortController, DOMException, WebSocket: Socket, RTCPeerConnection: PeerConnection, crypto: webcrypto, setTimeout, clearTimeout,
     TextEncoder, TextDecoder, Uint8Array, ArrayBuffer, performance, navigator: overrides.navigator ?? {},
   });
   return { session: new exports.RtcSession(), sockets };
@@ -405,4 +405,31 @@ test('relay yang siap benar-benar ikut ke iceServers', async () => {
     assert.ok(urls.includes('turn:relay.example:3478'));
     assert.ok(urls.includes('stun:stun.cloudflare.com:3478'));
   } finally { session.stop(); }
+});
+
+test('SDP signaling matches the offer actually applied, including ICE restart',async()=>{
+ const {session,sockets}=setup();await session.start('jwt','100200300','fixture');
+ const applied=[];const pc={async createOffer(){return{type:'offer',sdp:'a=fmtp:125 profile-level-id=42e01f\r\n'};},async setLocalDescription(value){applied.push(value);this.localDescription=value;},close(){}};
+ session.pc=pc;session.receiverLevel='33';
+ try{await session.sendLocalOffer(pc,false);assert.match(sockets[0].sent.at(-1).sdp.sdp,/42e033/);assert.equal(sockets[0].sent.at(-1).sdp.sdp,applied.at(-1).sdp);await session.sendLocalOffer(pc,true);assert.equal(sockets[0].sent.at(-1).sdp.sdp,pc.localDescription.sdp);}finally{session.stop();}
+});
+test('rejected SDP modification sends only the successfully applied fallback',async()=>{
+ const {session,sockets}=setup();await session.start('jwt','100200300','fixture');
+ const pc={async createOffer(){return{type:'offer',sdp:'profile-level-id=42e01f'};},async setLocalDescription(value){if(value.sdp.includes('42e033'))throw Error('unsupported');this.localDescription=value;},close(){}};
+ session.pc=pc;session.receiverLevel='33';try{await session.sendLocalOffer(pc,false);assert.equal(sockets[0].sent.at(-1).sdp.sdp,'profile-level-id=42e01f');}finally{session.stop();}
+});
+test('position and click share ordering even when lossy channel is open',()=>{
+ const {session}=setup(),sent=[];session.input={readyState:'open',bufferedAmount:2048,send:b=>sent.push([...new Uint8Array(b)]),close(){}};session.pointerInput={readyState:'open',send(){throw Error('must not send on unordered channel');},close(){}};
+ session.sendInput(new Uint8Array([2,42,0]));session.sendInput(new Uint8Array([3,0,1]));assert.deepEqual(sent,[[2,42,0],[3,0,1]]);
+});
+test('first statistics report with zero decoded frames retains first-frame watchdog',async()=>{
+ const {session}=setup();const stats=new Map([['video',{id:'video',type:'inbound-rtp',kind:'video',bytesReceived:0,framesDecoded:0,frameWidth:1280,frameHeight:720}]]);
+ session.pc={connectionState:'connected',getStats:async()=>stats,close(){}};session.setPhase('connected');try{await session.readStats();assert.equal(session.lastDecodedAt,0);assert.notEqual(session.noFrameWatchdog,undefined);}finally{session.stop();}
+});
+test('clipboard reserves opcode byte and preserves complete UTF-8 boundaries',()=>{
+ const {session}=setup();let sent;session.input={readyState:'open',bufferedAmount:0,send:b=>{sent=new Uint8Array(b);},close(){}};
+ const decode=new TextDecoder('utf-8',{fatal:true});
+ session.sendClipboard('a'.repeat(65536));assert.equal(sent.length,65536);assert.equal(sent[0],8);assert.equal(decode.decode(sent.subarray(1)),'a'.repeat(65535));
+ session.sendClipboard('a'.repeat(65534)+'é');assert.ok(sent.length<=65536);assert.equal(decode.decode(sent.subarray(1)),'a'.repeat(65534));
+ session.sendClipboard('a'.repeat(65533)+'é');assert.equal(sent.length,65536);assert.equal(decode.decode(sent.subarray(1)),'a'.repeat(65533)+'é');session.stop();
 });

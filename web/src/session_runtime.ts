@@ -23,7 +23,8 @@ export async function playRemoteAudio(audio: HTMLAudioElement, stream?: MediaStr
 }
 
 // ID tampilan saja, BUKAN kredensial atau tiket pemulihan sesi.
-// Jangan memasukkan password, JWT, ID host, atau resume token ke URL.
+// Hash ini bukan kredensial. ID host boleh pada route /session/:id;
+// password, JWT, dan resume token tidak boleh masuk URL.
 export function newSessionFragment(random: Crypto = crypto): string {
   const bytes = random.getRandomValues(new Uint8Array(32));
   return '#session/' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');

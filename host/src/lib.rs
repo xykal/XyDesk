@@ -40,8 +40,10 @@ mod tests {
 }
 
 pub mod audio;
+pub mod audio_forward;
 pub mod clipboard;
 pub mod control;
+pub mod control_ipc;
 /// Primitif capture DXGI Desktop Duplication (piksel mentah saja; encode ada
 /// di `screen`). Dipisah supaya bisa di-type-check untuk Windows lewat
 /// `tool/wincheck`.
@@ -58,6 +60,7 @@ pub mod input;
 pub mod opus_ffi;
 pub mod pairedpeers;
 pub mod pairguard;
+pub mod panel_status;
 /// Konversi format PCM antar-representasi WASAPI (murni Rust, teruji di Linux).
 pub mod pcmconv;
 /// Konversi format piksel (RGBA → NV12) untuk jalur encode NVENC.
