@@ -58,3 +58,45 @@ Web 0eee624: deployment workflow 36304233124 succeeded. Independently inspected 
 10926488029 `touch-keyboard.png`: all ABC columns now visible. Previous 550a757 screenshot
 had clipping even though smoke passed; new assertions cover row bounds and toggle overlap.
 Native tests/build pending at time of this entry; do not treat code presence as validation.
+
+### Verified follow-up evidence
+
+- Source candidate: `8ead5ce897740e26264c9dc23d6d939b5121a25f`.
+- Validate Web Host `36304441008`: all three jobs success (Linux, Windows, web).
+  Includes RFC7636 S256 vector, OS randomness, callback parse/duplicate rejection,
+  token header safety and profile validation. QR C++ output independently decoded
+  with jsQR; expected ID-only `/connect?device=123456789` confirmed.
+- Artifact `10925529796`: real Win32 resource/render screenshots for settings,
+  profile, guide and QR, plus pairing/collapsed main panels. Visually inspected:
+  no clipped dialog content. Profile screenshot is an offline fixture, NOT a
+  successful account login. Screenshot mode opens neither engine nor OAuth.
+- Web live HTTP checked against deployment artifact `10926473223`: identical bytes:
+  `/assets/index-Cpnr-DHQ.js`, SHA256
+  `fd6d34cbe41ecddf72424bce80531c040d5f7aeff13a476db43b953aeed86859`;
+  `/assets/index-B12wERhM.css`, SHA256
+  `245e27cf4d53a8ec014098dde9120e0b1c3c3d0a155b411b2d03352fa2a5dac0`.
+- Protected-file comparison against `2e8ab26` is empty: `host/src`, RTC,
+  adaptive_video, remote_pointer, video_playback, session_fullscreen,
+  native control_client/control_contract unchanged.
+- Prepare Host Windows `36304643208`: pending at this entry; installer not yet issued.
+
+Remaining manual acceptance: Google browser consent and return, session restore,
+logout/close cancellation on Windows, actual HP camera QR scan, native form actions
+under a real running host, orientation on the user's browser. Browser permission
+and Google consent UI remain browser-controlled; app dialogs cannot replace those.
+Landscape lock is best effort after fullscreen, not guaranteed by every browser.
+
+### Follow-up packaging complete
+
+- Prepare Host Windows `36304643208`: success; artifact `10926014747`.
+- Prepare Host NSIS `36305057832`: success; artifact `10926464556`.
+- Portable ZIP SHA256 `578a745d9cb968d5905f300044013d31e2c54a69d6e9c2a820a4dacda8d222cc`
+  (8,335,217 bytes).
+- Installer SHA256 `7f4995b415865b7b2afc0311fd8df834a912248ce548a38464b74356794ec3c9`
+  (5,106,679 bytes). Both downloaded hashes matched CI checksum files.
+- Rebuilt engine SHA256 `052bcf29ca628550053452ac5a9e0272d753da203563868469615f1e713ac9f3`;
+  source unchanged, binary NOT byte-identical to prior build. New JSON and QR
+  license notices verified present inside portable payload.
+- Unsigned test candidate, version stays 6.8.5; no stable/latest promotion.
+- Delivered folder `deliverables/XyDesk-native-8ead5ce/`, includes installer,
+  portable ZIP, checksums, NSIS validation record and `BACA-DULU.md`.

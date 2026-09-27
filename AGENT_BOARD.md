@@ -366,3 +366,22 @@ Laporan/bukti/acceptance: `docs/qa/control-studio-video-2026-09-27.md`.
 Stick WASD/panah dan mouse aktif; **gamepad analog asli belum diimplementasikan**
 karena belum ada protokol/virtual gamepad host. Tidak memasang driver, tidak
 mengganti installer atau bump versi. Sesi RDP operator masih perlu retest.
+
+## Latest UI/account/QR candidate — 2026-09-27
+
+User says responsiveness is already good: keep engine/RTC/input/adaptation and
+per-Windows-user coordination frozen. Confirmed empty diff for host and protected
+web/native control files against 2e8ab26.
+
+Web 0eee624 deployed, run 36304233124 success; live JS/CSS bytes matched artifact.
+Touch keyboard clipping caught by visual review, fixed and screenshot rechecked.
+Separate compact stats, larger rail/mouse icons and custom app dialogs are live.
+Native 8ead5ce adds browser OAuth PKCE/state/CredMan (UI account only), local ID-only
+QR, profile/help/settings/password visibility and sidebar refinement.
+Baseline 36304441008, portable 36304643208, installer 36305057832 all SUCCESS.
+Installer SHA256 7f4995b415865b7b2afc0311fd8df834a912248ce548a38464b74356794ec3c9.
+Unsigned 6.8.5 test candidate; no stable promotion. Screenshot profile is an offline
+fixture. Real Google consent/restore/logout/cancel, physical QR scan and live-device
+UI acceptance remain manual, not claimed complete. Native analog still unsupported.
+Details: docs/qa/native-panel-settings-2026-09-27.md. Delivered new folder
+`deliverables/XyDesk-native-8ead5ce/`; old 1b873c3 installer retained as rollback.
