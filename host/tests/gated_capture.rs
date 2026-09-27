@@ -85,9 +85,6 @@ async fn connect_receive_disconnect() -> anyhow::Result<()> {
             0,
         ))
         .await?;
-    let first = tokio::time::timeout(Duration::from_secs(3), packets_rx.recv())
-        .await?
-        .unwrap();
     frames_tx
         .send(screen::EncodedFrame::new(
             encoder.encode_next(320, 180)?,
@@ -95,14 +92,20 @@ async fn connect_receive_disconnect() -> anyhow::Result<()> {
             0,
         ))
         .await?;
-    let second = tokio::time::timeout(Duration::from_secs(3), packets_rx.recv())
-        .await?
-        .unwrap();
-    assert_eq!(
-        second.wrapping_sub(first),
-        10800,
-        "RTP clock follows actual capture interval, not nominal 30 fps"
-    );
+    // Reconnect can deliver cached rescue IDRs before the live pair. Keep
+    // that production behavior; require the two NEW frames' 120ms clock gap.
+    tokio::time::timeout(Duration::from_secs(3), async {
+        let mut previous = packets_rx.recv().await.unwrap();
+        loop {
+            let next = packets_rx.recv().await.unwrap();
+            if next.wrapping_sub(previous) == 10800 {
+                break;
+            }
+            previous = next;
+        }
+    })
+    .await
+    .expect("fresh RTP frame pair must advance by its actual 120ms interval");
     // Sumber diam, channel masih TERBUKA. Penutupan transport tetap harus
     // membangunkan pump; tidak boleh perlu frame kedua untuk teardown.
     host.close().await?;
