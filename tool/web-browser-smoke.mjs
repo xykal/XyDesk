@@ -146,8 +146,9 @@ try{
  await page.emulateMedia({reducedMotion:'reduce'});
  assert.equal(await drawer.evaluate(el=>getComputedStyle(el).animationName),'none');
  await page.emulateMedia({reducedMotion:'no-preference'});
+ const beforeCloseCount=await mapping.count();
  await page.getByRole('button',{name:'Tutup pengaturan sesi',exact:true}).click();
- assert.equal(await mapping.count(),mappingCount,'closing panel preserves mapping');
+ assert.equal(await mapping.count(),beforeCloseCount,'closing panel preserves current orientation mapping');
  await page.setViewportSize({width:390,height:844});
  results.push('Full-height right drawer across portrait/landscape/desktop; five categories; independent rail/mapping; reduced motion respected');
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
