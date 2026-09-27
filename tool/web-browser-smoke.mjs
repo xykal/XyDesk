@@ -59,10 +59,15 @@ try{
  assert.equal(await page.getByRole('button',{name:/Gamepad analog asli/}).isDisabled(),true);
  await page.getByRole('button',{name:/Stick WASD/}).click();
  await page.getByRole('button',{name:'Simpan',exact:true}).click();
- const stick=page.locator('.mapping-stick');const r=await stick.boundingBox();
+ const stick=page.locator('.mapping-stick');
+ await page.waitForFunction(()=>document.fullscreenElement===null&&!document.querySelector('.mapping-studio-active'));
+ await stick.scrollIntoViewIfNeeded();
+ await stick.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+ const r=await stick.boundingBox();
+ assert.equal(await stick.evaluate(el=>{const r=el.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.mapping-stick')===el;}),true,'stick center is hit-testable after fullscreen exit');
  await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();
  await page.mouse.move(r.x+r.width*.8,r.y+r.height*.2);
- assert.notEqual(await stick.locator('.stick-knob').evaluate(el=>el.style.transform),'translate(0px, 0px)');
+ await page.waitForFunction(()=>document.querySelector('.mapping-stick .stick-knob')?.style.transform!=='translate(0px, 0px)');
  await page.mouse.up();
  assert.equal(await stick.locator('.stick-knob').evaluate(el=>el.style.transform),'translate(0px, 0px)');
  results.push('WASD stick moves and recenters on release; unsupported analog gamepad is disabled');
