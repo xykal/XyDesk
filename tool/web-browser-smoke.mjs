@@ -112,6 +112,8 @@ try{
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
  const key=page.locator('.vkb-key').filter({hasText:/^q$/});
  const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
+ assert.equal(await page.locator('.touch-layout .vkb-row').evaluateAll(rows=>rows.every(row=>row.scrollWidth<=row.clientWidth+1&&row.getBoundingClientRect().right<=innerWidth)),true,'every touch row fits without horizontal scrolling');
+ assert.equal(await page.locator('.srail-keyboard').isVisible(),false,'floating keyboard toggle does not cover typing keys');
  await page.screenshot({path:'browser-evidence/touch-keyboard.png'});
 
  await page.getByRole('button',{name:'Pengaturan keyboard',exact:true}).click();
