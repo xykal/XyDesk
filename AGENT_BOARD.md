@@ -1,5 +1,12 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
+## 27 Sep 2026 — batch web low-bandwidth LIVE; native masih terbuka
+
+Izin operator “gas”. Web executable `19fcd583c58c52984acfc10ae43ec0e66989d39f`, Actions [36300640365](https://github.com/xykal/XyDesk/actions/runs/36300640365) sukses unit/build/8 browser scenarios/deploy. Production `/assets/index-BeG1LObb.js` diverifikasi via curl. Detail/batas bukti: `docs/qa/session-controls-low-bandwidth-2026-09-27.md`.
+
+Auto 1 Mbps, manual 1/2/4 Mbps, antrean absolute pointer lebih pendek dengan urutan klik tetap reliable; rail hide/show nyata, overlay netral, menu dalam header, keyboard HP composer, ID-only deep link ke session/password. Belum membuktikan latency nyata pada HP/jaringan pengguna. Native Windows/profile/settings/password/sidebar/link **belum diubah**, tidak ada paket host baru. Analog host tetap unsupported. Temuan IPC privat dan langkah implementasi aman dicatat dalam QA; jangan membuka token lewat heartbeat/log.
+
+
 Papan ini adalah satu-satunya sumber kebenaran **siapa lagi kerja apa** dan
 **push siapa yang sudah diizinkan**. `AGENT.md` mewajibkan: baca papan ini di
 awal sesi, **kunci** areamu, barulah kerja. `HANDOFF.md` mencatat *hasil*
