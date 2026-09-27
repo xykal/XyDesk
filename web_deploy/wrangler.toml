@@ -13,6 +13,9 @@ routes = [
 ]
 
 [assets]
+# Root/index/robots juga harus melewati canonical redirect dan noindex remote.
+# Default asset-first melewati Worker jika berkas statis ditemukan.
+run_worker_first = true
 directory = "./site"
 # WAJIB: tanpa binding ini env.ASSETS undefined dan worker crash 500 untuk
 # semua deep link non-bot (/legal, /news/..., /connect) — bug produksi nyata,

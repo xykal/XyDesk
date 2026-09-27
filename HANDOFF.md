@@ -2532,3 +2532,32 @@ Pemeriksaan pra-push: diff whitespace bersih, tidak ditemukan kecocokan secret
 yang disuplai atau pola umum GitHub token/private key pada file yang berubah,
 dan origin/main masih sama dengan baseline lokal saat fetch. Pemeriksaan ini
 bukan jaminan keamanan menyeluruh atau bukti kelulusan runtime.
+
+## Validasi dan rollout kandidat uji — 2026-09-27
+
+Operator mengizinkan validasi/build/deploy dan meminta link unduh untuk tes.
+OAuth www/remote dikonfirmasi sudah ditambahkan oleh operator (login browser
+nyata belum diverifikasi). Kandidat executable bersumber pada `00ae1b8`:
+
+- Validate Web Host **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293323607
+- Build penuh **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293875678
+- Installer MSI/NSIS **PASS**: https://github.com/xykal/XyDesk/actions/runs/36294273373
+- Deploy signaling/CORS **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293816856
+- Deploy news **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293822342
+- Deploy web awal **PASS**: https://github.com/xykal/XyDesk/actions/runs/36294227889
+
+Tiga kegagalan awal ditindaklanjuti, bukan dilewati: strict Clippy, fixture
+backpressure pipe yang keliru, dan argumen CLI probe panel. Validasi Windows
+termasuk 202 unit test, startup identitas multiprocess, otorisasi control IPC,
+compile panel, probe 1100x720 serta snapshot shape. Bukan uji remote desktop
+Windows/RDP interaktif, audio end-to-end atau browser restore.
+
+HTTP produksi menemukan default Cloudflare asset-first melewati Worker untuk
+root/robots. Hotfix `assets.run_worker_first=true` dan regresi routing disiapkan;
+build/deploy hotfix masih menunggu pada saat catatan ini ditulis. www/remote
+sudah tercatat sebagai custom domain xydesk-web; CORS masing-masing origin
+mengembalikan 204 dengan allow-origin yang tepat.
+
+Distribusi untuk tes operator via artefak Actions, **bukan promosi stabil**.
+Tidak ada bump versi atau overwrite aset v6.8.5; jangan memakai releases/latest
+sebagai bukti kandidat ini. Acceptance browser/Windows nyata tetap terbuka.
