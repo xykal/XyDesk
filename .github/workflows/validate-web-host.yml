@@ -84,6 +84,16 @@ jobs:
         if: runner.os == 'Windows'
         run: cargo build --locked --bin xydesk-host -j 2
         working-directory: host
+      # Simpan hasil compile sebelum probe panel: kegagalan packaging tidak
+      # perlu mengulang seluruh dependency Rust pada run perbaikan berikutnya.
+      - uses: actions/cache/save@v4
+        if: runner.os == 'Windows'
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            host/target
+          key: validate-host-${{ runner.os }}-${{ hashFiles('host/Cargo.lock') }}
       - uses: actions/setup-python@v5
         if: runner.os == 'Windows'
         with:
@@ -115,7 +125,7 @@ jobs:
           $process = Start-Process -FilePath $exe -ArgumentList @('--panel-probe', "`"$probe`"") -PassThru
           if (-not $process.WaitForExit(10000)) { $process.Kill(); throw 'Panel probe timeout' }
           if ($process.ExitCode -ne 0 -or -not (Test-Path $probe)) { throw 'Panel probe gagal' }
-          python tool/check_panel_probe.py $probe
+          python tool/check_panel_probe.py --json $probe --expect 'Minimize,Maximize,Close,PageStatus,PagePairing,Start,CopyId,None'
           if ($LASTEXITCODE -ne 0) { throw 'Geometri panel tidak sesuai' }
           $snapshot = Join-Path $PWD 'validation-panel/snapshot.bmp'
           $imageProcess = Start-Process -FilePath $exe -ArgumentList @('--panel-snapshot', "`"$snapshot`"") -PassThru
