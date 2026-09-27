@@ -334,3 +334,16 @@ Semua link unduh, checksum, run CI dan checklist perangkat nyata ada di
 `docs/qa/test-links-2026-09-27.md`. CI/deploy selesai, bukan klaim acceptance
 Windows/RDP/browser/audio end-to-end. Catatan hold/belum diuji sebelumnya
 adalah riwayat sebelum otorisasi rollout; lihat hasil akhir ini untuk status.
+
+## Web Control Studio + video bind live — 2026-09-27
+
+Permintaan operator: editor fullscreen perangkat, kategori kontrol/inspector
+samping, menu hamburger selayar browser, dan investigasi video hitam. Web
+`61e490e` live lewat run 36297653583 setelah unit/type-check/build/Chromium
+smoke. Root cause pemutar: guard srcObject menolak first attachment; controller
+baru dan revisi pointer-v3-video-bind sudah berada dalam bundle produksi.
+
+Laporan/bukti/acceptance: `docs/qa/control-studio-video-2026-09-27.md`.
+Stick WASD/panah dan mouse aktif; **gamepad analog asli belum diimplementasikan**
+karena belum ada protokol/virtual gamepad host. Tidak memasang driver, tidak
+mengganti installer atau bump versi. Sesi RDP operator masih perlu retest.
