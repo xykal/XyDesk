@@ -1,5 +1,10 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
+## 27 Sep 2026 — UI follow-up delivered: header-only host utilities + themed web
+
+Native `d8fc018`: Profile/Help/Settings only in header, embedded pages retained. Prepare Windows **36311476611 success**, NSIS **36311903771 success/PASS**, new unsigned installer/ZIP in workspace `deliverables/XyDesk-host-ui-d8fc018/`. Web `c49c95c`: original dark session palette, persisted keyboard background transparency, continuous phone/PC/tablet loading morph without device ID; reduced-motion fallback. **36311787247 success**, 11 browser scenarios, zero errors, live JS/CSS byte hashes verified. Details: `docs/qa/ui-followup-2026-09-27.md`. Frozen streaming/input/coordination unchanged; no physical acceptance/high-DPI fix/stable promotion claimed. Supersedes native 9503314 and web 96b3bfd delivery status below.
+
+
 ## 27 Sep 2026 — web session UI LIVE, 96b3bfd
 
 Right full-height five-category drawer, independently hidden rail/mapped controls, transparent white-outline input controls, full-viewport mobile menu and functional short transitions deployed. Actions [36310218985](https://github.com/xykal/XyDesk/actions/runs/36310218985) **success**, 10 browser scenarios / zero page errors; live JS/CSS hashes match CI. Evidence/limitations: `docs/qa/session-ui-2026-09-27.md`. Streaming/input/adaptive/coordination frozen and unchanged. Native remains unsigned 9503314 with known high-DPI caveat; real HP/host/OAuth acceptance not claimed. This entry supersedes older web/menu status below.
