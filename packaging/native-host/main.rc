@@ -1,3 +1,22 @@
 #include "resource.h"
 
 IDI_XYDESK ICON "xydesk.ico"
+
+#include <windows.h>
+IDD_HOST_SETTINGS DIALOGEX 0, 0, 350, 222
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Pengaturan host"
+FONT 10, "Segoe UI"
+BEGIN
+    LTEXT "VIDEO HOST", -1, 14, 12, 300, 14
+    LTEXT "Target selama engine berjalan. Klien dapat mengubahnya.", -1, 14, 29, 320, 14
+    COMBOBOX IDC_BITRATE, 14, 48, 220, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 245, 48, 90, 16
+    LTEXT "PASSWORD PAIRING", -1, 14, 79, 310, 14
+    LTEXT "Minimal 6 karakter. Mengganti password mencabut akses tersimpan.", -1, 14, 96, 320, 14
+    EDITTEXT IDC_PASSWORD, 14, 114, 220, 18, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
+    PUSHBUTTON "Simpan password", IDC_APPLY_PASSWORD, 245, 114, 90, 18
+    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 14, 139, 130, 18
+    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 14, 166, 320, 24
+    DEFPUSHBUTTON "Tutup", IDCANCEL, 245, 194, 90, 18
+END

@@ -74,6 +74,12 @@ enum class Page {
 enum class Target {
     None,
     TitleBar,
+    ToggleSidebar,
+    Settings,
+    Profile,
+    Help,
+    DeviceLink,
+    CopyLink,
     Minimize,
     Maximize,
     Close,
@@ -92,6 +98,12 @@ enum class Target {
 
 inline const char* targetName(Target target) {
     switch (target) {
+    case Target::ToggleSidebar: return "ToggleSidebar";
+    case Target::Settings: return "Settings";
+    case Target::Profile: return "Profile";
+    case Target::Help: return "Help";
+    case Target::DeviceLink: return "DeviceLink";
+    case Target::CopyLink: return "CopyLink";
     case Target::TitleBar: return "TitleBar";
     case Target::Minimize: return "Minimize";
     case Target::Maximize: return "Maximize";
@@ -131,6 +143,7 @@ struct PanelLayout {
 
     Rect titleBar{};
     Rect logo{};
+    Rect toggleSidebar{}, settings{}, profile{}, help{}, deviceLink{}, copyLink{};
     Rect title{};
     Rect subtitle{};
     Rect minimizeButton{};
@@ -220,7 +233,7 @@ constexpr int kPanelMinHeight = 480;
 constexpr int kPanelMaxWidth = 1600;
 constexpr int kPanelMaxHeight = 1100;
 
-inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heightUnits = kPanelHeight) {
+inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heightUnits = kPanelHeight, bool collapsed = false) {
     const int s = scalePctFromDpi(dpi);
     const auto px = [s](int value) { return scaled(value, s); };
 
@@ -239,29 +252,33 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // ── Caption: logo, nama, subjudul, tiga tombol caption ──
     const int logo = px(30);
-    l.logo = Rect{pad, pad - px(3), logo, logo};
+    l.toggleSidebar = Rect{pad, pad - px(2), px(32), px(32)};
+    l.logo = Rect{pad + px(42), pad - px(3), logo, logo};
     const int closeSize = px(32);
     const int captionGap = px(4);
     const int captionY = pad - px(2);
     l.closeButton = Rect{panelW - pad - closeSize, captionY, closeSize, closeSize};
     l.maximizeButton = Rect{l.closeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
     l.minimizeButton = Rect{l.maximizeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
+    l.help = Rect{l.minimizeButton.x - px(36), captionY, closeSize, closeSize};
+    l.profile = Rect{l.help.x - px(36), captionY, closeSize, closeSize};
+    l.settings = Rect{l.profile.x - px(36), captionY, closeSize, closeSize};
     const int textX = l.logo.right() + px(12);
-    const int textW = l.minimizeButton.x - px(12) - textX;
+    const int textW = l.settings.x - px(12) - textX;
     l.title = Rect{textX, pad - px(4), textW, px(24)};
     l.subtitle = Rect{textX, l.title.bottom() + px(1), textW, px(18)};
     l.titleBar = Rect{0, 0, panelW, px(kCaptionHeight)};
 
     // ── Sidebar kiri: ikon + label kecil, halaman aktif diberi pill ──
     const int sideX = px(kSidebarX);
-    const int sideW = px(kSidebarWidth);
+    const int sideW = px(collapsed ? 52 : kSidebarWidth);
     const int itemH = px(kSidebarItemHeight);
     const int itemGap = px(kSidebarGap);
     int itemY = l.titleBar.bottom() + px(8);
     const auto sidebarItem = [&](Rect& item, Rect& icon, Rect& label) {
         item = Rect{sideX, itemY, sideW, itemH};
         icon = Rect{item.x + (sideW - px(24)) / 2, item.y + px(10), px(24), px(24)};
-        label = Rect{item.x + px(4), icon.bottom() + px(5), sideW - px(8), px(12)};
+        label = Rect{item.x + px(4), icon.bottom() + px(5), collapsed ? 0 : sideW - px(8), px(12)};
         itemY = item.bottom() + itemGap;
     };
     sidebarItem(l.sideStatus, l.sideStatusIcon, l.sideStatusLabel);
@@ -296,22 +313,26 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     l.runHost = Rect{l.captureCard.x + px(20), l.captureLine3.bottom() + px(10), px(252), px(34)};
 
     // Halaman Pairing: dua kartu identitas.
-    const int cardH = px(84);
+    const int cardH = px(72);
+    const int identityW = minValue(contentW, px(560));
     const int copyW = px(76);
     const int copyH = px(34);
-    l.idCard = Rect{contentX, topY, contentW, cardH};
-    l.idLabel = Rect{l.idCard.x + px(20), l.idCard.y + px(14), contentW - px(140), px(16)};
-    l.idValue = Rect{l.idCard.x + px(20), l.idCard.y + px(36), contentW - px(126), px(34)};
+    l.idCard = Rect{contentX, topY, identityW, cardH};
+    l.idLabel = Rect{l.idCard.x + px(20), l.idCard.y + px(10), identityW - px(140), px(16)};
+    l.idValue = Rect{l.idCard.x + px(20), l.idCard.y + px(30), identityW - px(126), px(28)};
     l.idCopy = Rect{l.idCard.right() - px(18) - copyW, l.idCard.y + (cardH - copyH) / 2, copyW, copyH};
 
-    l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, contentW, cardH};
-    l.passwordLabel = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(14), contentW - px(140), px(16)};
-    l.passwordValue = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(36), contentW - px(126), px(34)};
+    l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, identityW, cardH};
+    l.passwordLabel = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(10), identityW - px(140), px(16)};
+    l.passwordValue = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(30), identityW - px(126), px(28)};
     l.passwordCopy = Rect{
         l.passwordCard.right() - px(18) - copyW,
         l.passwordCard.y + (cardH - copyH) / 2,
         copyW,
         copyH};
+
+    l.deviceLink = Rect{contentX, l.passwordCard.bottom() + gap, contentW - px(96), px(52)};
+    l.copyLink = Rect{l.deviceLink.right() + px(12), l.deviceLink.y + px(8), px(76), px(34)};
 
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
@@ -335,6 +356,8 @@ inline bool targetOnPage(Target target, Page page) {
     switch (target) {
     case Target::CopyId:
     case Target::CopyPassword:
+    case Target::DeviceLink:
+    case Target::CopyLink:
         return page == Page::Pairing;
     case Target::Start:
     case Target::Stop:
@@ -352,6 +375,12 @@ inline bool targetOnPage(Target target, Page page) {
 // Sasaran klik di koordinat klien jendela. Tombol diperiksa lebih dulu
 // supaya tombol caption di dalam area judul tetap menang.
 inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showRunHost) {
+    if (l.toggleSidebar.contains(x, y)) return Target::ToggleSidebar;
+    if (l.settings.contains(x, y)) return Target::Settings;
+    if (l.profile.contains(x, y)) return Target::Profile;
+    if (l.help.contains(x, y)) return Target::Help;
+    if (page == Page::Pairing && l.deviceLink.contains(x,y)) return Target::DeviceLink;
+    if (page == Page::Pairing && l.copyLink.contains(x,y)) return Target::CopyLink;
     if (l.minimizeButton.contains(x, y)) return Target::Minimize;
     if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;

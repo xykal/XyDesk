@@ -40,6 +40,7 @@
 #include "resource.h"
 #include "layout.h"
 #include "engine_json.h"
+#include "control_client.h"
 #include <limits>
 
 #include <algorithm>
@@ -54,6 +55,7 @@
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "advapi32.lib")
 #endif
 
 namespace {
@@ -83,17 +85,17 @@ constexpr UINT WM_DPICHANGED = 0x02E0;
 // memakai varian teks-terang tokens.dart supaya kontras di atas putih. ──
 constexpr COLORREF kBackground = RGB(255, 255, 255); // --bg
 constexpr COLORREF kSurface = RGB(255, 255, 255);    // kartu putih + garis tepi
-constexpr COLORREF kSurface2 = RGB(245, 243, 255);   // --overlay
-constexpr COLORREF kSurface3 = RGB(233, 229, 250);   // overlay ditekan/hover
-constexpr COLORREF kSurfacePressed = RGB(237, 233, 254);
+constexpr COLORREF kSurface2 = RGB(244, 246, 248);   // --overlay
+constexpr COLORREF kSurface3 = RGB(229, 232, 236);   // overlay ditekan/hover
+constexpr COLORREF kSurfacePressed = RGB(222, 226, 231);
 constexpr COLORREF kEdge = RGB(228, 228, 231);       // garis tepi zinc-200
 constexpr COLORREF kText = RGB(24, 24, 27);          // --ink
 constexpr COLORREF kMuted = RGB(82, 82, 91);         // --ink-soft
 constexpr COLORREF kDisabled = RGB(154, 154, 162);   // --text-low
 constexpr COLORREF kOnAccent = RGB(255, 255, 255);   // teks di atas ungu
-constexpr COLORREF kAccent = RGB(124, 58, 237);      // --accent #7c3aed
-constexpr COLORREF kAccentHover = RGB(139, 92, 246);
-constexpr COLORREF kAccentPressed = RGB(91, 33, 182); // --accent-deep
+constexpr COLORREF kAccent = RGB(48, 53, 60);      // --accent #7c3aed
+constexpr COLORREF kAccentHover = RGB(64, 71, 80);
+constexpr COLORREF kAccentPressed = RGB(34, 39, 45); // --accent-deep
 constexpr COLORREF kGood = RGB(22, 115, 71);         // --success
 constexpr COLORREF kWarn = RGB(133, 84, 0);          // --warning
 constexpr COLORREF kBad = RGB(165, 42, 54);          // --danger
@@ -137,6 +139,9 @@ struct Surface {
 
 struct AppState {
     HWND window = nullptr;
+    HFONT fontIcons = nullptr;
+    bool sidebarCollapsed = false;
+    int panelBitrate = -1;
     HFONT fontTitle = nullptr;
     HFONT fontBody = nullptr;
     HFONT fontSmall = nullptr;
@@ -197,6 +202,7 @@ struct AppState {
 };
 
 AppState g;
+xydesk::panel_control::Channel controlChannel;
 UINT g_taskbarCreated = 0;
 
 void removeTrayIcon();
@@ -668,6 +674,8 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
 
 bool targetEnabled(Target target) {
     switch (target) {
+    case Target::CopyLink:
+    case Target::DeviceLink: return !xydesk::panel_control::deviceLink(g.deviceId).empty();
     case Target::Start:
         return !g.running;
     case Target::Stop:
@@ -691,6 +699,7 @@ std::wstring targetLabel(Target target) {
     case Target::RunHost: return L"Jalankan host di sesi ini";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
+    case Target::CopyLink: return L"Salin link";
     default: return L"";
     }
 }
@@ -838,8 +847,9 @@ void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
 }
 
 void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
-    fillRoundedOpaque(surface, layout.logo, xydesk::panel::scaled(9, layout.scalePct), kAccent);
-    drawTextCentered(dc, L"X", layout.logo, g.fontLogo, kText);
+    (void)surface;
+    HICON icon=static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDI_XYDESK),IMAGE_ICON,layout.logo.w,layout.logo.h,LR_SHARED));
+    if(icon)DrawIconEx(dc,layout.logo.x,layout.logo.y,icon,layout.logo.w,layout.logo.h,0,nullptr,DI_NORMAL);
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────
@@ -936,11 +946,9 @@ void startAnim(HWND hwnd) {
 // Ganti halaman dengan transisi luncur; pill sidebar ikut meluncur.
 void goPage(HWND hwnd, Page target) {
     if (target == g.page) return;
-    g.pageFrom = g.page;
-    g.page = target;
-    g.pageT = 0.0f;
-    if (g.pillY < 0.0f) g.pillY = sidebarItemY(g.layout, target);
-    startAnim(hwnd);
+    g.pageFrom = target;g.page=target;g.pageT=1.0f;
+    g.pillY=sidebarItemY(g.layout,target);
+    KillTimer(hwnd,kAnimTimer);g.animOn=false;renderPanel();
 }
 
 void tickAnimation(HWND hwnd) {
@@ -973,7 +981,7 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
     const Rect column{layout.sideStatus.x, layout.titleBar.bottom(),
         layout.sideStatus.w + xydesk::panel::scaled(6, layout.scalePct),
         layout.panel.bottom() - layout.titleBar.bottom()};
-    fillRectOpaque(surface, column, mixColor(kBackground, kSurface2, 0.55f));
+    fillRoundedOpaque(surface, column.inset(2), layout.radiusCard, kSurface2);
     HGDIOBJ oldPen = SelectObject(surface.dc, CreatePen(PS_SOLID, 1, kEdge));
     MoveToEx(surface.dc, column.right(), column.y, nullptr);
     LineTo(surface.dc, column.right(), column.bottom());
@@ -1049,6 +1057,8 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
             L"Device ID", g.deviceId, Target::CopyId);
         paintIdentityCard(surface, layout, dc, layout.passwordCard, layout.passwordLabel, layout.passwordValue,
             layout.passwordCopy, L"Kode pairing", g.pairingCode, Target::CopyPassword);
+        drawTextLine(dc,xydesk::panel_control::deviceLink(g.deviceId),layout.deviceLink,g.fontSmall,kText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+        paintButton(surface,layout,dc,Target::CopyLink,layout.copyLink);
         break;
     case Page::Control:
         paintButton(surface, layout, dc, Target::Start, layout.start);
@@ -1085,33 +1095,6 @@ bool drawPanelToSurface() {
     // tepi panel tetap terbaca walau dinding desktop gelap.
     fillRectOpaque(surface, g.layout.panel, kBackground);
 
-    // Gradien vertikal halus: pendar lembut di sepertiga atas, biar permukaan
-    // tidak datar seperti kotak — tetap tenang, bukan neon.
-    {
-        const Rect& p = g.layout.panel;
-        const int glowH = xydesk::panel::scaled(150, g.layout.scalePct);
-        const int bottom = std::min(p.bottom(), p.y + glowH);
-        for (int y = p.y; y < bottom; ++y) {
-            const float t = 1.0f - static_cast<float>(y - p.y) / static_cast<float>(glowH);
-            // Bell 4t(1-t) dikuadratkan: pendar mulai dari NOL di tepi atas
-            // (garis tepi panel tetap putih murni), memuncak di tengah, lalu
-            // habis sebelum kartu pertama.
-            const float bell = 4.0f * t * (1.0f - t);
-            const float amount = 0.05f * bell * bell;
-            std::uint32_t* row = surface.pixels + static_cast<size_t>(y) * surface.width;
-            for (int x = p.x; x < p.right(); ++x) {
-                const std::uint32_t px = row[x];
-                // Campur ke ungu aksen (124,58,237), bukan naik ke putih.
-                const auto tint = [&amount](std::uint32_t c, std::uint32_t target) {
-                    const int v = static_cast<int>(c) +
-                        static_cast<int>(amount * (static_cast<float>(static_cast<int>(target) - static_cast<int>(c))));
-                    return static_cast<std::uint32_t>(v < 0 ? 0 : (v > 255 ? 255 : v));
-                };
-                row[x] = 0xFF000000u | (tint((px >> 16) & 0xFF, 124) << 16) |
-                    (tint((px >> 8) & 0xFF, 58) << 8) | tint(px & 0xFF, 237);
-            }
-        }
-    }
     strokeRounded(surface, g.layout.panel.inset(1), g.layout.radiusPanel - 1, kEdge, 1);
 
     HDC dc = surface.dc;
@@ -1144,6 +1127,10 @@ bool drawPanelToSurface() {
     drawTextLine(dc, L"Panel host Windows · tanpa terminal", g.layout.subtitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     paintCaptionButtons(surface, g.layout, dc);
+    const struct {Target target;Rect rect;const wchar_t* glyph;} tools[]={
+        {Target::ToggleSidebar,g.layout.toggleSidebar,L"\uE700"},{Target::Settings,g.layout.settings,L"\uE713"},
+        {Target::Profile,g.layout.profile,L"\uE77B"},{Target::Help,g.layout.help,L"\uE897"}};
+    for(const auto& tool:tools){if(g.hot==tool.target||g.focused==tool.target)fillRoundedOpaque(surface,tool.rect,g.layout.radiusControl,kSurface3);drawTextCentered(dc,tool.glyph,tool.rect,g.fontIcons,kText);}
 
     SelectObject(dc, previousFont);
     GdiFlush();
@@ -1197,12 +1184,14 @@ void createFonts() {
     if (g.fontValue) DeleteObject(g.fontValue);
     // Hirarki tipografi mengikuti web: judul tebal, status semibold, label
     // kecil kapital, angka pairing besar monospasi.
+    if(g.fontIcons)DeleteObject(g.fontIcons);
+    g.fontIcons = make(-xydesk::panel::scaled(20, s), FW_NORMAL, L"Segoe MDL2 Assets");
     g.fontTitle = make(-xydesk::panel::scaled(20, s), FW_BOLD, L"Segoe UI");
     g.fontBody = make(-xydesk::panel::scaled(14, s), FW_NORMAL, L"Segoe UI");
     g.fontSmall = make(-xydesk::panel::scaled(12, s), FW_NORMAL, L"Segoe UI");
     g.fontSemi = make(-xydesk::panel::scaled(15, s), FW_SEMIBOLD, L"Segoe UI");
     g.fontCaps = make(-xydesk::panel::scaled(11, s), FW_SEMIBOLD, L"Segoe UI");
-    g.fontValue = make(-xydesk::panel::scaled(26, s), FW_SEMIBOLD, L"Consolas");
+    g.fontValue = make(-xydesk::panel::scaled(22, s), FW_SEMIBOLD, L"Consolas");
     g.fontMono = make(-xydesk::panel::scaled(20, s), FW_SEMIBOLD, L"Consolas");
     g.fontLogo = make(-xydesk::panel::scaled(17, s), FW_BOLD, L"Segoe UI");
 }
@@ -1250,7 +1239,7 @@ void applyDpi(HWND hwnd, UINT dpi, bool remeasure) {
         g.unitsW = std::min(g.unitsW, std::max(xydesk::panel::kPanelMinWidth, availableW * 100 / scale));
         g.unitsH = std::min(g.unitsH, std::max(xydesk::panel::kPanelMinHeight, availableH * 100 / scale));
     }
-    g.layout = xydesk::panel::computeLayout(static_cast<int>(effective), g.unitsW, g.unitsH);
+    g.layout = xydesk::panel::computeLayout(static_cast<int>(effective), g.unitsW, g.unitsH, g.sidebarCollapsed);
     g.pillY = sidebarItemY(g.layout, g.page); // posisi instan saat DPI/zoom
     createFonts();
     if (remeasure) {
@@ -1302,6 +1291,8 @@ void toggleMaximize(HWND hwnd) {
 // ── Mesin host: start/stop/restart --------------------------------------
 
 void closeHostHandles() {
+    controlChannel.reset();
+    g.panelBitrate = -1;
     if (g.process) {
         CloseHandle(g.process);
         g.process = nullptr;
@@ -1381,17 +1372,8 @@ bool startHost() {
     }
 
     std::wstring command = quote(enginePath()) + L" --url \"wss://signal.xydesk.my.id/ws\" --managed-auth";
-    std::vector<wchar_t> commandLine(command.begin(), command.end());
-    commandLine.push_back(L'\0');
-    STARTUPINFOW si{};
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdOutput = g.logFile;
-    si.hStdError = g.logFile;
-    si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
     PROCESS_INFORMATION pi{};
-    const BOOL started = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, TRUE,
-        CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, nullptr, moduleDirectory().c_str(), &si, &pi);
+    const BOOL started = controlChannel.launch(command, moduleDirectory(), g.logFile, pi);
     if (!started) {
         const DWORD error = GetLastError();
         closeHostHandles();
@@ -1399,15 +1381,20 @@ bool startHost() {
         setStatus(g.lastError, kBad);
         return false;
     }
-    CloseHandle(pi.hThread);
     g.process = pi.hProcess;
     if (!AssignProcessToJobObject(g.job, g.process)) {
         TerminateProcess(g.process, 1);
+        CloseHandle(pi.hThread);
         closeHostHandles();
         g.lastError = L"Windows gagal mengikat host ke pengawas proses.";
         setStatus(g.lastError, kBad);
         return false;
     }
+    if (ResumeThread(pi.hThread) == static_cast<DWORD>(-1)) {
+        CloseHandle(pi.hThread);TerminateProcess(g.process,1);closeHostHandles();
+        setStatus(L"Engine tidak dapat dilanjutkan.",kBad);return false;
+    }
+    CloseHandle(pi.hThread);
     g.running = true;
     setStatus(L"Proses host dimulai — menunggu status engine", kMuted);
     return true;
@@ -1493,8 +1480,100 @@ void showTrayMenu(HWND hwnd) {
     PostMessageW(hwnd, WM_NULL, 0, 0);
 }
 
+struct SettingsState {
+    std::future<std::string> pending;
+    unsigned pid=0;
+    int requestedBitrate=-1;
+};
+
+INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    auto state=reinterpret_cast<SettingsState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
+    constexpr int rates[]={0,1,2,4,8,15,25,50};
+    if(message==WM_INITDIALOG){
+        state=reinterpret_cast<SettingsState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);
+        for(int rate:rates){const auto label=rate?std::to_wstring(rate)+L" Mbps":L"Default engine (8 Mbps, bukan adaptif)";SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));}
+        for(int i=0;i<8;++i)if(g.panelBitrate==rates[i])SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_SETCURSEL,i,0);
+        SendDlgItemMessageW(hwnd,IDC_PASSWORD,EM_SETLIMITTEXT,128,0);
+        SetTimer(hwnd,1,100,nullptr);return TRUE;
+    }
+    if(!state)return FALSE;
+    if(message==WM_TIMER){
+        controlChannel.poll(g.process);
+        if(state->pending.valid()&&state->pending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
+            std::string response;try{response=state->pending.get();}catch(...){}
+            const auto object=xydesk::engine_json::parse(response);
+            bool ok=false;
+            if(object){auto it=object->find("ok");if(it!=object->end()){auto value=std::get_if<bool>(&it->second);ok=value&&*value;}}
+            ok=ok&&g.process&&GetProcessId(g.process)==state->pid;
+            if(ok){
+                auto password=jsonString(response,"password");
+                if(!password.empty()){g.pairingCode=std::move(password);renderPanel();}
+                if(state->requestedBitrate>=0)g.panelBitrate=state->requestedBitrate;
+            }
+            if(!response.empty())SecureZeroMemory(response.data(),response.size());
+            SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,ok?(state->requestedBitrate>=0?L"Bitrate diterapkan. Klien dapat mengubah target ini.":L"Password tersimpan. Akses browser lama dicabut; lihat Akses host."):L"Gagal atau timeout. Periksa host sebelum mencoba lagi.");
+            state->requestedBitrate=-1;
+        }
+        const bool ready=controlChannel.endpoint.has_value()&&g.running;
+        const bool busy=state->pending.valid();
+        for(int id:{IDC_APPLY_BITRATE,IDC_APPLY_PASSWORD,IDC_NEW_PASSWORD,IDC_BITRATE,IDC_PASSWORD})EnableWindow(GetDlgItem(hwnd,id),ready&&!busy);
+        if(!ready&&!busy)SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kontrol privat belum tersedia. Mulai/restart engine dari panel ini.");
+        return TRUE;
+    }
+    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
+        if(state->pending.valid()){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Tunggu hasil permintaan sebelum menutup.");return TRUE;}
+        KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;
+    }
+    if(message!=WM_COMMAND||state->pending.valid()||!controlChannel.endpoint)return FALSE;
+    const int id=LOWORD(wParam);std::string body;
+    if(id==IDC_APPLY_BITRATE){
+        const auto index=SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_GETCURSEL,0,0);
+        if(index<0||index>=8){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Pilih target bitrate terlebih dahulu.");return TRUE;}
+        state->requestedBitrate=rates[index];body="{\"action\":\"video-bitrate\",\"bitrate_mbps\":"+std::to_string(state->requestedBitrate)+"}";
+    }else if(id==IDC_NEW_PASSWORD){
+        if(MessageBoxW(hwnd,L"Ganti password pairing dengan password acak baru?",L"Konfirmasi",MB_YESNO|MB_ICONQUESTION)!=IDYES)return TRUE;
+        body="{\"action\":\"new-password\"}";
+    }else if(id==IDC_APPLY_PASSWORD){
+        wchar_t password[129]{};GetDlgItemTextW(hwnd,IDC_PASSWORD,password,129);
+        const int size=WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,password,-1,nullptr,0,nullptr,nullptr);
+        if(size<=1){SecureZeroMemory(password,sizeof(password));SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Isi password minimal 6 karakter; engine memvalidasi aturannya.");return TRUE;}
+        std::string text(size,'\0');WideCharToMultiByte(CP_UTF8,WC_ERR_INVALID_CHARS,password,-1,text.data(),size,nullptr,nullptr);text.resize(size-1);
+        SecureZeroMemory(password,sizeof(password));
+        body="{\"action\":\"set-password\",\"password\":"+xydesk::panel_control::quoteJson(text)+"}";
+        SecureZeroMemory(text.data(),text.size());SetDlgItemTextW(hwnd,IDC_PASSWORD,L"");
+    }else return FALSE;
+    const auto endpoint=*controlChannel.endpoint;state->pid=endpoint.pid;
+    try{state->pending=std::async(std::launch::async,[endpoint,body=std::move(body)]()mutable{return xydesk::panel_control::action(endpoint,std::move(body));});SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Menerapkan melalui kanal privat...");}
+    catch(...){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Worker pengaturan tidak dapat dimulai.");}
+    return TRUE;
+}
+
+void showProfile(HWND hwnd){
+    wchar_t user[256]{};DWORD count=256;
+    const std::wstring name=GetUserNameW(user,&count)?user:L"Tidak tersedia";
+    const auto message=L"Akun Windows: "+name+L"\nDevice ID: "+g.deviceId+L"\nEngine: "+(g.running?L"berjalan":L"berhenti")+
+        L"\n\nIdentitas host terpisah antar-akun Windows. Login akun web terpisah; buka XyDesk Web untuk melihat status akun web.";
+    MessageBoxW(hwnd,message.c_str(),L"Profil host",MB_OK|MB_ICONINFORMATION);
+}
+
 void activateTarget(HWND hwnd, Target target) {
     switch (target) {
+    case Target::ToggleSidebar:
+        g.sidebarCollapsed=!g.sidebarCollapsed;
+        g.layout=xydesk::panel::computeLayout(g.layout.scalePct*96/100,g.unitsW,g.unitsH,g.sidebarCollapsed);
+        g.pillY=sidebarItemY(g.layout,g.page);renderPanel();break;
+    case Target::Settings: {
+        SettingsState state;
+        DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_HOST_SETTINGS),hwnd,settingsDialog,reinterpret_cast<LPARAM>(&state));break;
+    }
+    case Target::Profile: showProfile(hwnd);break;
+    case Target::Help:
+        MessageBoxW(hwnd,L"1. Mulai host di akun Windows yang akan dikendalikan.\n2. Buka Akses host dan salin link ID-only.\n3. Di HP: buka link, gunakan izin tersimpan atau masukkan password pairing.\n4. Internet sekitar 2 Mbps: mulai 720p / 30 fps / Auto atau manual 1 Mbps di web. 0 ms lewat internet tidak mungkin.\n\nPengaturan di ikon roda gigi: bitrate engine dan password. Klien dapat mengganti target bitrate. Password tersimpan; bitrate panel berlaku selama engine berjalan.\n\nTutup panel = tray; Hentikan mematikan host. Profil menunjukkan akun Windows, bukan status login Google. Gamepad analog native belum didukung.",L"Panduan XyDesk",MB_OK|MB_ICONINFORMATION);break;
+    case Target::DeviceLink: {
+        const auto link=xydesk::panel_control::deviceLink(g.deviceId);if(!link.empty())ShellExecuteW(hwnd,L"open",link.c_str(),nullptr,nullptr,SW_SHOWNORMAL);break;
+    }
+    case Target::CopyLink:
+        copyToClipboard(hwnd,xydesk::panel_control::deviceLink(g.deviceId));setFlash(L"Link ID-only disalin; password tidak disertakan.",kGood);break;
     case Target::CopyId:
         copyToClipboard(hwnd, g.deviceId);
         setFlash(L"Device ID disalin ke clipboard", kGood);
@@ -1512,9 +1591,10 @@ void activateTarget(HWND hwnd, Target target) {
     case Target::Restart:
         restartHost();
         break;
-    case Target::Web:
-        ShellExecuteW(hwnd, L"open", kWebUrl, nullptr, nullptr, SW_SHOWNORMAL);
-        break;
+    case Target::Web: {
+        const auto link=xydesk::panel_control::deviceLink(g.deviceId);
+        ShellExecuteW(hwnd,L"open",link.empty()?kWebUrl:link.c_str(),nullptr,nullptr,SW_SHOWNORMAL);break;
+    }
     case Target::OpenLog: {
         const std::wstring log = g.logPath.empty() ? hostLogPath() : g.logPath;
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -1558,11 +1638,12 @@ void activateTarget(HWND hwnd, Target target) {
 // Urutan Tab mengikuti halaman yang terbuka: sidebar dulu, lalu isi halaman
 // (yang terlihat saja), terakhir tombol caption.
 std::vector<Target> focusOrder() {
-    std::vector<Target> order = {Target::PageStatus, Target::PagePairing, Target::PageControl};
+    std::vector<Target> order = {Target::ToggleSidebar,Target::Settings,Target::Profile,Target::Help,Target::PageStatus, Target::PagePairing, Target::PageControl};
     switch (g.page) {
     case Page::Pairing:
         order.push_back(Target::CopyId);
         order.push_back(Target::CopyPassword);
+        order.push_back(Target::DeviceLink);order.push_back(Target::CopyLink);
         break;
     case Page::Control:
         order.push_back(Target::Start);
@@ -1642,6 +1723,12 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     }
     const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y);
     switch (target) {
+    case Target::ToggleSidebar:
+    case Target::Settings:
+    case Target::Profile:
+    case Target::Help:
+    case Target::DeviceLink:
+    case Target::CopyLink:
     case Target::Minimize:
     case Target::Maximize:
     case Target::Close:
@@ -1834,7 +1921,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.unitsW = newW;
         g.unitsH = newH;
         const UINT dpi = static_cast<UINT>(static_cast<unsigned long long>(windowDpi(hwnd)) * g.zoomPct / 100);
-        g.layout = xydesk::panel::computeLayout(static_cast<int>(dpi), g.unitsW, g.unitsH);
+        g.layout = xydesk::panel::computeLayout(static_cast<int>(dpi), g.unitsW, g.unitsH, g.sidebarCollapsed);
         g.pillY = sidebarItemY(g.layout, g.page);
         renderPanel();
         return 0;
@@ -1866,6 +1953,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             return 0;
         }
         if (wParam == kTimer) {
+            controlChannel.poll(g.process);
             if (identityFuture.valid() && identityFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
                 IdentityResult identity;
                 try { identity = identityFuture.get(); } catch (...) { identity = {}; }
@@ -1931,6 +2019,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.animOn = false;
         removeTrayIcon();
         stopHost();
+        if (g.fontIcons) DeleteObject(g.fontIcons);
         if (g.fontTitle) DeleteObject(g.fontTitle);
         if (g.fontBody) DeleteObject(g.fontBody);
         if (g.fontSmall) DeleteObject(g.fontSmall);
@@ -1995,17 +2084,17 @@ int runPanelProbe(const std::wstring& path) {
 // tidak dipremultiply) tanpa membuka jendela. Dipakai CI Windows untuk
 // memeriksa bentuk panel dari piksel: sudut harus transparan, tepi harus
 // separuh tembus (bukti penghalusan), dan bayangan harus memudar keluar.
-int runPanelSnapshot(const std::wstring& path) {
-    g.layout = xydesk::panel::computeLayout(96);
+int runPanelSnapshot(const std::wstring& path, Page page=Page::Status, bool collapsed=false) {
+    g.layout = xydesk::panel::computeLayout(96,1100,720,collapsed);
     createFonts();
     g.statusText = L"Host aktif sebagai user Windows ini";
     g.statusColor = kGood;
-    g.deviceId = L"8412-7735-2094";
-    g.pairingCode = L"4821";
+    g.deviceId = L"123456789";
+    g.pairingCode = L"TESTONLY";
     g.logPath = L"C:\\Users\\operator\\AppData\\Local\\XyDesk\\host.log";
     g.running = true;
     g.hot = xydesk::panel::Target::None;
-    g.page = xydesk::panel::Page::Status;
+    g.page = page;
     g.captureBackend = L"gdi-bitblt · sesi aktif";
     g.captureSeen = true;
     // Bila berkas kesehatan engine ada (mesin sungguhan / uji lapangan),
@@ -2096,6 +2185,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     if (hasArgument(L"--panel-probe")) {
         return runPanelProbe(commandLineArgument(L"--panel-probe"));
     }
+    if (hasArgument(L"--panel-pairing-snapshot"))return runPanelSnapshot(commandLineArgument(L"--panel-pairing-snapshot"),Page::Pairing);
+    if (hasArgument(L"--panel-collapsed-snapshot"))return runPanelSnapshot(commandLineArgument(L"--panel-collapsed-snapshot"),Page::Pairing,true);
     if (hasArgument(L"--panel-snapshot")) {
         return runPanelSnapshot(commandLineArgument(L"--panel-snapshot"));
     }

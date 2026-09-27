@@ -198,6 +198,22 @@ void testRoundingMath() {
     check(edge <= 0.478f + 0.001f, "bayangan tidak melebihi kekuatan yang diminta");
 }
 
+void testCompactAndCollapsed() {
+    for(int dpi:{96,120,144,192})for(int width:{720,1100,1600})for(bool collapsed:{false,true}){
+        const auto l=xydesk::panel::computeLayout(dpi,width,480,collapsed);
+        const struct {Rect rect;Target target;} common[]={
+            {l.toggleSidebar,Target::ToggleSidebar},{l.settings,Target::Settings},{l.profile,Target::Profile},{l.help,Target::Help}};
+        for(const auto& t:common){check(insidePanel(l,t.rect),"header tool inside panel");check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(t.rect),xydesk::panel::centerY(t.rect))==t.target,"header tool hit test");}
+        check(l.title.right()<l.settings.x,"caption tools do not overlap title");
+        check(l.idCard.w<=xydesk::panel::scaled(560,l.scalePct),"identity block compact");
+        check(insidePanel(l,l.deviceLink)&&insidePanel(l,l.copyLink),"link inside panel");
+        check(!overlaps(l.deviceLink,l.copyLink),"link copy independent");
+        check(xydesk::panel::targetAt(l,Page::Pairing,xydesk::panel::centerX(l.copyLink),xydesk::panel::centerY(l.copyLink))==Target::CopyLink,"copy link hit");
+        check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(l.copyLink),xydesk::panel::centerY(l.copyLink))!=Target::CopyLink,"invisible pairing link not clickable");
+        check(collapsed?l.sideStatusLabel.w==0:l.sideStatusLabel.w>0,"collapse hides labels without hiding icons");
+    }
+}
+
 void testTargetNames() {
     check(std::string(xydesk::panel::targetName(Target::Start)) == "Start", "nama sasaran dipakai di berkas probe");
     check(std::string(xydesk::panel::targetName(Target::Minimize)) == "Minimize", "tombol perkecil punya nama");
@@ -216,6 +232,7 @@ int main() {
     testDpiScaling();
     testRoundingMath();
     testTargetNames();
+    testCompactAndCollapsed();
 
     if (g_failures == 0) {
         std::printf("Lulus: %d pemeriksaan tata letak panel native.\n", g_checks);
