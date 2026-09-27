@@ -1,0 +1,10 @@
+Device product imagery is not MIT-licensed XyDesk source code.
+Redmi Note 12 product photo: Xiaomi, product identification/reference only.
+Source page: https://www.mi.com/global/product/redmi-note-12/specs/
+Original image: https://i02.appmifile.com/mi-com-product/fly-birds/redmi-note-12/pc/8975e73b16af8f61789af0bc9d2928e7.jpg
+Retrieved 2026-09-27. Cropped/resized for a small model identification thumbnail.
+No affiliation/endorsement is implied. Device colour is illustrative, not detected.
+Model-code reference for 23021RAAEG:
+https://www.gsmchoice.com/en/catalogue/redmi/note124g/
+Only exact model/name matches use this image. Unknown models have no product photo.
+The name/model is self-reported metadata, not proof of hardware identity.

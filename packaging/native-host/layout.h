@@ -40,8 +40,8 @@ constexpr int kGap = 12;
 
 // Lebar sidebar ikon; konten mengisi sisanya.
 constexpr int kSidebarX = 12;
-constexpr int kSidebarWidth = 104;
-constexpr int kSidebarItemHeight = 64;
+constexpr int kSidebarWidth = 184;
+constexpr int kSidebarItemHeight = 44;
 constexpr int kSidebarGap = 6;
 constexpr int kCaptionHeight = 64;
 
@@ -67,6 +67,7 @@ enum class Page {
     Status,
     Pairing,
     Control,
+    Connections, Settings, Account, Help,
 };
 
 // Sasaran klik. Satu daftar untuk tata letak, hit-test mouse, dan urutan Tab
@@ -87,6 +88,7 @@ enum class Target {
     PageStatus,
     PagePairing,
     PageControl,
+    PageConnections, PageSettings, PageAccount, PageHelp,
     CopyId,
     CopyPassword,
     Start,
@@ -99,6 +101,10 @@ enum class Target {
 
 inline const char* targetName(Target target) {
     switch (target) {
+    case Target::PageConnections: return "PageConnections";
+    case Target::PageSettings: return "PageSettings";
+    case Target::PageAccount: return "PageAccount";
+    case Target::PageHelp: return "PageHelp";
     case Target::ToggleSidebar: return "ToggleSidebar";
     case Target::Settings: return "Settings";
     case Target::Profile: return "Profile";
@@ -153,6 +159,10 @@ struct PanelLayout {
     Rect closeButton{};
 
     // Sidebar: tiga tombol halaman, masing-masing dengan area ikon + label.
+    Rect sideConnections, sideConnectionsIcon, sideConnectionsLabel;
+    Rect sideSettings, sideSettingsIcon, sideSettingsLabel;
+    Rect sideAccount, sideAccountIcon, sideAccountLabel;
+    Rect sideHelp, sideHelpIcon, sideHelpLabel;
     Rect sideStatus{};
     Rect sideStatusIcon{};
     Rect sideStatusLabel{};
@@ -230,10 +240,10 @@ inline int scalePctFromDpi(int dpi) {
 // darinya sehingga tata letak menyesuaikan. Batas tarik ada di main.cpp
 // (WM_GETMINMAXINFO) — di sini angka berapa pun tetap menghasilkan geometri
 // yang sah.
-constexpr int kPanelMinWidth = 720;
-constexpr int kPanelMinHeight = 480;
-constexpr int kPanelMaxWidth = 1600;
-constexpr int kPanelMaxHeight = 1100;
+constexpr int kPanelMinWidth = 900;
+constexpr int kPanelMinHeight = 640;
+constexpr int kPanelMaxWidth = 4096;
+constexpr int kPanelMaxHeight = 2160;
 
 inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heightUnits = kPanelHeight, bool collapsed = false) {
     const int s = scalePctFromDpi(dpi);
@@ -279,13 +289,18 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     int itemY = l.titleBar.bottom() + px(8);
     const auto sidebarItem = [&](Rect& item, Rect& icon, Rect& label) {
         item = Rect{sideX, itemY, sideW, itemH};
-        icon = Rect{item.x + (sideW - px(24)) / 2, item.y + px(collapsed ? 20 : 10), px(24), px(24)};
-        label = Rect{item.x + px(4), icon.bottom() + px(5), collapsed ? 0 : sideW - px(8), px(12)};
+        icon = Rect{item.x + px(collapsed ? 14 : 12), item.y + px(10), px(24), px(24)};
+        label = Rect{icon.right() + px(12), item.y, collapsed ? 0 : sideW - px(60), itemH};
         itemY = item.bottom() + itemGap;
     };
     sidebarItem(l.sideStatus, l.sideStatusIcon, l.sideStatusLabel);
+    sidebarItem(l.sideConnections, l.sideConnectionsIcon, l.sideConnectionsLabel);
     sidebarItem(l.sidePairing, l.sidePairingIcon, l.sidePairingLabel);
     sidebarItem(l.sideControl, l.sideControlIcon, l.sideControlLabel);
+
+    sidebarItem(l.sideSettings, l.sideSettingsIcon, l.sideSettingsLabel);
+    sidebarItem(l.sideAccount, l.sideAccountIcon, l.sideAccountLabel);
+    sidebarItem(l.sideHelp, l.sideHelpIcon, l.sideHelpLabel);
 
     // ── Area konten di kanan sidebar ──
     const int contentX = sideX + sideW + px(8);
@@ -306,7 +321,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     // lebih tinggi); minimum tetap 88 supaya tiga baris selalu muat.
     const int hintTop = panelH - pad - px(38);
     const int captureAvail = hintTop - gap - (l.statusCard.bottom() + gap);
-    const int captureH = maxValue(px(88), captureAvail);
+    const int captureH = minValue(px(176), maxValue(px(88), captureAvail));
     l.captureCard = Rect{contentX, l.statusCard.bottom() + gap, contentW, captureH};
     l.captureTitle = Rect{l.captureCard.x + px(20), l.captureCard.y + px(12), contentW - px(40), px(16)};
     l.captureLine1 = Rect{l.captureCard.x + px(20), l.captureTitle.bottom() + px(6), contentW - px(40), px(18)};
@@ -316,7 +331,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // Halaman Pairing: dua kartu identitas.
     const int cardH = px(72);
-    const int identityW = minValue(contentW, px(560));
+    const int identityW = minValue(contentW, px(500));
     const int copyW = px(76);
     const int copyH = px(34);
     l.idCard = Rect{contentX, topY, identityW, cardH};
@@ -390,6 +405,10 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (l.minimizeButton.contains(x, y)) return Target::Minimize;
     if (l.maximizeButton.contains(x, y)) return Target::Maximize;
     if (l.closeButton.contains(x, y)) return Target::Close;
+    if (l.sideConnections.contains(x,y)) return Target::PageConnections;
+    if (l.sideSettings.contains(x,y)) return Target::PageSettings;
+    if (l.sideAccount.contains(x,y)) return Target::PageAccount;
+    if (l.sideHelp.contains(x,y)) return Target::PageHelp;
     if (l.sideStatus.contains(x, y)) return Target::PageStatus;
     if (l.sidePairing.contains(x, y)) return Target::PagePairing;
     if (l.sideControl.contains(x, y)) return Target::PageControl;

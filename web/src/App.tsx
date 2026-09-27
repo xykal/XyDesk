@@ -1,3 +1,4 @@
+import {controllerDisplayLabel} from "./device_label";
 import {confirmAction,showNotice} from './app_dialog';
 import {PUBLIC_ORIGIN, REMOTE_ORIGIN, routeHref} from './site_routes';
 import {readDestination, rememberDestination, forgetDestination, sessionPath} from './session_restore';
@@ -2368,7 +2369,7 @@ function ConnectScreen({
       const session = new RtcSession();
       // Label perangkat untuk pesan `pair`: nama akun bila login, kalau
       // tidak kosongkan supaya rtc.ts memakai tebakan browser + OS.
-      session.selfName = accountName;
+      session.selfName = controllerDisplayLabel(accountName);
       sessionRef.current = session;
       signal.addEventListener('abort', () => session.stop(), {once: true});
       const accessScope=browserAccessScope();

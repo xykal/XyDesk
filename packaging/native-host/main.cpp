@@ -33,6 +33,7 @@
 #define NOMINMAX
 #endif
 
+#pragma comment(linker, "\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <winsock2.h>
 #include <windows.h>
 #include <cmath>
@@ -43,6 +44,7 @@
 #include "engine_json.h"
 #include "control_client.h"
 #include "account_auth.h"
+#include "session_view.h"
 #include "vendor/qrcodegen/qrcodegen.hpp"
 // Build workflows compile one panel translation unit; retain upstream implementation.
 #include "vendor/qrcodegen/qrcodegen.cpp"
@@ -168,7 +170,7 @@ struct AppState {
     float pillY = -1.0f;
     bool animOn = false;
     bool trackingMouse = false;
-    bool layered = true;
+    bool layered = false;
     // Kesehatan capture dari engine (heartbeat publik per PID): buat kartu Status
     // jujur soal layar hitam / sesi berbeda.
     std::wstring captureBackend;
@@ -677,6 +679,22 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
     return ButtonPalette{kSurface2, kText, radius, false};
 }
 
+bool workspaceProbe=false;
+xydesk::session_view::Snapshot sessionView;
+std::future<xydesk::session_view::Snapshot> sessionViewPending;
+unsigned sessionViewPid=0;
+ULONGLONG sessionViewNext=0;
+void pollSessionView(){
+    if(sessionViewPending.valid()&&sessionViewPending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
+        try{auto value=sessionViewPending.get();if(g.process&&GetProcessId(g.process)==sessionViewPid)sessionView=std::move(value);else sessionView={};}catch(...){sessionView={};}
+        renderPanel();
+    }
+    if(!g.process){sessionView={};return;}
+    if((g.page!=Page::Status&&g.page!=Page::Connections)||!IsWindowVisible(g.window)||sessionViewPending.valid()||GetTickCount64()<sessionViewNext||!controlChannel.endpoint)return;
+    const auto endpoint=*controlChannel.endpoint;sessionViewPid=endpoint.pid;sessionViewNext=GetTickCount64()+3000;
+    try{sessionViewPending=std::async(std::launch::async,[endpoint]{return xydesk::session_view::read(endpoint);});}catch(...){sessionView={};}
+}
+
 bool targetEnabled(Target target) {
     switch (target) {
     case Target::CopyLink:
@@ -863,17 +881,20 @@ void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
 // Ikon digambar dari garis/busur sederhana (stroke 2px) supaya panel tidak
 // "semua teks": bentuknya yang bicara, label kecil hanya penegas.
 void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
-    if(page==Page::Control){drawTextCentered(dc,L"\uE713",icon,g.fontIcons,color);return;}
-    const int s=g.layout.scalePct;const auto px=[s](int n){return xydesk::panel::scaled(n,s);};
-    const int x=icon.x,y=icon.y;
-    HPEN pen=CreatePen(PS_SOLID,std::max(1,px(2)),color);auto oldPen=SelectObject(dc,pen);auto oldBrush=SelectObject(dc,GetStockObject(NULL_BRUSH));
-    if(page==Page::Status){RoundRect(dc,x+px(1),y+px(2),x+px(23),y+px(17),px(3),px(3));MoveToEx(dc,x+px(12),y+px(17),nullptr);LineTo(dc,x+px(12),y+px(22));MoveToEx(dc,x+px(6),y+px(22),nullptr);LineTo(dc,x+px(18),y+px(22));}
-    else{Ellipse(dc,x+px(1),y+px(3),x+px(13),y+px(15));MoveToEx(dc,x+px(11),y+px(12),nullptr);LineTo(dc,x+px(22),y+px(22));MoveToEx(dc,x+px(16),y+px(17),nullptr);LineTo(dc,x+px(19),y+px(14));MoveToEx(dc,x+px(20),y+px(21),nullptr);LineTo(dc,x+px(23),y+px(18));}
-    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
+    // One icon family, one box and one weight for every navigation item.
+    const wchar_t* glyph=L"\uE80F";
+    switch(page){case Page::Status:glyph=L"\uE80F";break;case Page::Connections:glyph=L"\uE968";break;
+    case Page::Pairing:glyph=L"\uE72E";break;case Page::Control:glyph=L"\uE7F4";break;
+    case Page::Settings:glyph=L"\uE713";break;case Page::Account:glyph=L"\uE77B";break;case Page::Help:glyph=L"\uE897";break;}
+    drawTextCentered(dc,glyph,icon,g.fontIcons,color);
 }
 
 float sidebarItemY(const PanelLayout& layout, Page page) {
     switch (page) {
+    case Page::Connections: return static_cast<float>(layout.sideConnections.y);
+    case Page::Settings: return static_cast<float>(layout.sideSettings.y);
+    case Page::Account: return static_cast<float>(layout.sideAccount.y);
+    case Page::Help: return static_cast<float>(layout.sideHelp.y);
     case Page::Pairing: return static_cast<float>(layout.sidePairing.y);
     case Page::Control: return static_cast<float>(layout.sideControl.y);
     case Page::Status:
@@ -889,11 +910,12 @@ void startAnim(HWND hwnd) {
 }
 
 // Ganti halaman dengan transisi luncur; pill sidebar ikut meluncur.
+void syncEmbeddedPage();
 void goPage(HWND hwnd, Page target) {
     if (target == g.page) return;
     g.pageFrom = target;g.page=target;g.pageT=1.0f;
     g.pillY=sidebarItemY(g.layout,target);
-    KillTimer(hwnd,kAnimTimer);g.animOn=false;renderPanel();
+    KillTimer(hwnd,kAnimTimer);g.animOn=false;syncEmbeddedPage();renderPanel();
 }
 
 void tickAnimation(HWND hwnd) {
@@ -940,9 +962,13 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
         const Rect& label;
         const wchar_t* text;
     } items[] = {
-        {Page::Status, Target::PageStatus, layout.sideStatus, layout.sideStatusIcon, layout.sideStatusLabel, L"Ringkasan"},
+        {Page::Status, Target::PageStatus, layout.sideStatus, layout.sideStatusIcon, layout.sideStatusLabel, L"Beranda"},
         {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Akses host"},
         {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol host"},
+        {Page::Connections, Target::PageConnections, layout.sideConnections, layout.sideConnectionsIcon, layout.sideConnectionsLabel, L"Koneksi"},
+        {Page::Settings, Target::PageSettings, layout.sideSettings, layout.sideSettingsIcon, layout.sideSettingsLabel, L"Pengaturan"},
+        {Page::Account, Target::PageAccount, layout.sideAccount, layout.sideAccountIcon, layout.sideAccountLabel, L"Akun"},
+        {Page::Help, Target::PageHelp, layout.sideHelp, layout.sideHelpIcon, layout.sideHelpLabel, L"Bantuan"},
     };
 
     // Pill aktif meluncur (morphing) antar item; tingginya sama dengan item.
@@ -963,7 +989,7 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
             strokeRounded(surface, entry.item, layout.radiusControl, kAccent, xydesk::panel::scaled(2, layout.scalePct));
         }
         paintSidebarIcon(dc, entry.page, entry.icon, active ? kText : (hot ? kText : kMuted));
-        drawTextCentered(dc, entry.text, entry.label, g.fontCaps, active ? kAccent : kMuted);
+        drawTextLine(dc, entry.text, entry.label, g.fontBody, active ? kText : kMuted, DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
 }
 
@@ -988,6 +1014,89 @@ void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     }
 }
 
+void workspaceText(HDC dc,const std::wstring& text,Rect rect,HFONT font,COLORREF color=kText){
+    drawTextLine(dc,text,rect,font,color,DT_LEFT|DT_WORDBREAK|DT_NOPREFIX);
+}
+void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card,bool detailed){
+    const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
+    fillRoundedOpaque(surface,card,layout.radiusCard,kSurface2);
+    const int pad=px(24);int x=card.x+pad,y=card.y+pad;int width=card.w-2*pad;
+    workspaceText(dc,L"KONEKSI AKTIF",{x,y,width,px(20)},g.fontCaps,kMuted);y+=px(34);
+    const bool known=sessionView.known;
+    const std::wstring title=!known?L"Status koneksi belum tersedia":sessionView.active?(sessionView.name.empty()?L"Perangkat tanpa nama":sessionView.name):L"Belum ada perangkat terhubung";
+    int photoWidth=0;
+    if(detailed&&sessionView.active&&xydesk::session_view::redmiNote12(sessionView.name)){
+        static HBITMAP photo=LoadBitmapW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDB_REDMI_NOTE12));
+        if(photo){BITMAP bitmap{};GetObjectW(photo,sizeof(bitmap),&bitmap);const int h=px(220),w=bitmap.bmWidth*h/bitmap.bmHeight;HDC source=CreateCompatibleDC(dc);auto old=SelectObject(source,photo);
+            SetStretchBltMode(dc,HALFTONE);StretchBlt(dc,card.right()-pad-w,y,w,h,source,0,0,bitmap.bmWidth,bitmap.bmHeight,SRCCOPY);SelectObject(source,old);DeleteDC(source);photoWidth=w+pad;}
+    }
+    workspaceText(dc,title,{x,y,width-photoWidth,px(56)},g.fontTitle);y+=px(64);
+    if(sessionView.active&&known){
+        workspaceText(dc,L"Platform: "+(sessionView.platform.empty()?L"Tidak dilaporkan":sessionView.platform),{x,y,width-photoWidth,px(28)},g.fontBody);y+=px(32);
+        workspaceText(dc,L"Durasi sesi: "+std::to_wstring(sessionView.seconds/60)+L" menit "+std::to_wstring(sessionView.seconds%60)+L" detik",{x,y,width-photoWidth,px(28)},g.fontBody);y+=px(32);
+        if(detailed){workspaceText(dc,L"ID klien: "+sessionView.id,{x,y,width-photoWidth,px(44)},g.fontSmall,kMuted);y+=px(48);
+            workspaceText(dc,photoWidth?L"Foto produk Xiaomi. Warna ilustratif; bukan warna HP yang terdeteksi.":L"Foto model belum tersedia. Nama atau jenis browser saja tidak menentukan model HP.",{x,y,width,px(48)},g.fontSmall,kMuted);}
+    }else workspaceText(dc,known?L"Buka Akses host, bagikan link atau scan QR, lalu izinkan koneksi dengan password.":L"Menunggu status dari kanal privat engine. Ini bukan berarti tidak ada koneksi.",{x,y,width,px(60)},g.fontBody,kMuted);
+}
+void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
+    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};
+    const int x=l.idCard.right()+px(16),width=l.statusCard.right()-x;
+    const auto link=xydesk::panel_control::deviceLink(g.deviceId);
+    if(width>=px(140)&&!link.empty()){
+        Rect card{x,l.idCard.y,width,px(288)};fillRoundedOpaque(surface,card,l.radiusCard,kSurface2);
+        workspaceText(dc,L"SCAN UNTUK TERHUBUNG",{x+px(16),card.y+px(18),width-px(32),px(40)},g.fontCaps,kMuted);
+        static std::wstring cachedLink;static std::optional<qrcodegen::QrCode> qr;
+        if(cachedLink!=link){try{const std::string text(link.begin(),link.end());qr=qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM);cachedLink=link;}catch(...){qr.reset();}}
+        if(qr){const int size=qr->getSize()+8,cell=std::max(1,std::min(width-px(32),px(180))/size),side=cell*size;
+            const int left=x+(width-side)/2,top=card.y+px(64);RECT white{left,top,left+side,top+side};FillRect(dc,&white,static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+            for(int y=0;y<qr->getSize();++y)for(int xx=0;xx<qr->getSize();++xx)if(qr->getModule(xx,y)){RECT module{left+(xx+4)*cell,top+(y+4)*cell,left+(xx+5)*cell,top+(y+5)*cell};FillRect(dc,&module,static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));}
+        }
+        workspaceText(dc,L"ID saja. Password tidak ada di QR.",{x+px(16),card.bottom()-px(44),width-px(32),px(40)},g.fontSmall,kMuted);
+    }
+    const int y=l.connectionQr.bottom()+px(24);Rect note{l.statusCard.x,y,l.statusCard.w,l.hint.y-y-px(16)};
+    if(note.h>=px(144)){fillRoundedOpaque(surface,note,l.radiusCard,kSurface2);
+        workspaceText(dc,L"Akses yang tetap di bawah kendali lu",{note.x+px(24),y+px(24),note.w-px(48),px(32)},g.fontSemi);
+        workspaceText(dc,L"1. Bagikan link atau QR perangkat ini.\
+2. Browser memakai izin tersimpan yang valid, atau meminta password pairing.\
+3. Ubah password lewat Pengaturan untuk mencabut izin browser lama.",{note.x+px(24),y+px(66),note.w-px(48),note.h-px(80)},g.fontBody,kMuted);
+    }
+}
+void paintScreenAside(Surface& surface,const PanelLayout& l,HDC dc,Page page){
+    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};const int x=l.statusCard.x+px(656),width=l.statusCard.right()-x;if(width<px(170))return;
+    Rect card{x,l.statusCard.y,width,px(300)};fillRoundedOpaque(surface,card,l.radiusCard,kSurface2);
+    const wchar_t* title=page==Page::Settings?L"Tentang pengaturan":page==Page::Account?L"Privasi akun":L"Catatan penting";
+    const wchar_t* body=page==Page::Settings?L"Password baru mencabut izin browser lama.\
+\
+Tidak perlu mengubah bitrate yang sudah nyaman.\
+\
+Status penerapan tampil di halaman ini.":page==Page::Account?L"Login dibuka di browser sistem.\
+\
+Sesi disimpan oleh Windows Credential Manager.\
+\
+Keluar dari aplikasi tidak menghapus cookie Google di browser.":L"X menyembunyikan aplikasi ke tray.\
+\
+Hentikan mematikan host.\
+\
+Status koneksi dan perangkat ada di halaman Koneksi.";
+    workspaceText(dc,title,{x+px(20),card.y+px(24),width-px(40),px(48)},g.fontSemi);
+    workspaceText(dc,body,{x+px(20),card.y+px(80),width-px(40),px(204)},g.fontBody,kMuted);
+}
+
+void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
+    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};
+    const int y=l.captureCard.bottom()+px(16),height=l.hint.y-y-px(14);if(height<px(136))return;
+    const int half=(l.statusCard.w-px(16))/2;
+    Rect left{l.statusCard.x,y,half,height},right{left.right()+px(16),y,l.statusCard.w-half-px(16),height};
+    fillRoundedOpaque(surface,left,l.radiusCard,kSurface2);fillRoundedOpaque(surface,right,l.radiusCard,kSurface2);
+    workspaceText(dc,L"AKSES KE PC INI",{left.x+px(24),y+px(22),half-px(48),px(20)},g.fontCaps,kMuted);
+    workspaceText(dc,g.deviceId.empty()?L"ID belum tersedia":g.deviceId,{left.x+px(24),y+px(56),half-px(48),px(38)},g.fontValue);
+    workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(106),half-px(48),height-px(120)},g.fontBody,kMuted);
+    workspaceText(dc,L"KONEKSI",{right.x+px(24),y+px(22),right.w-px(48),px(20)},g.fontCaps,kMuted);
+    const std::wstring label=!sessionView.known?L"Menunggu status":sessionView.active?L"1 perangkat terhubung":L"Tidak ada sesi aktif";
+    workspaceText(dc,label,{right.x+px(24),y+px(56),right.w-px(48),px(50)},g.fontSemi);
+    workspaceText(dc,sessionView.active?(sessionView.name.empty()?L"Nama perangkat tidak dilaporkan":sessionView.name):L"Detail nama, platform dan durasi ada di halaman Koneksi.",{right.x+px(24),y+px(110),right.w-px(48),height-px(124)},g.fontBody,kMuted);
+}
+
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
 // jalur yang sama dipakai `--panel-snapshot` untuk memeriksa hasil gambar
 // tanpa membuka jendela (dipakai CI).
@@ -996,6 +1105,7 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
     case Page::Status:
         paintStatusCard(surface, layout, dc);
         paintCaptureCard(surface, layout, dc);
+        paintWorkspaceSummary(surface,layout,dc);
         break;
     case Page::Pairing:
         paintIdentityCard(surface, layout, dc, layout.idCard, layout.idLabel, layout.idValue, layout.idCopy,
@@ -1005,13 +1115,23 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
         drawTextLine(dc,xydesk::panel_control::deviceLink(g.deviceId),layout.deviceLink,g.fontSmall,kText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         paintButton(surface,layout,dc,Target::CopyLink,layout.copyLink);
         paintButton(surface,layout,dc,Target::ConnectionQr,layout.connectionQr);
+        paintAccessGuide(surface,layout,dc);
         break;
+    case Page::Connections: {
+        const int px=xydesk::panel::scaled(1,layout.scalePct);
+        Rect card{layout.statusCard.x,layout.statusCard.y,layout.statusCard.w,std::min(layout.hint.y-layout.statusCard.y-20*px,360*px)};
+        paintConnection(surface,layout,dc,card,true);
+        workspaceText(dc,L"Nama dan model dilaporkan oleh klien, bukan verifikasi identitas hardware. Hanya sesi aktif yang dilaporkan engine ditampilkan.",{card.x,card.bottom()+20*px,card.w,64*px},g.fontBody,kMuted);
+        break;
+    }
+    case Page::Settings:case Page::Account:case Page::Help:paintScreenAside(surface,layout,dc,page);break;
     case Page::Control:
         paintButton(surface, layout, dc, Target::Start, layout.start);
         paintButton(surface, layout, dc, Target::Stop, layout.stop);
         paintButton(surface, layout, dc, Target::Restart, layout.restart);
         paintButton(surface, layout, dc, Target::Web, layout.web);
         paintButton(surface, layout, dc, Target::OpenLog, layout.openLog);
+        workspaceText(dc,L"Kontrol proses host\n\nHentikan memutus layanan host. Restart menyalakan ulang proses host. Tombol X hanya menyembunyikan aplikasi ke tray.\n\nPengaturan password dan video ada di halaman Pengaturan. Akun aplikasi terpisah dari identitas host Windows.", {layout.openLog.x-layout.web.w-12,layout.openLog.bottom()+32,layout.statusCard.w,240},g.fontBody,kMuted);
         break;
     }
 }
@@ -1088,6 +1208,11 @@ void renderPanel() {
     if (!g.window) return;
     if (!drawPanelToSurface()) return;
     Surface& surface = g.surface;
+    if(!g.layered){
+        static int regionW=0,regionH=0;
+        if(regionW!=surface.width||regionH!=surface.height){regionW=surface.width;regionH=surface.height;SetWindowRgn(g.window,CreateRoundRectRgn(0,0,regionW+1,regionH+1,g.layout.radiusPanel*2,g.layout.radiusPanel*2),TRUE);}
+        syncEmbeddedPage();InvalidateRect(g.window,nullptr,FALSE);return;
+    }
 
     // Panel di koordinat layar: jendela sudah diposisikan sekali di awal, jadi
     // cukup menempelkan permukaan pada posisi jendela itu.
@@ -1215,21 +1340,16 @@ int workAreaZoom() {
 // Perbesar = zoom penuh area kerja; klik lagi = kembali ke ukuran dan
 // posisi semula. Posisi normal disimpan sebelum zoom pertama.
 void toggleMaximize(HWND hwnd) {
-    if (!g.maximized) {
-        if (GetWindowRect(hwnd, &g.normalRect)) g.haveNormalRect = true;
-        g.zoomPct = workAreaZoom();
-        g.maximized = true;
-        applyDpi(hwnd, windowDpi(hwnd), true); // sekalian menengahkan
-        return;
-    }
-    g.maximized = false;
-    g.zoomPct = 100;
-    applyDpi(hwnd, windowDpi(hwnd), false);
-    if (g.haveNormalRect) {
-        SetWindowPos(hwnd, nullptr, g.normalRect.left, g.normalRect.top,
-            g.layout.window.w, g.layout.window.h, SWP_NOZORDER | SWP_NOACTIVATE);
-    } else {
-        centerWindow(hwnd);
+    if(!g.maximized){
+        g.haveNormalRect=GetWindowRect(hwnd,&g.normalRect)!=FALSE;
+        MONITORINFO monitor{sizeof(MONITORINFO)};
+        if(!GetMonitorInfoW(MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST),&monitor))return;
+        g.maximized=true;g.zoomPct=100;
+        const auto& r=monitor.rcWork;
+        SetWindowPos(hwnd,nullptr,r.left,r.top,r.right-r.left,r.bottom-r.top,SWP_NOZORDER|SWP_NOACTIVATE);
+    }else{
+        g.maximized=false;
+        if(g.haveNormalRect)SetWindowPos(hwnd,nullptr,g.normalRect.left,g.normalRect.top,g.normalRect.right-g.normalRect.left,g.normalRect.bottom-g.normalRect.top,SWP_NOZORDER|SWP_NOACTIVATE);
     }
     renderPanel();
 }
@@ -1434,6 +1554,9 @@ struct SettingsState {
 };
 
 INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
+    if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
+
     auto state=reinterpret_cast<SettingsState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
     constexpr int rates[]={0,1,2,4,8,15,25,50};
     if(message==WM_INITDIALOG){
@@ -1469,6 +1592,7 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
         return TRUE;
     }
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
+        if(GetWindowLongPtrW(hwnd,GWL_STYLE)&WS_CHILD){goPage(g.window,Page::Status);return TRUE;}
         if(state->pending.valid()){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Tunggu hasil permintaan sebelum menutup.");return TRUE;}
         KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;
     }
@@ -1505,6 +1629,9 @@ struct AccountDialogState {
     bool closing=false;
 };
 INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
+    if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
+
     auto state=reinterpret_cast<AccountDialogState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
     if(message==WM_INITDIALOG){
         state=reinterpret_cast<AccountDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);
@@ -1512,7 +1639,7 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
         wchar_t user[256]{};DWORD size=256;GetUserNameW(user,&size);
         const auto local=L"Windows: "+std::wstring(user)+L"\nDevice ID: "+g.deviceId;
         SetDlgItemTextW(hwnd,IDC_ACCOUNT_LOCAL,local.c_str());
-        try{state->pending=std::async(std::launch::async,xydesk::account::restore);}catch(...){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Pemeriksa sesi tidak tersedia.");}
+        try{if(!workspaceProbe)state->pending=std::async(std::launch::async,xydesk::account::restore);else{SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,L"Belum masuk akun");SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Pratinjau UI offline. Tidak ada sesi akun yang dibaca.");}}catch(...){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Pemeriksa sesi tidak tersedia.");}
         SetTimer(hwnd,1,100,nullptr);return TRUE;
     }
     if(!state)return FALSE;
@@ -1529,6 +1656,7 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
         return TRUE;
     }
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
+        if(GetWindowLongPtrW(hwnd,GWL_STYLE)&WS_CHILD){state->cancelled=true;goPage(g.window,Page::Status);return TRUE;}
         if(state->pending.valid()){state->cancelled=true;state->closing=true;SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Membatalkan login dengan aman...");return TRUE;}
         KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;
     }
@@ -1547,7 +1675,10 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
     return FALSE;
 }
 INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM){
-    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){EndDialog(hwnd,0);return TRUE;}return FALSE;
+    if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
+    if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
+
+    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){if(GetWindowLongPtrW(hwnd,GWL_STYLE)&WS_CHILD)goPage(g.window,Page::Status);else EndDialog(hwnd,0);return TRUE;}return FALSE;
 }
 struct QrDialogState {qrcodegen::QrCode code;std::wstring link;};
 INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
@@ -1563,6 +1694,35 @@ INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
     }
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){EndDialog(hwnd,0);return TRUE;}return FALSE;
 }
+SettingsState embeddedSettings;
+AccountDialogState embeddedAccount;
+std::map<Page,HWND> embeddedPages;
+void syncEmbeddedPage(){
+    if(!g.window)return;
+    for(const auto& entry:embeddedPages)if(entry.first!=g.page)ShowWindow(entry.second,SW_HIDE);
+    int resource=0;DLGPROC proc=nullptr;LPARAM state=0;
+    switch(g.page){
+    case Page::Settings:resource=IDD_HOST_SETTINGS;proc=settingsDialog;state=reinterpret_cast<LPARAM>(&embeddedSettings);break;
+    case Page::Account:resource=IDD_ACCOUNT;proc=accountDialog;state=reinterpret_cast<LPARAM>(&embeddedAccount);break;
+    case Page::Help:resource=IDD_GUIDE;proc=guideDialog;break;
+    default:return;
+    }
+    auto& page=embeddedPages[g.page];
+    if(!page){
+        page=CreateDialogParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(resource),g.window,proc,state);if(!page)return;
+        ShowWindow(page,SW_HIDE);SetParent(page,g.window);
+        SetWindowLongPtrW(page,GWL_STYLE,WS_CHILD|WS_CLIPSIBLINGS|DS_CONTROL|DS_SETFONT);
+        SetWindowLongPtrW(page,GWL_EXSTYLE,WS_EX_CONTROLPARENT);
+        ShowWindow(GetDlgItem(page,IDCANCEL),SW_HIDE);
+    }
+    RECT size{};GetWindowRect(page,&size);
+    SetWindowPos(page,nullptr,g.layout.statusCard.x,g.layout.statusCard.y,
+        std::min(g.layout.statusCard.w,xydesk::panel::scaled(640,g.layout.scalePct)),g.layout.hint.y-g.layout.statusCard.y,SWP_NOZORDER|SWP_FRAMECHANGED|SWP_SHOWWINDOW);
+}
+bool routeEmbeddedMessage(MSG& message){
+    auto it=embeddedPages.find(g.page);return it!=embeddedPages.end()&&IsWindowVisible(it->second)&&IsDialogMessageW(it->second,&message);
+}
+
 void showProfile(HWND hwnd){
     AccountDialogState state;DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_ACCOUNT),hwnd,accountDialog,reinterpret_cast<LPARAM>(&state));
 }
@@ -1574,12 +1734,11 @@ void activateTarget(HWND hwnd, Target target) {
         g.layout=xydesk::panel::computeLayout(g.layout.scalePct*96/100,g.unitsW,g.unitsH,g.sidebarCollapsed);
         g.pillY=sidebarItemY(g.layout,g.page);renderPanel();break;
     case Target::Settings: {
-        SettingsState state;
-        DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_HOST_SETTINGS),hwnd,settingsDialog,reinterpret_cast<LPARAM>(&state));break;
+        goPage(hwnd,Page::Settings);break;
     }
-    case Target::Profile: showProfile(hwnd);break;
+    case Target::Profile: goPage(hwnd,Page::Account);break;
     case Target::Help:
-        DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_GUIDE),hwnd,guideDialog,0);break;
+        goPage(hwnd,Page::Help);break;
     case Target::ConnectionQr: {
         const auto link=xydesk::panel_control::deviceLink(g.deviceId);if(link.empty())break;
         try{const std::string text(link.begin(),link.end());QrDialogState state{qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM),link};DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_CONNECTION_QR),hwnd,qrDialog,reinterpret_cast<LPARAM>(&state));}
@@ -1626,6 +1785,10 @@ void activateTarget(HWND hwnd, Target target) {
             setStatus(g.lastError.empty() ? L"Gagal memulai host di sesi ini." : g.lastError, kBad);
         }
         break;
+    case Target::PageConnections:goPage(hwnd,Page::Connections);break;
+    case Target::PageSettings:goPage(hwnd,Page::Settings);break;
+    case Target::PageAccount:goPage(hwnd,Page::Account);break;
+    case Target::PageHelp:goPage(hwnd,Page::Help);break;
     case Target::PageStatus:
         goPage(hwnd, Page::Status);
         break;
@@ -1673,6 +1836,7 @@ std::vector<Target> focusOrder() {
         break;
     }
     order.push_back(Target::Minimize);
+    for(auto target:{Target::PageConnections,Target::PageSettings,Target::PageAccount,Target::PageHelp})order.push_back(target);
     order.push_back(Target::Maximize);
     order.push_back(Target::Close);
     return order;
@@ -1723,7 +1887,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     // Tepi jendela = gagang ubah ukuran (kecuali sedang dizoom penuh).
     // Windows otomatis memberi kursor panah dua dari kode HT* ini.
     if (!g.maximized) {
-        const int grip = xydesk::panel::scaled(6, g.layout.scalePct);
+        const int grip = xydesk::panel::scaled(8, g.layout.scalePct);
         const bool left = client.x < grip;
         const bool right = client.x >= g.layout.window.w - grip;
         const bool top = client.y < grip;
@@ -1749,6 +1913,10 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::Minimize:
     case Target::Maximize:
     case Target::Close:
+    case Target::PageConnections:
+    case Target::PageSettings:
+    case Target::PageAccount:
+    case Target::PageHelp:
     case Target::PageStatus:
     case Target::PagePairing:
     case Target::PageControl:
@@ -1764,7 +1932,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
         return HTCAPTION; // geser jendela dari area judul
     default:
         // Di luar permukaan (hanya ada bayangan): biarkan klik lewat.
-        return HTTRANSPARENT;
+        return g.layout.panel.contains(client.x,client.y)?HTCLIENT:HTTRANSPARENT;
     }
 }
 
@@ -1783,12 +1951,12 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.layout = xydesk::panel::computeLayout(static_cast<int>(windowDpi(hwnd)));
         createFonts();
         g.logPath = hostLogPath();
-        addTrayIcon(hwnd);
+        if(!workspaceProbe)addTrayIcon(hwnd);
         setStatus(L"Menyalakan host…", kMuted);
-        SetTimer(hwnd, kTimer, 1000, nullptr);
+        if(!workspaceProbe)SetTimer(hwnd, kTimer, 1000, nullptr);
         // Panel adalah satu pintu: dibuka berarti host hidup tanpa tombol
         // kedua. Post agar jendela selesai dibuat dulu.
-        PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        if(!workspaceProbe)PostMessageW(hwnd, kAutoStartMessage, 0, 0);
         return 0;
 
     case kAutoStartMessage:
@@ -1811,6 +1979,9 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         info->ptMaxTrackSize.y = xydesk::panel::scaled(xydesk::panel::kPanelMaxHeight, s);
         return 0;
     }
+
+    case WM_NCCALCSIZE:
+        return 0; // Keep the resize style, but draw our own attached chrome.
 
     case WM_NCHITTEST:
         return handleHitTest(hwnd, lParam);
@@ -1951,6 +2122,10 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         }
         return 0;
 
+    case WM_PRINTCLIENT:
+        if(g.surface.valid())BitBlt(reinterpret_cast<HDC>(wParam),0,0,g.surface.width,g.surface.height,g.surface.dc,0,0,SRCCOPY);
+        return 0;
+
     case WM_PAINT: {
         PAINTSTRUCT ps{};
         HDC dc = BeginPaint(hwnd, &ps);
@@ -1982,6 +2157,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                     setStatus(L"Identitas gagal dibaca atau timeout. Coba Mulai host lagi.", kBad);
                 } else if (start) { startHost(); }
             }
+            pollSessionView();
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
                 g.flashText.clear();
@@ -2126,6 +2302,49 @@ int runDialogSnapshots(const std::wstring& directory){
     }return 0;
 }
 
+bool saveWindowEvidence(HWND hwnd,const std::wstring& path){
+    RECT bounds{};GetWindowRect(hwnd,&bounds);const int width=bounds.right-bounds.left,height=bounds.bottom-bounds.top;
+    HDC dc=CreateCompatibleDC(nullptr);BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;info.bmiHeader.biSizeImage=width*height*4;
+    void* pixels=nullptr;HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&pixels,nullptr,0);if(!bitmap){DeleteDC(dc);return false;}auto old=SelectObject(dc,bitmap);
+    const BOOL rendered=PrintWindow(hwnd,dc,0);GdiFlush();
+    BITMAPFILEHEADER header{};header.bfType=0x4D42;header.bfOffBits=sizeof(header)+sizeof(BITMAPINFOHEADER);header.bfSize=header.bfOffBits+info.bmiHeader.biSizeImage;
+    HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);bool ok=false;
+    if(file!=INVALID_HANDLE_VALUE){DWORD n=0;ok=WriteFile(file,&header,sizeof(header),&n,nullptr)&&WriteFile(file,&info.bmiHeader,sizeof(BITMAPINFOHEADER),&n,nullptr)&&WriteFile(file,pixels,info.bmiHeader.biSizeImage,&n,nullptr)&&n==info.bmiHeader.biSizeImage;CloseHandle(file);}
+    SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);return ok&&rendered;
+}
+int runWorkspaceEvidence(HWND hwnd,const std::wstring& directory){
+    g.deviceId=L"123456789";g.pairingCode=L"TESTONLY";g.statusText=L"Pratinjau offline · engine tidak dijalankan";
+    g.captureBackend=L"Fixture UI, bukan sesi capture";
+    sessionView.known=true;
+    const auto style=GetWindowLongPtrW(hwnd,GWL_STYLE),extended=GetWindowLongPtrW(hwnd,GWL_EXSTYLE);
+    if(!(style&WS_THICKFRAME)||(extended&WS_EX_LAYERED))return 30;
+    SetWindowPos(hwnd,nullptr,20,20,1100,720,SWP_NOZORDER);
+    RECT bounds{};GetWindowRect(hwnd,&bounds);
+    struct Grip{int x,y;LRESULT code;};
+    const int w=bounds.right-bounds.left,h=bounds.bottom-bounds.top;
+    for(const auto& grip:std::initializer_list<Grip>{{2,2,HTTOPLEFT},{w-2,2,HTTOPRIGHT},{2,h-2,HTBOTTOMLEFT},{w-2,h-2,HTBOTTOMRIGHT},{2,h/2,HTLEFT},{w-2,h/2,HTRIGHT},{w/2,2,HTTOP},{w/2,h-2,HTBOTTOM}}){
+        const auto hit=SendMessageW(hwnd,WM_NCHITTEST,0,MAKELPARAM(bounds.left+grip.x,bounds.top+grip.y));if(hit!=grip.code)return 31;
+    }
+    SetWindowPos(hwnd,nullptr,0,0,1000,680,SWP_NOMOVE|SWP_NOZORDER);
+    if(g.layout.window.w!=1000||g.layout.window.h!=680)return 32;
+    toggleMaximize(hwnd);GetWindowRect(hwnd,&bounds);MONITORINFO monitor{sizeof(MONITORINFO)};GetMonitorInfoW(MonitorFromWindow(hwnd,MONITOR_DEFAULTTONEAREST),&monitor);
+    if(!EqualRect(&bounds,&monitor.rcWork))return 33;
+    toggleMaximize(hwnd);GetWindowRect(hwnd,&bounds);if(bounds.right-bounds.left!=1000||bounds.bottom-bounds.top!=680)return 34;
+    SetWindowPos(hwnd,nullptr,0,0,1100,720,SWP_NOMOVE|SWP_NOZORDER);
+    const struct{Page page;const wchar_t* name;} pages[]={{Page::Status,L"home"},{Page::Connections,L"connections-empty"},{Page::Pairing,L"access"},{Page::Control,L"host-control"},{Page::Settings,L"settings-screen"},{Page::Account,L"account-screen"},{Page::Help,L"help-screen"}};
+    for(const auto& entry:pages){
+        goPage(hwnd,entry.page);renderPanel();UpdateWindow(hwnd);
+        for(const auto& child:embeddedPages)if(IsWindowVisible(child.second)){
+            if(GetParent(child.second)!=hwnd||(GetWindowLongPtrW(child.second,GWL_STYLE)&WS_POPUP))return 35;
+            RECT rect{};GetWindowRect(child.second,&rect);RECT parent{};GetWindowRect(hwnd,&parent);if(rect.right>parent.right||rect.bottom>parent.bottom)return 36;
+        }
+        if(!saveWindowEvidence(hwnd,directory+L"\\"+entry.name+L".bmp"))return 37;
+    }
+    sessionView={true,true,L"Redmi Note 12",L"android",L"fixture-client",125};goPage(hwnd,Page::Connections);renderPanel();UpdateWindow(hwnd);
+    if(!saveWindowEvidence(hwnd,directory+L"\\connections-fixture.bmp"))return 38;
+    DestroyWindow(hwnd);return 0;
+}
+
 // `--panel-snapshot <berkas.bmp>`: menggambar panel ke berkas (32-bit, alpha
 // tidak dipremultiply) tanpa membuka jendela. Dipakai CI Windows untuk
 // memeriksa bentuk panel dari piksel: sudut harus transparan, tepi harus
@@ -2238,6 +2457,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         return runPanelSnapshot(commandLineArgument(L"--panel-snapshot"));
     }
 
+    workspaceProbe=hasArgument(L"--workspace-snapshots");
     SetProcessDPIAware();
     g_taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
 
@@ -2263,8 +2483,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     const int x = workArea.left + ((workArea.right - workArea.left) - g.layout.window.w) / 2;
     const int y = workArea.top + ((workArea.bottom - workArea.top) - g.layout.window.h) / 2;
 
-    HWND window = CreateWindowExW(WS_EX_LAYERED | WS_EX_APPWINDOW, kClassName, kWindowTitle,
-        WS_POPUP | WS_SYSMENU, x, y, g.layout.window.w, g.layout.window.h,
+    HWND window = CreateWindowExW(WS_EX_APPWINDOW, kClassName, kWindowTitle,
+        WS_POPUP | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN, x, y, g.layout.window.w, g.layout.window.h,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
 
@@ -2273,8 +2493,10 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
     UpdateWindow(window);
     SetForegroundWindow(window);
 
+    if(workspaceProbe)return runWorkspaceEvidence(window,commandLineArgument(L"--workspace-snapshots"));
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
+        if(routeEmbeddedMessage(message))continue;
         TranslateMessage(&message);
         DispatchMessageW(&message);
     }

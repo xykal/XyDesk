@@ -143,6 +143,10 @@ jobs:
           $dialogs = Start-Process -FilePath $exe -ArgumentList @('--dialog-snapshots', "`"$dialogDir`"") -PassThru
           if (-not $dialogs.WaitForExit(15000)) { $dialogs.Kill(); throw 'Dialog screenshot timeout' }
           if ($dialogs.ExitCode -ne 0) { throw 'Dialog screenshot failed' }
+          $workspace = Start-Process -FilePath $exe -ArgumentList @('--workspace-snapshots', "`"$dialogDir`"") -PassThru
+          if (-not $workspace.WaitForExit(30000)) { $workspace.Kill(); throw 'Workspace screenshot timeout' }
+          if ($workspace.ExitCode -ne 0) { throw "Workspace geometry/screens failed: $($workspace.ExitCode)" }
+
           foreach ($mode in @('pairing','collapsed')) {
             $output = Join-Path $PWD "validation-panel/$mode.bmp"
             $p = Start-Process -FilePath $exe -ArgumentList @("--panel-$mode-snapshot", "`"$output`"") -PassThru

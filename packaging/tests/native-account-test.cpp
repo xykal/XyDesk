@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "account_auth.h"
+#include "session_view.h"
 #include <cassert>
 #include <iostream>
 using namespace xydesk::account;
@@ -18,5 +19,9 @@ int main(){
  assert(!validToken(std::string(40,'a')+"\r\nInjected: true"));assert(!validToken(std::string(CRED_MAX_CREDENTIAL_BLOB_SIZE+1,'a')));
  auto user=profile(nlohmann::json{{"user",{{"name","Fixture"},{"email","fixture@example.invalid"}}}});assert(user.ok&&user.name==L"Fixture");
  assert(!profile(nlohmann::json{{"user",{{"email",12}}}}).ok);
+ auto noSession=xydesk::session_view::parse(R"({"session":null,"password":"NEVER DISPLAY"})");assert(noSession.known&&!noSession.active);
+ auto active=xydesk::session_view::parse(R"({"session":{"clientId":"fixture","clientName":"Redmi Note 12","clientPlatform":"android","durationMs":125000},"password":"NEVER DISPLAY"})");assert(active.active&&active.name==L"Redmi Note 12"&&active.seconds==125);
+ assert(!xydesk::session_view::parse(R"({"session":false})").known);
+ assert(xydesk::session_view::redmiNote12(L"23021RAAEG · Fixture"));assert(!xydesk::session_view::redmiNote12(L"Redmi Note 12 Pro"));assert(!xydesk::session_view::redmiNote12(L"Chrome di Android"));
  std::cout<<"Native account PKCE, randomness, callback parsing, profile and header safety: passed\n";
 }

@@ -3,29 +3,29 @@
 IDI_XYDESK ICON "xydesk.ico"
 
 #include <windows.h>
-IDD_HOST_SETTINGS DIALOGEX 0, 0, 350, 306
+IDD_HOST_SETTINGS DIALOGEX 0, 0, 350, 239
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Pengaturan host"
-FONT 10, "Segoe UI"
+FONT 9, "Segoe UI"
 BEGIN
-    GROUPBOX "Video host", -1, 14, 12, 322, 92
-    LTEXT "Target selama engine berjalan. Klien dapat menggantinya. Pengaturan stream yang sudah nyaman tidak perlu diubah.", -1, 24, 30, 298, 28
-    COMBOBOX IDC_BITRATE, 24, 64, 202, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 238, 64, 86, 24
-    GROUPBOX "Password pairing", -1, 14, 114, 322, 114
-    LTEXT "Minimal 6 karakter. Mengganti password mencabut izin browser yang tersimpan.", -1, 24, 132, 298, 28
-    EDITTEXT IDC_PASSWORD, 24, 166, 202, 24, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
-    PUSHBUTTON "Simpan", IDC_APPLY_PASSWORD, 238, 166, 86, 24
-    AUTOCHECKBOX "Lihat password", IDC_PASSWORD_SHOW, 24, 198, 112, 18
-    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 184, 196, 140, 24
-    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 18, 238, 314, 26
-    DEFPUSHBUTTON "Tutup", IDCANCEL, 248, 272, 86, 24
+    GROUPBOX "Video host", -1, 14, 9, 322, 72
+    LTEXT "Target selama engine berjalan. Klien dapat menggantinya. Pengaturan stream yang sudah nyaman tidak perlu diubah.", -1, 24, 23, 298, 22
+    COMBOBOX IDC_BITRATE, 24, 50, 202, 94, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 238, 50, 86, 19
+    GROUPBOX "Password pairing", -1, 14, 89, 322, 89
+    LTEXT "Minimal 6 karakter. Mengganti password mencabut izin browser yang tersimpan.", -1, 24, 103, 298, 22
+    EDITTEXT IDC_PASSWORD, 24, 129, 202, 19, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
+    PUSHBUTTON "Simpan", IDC_APPLY_PASSWORD, 238, 129, 86, 19
+    AUTOCHECKBOX "Lihat password", IDC_PASSWORD_SHOW, 24, 154, 112, 16
+    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 184, 153, 140, 19
+    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 18, 186, 314, 20
+    DEFPUSHBUTTON "Tutup", IDCANCEL, 248, 212, 86, 19
 END
 
 IDD_ACCOUNT DIALOGEX 0, 0, 340, 248
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Profil dan akun"
-FONT 10, "Segoe UI"
+FONT 9, "Segoe UI"
 BEGIN
     LTEXT "AKUN XYDESK", -1, 18, 16, 290, 14
     LTEXT "Memeriksa sesi...", IDC_ACCOUNT_NAME, 18, 36, 304, 24
@@ -38,27 +38,27 @@ BEGIN
     DEFPUSHBUTTON "Tutup", IDCANCEL, 246, 220, 76, 22
 END
 
-IDD_GUIDE DIALOGEX 0, 0, 360, 316
+IDD_GUIDE DIALOGEX 0, 0, 360, 246
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Panduan XyDesk"
-FONT 10, "Segoe UI"
+FONT 9, "Segoe UI"
 BEGIN
-    LTEXT "Hubungkan PC dalam tiga langkah", -1, 18, 14, 320, 20
-    GROUPBOX "1  Periksa host", -1, 14, 42, 332, 48
-    LTEXT "Buka Ringkasan. Gunakan akun Windows yang ingin dikendalikan. Standby berarti sesi lain akun ini masih memegang host.", -1, 24, 57, 308, 26
-    GROUPBOX "2  Buka link atau scan QR", -1, 14, 99, 332, 48
-    LTEXT "Pada Akses host, pilih Salin link atau QR koneksi. QR hanya memuat ID perangkat, bukan password.", -1, 24, 114, 308, 26
-    GROUPBOX "3  Izinkan koneksi", -1, 14, 156, 332, 48
-    LTEXT "Di HP, gunakan izin browser yang valid atau isi password pairing. Mengganti password mencabut izin browser lama.", -1, 24, 171, 308, 26
-    LTEXT "Jalur langsung dan TURN relay sama-sama valid. Statistik web menampilkan jalur terpilih, bukan memaksa relay.", -1, 18, 215, 320, 28
-    LTEXT "X menyembunyikan panel. Hentikan mematikan host. Login akun web terpisah dari identitas host.", -1, 18, 247, 320, 26
-    DEFPUSHBUTTON "Mengerti", IDCANCEL, 254, 284, 88, 24
+    LTEXT "Hubungkan PC dalam tiga langkah", -1, 18, 11, 320, 16
+    GROUPBOX "1  Periksa host", -1, 14, 33, 332, 37
+    LTEXT "Buka Ringkasan. Gunakan akun Windows yang ingin dikendalikan. Standby berarti sesi lain akun ini masih memegang host.", -1, 24, 44, 308, 20
+    GROUPBOX "2  Buka link atau scan QR", -1, 14, 77, 332, 37
+    LTEXT "Pada Akses host, pilih Salin link atau QR koneksi. QR hanya memuat ID perangkat, bukan password.", -1, 24, 89, 308, 20
+    GROUPBOX "3  Izinkan koneksi", -1, 14, 122, 332, 37
+    LTEXT "Di HP, gunakan izin browser yang valid atau isi password pairing. Mengganti password mencabut izin browser lama.", -1, 24, 133, 308, 20
+    LTEXT "Jalur langsung dan TURN relay sama-sama valid. Statistik web menampilkan jalur terpilih, bukan memaksa relay.", -1, 18, 168, 320, 22
+    LTEXT "X menyembunyikan panel. Hentikan mematikan host. Login akun web terpisah dari identitas host.", -1, 18, 193, 320, 20
+    DEFPUSHBUTTON "Mengerti", IDCANCEL, 254, 222, 88, 19
 END
 
 IDD_CONNECTION_QR DIALOGEX 0, 0, 292, 316
 STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "QR koneksi"
-FONT 10, "Segoe UI"
+FONT 9, "Segoe UI"
 BEGIN
     LTEXT "Scan dengan kamera HP", -1, 14, 12, 264, 18, SS_CENTER
     CONTROL "", IDC_CONNECTION_QR, "STATIC", SS_OWNERDRAW, 58, 34, 176, 176
@@ -66,3 +66,5 @@ BEGIN
     LTEXT "ID saja. Password tetap diminta bila izin belum tersimpan.", -1, 14, 248, 264, 24, SS_CENTER
     DEFPUSHBUTTON "Tutup", IDCANCEL, 108, 280, 76, 24
 END
+
+IDB_REDMI_NOTE12 BITMAP "assets/redmi-note-12.bmp"
