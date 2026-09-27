@@ -83,13 +83,10 @@ try{
  results.push('Mobile menu stays inside header with no duplicate remote navigation');
  // Mount real exported session components without a host or credentials.
  await page.evaluate(async()=>{
-   const reactModule=await import('/node_modules/.vite/deps/react.js');const React=reactModule.default??reactModule;
-   const domModule=await import('/node_modules/.vite/deps/react-dom_client.js');const {createRoot}=domModule.default??domModule;
-   const {SessionRail,VirtualKeyboard}=await import('/src/session_ui.tsx');
-   const fixture=document.createElement('div');fixture.id='session-controls-fixture';document.body.append(fixture);
+   const {mountControls}=await import('/test/session-controls-fixture.tsx');
+   const fixture=document.createElement('div');fixture.id='session-controls-fixture';fixture.style.cssText='position:fixed;inset:0;z-index:1000;background:#202428';document.body.append(fixture);
    window.fixturePackets=[];
-   function Controls(){const [collapsed,setCollapsed]=React.useState(false);const [kb,setKb]=React.useState(false);return React.createElement(React.Fragment,null,React.createElement(SessionRail,{collapsed,onToggleCollapsed:()=>setCollapsed(v=>!v),onKeyboard:()=>setKb(v=>!v)}),kb&&React.createElement(VirtualKeyboard,{send:b=>window.fixturePackets.push([...b])}));}
-   window.controlsRoot=createRoot(fixture);window.controlsRoot.render(React.createElement(Controls));
+   window.unmountControls=mountControls(fixture,b=>window.fixturePackets.push([...b]));
  });
  await page.getByRole('button',{name:'Sembunyikan kontrol',exact:true}).click();
  assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
@@ -102,8 +99,15 @@ try{
  await page.getByRole('button',{name:'Kirim teks',exact:true}).click();
  assert.equal(await page.getByLabel('Teks untuk PC').inputValue(),'');
  assert.ok(await page.evaluate(()=>window.fixturePackets.length>0));
- await page.evaluate(()=>{window.controlsRoot.unmount();document.querySelector('#session-controls-fixture').remove();});
+ await page.evaluate(()=>{window.unmountControls();document.querySelector('#session-controls-fixture').remove();});
  results.push('Rail hides/restores and native keyboard text composer sends once');
+ await page.goto(base+'/connect?device=123456789');
+ await page.getByRole('region',{name:'Pemulihan sesi'}).waitFor();
+ assert.ok((await page.getByRole('region',{name:'Pemulihan sesi'}).textContent()).includes('123456789'));
+ await page.getByLabel('Password pairing',{exact:true}).waitFor();
+ assert.equal(new URL(page.url()).searchParams.has('password'),false);
+ results.push('ID-only connect link reaches scoped session/password prompt without password in URL');
+
 
  assert.deepEqual(errors,[],'No browser page errors');
  await writeFile('browser-evidence/results.json',JSON.stringify({passed:results,browserErrors:errors,scope:'Synthetic media + editor/menu. No real host, RDP or OAuth acceptance.'},null,2));

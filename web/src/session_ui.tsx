@@ -239,6 +239,8 @@ export function VirtualKeyboard({send,onClose}:{send:Send;onClose?:()=>void}) {
 function VirtualKeyGrid({ send }: { send: Send }) {
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
   const [caps, setCaps] = useState(false);
+  const [physicalShift,setPhysicalShift]=useState(false);
+  useEffect(()=>{const down=(e:KeyboardEvent)=>{setPhysicalShift(e.shiftKey);if(e.code==='CapsLock'&&!e.repeat)setCaps(v=>!v);};const up=(e:KeyboardEvent)=>setPhysicalShift(e.shiftKey);const blur=()=>setPhysicalShift(false);window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',blur);return()=>{window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',blur);};},[]);
   const heldRef=useRef<ReadonlySet<number>>(new Set());const sendRef=useRef(send);sendRef.current=send;
   const setHeld=(value:ReadonlySet<number>)=>{heldRef.current=value;updateHeld(value);};
   const release=()=>{for(const vk of heldRef.current)sendRef.current(InputCodec.key(vk,false));heldRef.current=new Set();};
@@ -278,7 +280,7 @@ function VirtualKeyGrid({ send }: { send: Send }) {
       {VKB_ROWS.map((row, i) => {
         // Huruf mengikuti mode seperti keyboard fisik: Caps XOR Shift =
         // huruf besar; selain itu kecil. Simbol tidak berubah.
-        const shiftHeld = held.has(0xa0) || held.has(0xa1);
+        const shiftHeld = physicalShift || held.has(0xa0) || held.has(0xa1);
         const upper = caps !== shiftHeld;
         return (
         <div className="vkb-row" key={i}>

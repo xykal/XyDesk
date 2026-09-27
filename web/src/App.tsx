@@ -138,7 +138,7 @@ function routePath(r: Route): string {
 function currentRoute(): Route {
   const raw = window.location.pathname.replace(/\/$/, '') || '/';
   const linkedDevice = raw==='/connect' ? new URLSearchParams(window.location.search).get('device') : null;
-  if(linkedDevice && /^\d{9}$/.test(linkedDevice))return {page:'device',deviceId:linkedDevice};
+  if(linkedDevice && /^\d{9}$/.test(linkedDevice))return {page:'session',deviceId:linkedDevice};
   const session=/^\/session(?:\/(\d{9}))?$/.exec(raw);
   if(session)return {page:'session',deviceId:session[1]||''};
   const device=/^\/devices\/(\d{9})$/.exec(raw);
