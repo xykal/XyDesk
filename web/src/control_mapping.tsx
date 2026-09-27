@@ -1,4 +1,5 @@
 import {MappingPicker} from './mapping_picker';
+import {MouseButtonIcon} from './control_icons';
 import {canonicalKey} from './remote_pointer';
 import {useEffect,useRef,useState} from 'react';
 import {InputCodec} from './rtc';
@@ -115,7 +116,7 @@ export function CustomControlMapping({send,onToggleMode,onEditStart}:{send:(b:Ui
  {category==='shortcut'&&<><p>Shortcut bekerja pada aplikasi di PC host, bukan clipboard browser/HP.</p><div className="studio-library">{[['Copy',67],['Paste',86],['Cut',88],['Undo',90],['Select all',65]].map(([label,code])=><button type="button" key={label} onClick={()=>add('chord',0,[17,Number(code)],String(label))}>{label}</button>)}</div></>}
  <details><summary>Preset layout</summary><p>Mengganti seluruh canvas saat ini.</p><button type="button" onClick={()=>{if(confirm('Ganti canvas dengan preset mouse?'))setItems(defaults());}}>Mouse</button><button type="button" onClick={()=>{if(confirm('Ganti canvas dengan preset FPS?'))setItems(fpsDefaults());}}>FPS</button></details></>:
  selectedItem?<><p className="studio-action-summary">{selectedItem.label}</p><label>Nama kontrol<input maxLength={48} value={selectedItem.name||''} placeholder={selectedItem.label} onChange={e=>update({name:e.target.value})}/></label>
- {(selectedItem.kind==='key'||selectedItem.kind==='chord')?<label>Teks pada tombol<input maxLength={24} value={selectedItem.displayLabel||''} placeholder={selectedItem.label} onChange={e=>update({displayLabel:e.target.value})}/><small>Kosongkan untuk label otomatis.</small></>:<p>Kontrol ini memakai ikon tetap. Nama hanya untuk editor dan aksesibilitas.</p>}
+ {(selectedItem.kind==='key'||selectedItem.kind==='chord')?<><label>Teks pada tombol<input maxLength={24} value={selectedItem.displayLabel||''} placeholder={selectedItem.label} onChange={e=>update({displayLabel:e.target.value})}/></label><small>Kosongkan untuk label otomatis.</small></>:<p>Kontrol ini memakai ikon tetap. Nama hanya untuk editor dan aksesibilitas.</p>}
  {selectedItem.kind==='key'&&<MappingPicker label="Aksi keyboard" options={KEY_OPTIONS} values={[selectedItem.code]} onChange={([code])=>update({code:Number(code)})}/>}
  {selectedItem.kind==='chord'&&<><p>{mappingLabel(selectedItem)}</p><MappingPicker label="Kombinasi" multiple options={KEY_OPTIONS} values={selectedItem.keys||[]} onChange={keys=>update({keys:chordKeys(keys)})}/></>}
  {selectedItem.kind==='stickKeys'&&normalizeStickKeys(selectedItem.keys).map((code,i)=><label key={i}>{['Atas','Bawah','Kiri','Kanan'][i]}<select value={code} onChange={e=>{const keys=normalizeStickKeys(selectedItem.keys);keys[i]=Number(e.target.value);update({keys});}}>{KEY_OPTIONS.map(([vk,label])=><option key={vk} value={vk}>{label}</option>)}</select></label>)}
@@ -138,7 +139,7 @@ function MappingStick({mapping:m,send,holds,style}:{mapping:Mapping;send:(b:Uint
 // Kontrol pointer bawaan memakai glyph, bukan label panjang di atas desktop.
 // Label teks tetap tersedia melalui aria-label untuk pembaca layar dan editor.
 function MappingGlyph({kind,code}:{kind:Mapping['kind'];code:number}) {
- if(kind==='mouse') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="7"/><path d="M12 2v8M8.5 7.5h3.5M12 7.5h3.5"/><circle cx={code===0?'9.5':code===1?'14.5':'12'} cy="5.5" r="1.35"/></svg>;
+ if(kind==='mouse') return <MouseButtonIcon button={code}/>;
  if(kind==='toggle') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10l-3-3M17 17H7l3 3M17 7l-3 3M7 17l3-3"/></svg>;
  if(kind==='scroll' || kind==='scrollX') return <svg className="mapping-glyph" viewBox="0 0 24 24" aria-hidden="true">{kind==='scrollX'?<><path d="M5 12h14M9 8l-4 4 4 4M15 8l4 4-4 4"/><circle cx="12" cy="12" r="2"/></>:<><path d={code>0?'M12 19V5M7 10l5-5 5 5':'M12 5v14M7 14l5 5 5-5'}/><circle cx="12" cy="12" r="2"/></>}</svg>;
  return <span className="mapping-key-glyph">{mappingLabel({kind,code})}</span>;
