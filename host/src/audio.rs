@@ -232,7 +232,6 @@ pub fn spawn_audio_sink() -> mpsc::SyncSender<Vec<u8>> {
 mod windows {
     use std::sync::mpsc::{Receiver, SyncSender};
 
-    use windows::core::Interface;
     use windows::Win32::Media::Audio::{
         eCapture, eCommunications, eMultimedia, eRender, IAudioCaptureClient, IAudioClient,
         IAudioRenderClient, IMMDeviceEnumerator, MMDeviceEnumerator, AUDCLNT_SHAREMODE_SHARED,
@@ -351,7 +350,6 @@ mod windows {
     pub fn list_outputs_detailed() -> Vec<(String, String)> {
         use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
         use windows::Win32::System::Com::STGM_READ;
-        use windows::Win32::UI::Shell::PropertiesSystem::IPropertyStore;
         let Ok(_com) = init_com() else {
             return Vec::new();
         };
@@ -387,21 +385,11 @@ mod windows {
                                     pid: 14,
                                 };
                                 if let Ok(var) = props.GetValue(&friendly_key) {
-                                    // PROPVARIANT to string — coba baca sebagai PWSTR
-                                    // Simplified: pakai DisplayName via ToString? Fallback ke ID
-                                    // Kita coba ambil via PropVariantToString tidak ada, jadi pakai Debug
-                                    // Untuk sekarang, pakai ID sebagai fallback, tapi coba baca via IPropertyStore string
-                                    // Workaround: gunakan DisplayName dari IMMDevice? Tidak ada, jadi pakai ID
-                                    // Kita akan coba baca via variant.Anonymous.Anonymous.bstrVal atau pwszVal
-                                    // Simplifikasi: kalau PROPVARIANT vt=31 (LPWSTR), ambil pointer
-                                    let s = format!("{:?}", var);
-                                    // Kalau s mengandung "CABLE" atau "VoiceMeeter", pakai s, else ID
-                                    // Untuk robust, kita coba baca langsung via GetValue dan convert manual
-                                    // Karena windows crate tidak expose PropVariantToString, kita pakai unsafe baca pwszVal
+                                    // VT_LPWSTR property; fall back to the device ID.
                                     let pwsz = var.Anonymous.Anonymous.Anonymous.pwszVal;
                                     if !pwsz.is_null() && var.Anonymous.Anonymous.vt.0 == 31 {
                                         let ws = pwsz;
-                                        if let Ok(str) = unsafe { ws.to_string() } {
+                                        if let Ok(str) = ws.to_string() {
                                             str
                                         } else {
                                             id.clone()
@@ -420,7 +408,7 @@ mod windows {
                                                 && var2.Anonymous.Anonymous.vt.0 == 31
                                             {
                                                 let ws2 = pwsz2;
-                                                if let Ok(str2) = unsafe { ws2.to_string() } {
+                                                if let Ok(str2) = ws2.to_string() {
                                                     str2
                                                 } else {
                                                     id.clone()
@@ -485,7 +473,7 @@ mod windows {
                                     let pwsz = var.Anonymous.Anonymous.Anonymous.pwszVal;
                                     if !pwsz.is_null() && var.Anonymous.Anonymous.vt.0 == 31 {
                                         let ws = pwsz;
-                                        if let Ok(str) = unsafe { ws.to_string() } {
+                                        if let Ok(str) = ws.to_string() {
                                             str
                                         } else {
                                             id.clone()

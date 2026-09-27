@@ -982,7 +982,7 @@ pub fn is_rdp_session() -> bool {
 pub fn proc_session() -> u32 {
     #[cfg(target_os = "windows")]
     {
-        return capture_health::PROC_SESSION.load(std::sync::atomic::Ordering::Relaxed);
+        capture_health::PROC_SESSION.load(std::sync::atomic::Ordering::Relaxed)
     }
     #[cfg(not(target_os = "windows"))]
     u32::MAX
@@ -992,7 +992,7 @@ pub fn proc_session() -> u32 {
 pub fn active_session() -> u32 {
     #[cfg(target_os = "windows")]
     {
-        return capture_health::ACTIVE_SESSION.load(std::sync::atomic::Ordering::Relaxed);
+        capture_health::ACTIVE_SESSION.load(std::sync::atomic::Ordering::Relaxed)
     }
     #[cfg(not(target_os = "windows"))]
     u32::MAX
@@ -1563,9 +1563,9 @@ mod windows {
         tx: mpsc::SyncSender<super::EncodedFrame>,
         monitor: usize,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        /// Target fps backend ini. BitBlt + GetDIBits di 1080p butuh beberapa
-        /// ms dan encode software bisa lebih dari 20 ms; 30 fps target yang
-        /// realistis tanpa menghabiskan CPU. Fps nyata dilapor watchdog.
+        // Target fps backend ini. BitBlt + GetDIBits di 1080p butuh beberapa
+        // ms dan encode software bisa lebih dari 20 ms; 30 fps target yang
+        // realistis tanpa menghabiskan CPU. Fps nyata dilapor watchdog.
         let target_fps = crate::video_policy::fps() as u64;
 
         let displays = super::list_displays();
@@ -1658,7 +1658,7 @@ mod windows {
                 break;
             }
             // Diagnosa layar hitam: kecerahan frame sebelum encode.
-            super::capture_health::note_frame_luma(super::capture_health::rata_luma(&rgba));
+            super::capture_health::note_frame_luma(super::capture_health::rata_luma(rgba));
             let t0 = std::time::Instant::now();
             let encoded = match encoder.encode(rgba, fw, fh, &mut nv12) {
                 Ok(data) => data,
@@ -1725,8 +1725,8 @@ mod windows {
         tx: mpsc::SyncSender<super::EncodedFrame>,
         monitor: usize,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        /// Desktop Duplication memberi notifikasi perubahan, jadi 60 fps
-        /// realistis tanpa polling buta — beda dari GDI yang di-pace 30.
+        // Desktop Duplication memberi notifikasi perubahan, jadi 60 fps
+        // realistis tanpa polling buta — beda dari GDI yang di-pace 30.
         let target_fps = crate::video_policy::fps() as u64;
 
         let displays = super::list_displays();

@@ -57,11 +57,7 @@ fn sample_luma(rgba: &[u8]) -> u8 {
         sum += (u64::from(rgba[i]) + u64::from(rgba[i + 1]) + u64::from(rgba[i + 2])) / 3;
         count += 1;
     }
-    if count == 0 {
-        255
-    } else {
-        (sum / count) as u8
-    }
+    sum.checked_div(count).unwrap_or(255) as u8
 }
 
 #[cfg(any(target_os = "windows", test))]

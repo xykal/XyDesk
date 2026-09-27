@@ -246,7 +246,7 @@ impl DxgiCapture {
                 }
             }
             if matches!(hasil, Ok(true)) {
-                for pixel in self.buf.chunks_exact_mut(4) {
+                for pixel in self.buf.as_chunks_mut::<4>().0 {
                     pixel.swap(0, 2);
                 }
             }

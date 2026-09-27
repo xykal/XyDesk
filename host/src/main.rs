@@ -590,9 +590,12 @@ async fn main() -> Result<()> {
 
         let connection = tokio::select! {
             result = tokio::time::timeout(std::time::Duration::from_secs(15), connect_async(req)) => {
-                result.unwrap_or_else(|_| Err(tokio_tungstenite::tungstenite::Error::Io(
-                    std::io::Error::new(std::io::ErrorKind::TimedOut, "signaling connect timeout")
-                )))
+                match result {
+                    Ok(connection) => connection,
+                    Err(_) => Err(tokio_tungstenite::tungstenite::Error::Io(
+                        std::io::Error::new(std::io::ErrorKind::TimedOut, "signaling connect timeout")
+                    )),
+                }
             }
             _ = xydesk_host::leadership::until_session_changes() => {
                 pemimpin = None;
