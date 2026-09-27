@@ -33,6 +33,7 @@
 #define NOMINMAX
 #endif
 
+#include <winsock2.h>
 #include <windows.h>
 #include <cmath>
 #include <shellapi.h>
@@ -41,6 +42,10 @@
 #include "layout.h"
 #include "engine_json.h"
 #include "control_client.h"
+#include "account_auth.h"
+#include "vendor/qrcodegen/qrcodegen.hpp"
+// Build workflows compile one panel translation unit; retain upstream implementation.
+#include "vendor/qrcodegen/qrcodegen.cpp"
 #include <limits>
 
 #include <algorithm>
@@ -675,6 +680,7 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
 bool targetEnabled(Target target) {
     switch (target) {
     case Target::CopyLink:
+    case Target::ConnectionQr:
     case Target::DeviceLink: return !xydesk::panel_control::deviceLink(g.deviceId).empty();
     case Target::Start:
         return !g.running;
@@ -700,6 +706,7 @@ std::wstring targetLabel(Target target) {
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::CopyLink: return L"Salin link";
+    case Target::ConnectionQr: return L"QR koneksi";
     default: return L"";
     }
 }
@@ -856,75 +863,13 @@ void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
 // Ikon digambar dari garis/busur sederhana (stroke 2px) supaya panel tidak
 // "semua teks": bentuknya yang bicara, label kecil hanya penegas.
 void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
-    const int s = g.layout.scalePct;
-    const int thickness = std::max(1, xydesk::panel::scaled(2, s));
-    const int x0 = icon.x + 1, y0 = icon.y + 1;
-    const int x1 = icon.right() - 2, y1 = icon.bottom() - 2;
-    const int cx = xydesk::panel::centerX(icon);
-    const int cy = xydesk::panel::centerY(icon);
-    switch (page) {
-    case Page::Status: {
-        // Denyut aktivitas: datar – puncak – lembah – datar (amplitudo 2/3
-        // kotak biar tidak menusuk).
-        const int amp = (y1 - y0) / 3;
-        drawGlyphSegments(dc, color, thickness, {
-            {{x0, cy}, {x0 + (x1 - x0) / 4, cy}},
-            {{x0 + (x1 - x0) / 4, cy}, {cx, cy - amp}},
-            {{cx, cy - amp}, {x0 + 3 * (x1 - x0) / 4, cy + amp}},
-            {{x0 + 3 * (x1 - x0) / 4, cy + amp}, {x1, cy}}});
-        break;
-    }
-    case Page::Pairing: {
-        // Gembok: badan persegi membulat + lengkung belenggu + titik kunci.
-        const int bodyW = (x1 - x0) * 4 / 5;
-        const int bodyH = (y1 - y0) * 3 / 5;
-        const int bx0 = cx - bodyW / 2;
-        const int by0 = y1 - bodyH;
-        const int sr = bodyW / 3;
-        const HGDIOBJ pen = SelectObject(dc,
-            CreatePen(PS_SOLID | PS_JOIN_ROUND | PS_ENDCAP_ROUND, thickness, color));
-        const HGDIOBJ brush = SelectObject(dc, GetStockObject(NULL_BRUSH));
-        RoundRect(dc, bx0, by0, bx0 + bodyW + 1, y1 + 1, thickness * 2, thickness * 2);
-        // Belenggu: setengah lingkaran atas via polyline — deterministik dan
-        // tidak menarik garis penghubung dari posisi pena sebelumnya.
-        POINT arc[13];
-        for (int i = 0; i < 13; ++i) {
-            const double a = 3.14159265358979323846 * (1.0 + double(i) / 12.0);
-            arc[i].x = cx + long(sr * cos(a) + 0.5);
-            arc[i].y = by0 + long(sr * sin(a) + 0.5);
-        }
-        Polyline(dc, arc, 13);
-        const HGDIOBJ solid = SelectObject(dc, CreateSolidBrush(color));
-        const int ky = (by0 + y1) / 2;
-        Ellipse(dc, cx - thickness, ky - thickness, cx + thickness + 1, ky + thickness + 1);
-        DeleteObject(SelectObject(dc, solid));
-        SelectObject(dc, brush);
-        if (pen) DeleteObject(SelectObject(dc, pen));
-        break;
-    }
-    case Page::Control: {
-        // Slider: tiga rel mendatar; knob bulat penuh dengan NAPAS di kiri-
-        // kanannya (rel tidak menabrak knob) supaya terbaca rapi.
-        const int knob = std::max(4, xydesk::panel::scaled(6, s));
-        const int gapk = knob / 2 + thickness;
-        const HGDIOBJ pen = SelectObject(dc,
-            CreatePen(PS_SOLID | PS_JOIN_ROUND | PS_ENDCAP_ROUND, thickness, color));
-        const HGDIOBJ brush = SelectObject(dc, CreateSolidBrush(color));
-        const int rows[3] = {y0 + 1, cy, y1 - 1};
-        const int knobs[3] = {x0 + (x1 - x0) / 4, x0 + 3 * (x1 - x0) / 4, cx};
-        for (int i = 0; i < 3; ++i) {
-            MoveToEx(dc, x0, rows[i], nullptr);
-            LineTo(dc, knobs[i] - gapk, rows[i]);
-            MoveToEx(dc, knobs[i] + gapk, rows[i], nullptr);
-            LineTo(dc, x1 + 1, rows[i]);
-            Ellipse(dc, knobs[i] - knob / 2, rows[i] - knob / 2,
-                knobs[i] + knob / 2 + 1, rows[i] + knob / 2 + 1);
-        }
-        if (pen) DeleteObject(SelectObject(dc, pen));
-        if (brush) DeleteObject(SelectObject(dc, brush));
-        break;
-    }
-    }
+    if(page==Page::Control){drawTextCentered(dc,L"\uE713",icon,g.fontIcons,color);return;}
+    const int s=g.layout.scalePct;const auto px=[s](int n){return xydesk::panel::scaled(n,s);};
+    const int x=icon.x,y=icon.y;
+    HPEN pen=CreatePen(PS_SOLID,std::max(1,px(2)),color);auto oldPen=SelectObject(dc,pen);auto oldBrush=SelectObject(dc,GetStockObject(NULL_BRUSH));
+    if(page==Page::Status){RoundRect(dc,x+px(1),y+px(2),x+px(23),y+px(17),px(3),px(3));MoveToEx(dc,x+px(12),y+px(17),nullptr);LineTo(dc,x+px(12),y+px(22));MoveToEx(dc,x+px(6),y+px(22),nullptr);LineTo(dc,x+px(18),y+px(22));}
+    else{Ellipse(dc,x+px(1),y+px(3),x+px(13),y+px(15));MoveToEx(dc,x+px(11),y+px(12),nullptr);LineTo(dc,x+px(22),y+px(22));MoveToEx(dc,x+px(16),y+px(17),nullptr);LineTo(dc,x+px(19),y+px(14));MoveToEx(dc,x+px(20),y+px(21),nullptr);LineTo(dc,x+px(23),y+px(18));}
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(pen);
 }
 
 float sidebarItemY(const PanelLayout& layout, Page page) {
@@ -1059,6 +1004,7 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
             layout.passwordCopy, L"Kode pairing", g.pairingCode, Target::CopyPassword);
         drawTextLine(dc,xydesk::panel_control::deviceLink(g.deviceId),layout.deviceLink,g.fontSmall,kText,DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
         paintButton(surface,layout,dc,Target::CopyLink,layout.copyLink);
+        paintButton(surface,layout,dc,Target::ConnectionQr,layout.connectionQr);
         break;
     case Page::Control:
         paintButton(surface, layout, dc, Target::Start, layout.start);
@@ -1526,6 +1472,7 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
         if(state->pending.valid()){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Tunggu hasil permintaan sebelum menutup.");return TRUE;}
         KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;
     }
+    if(message==WM_COMMAND&&LOWORD(wParam)==IDC_PASSWORD_SHOW){SendDlgItemMessageW(hwnd,IDC_PASSWORD,EM_SETPASSWORDCHAR,IsDlgButtonChecked(hwnd,IDC_PASSWORD_SHOW)==BST_CHECKED?0:0x25CF,0);InvalidateRect(GetDlgItem(hwnd,IDC_PASSWORD),nullptr,TRUE);return TRUE;}
     if(message!=WM_COMMAND||state->pending.valid()||!controlChannel.endpoint)return FALSE;
     const int id=LOWORD(wParam);std::string body;
     state->requestedBitrate=-1;
@@ -1551,12 +1498,73 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
     return TRUE;
 }
 
+struct AccountDialogState {
+    std::atomic_bool cancelled{false};
+    std::future<xydesk::account::Result> pending;
+    xydesk::account::Result profile;
+    bool closing=false;
+};
+INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    auto state=reinterpret_cast<AccountDialogState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
+    if(message==WM_INITDIALOG){
+        state=reinterpret_cast<AccountDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);
+        SendDlgItemMessageW(hwnd,IDC_ACCOUNT_NAME,WM_SETFONT,reinterpret_cast<WPARAM>(g.fontTitle),TRUE);
+        wchar_t user[256]{};DWORD size=256;GetUserNameW(user,&size);
+        const auto local=L"Windows: "+std::wstring(user)+L"\nDevice ID: "+g.deviceId;
+        SetDlgItemTextW(hwnd,IDC_ACCOUNT_LOCAL,local.c_str());
+        try{state->pending=std::async(std::launch::async,xydesk::account::restore);}catch(...){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Pemeriksa sesi tidak tersedia.");}
+        SetTimer(hwnd,1,100,nullptr);return TRUE;
+    }
+    if(!state)return FALSE;
+    if(message==WM_TIMER){
+        if(state->pending.valid()&&state->pending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
+            try{state->profile=state->pending.get();}catch(...){state->profile={false,{},{},L"Login gagal. Periksa koneksi lalu coba lagi."};}
+            if(state->closing){KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;}
+            SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,state->profile.ok?state->profile.name.c_str():L"Belum masuk akun");
+            SetDlgItemTextW(hwnd,IDC_ACCOUNT_EMAIL,state->profile.email.c_str());
+            SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,state->profile.message.c_str());
+        }
+        const bool busy=state->pending.valid();
+        EnableWindow(GetDlgItem(hwnd,IDC_ACCOUNT_LOGIN),!busy);EnableWindow(GetDlgItem(hwnd,IDC_ACCOUNT_LOGOUT),!busy);
+        return TRUE;
+    }
+    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
+        if(state->pending.valid()){state->cancelled=true;state->closing=true;SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Membatalkan login dengan aman...");return TRUE;}
+        KillTimer(hwnd,1);EndDialog(hwnd,0);return TRUE;
+    }
+    if(message==WM_COMMAND&&!state->pending.valid()){
+        if(LOWORD(wParam)==IDC_ACCOUNT_LOGOUT){
+            if(!xydesk::account::signOut()){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi belum berhasil dihapus dari penyimpanan Windows.");return TRUE;}state->profile={};
+            SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,L"Belum masuk akun");SetDlgItemTextW(hwnd,IDC_ACCOUNT_EMAIL,L"");
+            SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi aplikasi dihapus. Login browser tidak ikut dikeluarkan.");return TRUE;
+        }
+        if(LOWORD(wParam)==IDC_ACCOUNT_LOGIN){
+            state->cancelled=false;
+            try{state->pending=std::async(std::launch::async,[state]{return xydesk::account::login(state->cancelled);});SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Selesaikan login di browser. Jangan bagikan kode atau URL callback.");}
+            catch(...){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Login belum dapat dimulai.");}return TRUE;
+        }
+    }
+    return FALSE;
+}
+INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM){
+    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){EndDialog(hwnd,0);return TRUE;}return FALSE;
+}
+struct QrDialogState {qrcodegen::QrCode code;std::wstring link;};
+INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    auto state=reinterpret_cast<QrDialogState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
+    if(message==WM_INITDIALOG){state=reinterpret_cast<QrDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);SetDlgItemTextW(hwnd,IDC_CONNECTION_LINK,state->link.c_str());return TRUE;}
+    if(message==WM_DRAWITEM&&wParam==IDC_CONNECTION_QR&&state){
+        auto draw=reinterpret_cast<DRAWITEMSTRUCT*>(lParam);FillRect(draw->hDC,&draw->rcItem,static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+        const int modules=state->code.getSize(),size=modules+8;
+        const int cell=std::max(1,std::min(draw->rcItem.right-draw->rcItem.left,draw->rcItem.bottom-draw->rcItem.top)/size);
+        const int left=draw->rcItem.left+((draw->rcItem.right-draw->rcItem.left)-size*cell)/2;
+        const int top=draw->rcItem.top+((draw->rcItem.bottom-draw->rcItem.top)-size*cell)/2;
+        for(int y=0;y<modules;++y)for(int x=0;x<modules;++x)if(state->code.getModule(x,y)){RECT rect{left+(x+4)*cell,top+(y+4)*cell,left+(x+5)*cell,top+(y+5)*cell};FillRect(draw->hDC,&rect,static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));}return TRUE;
+    }
+    if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){EndDialog(hwnd,0);return TRUE;}return FALSE;
+}
 void showProfile(HWND hwnd){
-    wchar_t user[256]{};DWORD count=256;
-    const std::wstring name=GetUserNameW(user,&count)?user:L"Tidak tersedia";
-    const auto message=L"Akun Windows: "+name+L"\nDevice ID: "+g.deviceId+L"\nEngine: "+(g.running?L"berjalan":L"berhenti")+
-        L"\n\nIdentitas host terpisah antar-akun Windows. Login akun web terpisah; buka XyDesk Web untuk melihat status akun web.";
-    MessageBoxW(hwnd,message.c_str(),L"Profil host",MB_OK|MB_ICONINFORMATION);
+    AccountDialogState state;DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_ACCOUNT),hwnd,accountDialog,reinterpret_cast<LPARAM>(&state));
 }
 
 void activateTarget(HWND hwnd, Target target) {
@@ -1571,7 +1579,12 @@ void activateTarget(HWND hwnd, Target target) {
     }
     case Target::Profile: showProfile(hwnd);break;
     case Target::Help:
-        MessageBoxW(hwnd,L"1. Mulai host di akun Windows yang akan dikendalikan.\n2. Buka Akses host dan salin link ID-only.\n3. Di HP: buka link, gunakan izin tersimpan atau masukkan password pairing.\n4. Internet sekitar 2 Mbps: mulai 720p / 30 fps / Auto atau manual 1 Mbps di web. 0 ms lewat internet tidak mungkin.\n\nPengaturan di ikon roda gigi: bitrate engine dan password. Klien dapat mengganti target bitrate. Password tersimpan; bitrate panel berlaku selama engine berjalan.\n\nTutup panel = tray; Hentikan mematikan host. Profil menunjukkan akun Windows, bukan status login Google. Gamepad analog native belum didukung.",L"Panduan XyDesk",MB_OK|MB_ICONINFORMATION);break;
+        DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_GUIDE),hwnd,guideDialog,0);break;
+    case Target::ConnectionQr: {
+        const auto link=xydesk::panel_control::deviceLink(g.deviceId);if(link.empty())break;
+        try{const std::string text(link.begin(),link.end());QrDialogState state{qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM),link};DialogBoxParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDD_CONNECTION_QR),hwnd,qrDialog,reinterpret_cast<LPARAM>(&state));}
+        catch(...){setFlash(L"QR belum dapat dibuat. Gunakan Salin link.",kWarn);}break;
+    }
     case Target::DeviceLink: {
         const auto link=xydesk::panel_control::deviceLink(g.deviceId);if(!link.empty())ShellExecuteW(hwnd,L"open",link.c_str(),nullptr,nullptr,SW_SHOWNORMAL);break;
     }
@@ -1646,7 +1659,7 @@ std::vector<Target> focusOrder() {
     case Page::Pairing:
         order.push_back(Target::CopyId);
         order.push_back(Target::CopyPassword);
-        order.push_back(Target::DeviceLink);order.push_back(Target::CopyLink);
+        order.push_back(Target::DeviceLink);order.push_back(Target::CopyLink);order.push_back(Target::ConnectionQr);
         break;
     case Page::Control:
         order.push_back(Target::Start);
@@ -1726,6 +1739,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     }
     const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y);
     switch (target) {
+    case Target::ConnectionQr:
     case Target::ToggleSidebar:
     case Target::Settings:
     case Target::Profile:

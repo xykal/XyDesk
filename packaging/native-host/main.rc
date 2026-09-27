@@ -3,20 +3,66 @@
 IDI_XYDESK ICON "xydesk.ico"
 
 #include <windows.h>
-IDD_HOST_SETTINGS DIALOGEX 0, 0, 350, 222
-STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_HOST_SETTINGS DIALOGEX 0, 0, 350, 306
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Pengaturan host"
 FONT 10, "Segoe UI"
 BEGIN
-    LTEXT "VIDEO HOST", -1, 14, 12, 300, 14
-    LTEXT "Target selama engine berjalan. Klien dapat mengubahnya.", -1, 14, 29, 320, 14
-    COMBOBOX IDC_BITRATE, 14, 48, 220, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-    PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 245, 48, 90, 16
-    LTEXT "PASSWORD PAIRING", -1, 14, 79, 310, 14
-    LTEXT "Minimal 6 karakter. Mengganti password mencabut akses tersimpan.", -1, 14, 96, 320, 14
-    EDITTEXT IDC_PASSWORD, 14, 114, 220, 18, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
-    PUSHBUTTON "Simpan password", IDC_APPLY_PASSWORD, 245, 114, 90, 18
-    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 14, 139, 130, 18
-    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 14, 166, 320, 24
-    DEFPUSHBUTTON "Tutup", IDCANCEL, 245, 194, 90, 18
+    GROUPBOX "Video host", -1, 14, 12, 322, 92
+    LTEXT "Target selama engine berjalan. Klien dapat menggantinya. Pengaturan stream yang sudah nyaman tidak perlu diubah.", -1, 24, 30, 298, 28
+    COMBOBOX IDC_BITRATE, 24, 64, 202, 120, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 238, 64, 86, 24
+    GROUPBOX "Password pairing", -1, 14, 114, 322, 114
+    LTEXT "Minimal 6 karakter. Mengganti password mencabut izin browser yang tersimpan.", -1, 24, 132, 298, 28
+    EDITTEXT IDC_PASSWORD, 24, 166, 202, 24, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
+    PUSHBUTTON "Simpan", IDC_APPLY_PASSWORD, 238, 166, 86, 24
+    AUTOCHECKBOX "Lihat password", IDC_PASSWORD_SHOW, 24, 198, 112, 18
+    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 184, 196, 140, 24
+    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 18, 238, 314, 26
+    DEFPUSHBUTTON "Tutup", IDCANCEL, 248, 272, 86, 24
+END
+
+IDD_ACCOUNT DIALOGEX 0, 0, 340, 248
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Profil dan akun"
+FONT 10, "Segoe UI"
+BEGIN
+    LTEXT "AKUN XYDESK", -1, 18, 16, 290, 14
+    LTEXT "Memeriksa sesi...", IDC_ACCOUNT_NAME, 18, 36, 304, 24
+    LTEXT "", IDC_ACCOUNT_EMAIL, 18, 63, 304, 18
+    LTEXT "", IDC_ACCOUNT_STATUS, 18, 87, 304, 30
+    PUSHBUTTON "Masuk lewat browser", IDC_ACCOUNT_LOGIN, 18, 124, 140, 26
+    PUSHBUTTON "Keluar dari aplikasi", IDC_ACCOUNT_LOGOUT, 168, 124, 154, 26
+    LTEXT "", IDC_ACCOUNT_LOCAL, 18, 164, 304, 28
+    LTEXT "Login akun tidak mengubah ID atau password host Windows.", -1, 18, 196, 304, 18
+    DEFPUSHBUTTON "Tutup", IDCANCEL, 246, 220, 76, 22
+END
+
+IDD_GUIDE DIALOGEX 0, 0, 360, 316
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Panduan XyDesk"
+FONT 10, "Segoe UI"
+BEGIN
+    LTEXT "Hubungkan PC dalam tiga langkah", -1, 18, 14, 320, 20
+    GROUPBOX "1  Periksa host", -1, 14, 42, 332, 48
+    LTEXT "Buka Ringkasan. Gunakan akun Windows yang ingin dikendalikan. Standby berarti sesi lain akun ini masih memegang host.", -1, 24, 57, 308, 26
+    GROUPBOX "2  Buka link atau scan QR", -1, 14, 99, 332, 48
+    LTEXT "Pada Akses host, pilih Salin link atau QR koneksi. QR hanya memuat ID perangkat, bukan password.", -1, 24, 114, 308, 26
+    GROUPBOX "3  Izinkan koneksi", -1, 14, 156, 332, 48
+    LTEXT "Di HP, gunakan izin browser yang valid atau isi password pairing. Mengganti password mencabut izin browser lama.", -1, 24, 171, 308, 26
+    LTEXT "Jalur langsung dan TURN relay sama-sama valid. Statistik web menampilkan jalur terpilih, bukan memaksa relay.", -1, 18, 215, 320, 28
+    LTEXT "X menyembunyikan panel. Hentikan mematikan host. Login akun web terpisah dari identitas host.", -1, 18, 247, 320, 26
+    DEFPUSHBUTTON "Mengerti", IDCANCEL, 254, 284, 88, 24
+END
+
+IDD_CONNECTION_QR DIALOGEX 0, 0, 292, 316
+STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "QR koneksi"
+FONT 10, "Segoe UI"
+BEGIN
+    LTEXT "Scan dengan kamera HP", -1, 14, 12, 264, 18, SS_CENTER
+    CONTROL "", IDC_CONNECTION_QR, "STATIC", SS_OWNERDRAW, 58, 34, 176, 176
+    LTEXT "", IDC_CONNECTION_LINK, 14, 216, 264, 26, SS_CENTER
+    LTEXT "ID saja. Password tetap diminta bila izin belum tersimpan.", -1, 14, 248, 264, 24, SS_CENTER
+    DEFPUSHBUTTON "Tutup", IDCANCEL, 108, 280, 76, 24
 END

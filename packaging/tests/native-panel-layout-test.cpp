@@ -204,6 +204,7 @@ void testCompactAndCollapsed() {
         const struct {Rect rect;Target target;} common[]={
             {l.toggleSidebar,Target::ToggleSidebar},{l.settings,Target::Settings},{l.profile,Target::Profile},{l.help,Target::Help}};
         for(const auto& t:common){check(insidePanel(l,t.rect),"header tool inside panel");check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(t.rect),xydesk::panel::centerY(t.rect))==t.target,"header tool hit test");}
+        check(insidePanel(l,l.connectionQr)&&l.connectionQr.bottom()<l.hint.y,"QR action fits compact layout");
         check(l.title.right()<l.settings.x,"caption tools do not overlap title");
         check(l.idCard.w<=xydesk::panel::scaled(560,l.scalePct),"identity block compact");
         check(insidePanel(l,l.deviceLink)&&insidePanel(l,l.copyLink),"link inside panel");

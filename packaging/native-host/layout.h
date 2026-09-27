@@ -80,6 +80,7 @@ enum class Target {
     Help,
     DeviceLink,
     CopyLink,
+    ConnectionQr,
     Minimize,
     Maximize,
     Close,
@@ -104,6 +105,7 @@ inline const char* targetName(Target target) {
     case Target::Help: return "Help";
     case Target::DeviceLink: return "DeviceLink";
     case Target::CopyLink: return "CopyLink";
+    case Target::ConnectionQr: return "ConnectionQr";
     case Target::TitleBar: return "TitleBar";
     case Target::Minimize: return "Minimize";
     case Target::Maximize: return "Maximize";
@@ -143,7 +145,7 @@ struct PanelLayout {
 
     Rect titleBar{};
     Rect logo{};
-    Rect toggleSidebar{}, settings{}, profile{}, help{}, deviceLink{}, copyLink{};
+    Rect toggleSidebar{}, settings{}, profile{}, help{}, deviceLink{}, copyLink{}, connectionQr{};
     Rect title{};
     Rect subtitle{};
     Rect minimizeButton{};
@@ -334,6 +336,8 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     l.deviceLink = Rect{contentX, l.passwordCard.bottom() + gap, identityW - px(96), px(52)};
     l.copyLink = Rect{l.deviceLink.right() + px(12), l.deviceLink.y + px(8), px(76), px(34)};
 
+    l.connectionQr = Rect{contentX, l.deviceLink.bottom() + px(8), px(152), px(42)};
+
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
     l.start = Rect{contentX, topY, px(240), actionH};
@@ -358,6 +362,7 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::CopyPassword:
     case Target::DeviceLink:
     case Target::CopyLink:
+    case Target::ConnectionQr:
         return page == Page::Pairing;
     case Target::Start:
     case Target::Stop:
@@ -379,6 +384,7 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (l.settings.contains(x, y)) return Target::Settings;
     if (l.profile.contains(x, y)) return Target::Profile;
     if (l.help.contains(x, y)) return Target::Help;
+    if (page == Page::Pairing && l.connectionQr.contains(x,y)) return Target::ConnectionQr;
     if (page == Page::Pairing && l.deviceLink.contains(x,y)) return Target::DeviceLink;
     if (page == Page::Pairing && l.copyLink.contains(x,y)) return Target::CopyLink;
     if (l.minimizeButton.contains(x, y)) return Target::Minimize;

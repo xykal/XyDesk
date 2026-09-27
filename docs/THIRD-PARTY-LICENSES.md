@@ -620,3 +620,12 @@ Teks penuh setiap lisensi tersedia di dalam paketnya masing-masing:
 Di aplikasi Android, **Pengaturan → Tentang → Lisensi → Lisensi pihak ketiga
 lengkap** membuka registry lisensi bawaan Flutter yang memuat teks penuh
 setiap paket Dart secara langsung dari biner yang sedang berjalan.
+
+### Native panel QR and account JSON
+
+- QR Code generator, Project Nayuki, MIT; pinned commit
+  `3c6d0b3cefb4e049dc337e82237c9644399716a8`. Source and license header:
+  `packaging/native-host/vendor/qrcodegen/`; distribution notice `QR-CODE-LICENSE.txt`.
+- JSON for Modern C++, Niels Lohmann, MIT, v3.12.0; pinned commit
+  `55f93686c01528224f448c19128836e7df245f72`. Source/license:
+  `packaging/native-host/vendor/json/`; distribution notice `JSON-LICENSE.txt`.

@@ -86,6 +86,14 @@ jobs:
           $cmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /EHsc /MT /DUNICODE /D_UNICODE /I`"$include`" `"$testSource`" /Fe:`"$testExe`""
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0) { throw 'Control client test compile failed' }
+          $accountSource = (Resolve-Path 'packaging/tests/native-account-test.cpp').Path
+          $accountExe = Join-Path $out 'account-test.exe'
+          $cmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /EHsc /MT /DUNICODE /D_UNICODE /I`"$include`" `"$accountSource`" /Fe:`"$accountExe`""
+          cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'Native account contract compile failed' }
+          & $accountExe
+          if ($LASTEXITCODE -ne 0) { throw 'Native account contract failed' }
+
           $env:XYDESK_HOME = Join-Path $env:RUNNER_TEMP ('panel-client-' + [guid]::NewGuid())
           New-Item -ItemType Directory -Path $env:XYDESK_HOME | Out-Null
           try {

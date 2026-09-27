@@ -44,3 +44,17 @@ No claim of actual Windows/RDP capture latency, phone-network quality, real cont
 - Transfer checksum, source manifest, dan hash engine dalam ZIP diperiksa. Screenshot release pairing/collapsed direview; link-copy kini sejajar kartu dan ikon collapsed terpusat vertikal.
 - Paket ini unsigned/test, bukan stable. Tidak ada MSI/APK baru. Web live tetap `19fcd58`.
 - Sebelum uji, hentikan host lama lewat Hentikan/menu tray; X hanya menyembunyikan panel. Native/profile/settings yang sebelumnya terbuka kini tersedia dengan batas di atas. Hardware/RDP latency dan analog gamepad tetap belum divalidasi/diimplementasikan.
+
+## Follow-up candidate: browser account / connection QR
+
+Streaming, engine identity/coordination, adaptive video and input transport remain frozen.
+Native candidate adds browser OAuth (PKCE S256, random state, exclusive loopback listener),
+per-user Windows Credential Manager storage, account/help dialogs, ID-only locally generated
+QR and password visibility. UI account login does not bind host ownership. Logout removes
+only the native saved session, not Google's browser cookies. Real Google consent, phone QR
+scan, and cancel/logout on a physical Windows desktop still need manual acceptance.
+
+Web 0eee624: deployment workflow 36304233124 succeeded. Independently inspected artifact
+10926488029 `touch-keyboard.png`: all ABC columns now visible. Previous 550a757 screenshot
+had clipping even though smoke passed; new assertions cover row bounds and toggle overlap.
+Native tests/build pending at time of this entry; do not treat code presence as validation.

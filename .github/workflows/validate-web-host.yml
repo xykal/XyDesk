@@ -23,6 +23,12 @@ jobs:
         working-directory: web
       - run: npm test
         working-directory: web
+      - name: Decode native QR independently
+        run: |
+          g++ -std=c++20 -O2 -I packaging/native-host packaging/tests/native-qr-test.cpp packaging/native-host/vendor/qrcodegen/qrcodegen.cpp -o "$RUNNER_TEMP/native-qr"
+          "$RUNNER_TEMP/native-qr" > "$RUNNER_TEMP/native-qr.json"
+          node tool/check_native_qr.mjs "$RUNNER_TEMP/native-qr.json"
+
       - run: npm run build
         working-directory: web
         env:
@@ -144,6 +150,14 @@ jobs:
           $cmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /EHsc /MT /DUNICODE /D_UNICODE /I`"$srcDir`" `"$testSrc`" /Fe:`"$clientTest`""
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0) { throw 'Native control client test compile failed' }
+          $accountSource = (Resolve-Path 'packaging/tests/native-account-test.cpp').Path
+          $accountExe = Join-Path $PWD 'validation-panel/account-test.exe'
+          $cmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /EHsc /MT /DUNICODE /D_UNICODE /I`"$srcDir`" `"$accountSource`" /Fe:`"$accountExe`""
+          cmd.exe /d /s /c $cmd
+          if ($LASTEXITCODE -ne 0) { throw 'Native account contract compile failed' }
+          & $accountExe
+          if ($LASTEXITCODE -ne 0) { throw 'Native account contract failed' }
+
           $env:XYDESK_HOME = Join-Path $env:RUNNER_TEMP ('panel-client-' + [guid]::NewGuid())
           New-Item -ItemType Directory -Path $env:XYDESK_HOME | Out-Null
           try {
