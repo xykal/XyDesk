@@ -31,3 +31,16 @@ Final release-mode package validation is in Prepare Host Windows (native tests/i
 ## Remaining hardware acceptance
 
 No claim of actual Windows/RDP capture latency, phone-network quality, real controller analog support or native Google account login. Analog host remains unsupported. No driver installation, RDP reconnection, account switching or Windows display-mode changes added.
+
+
+## Paket final terverifikasi
+
+- Source executable `1b873c3a615b0cbad43f8f76a0499626d9ce4700`.
+- [Prepare Host Windows 36301838178](https://github.com/xykal/XyDesk/actions/runs/36301838178): **success**, termasuk kontrak/layout Linux, release-mode MSVC client/engine integration, Windows library tests dan packaging gates. Perbaikan posisi ikon/link dan status readiness sudah termasuk.
+- [Prepare Host NSIS 36302323685](https://github.com/xykal/XyDesk/actions/runs/36302323685): **success**. Install ke path berspasi, hash engine, shortcut native, reinstall, direktori tak terkait ditolak, uninstall menjaga identity/extra files, serta default per-user install/uninstall diuji.
+- Portable artifact `10925703270`, evidence `10926262058`, installer artifact `10926207447`. Artifact Actions memerlukan akses GitHub dan memiliki retensi 14 hari; salinan workspace telah diunduh.
+- Installer `XyDesk-Host-Test-Setup-x64.exe`: 4,992,045 bytes; SHA256 `ad95a97b257329408c97b8532ae9ee056ab4c5cf5719c481efb9bb14c637c1c9`.
+- Portable `XyDesk-Host-Test-x64-1b873c3.zip`: 8,181,308 bytes; SHA256 `9b75ff1abeb2b09df8d5e882a852a4359359e445718d401c3f6099c2c3b917a0`.
+- Transfer checksum, source manifest, dan hash engine dalam ZIP diperiksa. Screenshot release pairing/collapsed direview; link-copy kini sejajar kartu dan ikon collapsed terpusat vertikal.
+- Paket ini unsigned/test, bukan stable. Tidak ada MSI/APK baru. Web live tetap `19fcd58`.
+- Sebelum uji, hentikan host lama lewat Hentikan/menu tray; X hanya menyembunyikan panel. Native/profile/settings yang sebelumnya terbuka kini tersedia dengan batas di atas. Hardware/RDP latency dan analog gamepad tetap belum divalidasi/diimplementasikan.

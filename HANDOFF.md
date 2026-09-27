@@ -1,5 +1,12 @@
 # HANDOFF — Catatan Lintas Role
 
+## 27 Sep 2026 — native panel/package SELESAI, kandidat 1b873c3
+
+Source executable `1b873c3a615b0cbad43f8f76a0499626d9ce4700`. Release portable [36301838178](https://github.com/xykal/XyDesk/actions/runs/36301838178) dan NSIS [36302323685](https://github.com/xykal/XyDesk/actions/runs/36302323685) **success**. Integrasi launcher/WinHTTP dengan engine nyata di loopback, layout/parser/contract, regresi Windows/Linux dan install/reinstall/uninstall lolos. Detail/hash/artifact: `docs/qa/native-panel-settings-2026-09-27.md`. Workspace deliverables: `XyDesk-native-1b873c3/` (EXE, portable ZIP, checksum, laporan, panduan).
+
+Sidebar collapse, compact pairing + ID-only link, logo asli, profil Windows/help, bitrate live/password persisten sudah ada. Bitrate bukan preferensi persisten; login Google tetap web; analog host belum ada. Kandidat unsigned, tidak ada MSI/APK baru atau stable promotion. Belum mengukur performa pada RDP/HP pengguna. Web production tetap `19fcd58`. Catatan lama “native belum diubah” adalah status historis batch web dan sudah digantikan status ini.
+
+
 ## 27 Sep 2026 — native settings implemented; preparing candidate package
 
 Operator “gas” authorizes this native continuation. Baseline `d4ef781` passed [Validate Web Host 36301577792](https://github.com/xykal/XyDesk/actions/runs/36301577792), including actual C++ private launcher/WinHTTP requests to an isolated engine, plus Linux geometry/bootstrap tests and Windows screenshots. Sidebar collapse, authentic logo, compact pairing + ID-only link, Windows profile/help, live bitrate and persistent password dialog implemented. Small link/icon/readiness corrections and release-mode packaging gates follow. See `docs/qa/native-panel-settings-2026-09-27.md`. Web remains executable `19fcd58`; no new stable release, APK, or analog gamepad driver. Package must not be called available before Prepare Host Windows/NSIS succeeds.
