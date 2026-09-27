@@ -1556,7 +1556,7 @@ INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
     if(message==WM_DRAWITEM&&wParam==IDC_CONNECTION_QR&&state){
         auto draw=reinterpret_cast<DRAWITEMSTRUCT*>(lParam);FillRect(draw->hDC,&draw->rcItem,static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
         const int modules=state->code.getSize(),size=modules+8;
-        const int cell=std::max(1,std::min(draw->rcItem.right-draw->rcItem.left,draw->rcItem.bottom-draw->rcItem.top)/size);
+        const int cell=std::max(1,static_cast<int>(std::min(draw->rcItem.right-draw->rcItem.left,draw->rcItem.bottom-draw->rcItem.top))/size);
         const int left=draw->rcItem.left+((draw->rcItem.right-draw->rcItem.left)-size*cell)/2;
         const int top=draw->rcItem.top+((draw->rcItem.bottom-draw->rcItem.top)-size*cell)/2;
         for(int y=0;y<modules;++y)for(int x=0;x<modules;++x)if(state->code.getModule(x,y)){RECT rect{left+(x+4)*cell,top+(y+4)*cell,left+(x+5)*cell,top+(y+5)*cell};FillRect(draw->hDC,&rect,static_cast<HBRUSH>(GetStockObject(BLACK_BRUSH)));}return TRUE;
