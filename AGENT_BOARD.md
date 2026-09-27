@@ -1,6 +1,11 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
-## Active — host reference-style UI only (27 Sep 2026)
+## 27 Sep 2026 — rounded host workspace SELESAI, 655ef35
+
+Operator reference adapted for shape/layout only: detached narrow sidebar, rounded workspace/cards, consistent headings, responsive embedded forms. Colours/icons retained; header-only utilities and compact pairing maintained. Prepare Windows **36320913038 SUCCESS**, NSIS **36321438591 SUCCESS/PASS**. Seven real native pages checked at 1100×720 and 900×640; installer/ZIP/hashes/interactive screenshot preview in `deliverables/XyDesk-rounded-655ef35/`. QA: `docs/qa/rounded-host-2026-09-27.md`. Source engine/reconnect/input/bitrate/coordination and web unchanged; live web remains b589421. Unsigned candidate; physical high-DPI/HP/OAuth acceptance remains open.
+
+
+## Completed scope — host reference-style UI only (27 Sep 2026)
 
 Operator approved rounded/sidebar/card styling from image reference, retaining XyDesk colours/icons, header-only utilities, compact pairing contents. Working area: packaging/native-host layout/rendering/resources and UI evidence tests. No host/src, streaming/reconnect, bitrate, input queues, web or Windows account coordination changes. Builds/tests through Actions only.
 

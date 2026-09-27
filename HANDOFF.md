@@ -1,5 +1,10 @@
 # HANDOFF — Catatan Lintas Role
 
+## 27 Sep 2026 — rounded host workspace SELESAI, 655ef35
+
+Operator reference adapted for shape/layout only: detached narrow sidebar, rounded workspace/cards, consistent headings, responsive embedded forms. Colours/icons retained; header-only utilities and compact pairing maintained. Prepare Windows **36320913038 SUCCESS**, NSIS **36321438591 SUCCESS/PASS**. Seven real native pages checked at 1100×720 and 900×640; installer/ZIP/hashes/interactive screenshot preview in `deliverables/XyDesk-rounded-655ef35/`. QA: `docs/qa/rounded-host-2026-09-27.md`. Source engine/reconnect/input/bitrate/coordination and web unchanged; live web remains b589421. Unsigned candidate; physical high-DPI/HP/OAuth acceptance remains open.
+
+
 ## 27 Sep 2026 — reconnect lifecycle + floating rail delivered
 
 Native `154eb04` (tag `reconnect-host-154eb04`): fix late old capture cleanup disarming new session; per-pump lease and cancellable silent frame bridge. This narrowly supersedes frozen-host scope for the user's reconnect bug; no bitrate/codec/input/coordination tuning. Prepare Host **36317145146 SUCCESS**, NSIS **36317585187 PASS**, installer in `deliverables/XyDesk-reconnect-154eb04/`. Must update/restart installed host. Web `b589421` live: hide only rail; independent keyboard/mapping/editor, dark orderly right rail, actual 0–100% keyboard background alpha. **36317194424 SUCCESS**, 12 browser scenarios/no errors, live hashes match CI. Details/boundaries: `docs/qa/reconnect-rail-2026-09-27.md`. User's physical freeze not directly reproduced; unsigned test candidate/high-DPI caveat remain. Supersedes earlier delivered versions below.
