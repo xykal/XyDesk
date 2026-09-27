@@ -3199,3 +3199,7 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .connection-morph svg{width:100%;height:100%}
 .connection-morph-static{display:none}
 @media(prefers-reduced-motion:reduce){.connection-morph-motion{display:none}.connection-morph-static{display:block}}
+/* A translucent keyboard reveals the remote image, not duplicate navigation behind it. */
+.video-surface:has(.keyboard-shell)>.srail,.video-surface:has(.keyboard-shell)>.srail-reveal{visibility:hidden}
+.keyboard-shell :focus-visible{box-shadow:none!important;outline:2px solid #35414f;outline-offset:2px}
+.keyboard-toolbar>span,.keyboard-settings{color:#1d252e;text-shadow:0 0 2px #fff,0 0 4px #fff}

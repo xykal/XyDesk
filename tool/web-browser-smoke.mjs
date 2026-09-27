@@ -156,6 +156,7 @@ try{
  await page.setViewportSize({width:390,height:844});
  results.push('Full-height right drawer across portrait/landscape/desktop; five categories; independent rail/mapping; reduced motion respected');
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
+ assert.equal(await page.locator('.srail').isVisible(),false,'rail cannot show through translucent keyboard');
  const key=page.locator('.vkb-key').filter({hasText:/^q$/});
  const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
  assert.equal(await page.locator('.touch-layout .vkb-row').evaluateAll(rows=>rows.every(row=>row.scrollWidth<=row.clientWidth+1&&row.getBoundingClientRect().right<=innerWidth)),true,'every touch row fits without horizontal scrolling');
