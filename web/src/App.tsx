@@ -11,7 +11,7 @@ import { CustomControlMapping } from './control_mapping';
 import { cursorLayout, playRemoteAudio, newSessionFragment, isSessionFragment, SESSION_UI_REVISION } from './session_runtime';
 import { desktopRect, desktopToCanvas, RemotePointer, KeyOwnership } from './remote_pointer';
 import { enterSessionFullscreen, leaveSessionFullscreen, enterSessionLandscape } from './session_fullscreen';
-import { videoOnlyStream, playRemoteVideo } from './video_playback';
+import { videoOnlyStream, startRemoteVideoPlayback } from './video_playback';
 import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { FormEvent, ReactElement } from 'react';
 import {
@@ -2166,27 +2166,22 @@ function ConnectScreen({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
-  const videoRetryTimer = useRef<ReturnType<typeof setTimeout> | 0>(0);
+  const videoPlaybackStop = useRef<(() => void) | null>(null);
+  const [videoPlaybackBlocked, setVideoPlaybackBlocked] = useState(false);
   const resumeVideo = useCallback(() => {
+    videoPlaybackStop.current?.();
+    videoPlaybackStop.current = null;
     const video = videoRef.current;
     if (!video || !remoteVideoStream) return;
-    if (videoRetryTimer.current) clearTimeout(videoRetryTimer.current);
-    let attempt = 0;
-    const play = () => {
-      if (!videoRef.current || video.srcObject !== remoteVideoStream) return;
-      void playRemoteVideo(video, remoteVideoStream).catch(() => {
-        // Video remote selalu muted dan seharusnya boleh autoplay. Bila browser
-        // terlambat memasang track, retry otomatis; UI tidak meminta pengguna
-        // menekan tombol manual.
-        if (attempt++ < 12 && video.srcObject === remoteVideoStream) {
-          videoRetryTimer.current = setTimeout(play, 500);
-        }
-      });
-    };
-    play();
+    videoPlaybackStop.current = startRemoteVideoPlayback(video, remoteVideoStream,
+      () => videoRef.current === video, setVideoPlaybackBlocked);
   }, [remoteVideoStream]);
   useEffect(() => {
     if (phase === 'connected' && remoteVideoStream) resumeVideo();
+    return () => {
+      videoPlaybackStop.current?.();
+      videoPlaybackStop.current = null;
+    };
   }, [phase, remoteVideoStream, resumeVideo]);
   const [audioOn, setAudioOn] = useState(true);
   const audioOnRef = useRef(true);
@@ -2816,6 +2811,7 @@ function ConnectScreen({
         onContextMenu={(e) => e.preventDefault()}
       >
         <video ref={videoRef} autoPlay playsInline muted onLoadedMetadata={paintCursor} onResize={paintCursor} />
+        {connected && videoPlaybackBlocked && <button className="video-playback-recovery" type="button" onPointerDown={e=>e.stopPropagation()} onClick={resumeVideo}>Browser menahan pemutaran. Ketuk untuk tampilkan video.</button>}
         {sessionOpen && !connected && <div className="session-connecting" role="region" aria-label="Pemulihan sesi">
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<span className="session-spinner" aria-hidden="true"/>}
