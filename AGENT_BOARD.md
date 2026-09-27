@@ -1,5 +1,10 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
+## 27 Sep 2026 — reconnect lifecycle + floating rail delivered
+
+Native `154eb04` (tag `reconnect-host-154eb04`): fix late old capture cleanup disarming new session; per-pump lease and cancellable silent frame bridge. This narrowly supersedes frozen-host scope for the user's reconnect bug; no bitrate/codec/input/coordination tuning. Prepare Host **36317145146 SUCCESS**, NSIS **36317585187 PASS**, installer in `deliverables/XyDesk-reconnect-154eb04/`. Must update/restart installed host. Web `b589421` live: hide only rail; independent keyboard/mapping/editor, dark orderly right rail, actual 0–100% keyboard background alpha. **36317194424 SUCCESS**, 12 browser scenarios/no errors, live hashes match CI. Details/boundaries: `docs/qa/reconnect-rail-2026-09-27.md`. User's physical freeze not directly reproduced; unsigned test candidate/high-DPI caveat remain. Supersedes earlier delivered versions below.
+
+
 ## 27 Sep 2026 — UI follow-up delivered: header-only host utilities + themed web
 
 Native `d8fc018`: Profile/Help/Settings only in header, embedded pages retained. Prepare Windows **36311476611 success**, NSIS **36311903771 success/PASS**, new unsigned installer/ZIP in workspace `deliverables/XyDesk-host-ui-d8fc018/`. Web `c49c95c`: original dark session palette, persisted keyboard background transparency, continuous phone/PC/tablet loading morph without device ID; reduced-motion fallback. **36311787247 success**, 11 browser scenarios, zero errors, live JS/CSS byte hashes verified. Details: `docs/qa/ui-followup-2026-09-27.md`. Frozen streaming/input/coordination unchanged; no physical acceptance/high-DPI fix/stable promotion claimed. Supersedes native 9503314 and web 96b3bfd delivery status below.
