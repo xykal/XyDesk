@@ -136,6 +136,10 @@ inline const char* pageName(Page page) {
     case Page::Status: return "Status";
     case Page::Pairing: return "Pairing";
     case Page::Control: return "Control";
+    case Page::Connections: return "Connections";
+    case Page::Settings: return "Settings";
+    case Page::Account: return "Account";
+    case Page::Help: return "Help";
     }
     return "Status";
 }

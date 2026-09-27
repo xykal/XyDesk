@@ -2340,7 +2340,7 @@ int runWorkspaceEvidence(HWND hwnd,const std::wstring& directory){
         }
         if(!saveWindowEvidence(hwnd,directory+L"\\"+entry.name+L".bmp"))return 37;
     }
-    sessionView={true,true,L"Redmi Note 12",L"android",L"fixture-client",125};goPage(hwnd,Page::Connections);renderPanel();UpdateWindow(hwnd);
+    sessionView={true,true,L"Redmi Note 12",L"android",L"fixture-client",L"streaming",125};goPage(hwnd,Page::Connections);renderPanel();UpdateWindow(hwnd);
     if(!saveWindowEvidence(hwnd,directory+L"\\connections-fixture.bmp"))return 38;
     DestroyWindow(hwnd);return 0;
 }
