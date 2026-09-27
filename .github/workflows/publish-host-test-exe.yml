@@ -25,7 +25,7 @@ jobs:
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq .workflow_run.head_sha)" = "$EXPECTED_SHA"
           test "$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID" --jq .name)" = XyDesk-Host-NSIS-x64
           mkdir -p installer
-          gh run download "$RUN_ID" --name XyDesk-Host-NSIS-x64 --dir installer
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name XyDesk-Host-NSIS-x64 --dir installer
           test -f installer/XyDesk-Host-Test-Setup-x64.exe
           echo 'd36b14b0f267f0da6bb2c07908072cbb2b10135237680bbf9de66aedbec0a262  installer/XyDesk-Host-Test-Setup-x64.exe' | sha256sum -c -
       - name: Publish isolated test prerelease (never overwrite stable)
@@ -35,11 +35,11 @@ jobs:
           SOURCE_SHA: 655ef359098087d69d6b57654244869a38bfd5d1
         run: |
           set -euo pipefail
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Test tag already exists; refusing overwrite"
             exit 1
           fi
           gh release create "$TAG" installer/XyDesk-Host-Test-Setup-x64.exe \
             --target "$SOURCE_SHA" --title 'Host UI test 655ef359 (Windows x64)' \
             --notes 'Unsigned test candidate for host UI review only. Not stable; does not replace v6.8.5. SHA256: d36b14b0f267f0da6bb2c07908072cbb2b10135237680bbf9de66aedbec0a262' \
-            --prerelease --latest=false
+            --prerelease --latest=false --repo "$GITHUB_REPOSITORY"
