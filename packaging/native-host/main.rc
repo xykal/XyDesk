@@ -8,11 +8,11 @@ STYLE DS_SETFONT | DS_MODALFRAME | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMEN
 CAPTION "Pengaturan host"
 FONT 9, "Segoe UI"
 BEGIN
-    GROUPBOX "Video host", -1, 14, 9, 322, 72
+    LTEXT "Video host", -1, 14, 9, 322, 16
     LTEXT "Target selama engine berjalan. Klien dapat menggantinya. Pengaturan stream yang sudah nyaman tidak perlu diubah.", -1, 24, 23, 298, 22
     COMBOBOX IDC_BITRATE, 24, 50, 202, 94, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 238, 50, 86, 19
-    GROUPBOX "Password pairing", -1, 14, 89, 322, 89
+    LTEXT "Password pairing", -1, 14, 89, 322, 16
     LTEXT "Minimal 6 karakter. Mengganti password mencabut izin browser yang tersimpan.", -1, 24, 103, 298, 22
     EDITTEXT IDC_PASSWORD, 24, 129, 202, 19, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
     PUSHBUTTON "Simpan", IDC_APPLY_PASSWORD, 238, 129, 86, 19
@@ -44,11 +44,11 @@ CAPTION "Panduan XyDesk"
 FONT 9, "Segoe UI"
 BEGIN
     LTEXT "Hubungkan PC dalam tiga langkah", -1, 18, 11, 320, 16
-    GROUPBOX "1  Periksa host", -1, 14, 33, 332, 37
-    LTEXT "Buka Ringkasan. Gunakan akun Windows yang ingin dikendalikan. Standby berarti sesi lain akun ini masih memegang host.", -1, 24, 44, 308, 20
-    GROUPBOX "2  Buka link atau scan QR", -1, 14, 77, 332, 37
+    LTEXT "1  Periksa host", -1, 14, 33, 332, 16
+    LTEXT "Buka Beranda. Gunakan akun Windows yang ingin dikendalikan. Standby berarti sesi lain akun ini masih memegang host.", -1, 24, 44, 308, 20
+    LTEXT "2  Buka link atau scan QR", -1, 14, 77, 332, 16
     LTEXT "Pada Akses host, pilih Salin link atau QR koneksi. QR hanya memuat ID perangkat, bukan password.", -1, 24, 89, 308, 20
-    GROUPBOX "3  Izinkan koneksi", -1, 14, 122, 332, 37
+    LTEXT "3  Izinkan koneksi", -1, 14, 122, 332, 16
     LTEXT "Di HP, gunakan izin browser yang valid atau isi password pairing. Mengganti password mencabut izin browser lama.", -1, 24, 133, 308, 20
     LTEXT "Jalur langsung dan TURN relay sama-sama valid. Statistik web menampilkan jalur terpilih, bukan memaksa relay.", -1, 18, 168, 320, 22
     LTEXT "X menyembunyikan panel. Hentikan mematikan host. Login akun web terpisah dari identitas host.", -1, 18, 193, 320, 20

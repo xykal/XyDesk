@@ -1,5 +1,9 @@
 # AGENT_BOARD.md — Papan Koordinasi Agent XyDesk
 
+## Active — host reference-style UI only (27 Sep 2026)
+
+Operator approved rounded/sidebar/card styling from image reference, retaining XyDesk colours/icons, header-only utilities, compact pairing contents. Working area: packaging/native-host layout/rendering/resources and UI evidence tests. No host/src, streaming/reconnect, bitrate, input queues, web or Windows account coordination changes. Builds/tests through Actions only.
+
 ## 27 Sep 2026 — reconnect lifecycle + floating rail delivered
 
 Native `154eb04` (tag `reconnect-host-154eb04`): fix late old capture cleanup disarming new session; per-pump lease and cancellable silent frame bridge. This narrowly supersedes frozen-host scope for the user's reconnect bug; no bitrate/codec/input/coordination tuning. Prepare Host **36317145146 SUCCESS**, NSIS **36317585187 PASS**, installer in `deliverables/XyDesk-reconnect-154eb04/`. Must update/restart installed host. Web `b589421` live: hide only rail; independent keyboard/mapping/editor, dark orderly right rail, actual 0–100% keyboard background alpha. **36317194424 SUCCESS**, 12 browser scenarios/no errors, live hashes match CI. Details/boundaries: `docs/qa/reconnect-rail-2026-09-27.md`. User's physical freeze not directly reproduced; unsigned test candidate/high-DPI caveat remain. Supersedes earlier delivered versions below.

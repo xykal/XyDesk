@@ -21,11 +21,11 @@
 
 namespace xydesk::panel {
 
-// Bentuk desktop lebih tegas daripada mobile: panel dan kartu 10px,
-// kontrol 8px. Siluet tetap halus tetapi tidak terasa seperti kumpulan pil.
-constexpr int kRadiusPanel = 10;
-constexpr int kRadiusCard = 10;
-constexpr int kRadiusControl = 8;
+// Rounded workspace islands inspired by the operator reference. Brand palette
+// and icon family remain unchanged; shadows stay inside the window.
+constexpr int kRadiusPanel = 24;
+constexpr int kRadiusCard = 20;
+constexpr int kRadiusControl = 12;
 
 // Tanpa bayangan: jendela pas sebesar panel (permintaan pemilik). Konstanta
 // bayangan dibiarkan 0 supaya pemakai lama tetap kompilasi.
@@ -39,9 +39,9 @@ constexpr int kPadding = 20;
 constexpr int kGap = 12;
 
 // Lebar sidebar ikon; konten mengisi sisanya.
-constexpr int kSidebarX = 12;
-constexpr int kSidebarWidth = 184;
-constexpr int kSidebarItemHeight = 44;
+constexpr int kSidebarX = 24;
+constexpr int kSidebarWidth = 156;
+constexpr int kSidebarItemHeight = 48;
 constexpr int kSidebarGap = 6;
 constexpr int kCaptionHeight = 64;
 
@@ -153,6 +153,7 @@ struct PanelLayout {
     Rect window{};   // seluruh permukaan berlapis (kini sama dengan panel)
     Rect panel{};    // permukaan membulat yang terlihat
 
+    Rect sidebarShell{}, workspaceShell{}, pageHeading{}, pageDescription{};
     Rect titleBar{};
     Rect logo{};
     Rect toggleSidebar{}, settings{}, profile{}, help{}, deviceLink{}, copyLink{}, connectionQr{};
@@ -291,10 +292,10 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     const int sideW = px(collapsed ? 52 : kSidebarWidth);
     const int itemH = px(kSidebarItemHeight);
     const int itemGap = px(kSidebarGap);
-    int itemY = l.titleBar.bottom() + px(8);
+    int itemY = l.titleBar.bottom() + px(52);
     const auto sidebarItem = [&](Rect& item, Rect& icon, Rect& label) {
         item = Rect{sideX, itemY, sideW, itemH};
-        icon = Rect{item.x + px(collapsed ? 14 : 12), item.y + px(10), px(24), px(24)};
+        icon = Rect{item.x + px(collapsed ? 14 : 12), item.y + px(12), px(24), px(24)};
         label = Rect{icon.right() + px(12), item.y, collapsed ? 0 : sideW - px(60), itemH};
         itemY = item.bottom() + itemGap;
     };
@@ -305,9 +306,14 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
 
     // ── Area konten di kanan sidebar ──
-    const int contentX = sideX + sideW + px(8);
-    const int contentW = panelW - contentX - pad;
-    const int topY = l.titleBar.bottom() + px(12);
+    l.sidebarShell = {sideX - px(8), l.titleBar.bottom() + px(8), sideW + px(16), panelH - l.titleBar.bottom() - px(24)};
+    l.workspaceShell = {l.sidebarShell.right() + px(12), l.sidebarShell.y,
+        panelW - l.sidebarShell.right() - px(28), l.sidebarShell.h};
+    const int contentX = l.workspaceShell.x + px(24);
+    const int contentW = l.workspaceShell.w - px(48);
+    l.pageHeading = {contentX, l.workspaceShell.y + px(22), contentW, px(40)};
+    l.pageDescription = {contentX, l.pageHeading.bottom() + px(4), contentW, px(22)};
+    const int topY = l.pageDescription.bottom() + px(20);
 
     // Halaman Status: kartu status + kartu kesehatan capture.
     const int statusH = px(72);
@@ -321,7 +327,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // Kartu capture mengisi ruang vertikal yang tersisa (panel bisa ditarik
     // lebih tinggi); minimum tetap 88 supaya tiga baris selalu muat.
-    const int hintTop = panelH - pad - px(38);
+    const int hintTop = l.workspaceShell.bottom() - px(44);
     const int captureAvail = hintTop - gap - (l.statusCard.bottom() + gap);
     const int captureH = minValue(px(144), maxValue(px(88), captureAvail));
     l.captureCard = Rect{contentX, l.statusCard.bottom() + gap, contentW, captureH};
@@ -357,19 +363,20 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
-    l.start = Rect{contentX, topY, px(240), actionH};
-    l.stop = Rect{l.start.right() + gap, topY, px(190), actionH};
-    l.restart = Rect{l.stop.right() + gap, topY, contentX + contentW - (l.stop.right() + gap), actionH};
-    const int row2 = topY + actionH + gap;
-    const int halfW = (contentW - gap) / 2;
-    l.web = Rect{contentX, row2, halfW, actionH};
-    l.openLog = Rect{l.web.right() + gap, row2, contentW - halfW - gap, actionH};
+    const int actionX = contentX + px(20), actionY = topY + px(20);
+    l.start = Rect{actionX, actionY, px(220), actionH};
+    l.stop = Rect{l.start.right() + gap, actionY, px(170), actionH};
+    l.restart = Rect{l.stop.right() + gap, actionY, contentX + contentW - px(20) - (l.stop.right() + gap), actionH};
+    const int row2 = actionY + actionH + gap;
+    const int halfW = (contentW - px(40) - gap) / 2;
+    l.web = Rect{actionX, row2, halfW, actionH};
+    l.openLog = Rect{l.web.right() + gap, row2, contentW - px(40) - halfW - gap, actionH};
 
     // Petunjuk di dasar konten, milik semua halaman.
-    l.hint = Rect{contentX, panelH - pad - px(38), contentW, px(38)};
+    l.hint = Rect{contentX, hintTop, contentW, px(28)};
     const int homeY=l.captureCard.bottom()+px(16),homeHeight=minValue(px(224),l.hint.y-homeY-px(14));
     const int homeHalf=(contentW-px(16))/2;
-    l.homeAccess={contentX+px(24),homeY+homeHeight-px(52),px(160),px(36)};
+    l.homeAccess={contentX+px(24),homeY+homeHeight-px(48),px(160),px(36)};
     l.homeConnections={contentX+homeHalf+px(40),l.homeAccess.y,px(160),px(36)};
     return l;
 }

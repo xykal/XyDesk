@@ -149,6 +149,7 @@ struct AppState {
     HFONT fontIcons = nullptr;
     bool sidebarCollapsed = false;
     int panelBitrate = -1;
+    HFONT fontHeading = nullptr;
     HFONT fontTitle = nullptr;
     HFONT fontBody = nullptr;
     HFONT fontSmall = nullptr;
@@ -733,9 +734,17 @@ std::wstring targetLabel(Target target) {
 
 // ── Menggambar panel ---------------------------------------------------
 
+void paintCard(Surface& surface, const Rect& card, int radius) {
+    Rect shadow=card;shadow.y+=3;
+    fillRoundedOpaque(surface,shadow,radius,kAccent,0.045f);
+    shadow.y-=1;
+    fillRoundedOpaque(surface,shadow,radius,kAccent,0.025f);
+    fillRoundedOpaque(surface,card,radius,kSurface);
+}
+
 void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
     const Rect& card = layout.statusCard;
-    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
+    paintCard(surface,card,layout.radiusCard);
 
     const COLORREF dotColor = g.statusColor;
     fillCircleOpaque(surface, Rect{layout.statusDot.x - 4, layout.statusDot.y - 4, layout.statusDot.w + 8, layout.statusDot.h + 8},
@@ -753,7 +762,7 @@ void paintStatusCard(Surface& surface, const PanelLayout& layout, HDC dc) {
 
 void paintIdentityCard(Surface& surface, const PanelLayout& layout, HDC dc, const Rect& card, const Rect& label,
     const Rect& value, const Rect& copy, const wchar_t* labelText, const std::wstring& valueText, Target copyTarget) {
-    fillRoundedOpaque(surface, card, layout.radiusCard, kSurface2);
+    paintCard(surface,card,layout.radiusCard);
     drawTextLine(dc, labelText, label, g.fontCaps, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
 
     const bool hasValue = !valueText.empty();
@@ -947,14 +956,16 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
     // navigasi terbaca sebagai wilayah sendiri di atas latar putih. Kolom
     // sengaja mulai setelah padding kiri (x=12) supaya bingkai putih panel
     // tetap terlihat utuh di sekelilingnya.
-    const Rect column{layout.sideStatus.x, layout.titleBar.bottom(),
-        layout.sideStatus.w + xydesk::panel::scaled(6, layout.scalePct),
-        layout.panel.bottom() - layout.titleBar.bottom()};
-    fillRoundedOpaque(surface, column.inset(2), layout.radiusCard, kSurface2);
-    HGDIOBJ oldPen = SelectObject(surface.dc, CreatePen(PS_SOLID, 1, kEdge));
-    MoveToEx(surface.dc, column.right(), column.y, nullptr);
-    LineTo(surface.dc, column.right(), column.bottom());
-    DeleteObject(SelectObject(surface.dc, oldPen));
+    const Rect column=layout.sidebarShell;
+    const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
+    fillRoundedOpaque(surface,column,layout.radiusPanel,kSurface2);
+    if(!g.sidebarCollapsed){
+        drawTextLine(dc,L"WORKSPACE",{column.x+px(20),column.y+px(18),column.w-px(40),px(18)},g.fontCaps,kMuted,DT_LEFT|DT_SINGLELINE);
+        Rect footer{column.x+px(10),column.bottom()-px(96),column.w-px(20),px(80)};
+        fillRoundedOpaque(surface,footer,layout.radiusControl,kSurface);
+        drawTextLine(dc,L"HOST WINDOWS",{footer.x+px(12),footer.y+px(14),footer.w-px(24),px(18)},g.fontCaps,kMuted,DT_LEFT|DT_SINGLELINE);
+        drawTextLine(dc,g.running?L"Host berjalan":L"Host belum aktif",{footer.x+px(12),footer.y+px(39),footer.w-px(24),px(20)},g.fontSmall,kText,DT_LEFT|DT_SINGLELINE);
+    }
 
     const struct {
         Page page;
@@ -975,8 +986,8 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
     const Rect pill{layout.sideStatus.x, static_cast<int>(g.pillY + 0.5f),
         layout.sideStatus.w, layout.sideStatus.h};
     if (g.pillY >= 0.0f) {
-    fillRoundedOpaque(surface, pill, layout.radiusControl, mixColor(kSurface2, kAccent, 0.30f));
-    strokeRounded(surface, pill, layout.radiusControl, mixColor(kEdge, kAccent, 0.55f), 1);
+    fillRoundedOpaque(surface, pill, layout.radiusControl, kSurface);
+    strokeRounded(surface, pill, layout.radiusControl, kSurface, 1);
     }
 
     for (const auto& entry : items) {
@@ -990,13 +1001,13 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
             strokeRounded(surface, entry.item, layout.radiusControl, kAccent, xydesk::panel::scaled(2, layout.scalePct));
         }
         paintSidebarIcon(dc, entry.page, entry.icon, active ? kText : (hot ? kText : kMuted));
-        drawTextLine(dc, entry.text, entry.label, g.fontBody, active ? kText : kMuted, DT_LEFT|DT_VCENTER|DT_SINGLELINE);
+        drawTextLine(dc, entry.text, entry.label, active?g.fontSemi:g.fontBody, active ? kText : kMuted, DT_LEFT|DT_VCENTER|DT_SINGLELINE);
     }
 }
 
 // Kartu kesehatan capture: jujur soal backend dan layar hitam/sesi berbeda.
 void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
-    fillRoundedOpaque(surface, layout.captureCard, layout.radiusCard, kSurface2);
+    paintCard(surface,layout.captureCard,layout.radiusCard);
     drawTextLine(dc, L"CAPTURE", layout.captureTitle, g.fontCaps, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE);
     const std::wstring line1 = g.captureBackend.empty()
@@ -1020,7 +1031,7 @@ void workspaceText(HDC dc,const std::wstring& text,Rect rect,HFONT font,COLORREF
 }
 void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card,bool detailed){
     const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
-    fillRoundedOpaque(surface,card,layout.radiusCard,kSurface2);
+    paintCard(surface,card,layout.radiusCard);
     const int pad=px(24);int x=card.x+pad,y=card.y+pad;int width=card.w-2*pad;
     workspaceText(dc,L"KONEKSI AKTIF",{x,y,width,px(20)},g.fontCaps,kMuted);y+=px(34);
     const bool known=sessionView.known;
@@ -1044,7 +1055,7 @@ void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
     const int x=l.idCard.right()+px(16),width=l.statusCard.right()-x;
     const auto link=xydesk::panel_control::deviceLink(g.deviceId);
     if(width>=px(140)&&!link.empty()){
-        Rect card{x,l.idCard.y,width,px(288)};fillRoundedOpaque(surface,card,l.radiusCard,kSurface2);
+        Rect card{x,l.idCard.y,width,px(288)};paintCard(surface,card,l.radiusCard);
         workspaceText(dc,L"SCAN UNTUK TERHUBUNG",{x+px(16),card.y+px(18),width-px(32),px(40)},g.fontCaps,kMuted);
         static std::wstring cachedLink;static std::optional<qrcodegen::QrCode> qr;
         if(cachedLink!=link){try{const std::string text(link.begin(),link.end());qr=qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM);cachedLink=link;}catch(...){qr.reset();}}
@@ -1055,14 +1066,19 @@ void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
         workspaceText(dc,L"ID saja. Password tidak ada di QR.",{x+px(16),card.bottom()-px(44),width-px(32),px(40)},g.fontSmall,kMuted);
     }
     const int y=l.connectionQr.bottom()+px(24);Rect note{l.statusCard.x,y,l.statusCard.w,l.hint.y-y-px(16)};
-    if(note.h>=px(144)){fillRoundedOpaque(surface,note,l.radiusCard,kSurface2);
+    if(note.h>=px(144)){paintCard(surface,note,l.radiusCard);
         workspaceText(dc,L"Akses yang tetap di bawah kendali lu",{note.x+px(24),y+px(24),note.w-px(48),px(32)},g.fontSemi);
         workspaceText(dc,L"1. Bagikan link atau QR perangkat ini.\n2. Browser memakai izin tersimpan yang valid, atau meminta password pairing.\n3. Ubah password lewat Pengaturan untuk mencabut izin browser lama.",{note.x+px(24),y+px(66),note.w-px(48),note.h-px(80)},g.fontBody,kMuted);
     }
 }
+Rect embeddedCard(const PanelLayout& l){
+    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};
+    const int w=l.statusCard.w>=px(826)?px(640):l.statusCard.w;
+    return {l.statusCard.x,l.statusCard.y,w,l.hint.y-l.statusCard.y-px(18)};
+}
 void paintScreenAside(Surface& surface,const PanelLayout& l,HDC dc,Page page){
-    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};const int x=l.statusCard.x+px(656),width=l.statusCard.right()-x;if(width<px(170))return;
-    Rect card{x,l.statusCard.y,width,px(300)};fillRoundedOpaque(surface,card,l.radiusCard,kSurface2);
+    const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};const Rect form=embeddedCard(l);paintCard(surface,form,l.radiusCard);const int x=form.right()+px(16),width=l.statusCard.right()-x;if(width<px(170))return;
+    Rect card{x,l.statusCard.y,width,px(300)};paintCard(surface,card,l.radiusCard);
     const wchar_t* title=page==Page::Settings?L"Tentang pengaturan":page==Page::Account?L"Privasi akun":L"Catatan penting";
     const wchar_t* body=page==Page::Settings?L"Password baru mencabut izin browser lama.\n\nTidak perlu mengubah bitrate yang sudah nyaman.\n\nStatus penerapan tampil di halaman ini.":page==Page::Account?L"Login dibuka di browser sistem.\n\nSesi disimpan oleh Windows Credential Manager.\n\nKeluar dari aplikasi tidak menghapus cookie Google di browser.":L"X menyembunyikan aplikasi ke tray.\n\nHentikan mematikan host.\n\nStatus koneksi dan perangkat ada di halaman Koneksi.";
     workspaceText(dc,title,{x+px(20),card.y+px(24),width-px(40),px(48)},g.fontSemi);
@@ -1074,20 +1090,36 @@ void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
     const int y=l.captureCard.bottom()+px(16),height=std::min(px(224),l.hint.y-y-px(14));if(height<px(136))return;
     const int half=(l.statusCard.w-px(16))/2;
     Rect left{l.statusCard.x,y,half,height},right{left.right()+px(16),y,l.statusCard.w-half-px(16),height};
-    fillRoundedOpaque(surface,left,l.radiusCard,kSurface2);fillRoundedOpaque(surface,right,l.radiusCard,kSurface2);
+    paintCard(surface,left,l.radiusCard);paintCard(surface,right,l.radiusCard);
     workspaceText(dc,L"AKSES KE PC INI",{left.x+px(24),y+px(22),half-px(48),px(20)},g.fontCaps,kMuted);
-    workspaceText(dc,g.deviceId.empty()?L"ID belum tersedia":g.deviceId,{left.x+px(24),y+px(56),half-px(48),px(38)},g.fontValue);
-    workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(106),half-px(48),std::max(px(50),height-px(180))},g.fontBody,kMuted);
+    workspaceText(dc,g.deviceId.empty()?L"ID belum tersedia":g.deviceId,{left.x+px(24),y+px(50),half-px(48),px(34)},g.fontValue);
+    if(height>=px(200))workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(96),half-px(48),px(48)},g.fontBody,kMuted);
     workspaceText(dc,L"KONEKSI",{right.x+px(24),y+px(22),right.w-px(48),px(20)},g.fontCaps,kMuted);
     const std::wstring label=!sessionView.known?L"Menunggu status":sessionView.active?L"1 perangkat terhubung":L"Tidak ada sesi aktif";
-    workspaceText(dc,label,{right.x+px(24),y+px(56),right.w-px(48),px(50)},g.fontSemi);
-    workspaceText(dc,sessionView.active?(sessionView.name.empty()?L"Nama perangkat tidak dilaporkan":sessionView.name):L"Detail nama, platform dan durasi ada di halaman Koneksi.",{right.x+px(24),y+px(110),right.w-px(48),std::max(px(50),height-px(180))},g.fontBody,kMuted);
+    workspaceText(dc,label,{right.x+px(24),y+px(50),right.w-px(48),px(42)},g.fontSemi);
+    if(height>=px(200))workspaceText(dc,sessionView.active?(sessionView.name.empty()?L"Nama perangkat tidak dilaporkan":sessionView.name):L"Detail nama, platform dan durasi ada di halaman Koneksi.",{right.x+px(24),y+px(98),right.w-px(48),px(48)},g.fontBody,kMuted);
     paintButton(surface,l,dc,Target::PagePairing,l.homeAccess);paintButton(surface,l,dc,Target::PageConnections,l.homeConnections);
 }
 
 // Menggambar panel ke permukaan. Tidak menyentuh jendela sama sekali, jadi
 // jalur yang sama dipakai `--panel-snapshot` untuk memeriksa hasil gambar
 // tanpa membuka jendela (dipakai CI).
+void paintPageHeading(HDC dc, const PanelLayout& layout, Page page){
+    const wchar_t* title=L"Semua di satu tempat.";
+    const wchar_t* detail=L"Akses perangkat, lihat koneksi, dan kelola host lu.";
+    switch(page){
+    case Page::Connections:title=L"Koneksi perangkat";detail=L"Perangkat yang sedang terhubung ke PC ini.";break;
+    case Page::Pairing:title=L"Akses ke PC ini";detail=L"Bagikan link atau QR. Password tetap di bawah kendali lu.";break;
+    case Page::Control:title=L"Kontrol host";detail=L"Kelola proses host tanpa keluar dari workspace.";break;
+    case Page::Settings:title=L"Pengaturan host";detail=L"Preferensi host dan keamanan akses dalam satu halaman.";break;
+    case Page::Account:title=L"Profil & akun";detail=L"Akun XyDesk tetap terpisah dari identitas host Windows.";break;
+    case Page::Help:title=L"Bantuan";detail=L"Langkah singkat untuk mulai terhubung dengan aman.";break;
+    default:break;
+    }
+    drawTextLine(dc,title,layout.pageHeading,g.fontHeading,kText,DT_LEFT|DT_SINGLELINE|DT_END_ELLIPSIS);
+    drawTextLine(dc,detail,layout.pageDescription,g.fontBody,kMuted,DT_LEFT|DT_SINGLELINE|DT_END_ELLIPSIS);
+}
+
 void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
     switch (page) {
     case Page::Status:
@@ -1107,20 +1139,26 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
         break;
     case Page::Connections: {
         const int px=xydesk::panel::scaled(1,layout.scalePct);
-        Rect card{layout.statusCard.x,layout.statusCard.y,layout.statusCard.w,std::min(layout.hint.y-layout.statusCard.y-20*px,360*px)};
+        Rect card{layout.statusCard.x,layout.statusCard.y,layout.statusCard.w,std::min(layout.hint.y-layout.statusCard.y-84*px,360*px)};
         paintConnection(surface,layout,dc,card,true);
-        workspaceText(dc,L"Nama dan model dilaporkan oleh klien, bukan verifikasi identitas hardware. Hanya sesi aktif yang dilaporkan engine ditampilkan.",{card.x,card.bottom()+20*px,card.w,64*px},g.fontBody,kMuted);
+        workspaceText(dc,L"Nama dan model dilaporkan oleh klien, bukan verifikasi identitas hardware. Hanya sesi aktif yang dilaporkan engine ditampilkan.",{card.x,card.bottom()+16*px,card.w,48*px},g.fontBody,kMuted);
         break;
     }
     case Page::Settings:case Page::Account:case Page::Help:paintScreenAside(surface,layout,dc,page);break;
-    case Page::Control:
+    case Page::Control: {
+        const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
+        Rect actions{layout.statusCard.x,layout.statusCard.y,layout.statusCard.w,layout.openLog.bottom()-layout.statusCard.y+px(20)};
+        paintCard(surface,actions,layout.radiusCard);
+        Rect note{actions.x,actions.bottom()+px(16),actions.w,std::min(px(228),layout.hint.y-actions.bottom()-px(32))};
+        paintCard(surface,note,layout.radiusCard);
         paintButton(surface, layout, dc, Target::Start, layout.start);
         paintButton(surface, layout, dc, Target::Stop, layout.stop);
         paintButton(surface, layout, dc, Target::Restart, layout.restart);
         paintButton(surface, layout, dc, Target::Web, layout.web);
         paintButton(surface, layout, dc, Target::OpenLog, layout.openLog);
-        workspaceText(dc,L"Kontrol proses host\n\nHentikan memutus layanan host. Restart menyalakan ulang proses host. Tombol X hanya menyembunyikan aplikasi ke tray.\n\nPengaturan password dan video ada di halaman Pengaturan. Akun aplikasi terpisah dari identitas host Windows.", {layout.openLog.x-layout.web.w-12,layout.openLog.bottom()+32,layout.statusCard.w,240},g.fontBody,kMuted);
+        workspaceText(dc,L"Kontrol proses host\n\nHentikan memutus layanan host. Restart menyalakan ulang proses host. Tombol X hanya menyembunyikan aplikasi ke tray.\n\nPengaturan password dan video ada di halaman Pengaturan. Akun aplikasi terpisah dari identitas host Windows.", {note.x+px(24),note.y+px(24),note.w-px(48),note.h-px(48)},g.fontBody,kMuted);
         break;
+    }
     }
 }
 
@@ -1156,6 +1194,9 @@ bool drawPanelToSurface() {
 
     HFONT previousFont = static_cast<HFONT>(SelectObject(dc, g.fontBody));
 
+    fillRoundedOpaque(surface,g.layout.workspaceShell,g.layout.radiusPanel,kSurface2);
+    paintPageHeading(dc,g.layout,g.page);
+
     // Konten halaman (dengan transisi luncur saat morphing), lalu chrome
     // (sidebar + caption) digambar di atas supaya isi yang meluncur tidak
     // pernah menimpa navigasi.
@@ -1170,15 +1211,14 @@ bool drawPanelToSurface() {
         paintPage(surface, g.layout, dc, g.page);
     }
 
-    drawTextLine(dc, L"Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar. "
-                     L"Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
+    drawTextLine(dc, L"X menyembunyikan ke tray · Tab untuk navigasi · Enter untuk memilih",
         g.layout.hint, g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
 
     paintSidebar(surface, g.layout, dc);
     paintLogo(surface, g.layout, dc);
-    drawTextLine(dc, L"XyDesk Control Panel", g.layout.title, g.fontTitle, kText,
+    drawTextLine(dc, L"XyDesk", g.layout.title, g.fontTitle, kText,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    drawTextLine(dc, L"Panel host Windows · tanpa terminal", g.layout.subtitle, g.fontSmall, kMuted,
+    drawTextLine(dc, L"Host workspace", g.layout.subtitle, g.fontSmall, kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     paintCaptionButtons(surface, g.layout, dc);
     const struct {Target target;Rect rect;const wchar_t* glyph;} tools[]={
@@ -1233,6 +1273,7 @@ void createFonts() {
         return CreateFontW(height, 0, 0, 0, weight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
             OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, face);
     };
+    if (g.fontHeading) DeleteObject(g.fontHeading);
     if (g.fontTitle) DeleteObject(g.fontTitle);
     if (g.fontBody) DeleteObject(g.fontBody);
     if (g.fontSmall) DeleteObject(g.fontSmall);
@@ -1245,6 +1286,7 @@ void createFonts() {
     // kecil kapital, angka pairing besar monospasi.
     if(g.fontIcons)DeleteObject(g.fontIcons);
     g.fontIcons = make(-xydesk::panel::scaled(20, s), FW_NORMAL, L"Segoe MDL2 Assets");
+    g.fontHeading = make(-xydesk::panel::scaled(30, s), FW_SEMIBOLD, L"Segoe UI");
     g.fontTitle = make(-xydesk::panel::scaled(20, s), FW_BOLD, L"Segoe UI");
     g.fontBody = make(-xydesk::panel::scaled(14, s), FW_NORMAL, L"Segoe UI");
     g.fontSmall = make(-xydesk::panel::scaled(12, s), FW_NORMAL, L"Segoe UI");
@@ -1541,7 +1583,28 @@ struct SettingsState {
     int requestedBitrate=-1;
 };
 
+// Keep native button semantics/commands; only replace their painting.
+bool paintEmbeddedButton(LPARAM parameter){
+    const auto item=reinterpret_cast<DRAWITEMSTRUCT*>(parameter);
+    if(!item||item->CtlType!=ODT_BUTTON)return false;
+    const bool disabled=(item->itemState&ODS_DISABLED)!=0,pressed=(item->itemState&ODS_SELECTED)!=0;
+    const bool primary=item->CtlID==IDC_APPLY_BITRATE||item->CtlID==IDC_APPLY_PASSWORD||item->CtlID==IDC_ACCOUNT_LOGIN;
+    const COLORREF fill=disabled?kSurface2:primary?(pressed?kAccentPressed:kAccent):(pressed?kSurfacePressed:kSurface2);
+    const auto dc=item->hDC;RECT rect=item->rcItem;FillRect(dc,&rect,static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
+    HBRUSH brush=CreateSolidBrush(fill);HPEN pen=CreatePen(PS_SOLID,1,(item->itemState&ODS_FOCUS)?kAccent:fill);
+    const auto oldBrush=SelectObject(dc,brush),oldPen=SelectObject(dc,pen);
+    const int radius=xydesk::panel::scaled(16,g.layout.scalePct);
+    RoundRect(dc,rect.left,rect.top,rect.right,rect.bottom,radius,radius);
+    SelectObject(dc,oldBrush);SelectObject(dc,oldPen);DeleteObject(brush);DeleteObject(pen);
+    wchar_t text[256]{};GetWindowTextW(item->hwndItem,text,256);
+    const auto oldFont=SelectObject(dc,reinterpret_cast<HFONT>(SendMessageW(item->hwndItem,WM_GETFONT,0,0)));
+    SetBkMode(dc,TRANSPARENT);SetTextColor(dc,disabled?kDisabled:primary?kOnAccent:kText);
+    InflateRect(&rect,-6,-2);DrawTextW(dc,text,-1,&rect,DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS);
+    SelectObject(dc,oldFont);return true;
+}
+
 INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
 
@@ -1617,6 +1680,7 @@ struct AccountDialogState {
     bool closing=false;
 };
 INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
 
@@ -1662,7 +1726,8 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
     }
     return FALSE;
 }
-INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM){
+INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
 
@@ -1685,6 +1750,52 @@ INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
 SettingsState embeddedSettings;
 AccountDialogState embeddedAccount;
 std::map<Page,HWND> embeddedPages;
+struct EmbeddedChildLayout {
+    HWND window=nullptr;
+    RECT base{};
+    LOGFONTW font{};
+    HFONT ownedFont=nullptr;
+    bool combo=false;
+};
+struct EmbeddedLayout {
+    int width=0,height=0;
+    std::vector<EmbeddedChildLayout> children;
+};
+std::map<HWND,EmbeddedLayout> embeddedLayouts;
+void layoutEmbeddedChildren(HWND page,int width,int height){
+    auto& layout=embeddedLayouts[page];
+    if(layout.children.empty()){
+        RECT base{};GetClientRect(page,&base);layout.width=std::max(1,static_cast<int>(base.right));
+        for(HWND child=GetWindow(page,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT)){
+            if(GetDlgCtrlID(child)==IDCANCEL)continue;
+            EmbeddedChildLayout entry;entry.window=child;GetWindowRect(child,&entry.base);
+            MapWindowPoints(nullptr,page,reinterpret_cast<POINT*>(&entry.base),2);
+            layout.height=std::max(layout.height,static_cast<int>(entry.base.bottom)+8);
+            auto font=reinterpret_cast<HFONT>(SendMessageW(child,WM_GETFONT,0,0));
+            if(!font)font=reinterpret_cast<HFONT>(SendMessageW(page,WM_GETFONT,0,0));
+            GetObjectW(font,sizeof(entry.font),&entry.font);
+            wchar_t kind[32]{};GetClassNameW(child,kind,32);entry.combo=_wcsicmp(kind,L"ComboBox")==0;
+            if(_wcsicmp(kind,L"Button")==0){
+                const auto style=GetWindowLongPtrW(child,GWL_STYLE),type=style&BS_TYPEMASK;
+                if(type==BS_PUSHBUTTON||type==BS_DEFPUSHBUTTON)SetWindowLongPtrW(child,GWL_STYLE,(style&~BS_TYPEMASK)|BS_OWNERDRAW);
+            }
+            layout.children.push_back(entry);
+        }
+    }
+    const double factor=std::min(static_cast<double>(width)/layout.width,static_cast<double>(height)/std::max(1,layout.height));
+    const auto scale=[factor](int n){return static_cast<int>(std::lround(n*factor));};
+    for(auto& entry:layout.children){
+        const auto& rect=entry.base;
+        int controlHeight=scale(rect.bottom-rect.top);
+        if(entry.combo){RECT dropdown{0,0,0,94};MapDialogRect(page,&dropdown);controlHeight=std::max(controlHeight,scale(dropdown.bottom));}
+        SetWindowPos(entry.window,nullptr,scale(rect.left),scale(rect.top),std::max(1,scale(rect.right-rect.left)),std::max(1,controlHeight),SWP_NOZORDER|SWP_NOACTIVATE);
+        auto font=entry.font;font.lfHeight=scale(entry.font.lfHeight);
+        if(GetDlgCtrlID(entry.window)==IDC_ACCOUNT_NAME)font.lfWeight=FW_SEMIBOLD;
+        const auto replacement=CreateFontIndirectW(&font);
+        if(replacement){SendMessageW(entry.window,WM_SETFONT,reinterpret_cast<WPARAM>(replacement),TRUE);if(entry.ownedFont)DeleteObject(entry.ownedFont);entry.ownedFont=replacement;}
+    }
+}
+
 void syncEmbeddedPage(){
     if(!g.window)return;
     for(const auto& entry:embeddedPages)if(entry.first!=g.page)ShowWindow(entry.second,SW_HIDE);
@@ -1703,9 +1814,10 @@ void syncEmbeddedPage(){
         SetWindowLongPtrW(page,GWL_EXSTYLE,WS_EX_CONTROLPARENT);
         ShowWindow(GetDlgItem(page,IDCANCEL),SW_HIDE);
     }
-    RECT size{};GetWindowRect(page,&size);
-    SetWindowPos(page,nullptr,g.layout.statusCard.x,g.layout.statusCard.y,
-        std::min(g.layout.statusCard.w,xydesk::panel::scaled(640,g.layout.scalePct)),g.layout.hint.y-g.layout.statusCard.y,SWP_NOZORDER|SWP_FRAMECHANGED|SWP_SHOWWINDOW);
+    const Rect card=embeddedCard(g.layout);const int pad=xydesk::panel::scaled(16,g.layout.scalePct);
+    const int width=card.w-2*pad,height=card.h-2*pad;
+    layoutEmbeddedChildren(page,width,height);
+    SetWindowPos(page,nullptr,card.x+pad,card.y+pad,width,height,SWP_NOZORDER|SWP_FRAMECHANGED|SWP_SHOWWINDOW);
 }
 bool routeEmbeddedMessage(MSG& message){
     auto it=embeddedPages.find(g.page);return it!=embeddedPages.end()&&IsWindowVisible(it->second)&&IsDialogMessageW(it->second,&message);
@@ -1720,7 +1832,7 @@ void activateTarget(HWND hwnd, Target target) {
     case Target::ToggleSidebar:
         g.sidebarCollapsed=!g.sidebarCollapsed;
         g.layout=xydesk::panel::computeLayout(g.layout.scalePct*96/100,g.unitsW,g.unitsH,g.sidebarCollapsed);
-        g.pillY=sidebarItemY(g.layout,g.page);renderPanel();break;
+        g.pillY=sidebarItemY(g.layout,g.page);syncEmbeddedPage();renderPanel();break;
     case Target::Settings: {
         goPage(hwnd,Page::Settings);break;
     }
@@ -2200,7 +2312,10 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         g.animOn = false;
         removeTrayIcon();
         stopHost();
+        for(auto& page:embeddedLayouts)for(auto& child:page.second.children)if(child.ownedFont)DeleteObject(child.ownedFont);
+        embeddedLayouts.clear();
         if (g.fontIcons) DeleteObject(g.fontIcons);
+        if (g.fontHeading) DeleteObject(g.fontHeading);
         if (g.fontTitle) DeleteObject(g.fontTitle);
         if (g.fontBody) DeleteObject(g.fontBody);
         if (g.fontSmall) DeleteObject(g.fontSmall);
@@ -2340,6 +2455,19 @@ int runWorkspaceEvidence(HWND hwnd,const std::wstring& directory){
         }
         if(!saveWindowEvidence(hwnd,directory+L"\\"+entry.name+L".bmp"))return 37;
     }
+    SetWindowPos(hwnd,nullptr,0,0,900,640,SWP_NOMOVE|SWP_NOZORDER);
+    for(const auto& entry:pages){
+        goPage(hwnd,entry.page);renderPanel();UpdateWindow(hwnd);
+        for(const auto& page:embeddedPages)if(IsWindowVisible(page.second)){
+            RECT client{};GetClientRect(page.second,&client);
+            for(HWND child=GetWindow(page.second,GW_CHILD);child;child=GetWindow(child,GW_HWNDNEXT))if(IsWindowVisible(child)){
+                RECT rect{};GetWindowRect(child,&rect);MapWindowPoints(nullptr,page.second,reinterpret_cast<POINT*>(&rect),2);
+                if(rect.left<0||rect.top<0||rect.right>client.right+1||rect.bottom>client.bottom+1)return 39;
+            }
+        }
+        if(!saveWindowEvidence(hwnd,directory+L"\\compact-"+entry.name+L".bmp"))return 40;
+    }
+    SetWindowPos(hwnd,nullptr,0,0,1100,720,SWP_NOMOVE|SWP_NOZORDER);
     sessionView={true,true,L"Redmi Note 12",L"android",L"fixture-client",L"streaming",125};goPage(hwnd,Page::Connections);renderPanel();UpdateWindow(hwnd);
     if(!saveWindowEvidence(hwnd,directory+L"\\connections-fixture.bmp"))return 38;
     DestroyWindow(hwnd);return 0;

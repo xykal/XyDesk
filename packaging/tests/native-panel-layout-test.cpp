@@ -57,7 +57,7 @@ void testGeometry100() {
     check(l.window.w == 1100 && l.window.h == 720, "ukuran jendela 1100x720 pada skala 100");
     check(l.panel.w == 1100 && l.panel.h == 720, "panel sama besar dengan jendela (tanpa margin bayangan)");
     check(l.panel.x == 0 && l.panel.y == 0, "tanpa margin bayangan: panel di (0,0)");
-    check(l.radiusPanel == 10 && l.radiusCard == 10 && l.radiusControl == 8, "radius desktop lebih tegas: panel/kartu 10, kontrol 8");
+    check(l.radiusPanel == 24 && l.radiusCard == 20 && l.radiusControl == 12, "rounded workspace: panel 24, cards 20, controls 12");
 
     const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton,
         l.sideStatus, l.sidePairing, l.sideControl,
@@ -152,7 +152,7 @@ void testDpiScaling() {
     check(bigger.scalePct == 150, "DPI 144 memberi skala 150");
     check(bigger.panel.w == base.panel.w * 3 / 2, "lebar panel ikut skala");
     check(bigger.panel.h == base.panel.h * 3 / 2, "tinggi panel ikut skala");
-    check(bigger.radiusPanel == 15 && bigger.radiusCard == 15 && bigger.radiusControl == 12, "radius ikut skala");
+    check(bigger.radiusPanel == 36 && bigger.radiusCard == 30 && bigger.radiusControl == 18, "radius ikut skala");
     for (const Rect& rect : {bigger.closeButton, bigger.start, bigger.sidePairing, bigger.idCopy}) {
         check(insidePanel(bigger, rect), "kontrol tetap di dalam panel pada skala 150");
     }
@@ -208,6 +208,10 @@ void testCompactAndCollapsed() {
         const struct{Rect rect;Target target;} screens[]={{l.sideConnections,Target::PageConnections}};
         for(const auto& screen:screens){check(insidePanel(l,screen.rect),"new navigation inside window");check(xydesk::panel::targetAt(l,Page::Status,xydesk::panel::centerX(screen.rect),xydesk::panel::centerY(screen.rect))==screen.target,"new screen hit target");}
         check(l.sideSettings.w==0&&l.sideAccount.w==0&&l.sideHelp.w==0,"utility pages have no duplicate sidebar hit areas");
+        check(insidePanel(l,l.sidebarShell)&&insidePanel(l,l.workspaceShell),"floating surfaces inside window");
+        check(!overlaps(l.sidebarShell,l.workspaceShell),"sidebar and workspace separated by gutter");
+        check(l.pageDescription.bottom()<l.statusCard.y,"page heading does not overlap content");
+        check(l.homeAccess.bottom()<l.hint.y&&l.homeConnections.bottom()<l.hint.y,"home actions above footer at compact sizes");
         check(l.title.right()<l.settings.x,"caption tools do not overlap title");
         check(l.idCard.w<=xydesk::panel::scaled(560,l.scalePct),"identity block compact");
         check(insidePanel(l,l.deviceLink)&&insidePanel(l,l.copyLink),"link inside panel");
