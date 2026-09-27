@@ -40,6 +40,7 @@ try{
  const menu=page.getByRole('navigation',{name:'Menu utama'});
  await menu.waitFor({state:'visible'});
  const menuDialog=page.getByRole('dialog',{name:'Navigasi XyDesk'});
+ await menuDialog.evaluate(el=>el.getAnimations().forEach(a=>a.finish()));
  const bounds=await menuDialog.boundingBox();assert.equal(bounds.x,0);assert.equal(bounds.y,0);assert.equal(bounds.width,390);assert.equal(bounds.height,844);
  assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'DIALOG');
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);

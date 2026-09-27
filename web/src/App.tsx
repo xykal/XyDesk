@@ -2178,7 +2178,7 @@ function ConnectScreen({
   }, [remoteVideoStream]);
   useEffect(() => {
     if (phase === 'connected' && remoteVideoStream) resumeVideo();
-      return () => {
+    return () => {
       videoPlaybackStop.current?.();
       videoPlaybackStop.current = null;
     };

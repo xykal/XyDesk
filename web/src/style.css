@@ -3132,3 +3132,19 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 @media(prefers-reduced-motion:reduce){.video-surface .spanel.session-settings,.session-settings .spanel-body,.mobile-navigation-screen{animation:none!important;transition:none!important}}
 
 .session-settings .statistics-grid strong{color:#202a34}.session-settings .statistics-panel .stat-line>span,.session-settings .statistics-panel details{color:#596573}.session-settings .statistics-path{border-color:#d1d8df}
+/* A single light palette for every settings category, including legacy subcomponents. */
+.session-settings .spanel-section{color:#4b5866}
+.session-settings .spanel-card{background:#fff;border:1px solid #dce1e6;color:#26303b;margin:12px 0}
+.session-settings .stat-line,.session-settings .spanel-copy small{color:#596573}
+.session-settings .stat-line strong{color:#202a34}
+.session-settings .display-chips button,.session-settings .spanel-seg button{background:#fff;color:#303c48;border:1px solid #d2d9e0;min-height:44px;transition:background 100ms ease,color 100ms ease}
+.session-settings .spanel-seg{background:#e8ecf0;margin:12px 0}
+.session-settings .spanel-seg button.on{background:#303c48;color:#fff;border-color:#303c48}
+.session-settings .spanel-copy{gap:5px}.session-settings .spanel-row{margin:14px 0}
+.session-settings .spanel-switch{width:48px;height:30px;min-height:30px;padding:3px;background:#8c98a4;border:1px solid #768390}
+.session-settings .spanel-switch i{width:22px;height:22px;background:#fff;box-shadow:0 1px 3px #0002}
+.session-settings .spanel-switch.on{background:#303c48;border-color:#303c48}.session-settings .spanel-switch.on i{transform:translateX(18px)}
+.session-settings input[type=range]{accent-color:#303c48;min-height:40px;margin:4px 0}
+.session-settings .spanel-disconnect{color:#9b2626;background:#fbeaea;border:1px solid #e6baba;min-height:44px;width:100%;margin-top:18px}
+.session-settings .spanel-close:hover{color:#202a34;background:#e9edf1}
+@media(prefers-reduced-motion:reduce){.session-settings *{animation:none!important;transition:none!important}}
