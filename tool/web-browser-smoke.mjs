@@ -145,6 +145,8 @@ try{
   await page.setViewportSize(size);
   const rail=page.locator('.srail');
   const bounds=await rail.boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=size.height,'rail fits viewport');
+  const launcher=await page.locator('.srail-keyboard').boundingBox();
+  assert.equal(bounds.x<launcher.x+launcher.width&&launcher.x<bounds.x+bounds.width&&bounds.y<launcher.y+launcher.height&&launcher.y<bounds.y+bounds.height,false,'keyboard launcher does not overlap rail');
   assert.ok((await rail.evaluate(el=>getComputedStyle(el).backgroundColor)).startsWith('rgba(25, 19, 32'),'rail uses dark XyDesk surface');
   const boxes=await rail.locator('.srail-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};}));
   assert.equal(boxes.some((a,i)=>boxes.slice(i+1).some(b=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h)),false,'rail buttons never overlap');

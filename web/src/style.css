@@ -3230,3 +3230,6 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .video-surface>.keyboard-shell{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
 .keyboard-shell .keyboard-toolbar,.keyboard-shell .keyboard-settings{background:rgb(232 235 239 / var(--keyboard-fill,1))!important}
 .keyboard-shell .keyboard-toolbar>button,.keyboard-shell .keyboard-settings select{background:transparent!important}
+/* On short landscape screens, the independent keyboard launcher must not
+   overlap the bottom row of the right rail. */
+@media(max-height:620px){.video-surface>.srail-keyboard{left:max(12px,env(safe-area-inset-left));right:auto;bottom:max(12px,env(safe-area-inset-bottom))}}
