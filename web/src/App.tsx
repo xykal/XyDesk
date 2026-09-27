@@ -1,6 +1,5 @@
 import {PUBLIC_ORIGIN, REMOTE_ORIGIN, routeHref} from './site_routes';
 import {readDestination, rememberDestination, forgetDestination, sessionPath} from './session_restore';
-import {MouseHud} from './mouse_hud';
 import {ConnectionAttempt} from './connection_attempt';
 import {browserAccessScope,ensureGuestAccess,loadHostAccess,saveHostAccess,forgetHostAccess,mayRetrySession,retryDelay} from './guest_access';
 import {AdaptiveVideo} from './adaptive_video';
@@ -138,6 +137,8 @@ function routePath(r: Route): string {
 
 function currentRoute(): Route {
   const raw = window.location.pathname.replace(/\/$/, '') || '/';
+  const linkedDevice = raw==='/connect' ? new URLSearchParams(window.location.search).get('device') : null;
+  if(linkedDevice && /^\d{9}$/.test(linkedDevice))return {page:'device',deviceId:linkedDevice};
   const session=/^\/session(?:\/(\d{9}))?$/.exec(raw);
   if(session)return {page:'session',deviceId:session[1]||''};
   const device=/^\/devices\/(\d{9})$/.exec(raw);
@@ -352,21 +353,17 @@ function SiteHeader({
 }
 
 function NavigationOverlay({onClose,navigate,current}:{onClose:()=>void;navigate:(route:Route)=>void;current:string}) {
-  const dialog=useRef<HTMLDialogElement|null>(null);
-  useEffect(()=>{const el=dialog.current;if(!el)return;const overflow=document.body.style.overflow;document.body.style.overflow='hidden';el.showModal();return()=>{el.close();document.body.style.overflow=overflow;};},[]);
-  const groups=[['REMOTE',[['/devices','Perangkat'],['/history','Riwayat sesi'],['/connect','Koneksi baru'],['/controls','Control Studio']]],['XYDESK',[['/','Beranda'],['/news','Berita'],['/download','Unduh'],['/billing','Sewa PC'],['/legal','Legal']]]] as const;
-  return <dialog ref={dialog} id="mobile-nav" className="navigation-overlay" aria-label="Menu utama" onCancel={e=>{e.preventDefault();onClose();}}>
-    <div className="navigation-overlay-head"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk</strong></a><button type="button" autoFocus onClick={onClose} aria-label="Tutup menu">Tutup ×</button></div>
-    <p className="eyebrow">PILIH TUJUAN</p><h2>Satu tempat.<br/>Semua akses.</h2><nav aria-label="Navigasi utama">{groups.map(([heading,links])=><section key={heading}><h3>{heading}</h3>{links.map(([path,label],index)=><button type="button" key={path} aria-current={current===path?'page':undefined} onClick={()=>{onClose();navigate(path);}}><small>{String(index+1).padStart(2,'0')}</small><span>{label}</span><span aria-hidden="true">↗</span></button>)}</section>)}</nav>
-    <p className="navigation-overlay-foot">Website publik · Remote desktop · Kontrol personal</p>
-  </dialog>;
+  useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[onClose]);
+  const links=[['/devices','Perangkat'],['/history','Riwayat sesi'],['/connect','Koneksi baru'],['/controls','Control Studio'],['/','Beranda'],['/news','Berita'],['/download','Unduh'],['/billing','Sewa PC'],['/legal','Legal']] as const;
+  return <nav id="mobile-nav" className="header-navigation" aria-label="Menu utama">{links.map(([path,label])=><button type="button" key={path} aria-current={current===path?'page':undefined} onClick={()=>{onClose();navigate(path);}}>{label}</button>)}</nav>;
 }
+
 function RemoteHeader({route,navigate}:{route:Route;navigate:(r:Route)=>void}){
   const [open,setOpen]=useState(false);
   useEffect(()=>setOpen(false),[route]);
   return <header className="remote-header"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk <small>Remote</small></strong></a>
     <nav aria-label="Aplikasi remote">{([['/devices','Perangkat'],['/history','Riwayat'],['/controls','Kontrol']] as const).map(([path,label])=><a key={path} href={path} aria-current={route===path?'page':undefined} onClick={e=>{e.preventDefault();navigate(path);}}>{label}</a>)}</nav>
-    <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button><button className="remote-menu-toggle" type="button" aria-label="Buka menu" aria-expanded={open} aria-controls="mobile-nav" onClick={()=>setOpen(true)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button><button className="remote-menu-toggle" type="button" aria-label={open?"Tutup menu":"Buka menu"} aria-expanded={open} aria-controls="mobile-nav" onClick={()=>setOpen(v=>!v)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
     {open&&<NavigationOverlay onClose={()=>setOpen(false)} navigate={navigate} current={typeof route==='string'?route:'/devices'}/>}
   </header>;
 }
@@ -2109,7 +2106,7 @@ function ConnectScreen({
   const canScanQr =
     typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
   const [kbOpen, setKbOpen] = useState(false);
-  const [padOpen, setPadOpen] = useState(false);
+  const [padOpen, setPadOpen] = useState(true);
   const [trackpad, setTrackpad] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const [panelOpen, setPanelOpen] = useState(false);
   // Password pairing bisa diperlihatkan — sengaja huruf besar semua di sisi
@@ -2451,8 +2448,8 @@ function ConnectScreen({
           initialPrefsSent = true;
           session.setResolution(prefsRef.current.resolution||'1080p');
           session.setQuality(QUALITY_META[prefsRef.current.quality]?.num ?? 0);
-          session.setBitrate(prefsRef.current.bitrateMbps);
-          adaptive.current.reset(prefsRef.current.bitrateMbps||8);
+          session.setBitrate(prefsRef.current.bitrateMbps||1);
+          adaptive.current.reset(prefsRef.current.bitrateMbps||1);
           session.setFps(prefsRef.current.fps===60?60:30);
         }
       };
@@ -2582,7 +2579,7 @@ function ConnectScreen({
         s.audioPlayerState = audio ? `${audio.paused ? 'paused' : 'playing'}; muted=${audio.muted}; volume=${Math.round(audio.volume * 100)}%; readyState=${audio.readyState}; error=${audio.error?.code ?? 'none'}` : 'Belum ada pemutar';
         const p=prefsRef.current;
         const ceiling=p.bitrateMbps||((s.width??1280)*(s.height??720)>1280*720?20:12);
-        const next=adaptive.current.update(s,ceiling,performance.now());
+        const next=p.bitrateMbps===0?adaptive.current.update(s,ceiling,performance.now()):null;
         if(next!==null)sessionRef.current?.setBitrate(next);
         setStats(s);
       }
@@ -2869,7 +2866,7 @@ function ConnectScreen({
         {connected && <>
         <SessionRail
           collapsed={railHidden}
-          onToggleCollapsed={() => setRailHidden((v) => !v)}
+          onToggleCollapsed={() => {pointerRef.current?.reset();keyOwners.current?.reset();setKbOpen(false);setPanelOpen(false);setRailHidden(v=>!v);}}
           audioOn={audioOn}
           onAudio={() => {
             const next = !audioOn;
@@ -2940,19 +2937,12 @@ function ConnectScreen({
               sessionRef.current?.setQuality(num);
             }}
             onBitrate={(mbps: BitrateMbps) => {
-              sessionRef.current?.setBitrate(mbps);
-              adaptive.current.reset(mbps||8);
+              sessionRef.current?.setBitrate(mbps||1);
+              adaptive.current.reset(mbps||1);
             }}
           />
         )}
-        {!padOpen&&!kbOpen&&!panelOpen&&<MouseHud trackpad={trackpad} onSwitch={toggleTrackpad} onCustomize={()=>setPadOpen(true)}
-          onMouse={(e,button,down)=>{e.preventDefault();e.stopPropagation();if(down){e.currentTarget.setPointerCapture(e.pointerId);pointerRef.current?.sync();}pointerRef.current?.button(button,down,'dock:'+e.pointerId);}}
-          onMouseClick={button=>{pointerRef.current?.sync();pointerRef.current?.button(button,true,'dock-key');pointerRef.current?.button(button,false,'dock-key');}}
-          onScroll={delta=>send(InputCodec.scroll(0,prefs.reverseScroll?-delta:delta))}
-          onWindows={(owner,down)=>keyOwners.current?.set(91,down,'dock:'+owner)}
-          onRelease={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}}
-          onCenter={()=>{pointerRef.current?.center();paintCursor();}}/>}
-        {padOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
+        {padOpen && !railHidden && !kbOpen && !panelOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');
         }} />}

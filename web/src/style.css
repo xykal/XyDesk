@@ -3030,3 +3030,32 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 @keyframes studio-slide{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 @media(max-width:600px){.navigation-overlay nav{grid-template-columns:1fr;gap:28px}.navigation-overlay h2{margin-top:10px;margin-bottom:24px}.navigation-overlay-head{margin-bottom:22px}.remote-header>nav{display:none!important}.remote-header .brand small{display:none}.remote-header>.btn{font-size:11px;padding:8px}.studio-toolbar strong{font-size:13px}.mapping-tools.studio-toolbar button{padding:9px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.video-surface .mapping-editor.studio-panel{animation:none}}
+
+/* Session controls: neutral, fixed geometry, no decorative motion. */
+.mapping-button,.mapping-button:hover,.mapping-button:active,.mapping-stick{box-sizing:border-box;display:grid;place-items:center;padding:0;border:2px solid #fff!important;background:#151719b8!important;color:#fff!important;box-shadow:none!important;outline-color:#fff!important;transition:none!important;backdrop-filter:none}
+.mapping-button:active{background:#45484bcc!important;border-width:2px}
+.mapping-button.selected{outline:2px solid #fff;outline-offset:3px}
+.mapping-button>.mapping-glyph{display:block;width:50%;height:50%;max-width:52px;max-height:52px;margin:0;pointer-events:none}
+.stick-knob{background:#676b70;border:2px solid #fff;box-shadow:none}
+.mapping-tools:not([data-editing="true"]){width:auto;max-width:none;padding:0;background:none;border:0;box-shadow:none}
+.mapping-tools .control-edit-trigger{display:grid;place-items:center;width:42px;height:42px;padding:0;border:2px solid white;border-radius:12px;background:#151719c9;color:white}
+.srail{width:60px;padding:6px;box-sizing:border-box;gap:4px;max-height:calc(100dvh - 100px);overflow-y:auto;background:#151719e6!important;border:1px solid #fff!important;border-radius:16px!important;box-shadow:none!important}
+.srail .srail-btn{flex:0 0 44px;width:46px;height:44px;padding:0;display:grid;place-items:center;color:white;background:transparent;border:1px solid transparent;border-radius:10px}
+.srail .srail-btn.on{border-color:#fff;background:#ffffff20;color:white}
+.srail .srail-btn svg{width:23px;height:23px}.srail-sep{background:#ffffff50}
+.srail-reveal{position:absolute;right:8px;top:50%;transform:translateY(-50%);z-index:9;width:40px;height:48px;display:grid;place-items:center;background:#151719db;color:#fff;border:1px solid #fff;border-radius:12px}
+.srail-keyboard{background:#151719db!important;color:#fff!important;border:1px solid #fff!important}
+.header-navigation{flex:0 0 100%;width:100%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;border-top:1px solid #d7d9dc;padding:12px 0;background:inherit}
+.header-navigation button{text-align:left;border:0;border-radius:6px;padding:12px;background:transparent;color:#26282b;font-weight:600}
+.header-navigation button:hover,.header-navigation button[aria-current="page"]{background:#e7e9ec}
+.remote-header,header:has(>.header-navigation){flex-wrap:wrap;height:auto}
+@media(max-width:700px){.remote-header>nav:not(.header-navigation){display:none!important}.header-navigation{grid-template-columns:repeat(2,minmax(0,1fr))}.remote-header{gap:10px}.remote-header>.btn{margin-left:auto}}
+.control-mapping-page,.mapping-studio-active{font-family:Inter,"Segoe UI",system-ui,sans-serif;--accent:#34383e}
+.mapping-studio-active *,.control-mapping-page *,.srail *{animation:none!important;transition:none!important}
+.keyboard-shell{position:absolute;bottom:0;left:0;right:0;z-index:12;max-height:60dvh;overflow:auto;background:#f2f3f5;color:#222;border-top:1px solid #d1d4d8;border-radius:12px 12px 0 0;touch-action:manipulation}
+.keyboard-shell .vkb{position:static;border:0;box-shadow:none;border-radius:0;max-height:none}.keyboard-toolbar{display:flex;align-items:center;gap:6px;padding:6px 10px}.keyboard-toolbar>span{margin-right:auto;font-size:12px}.keyboard-toolbar>button{display:grid;place-items:center;width:36px;height:32px;padding:0;border:1px solid #b8bdc4;border-radius:7px;background:white;color:#222}.keyboard-settings{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px}.keyboard-settings select{max-width:65%;padding:8px}.native-keyboard{padding:0 10px 10px}.native-keyboard textarea{box-sizing:border-box;width:100%;min-height:64px;font:16px system-ui;border:1px solid #b8bdc4;border-radius:8px;padding:10px}.native-keyboard>div{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.native-keyboard button{padding:8px;border:1px solid #b8bdc4;border-radius:6px;background:white;color:#222}.vkb-key.mod.on{background:#30343a;color:white}
+.remote-header>.header-navigation{display:grid!important}
+.mapping-editor,.mapping-studio-active .mapping-tools{background:#f4f5f6!important;color:#25282c!important;border-color:#c9cdd2!important}
+.mapping-editor button,.mapping-editor input,.mapping-editor select{color:#25282c!important;border-color:#b9bfc7!important;accent-color:#34383e}
+.mapping-editor button.active,.mapping-editor button.selected,.studio-action-summary{background:#e1e4e8!important;color:#25282c!important}
+.mapping-page-desktop,.mapping-page-stage{background:#202428;color:#d1d6dd}

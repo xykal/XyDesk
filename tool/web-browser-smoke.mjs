@@ -33,13 +33,14 @@ try{
  results.push('Real canvas MediaStream attaches to empty video, plays and presents 160x90 frames');
  await page.evaluate(()=>{window.fixtureStop();clearInterval(window.fixtureTimer);window.fixtureStream.getTracks().forEach(t=>t.stop());document.querySelector('#fixture-video').remove();});
  await page.getByRole('button',{name:'Buka menu',exact:true}).click();
- const menu=page.getByRole('dialog',{name:'Menu utama'});
+ const menu=page.getByRole('navigation',{name:'Menu utama'});
  await menu.waitFor({state:'visible'});
- const bounds=await menu.boundingBox();assert.equal(Math.round(bounds.width),1366);assert.equal(Math.round(bounds.height),900);
+ const bounds=await menu.boundingBox();assert.ok(bounds.width>300);assert.ok(bounds.height<450);
+ assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'HEADER');
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);
  await page.screenshot({path:'browser-evidence/menu-desktop.png'});
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
- results.push('Hamburger is viewport-sized modal, not device fullscreen; Escape closes');
+ results.push('Hamburger navigation belongs to header, not a modal; Escape closes');
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).click();
  await page.locator('.mapping-studio-active').waitFor();
  await page.locator('.mapping-editor .mapping-options').getByRole('button',{name:'A',exact:true}).click();
@@ -72,6 +73,37 @@ try{
  const panel=await page.locator('.studio-panel').boundingBox();
  assert.ok(panel.x>=0&&panel.x+panel.width<=391,'mobile inspector stays within viewport');
  results.push('Mobile inspector fits 390px viewport');
+ await page.getByRole('button',{name:'Simpan',exact:true}).click();
+ await page.getByRole('button',{name:'Buka menu',exact:true}).click();
+ await menu.waitFor({state:'visible'});
+ assert.equal(await page.getByRole('navigation',{name:'Aplikasi remote'}).isVisible(),false);
+ assert.equal(await page.getByRole('button',{name:'Control Studio',exact:true}).count(),1);
+ await page.screenshot({path:'browser-evidence/menu-mobile.png'});
+ await page.keyboard.press('Escape');
+ results.push('Mobile menu stays inside header with no duplicate remote navigation');
+ // Mount real exported session components without a host or credentials.
+ await page.evaluate(async()=>{
+   const React=await import('/node_modules/.vite/deps/react.js');
+   const {createRoot}=await import('/node_modules/.vite/deps/react-dom_client.js');
+   const {SessionRail,VirtualKeyboard}=await import('/src/session_ui.tsx');
+   const fixture=document.createElement('div');fixture.id='session-controls-fixture';document.body.append(fixture);
+   window.fixturePackets=[];
+   function Controls(){const [collapsed,setCollapsed]=React.useState(false);return React.createElement(React.Fragment,null,React.createElement(SessionRail,{collapsed,onToggleCollapsed:()=>setCollapsed(v=>!v)}),React.createElement(VirtualKeyboard,{send:b=>window.fixturePackets.push([...b])}));}
+   window.controlsRoot=createRoot(fixture);window.controlsRoot.render(React.createElement(Controls));
+ });
+ await page.getByRole('button',{name:'Sembunyikan kontrol',exact:true}).click();
+ assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
+ await page.getByRole('button',{name:'Tampilkan kontrol',exact:true}).click();
+ await page.getByRole('toolbar',{name:'Kontrol sesi'}).waitFor();
+ await page.getByRole('button',{name:'Pengaturan keyboard',exact:true}).click();
+ await page.getByLabel('Jenis keyboard').selectOption('native');
+ await page.getByLabel('Teks untuk PC').fill('Halo PC');
+ await page.getByRole('button',{name:'Kirim teks',exact:true}).click();
+ assert.equal(await page.getByLabel('Teks untuk PC').inputValue(),'');
+ assert.ok(await page.evaluate(()=>window.fixturePackets.length>0));
+ await page.evaluate(()=>{window.controlsRoot.unmount();document.querySelector('#session-controls-fixture').remove();});
+ results.push('Rail hides/restores and native keyboard text composer sends once');
+
  assert.deepEqual(errors,[],'No browser page errors');
  await writeFile('browser-evidence/results.json',JSON.stringify({passed:results,browserErrors:errors,scope:'Synthetic media + editor/menu. No real host, RDP or OAuth acceptance.'},null,2));
  console.log(results.join('\n'));

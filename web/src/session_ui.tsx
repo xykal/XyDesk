@@ -139,6 +139,7 @@ export function SessionRail({
   onPanel: () => void;
   onDisconnect: () => void;
 }) {
+  if(collapsed)return <button type="button" className="srail-reveal" title="Tampilkan kontrol" aria-label="Tampilkan kontrol" onPointerDown={e=>e.stopPropagation()} onClick={onToggleCollapsed}><IcChevronLeft/></button>;
   return (<>
       <button type="button" className={`srail-keyboard${kbOpen ? ' on' : ''}`} title="Keyboard" aria-label="Keyboard" aria-pressed={kbOpen} onClick={onKeyboard}>
         <IcKeyboard />
@@ -218,7 +219,24 @@ const VKB_ROWS: KeySpec[][] = [
   ],
 ];
 
-export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>void }) {
+export function VirtualKeyboard({send,onClose}:{send:Send;onClose?:()=>void}) {
+  const [mode,setMode]=useState<'virtual'|'native'>(()=>{try{return localStorage.getItem('xydesk.keyboard.mode')==='native'?'native':'virtual';}catch{return 'virtual';}});
+  const [settings,setSettings]=useState(false);
+  const [draft,setDraft]=useState('');
+  const composing=useRef(false);
+  const commit=()=>{if(!composing.current&&draft){send(InputCodec.text(draft));setDraft('');}};
+  const key=(vk:number)=>{send(InputCodec.key(vk,true));send(InputCodec.key(vk,false));};
+  return <section className="keyboard-shell" aria-label="Keyboard remote" onPointerDown={e=>e.stopPropagation()}>
+    <div className="keyboard-toolbar"><span>{mode==='virtual'?'Keyboard virtual':'Keyboard HP · ketik lalu kirim'}</span>
+      <button type="button" aria-label="Pengaturan keyboard" aria-expanded={settings} onClick={()=>setSettings(v=>!v)}><IcSliders/></button>
+      <button type="button" aria-label="Tutup keyboard" onClick={onClose}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg></button>
+    </div>
+    {settings&&<label className="keyboard-settings">Jenis keyboard <select value={mode} onChange={e=>{const next=e.target.value==='native'?'native':'virtual';setMode(next);try{localStorage.setItem('xydesk.keyboard.mode',next);}catch{}}}><option value="virtual">Virtual · tombol lengkap</option><option value="native">Keyboard HP · teks / IME</option></select></label>}
+    {mode==='virtual'?<VirtualKeyGrid send={send}/>:<div className="native-keyboard"><textarea autoFocus aria-label="Teks untuk PC" placeholder="Ketik di keyboard HP, lalu Kirim teks" value={draft} maxLength={4000} onChange={e=>setDraft(e.target.value)} onCompositionStart={()=>{composing.current=true;}} onCompositionEnd={()=>{composing.current=false;}} onKeyDown={e=>{e.stopPropagation();if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();commit();}}}/><div><button type="button" disabled={!draft} onClick={commit}>Kirim teks</button><button type="button" onClick={()=>key(0x08)}>Backspace PC</button><button type="button" onClick={()=>key(0x0d)}>Enter PC</button></div></div>}
+  </section>;
+}
+
+function VirtualKeyGrid({ send }: { send: Send }) {
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
   const [caps, setCaps] = useState(false);
   const heldRef=useRef<ReadonlySet<number>>(new Set());const sendRef=useRef(send);sendRef.current=send;
@@ -257,7 +275,6 @@ export function VirtualKeyboard({ send, onClose }: { send: Send; onClose?:()=>vo
 
   return (
     <div className="vkb" onPointerDown={(e) => e.stopPropagation()}>
-      <button type="button" className="vkb-dismiss" aria-label="Tutup keyboard" onClick={()=>{release();setHeld(new Set());onClose?.();}}>⌄ <span>Tutup keyboard</span></button>
       {VKB_ROWS.map((row, i) => {
         // Huruf mengikuti mode seperti keyboard fisik: Caps XOR Shift =
         // huruf besar; selain itu kecil. Simbol tidak berubah.
@@ -359,7 +376,7 @@ export function GamingPad({ send }: { send: Send }) {
 
 // ── Panel pengaturan sesi: empat tab ala aplikasi ──────────────
 export type StreamQuality = 'auto' | 'medium' | 'high' | 'ultra';
-export type BitrateMbps = 0 | 8 | 15 | 25 | 50;
+export type BitrateMbps = 0 | 1 | 2 | 4 | 8 | 15 | 25 | 50;
 
 export type ResolutionMode = '720p'|'1080p';
 export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: string; hint: string}> = [
@@ -394,7 +411,10 @@ export const QUALITY_META: Record<StreamQuality, { label: string; desc: string; 
 
 export const BITRATE_OPTIONS: { value: BitrateMbps; label: string; hint: string }[] = [
   { value: 0,  label: 'Otomatis', hint: 'Adaptif berdasarkan kondisi jaringan' },
-  { value: 8,  label: '8 Mbps',   hint: 'Hemat' },
+  { value: 1, label: '1 Mbps', hint: 'Koneksi terbatas; detail lebih rendah' },
+  { value: 2, label: '2 Mbps', hint: 'Butuh ruang tambahan untuk audio dan transport' },
+  { value: 4, label: '4 Mbps', hint: 'Seimbang untuk HD' },
+  { value: 8, label: '8 Mbps', hint: 'Detail tinggi' },
   { value: 15, label: '15 Mbps',  hint: 'Seimbang' },
   { value: 25, label: '25 Mbps',  hint: 'Tajam' },
   { value: 50, label: '50 Mbps',  hint: 'Maksimal' },

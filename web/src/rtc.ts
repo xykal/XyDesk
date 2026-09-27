@@ -612,7 +612,7 @@ export class RtcSession {
     this.audioTransceiver = pc.addTransceiver('audio', { direction: 'sendrecv' });
     this.input = pc.createDataChannel('input');
     this.input.binaryType = 'arraybuffer';
-    this.input.bufferedAmountLowThreshold=512;
+    this.input.bufferedAmountLowThreshold=32;
     this.input.onbufferedamountlow = () => this.flushAbsoluteMove();
     this.input.onmessage = (ev) => {
       // Balasan biner: 0x08 CLIPBOARD_SET (isi papan klip PC).
@@ -741,7 +741,7 @@ export class RtcSession {
   private flushAbsoluteMove(){
     if(this.meta?.inputGeometry===null){this.pendingAbsoluteMove=undefined;return;}
     const dc=this.input;
-    if(this.pendingAbsoluteMove&&dc?.readyState==='open'&&dc.bufferedAmount<=1024){
+    if(this.pendingAbsoluteMove&&dc?.readyState==='open'&&dc.bufferedAmount<=64){
       dc.send(this.pendingAbsoluteMove.slice().buffer);this.pendingAbsoluteMove=undefined;
     }
   }
@@ -756,7 +756,7 @@ export class RtcSession {
     const dc=pointerEvent?pointer:this.input;
     if(dc?.readyState!=='open')return;
     if(pointerEvent && event[0]===2){
-      if(dc.bufferedAmount>1024){if(this.pendingAbsoluteMove)this.coalescedMoves++;this.pendingAbsoluteMove=event.slice();return;}
+      if(dc.bufferedAmount>64){if(this.pendingAbsoluteMove)this.coalescedMoves++;this.pendingAbsoluteMove=event.slice();return;}
       if(this.pendingAbsoluteMove)this.coalescedMoves++;
       this.pendingAbsoluteMove=undefined;
     }else if(this.pendingAbsoluteMove&&(event[0]===1||event[0]===3||event[0]===4)){

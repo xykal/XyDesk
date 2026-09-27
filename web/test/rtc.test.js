@@ -433,3 +433,10 @@ test('clipboard reserves opcode byte and preserves complete UTF-8 boundaries',()
  session.sendClipboard('a'.repeat(65534)+'é');assert.ok(sent.length<=65536);assert.equal(decode.decode(sent.subarray(1)),'a'.repeat(65534));
  session.sendClipboard('a'.repeat(65533)+'é');assert.equal(sent.length,65536);assert.equal(decode.decode(sent.subarray(1)),'a'.repeat(65533)+'é');session.stop();
 });
+
+test('small reliable backlog coalesces latest position before click, without dropping release',()=>{
+ const {session}=setup(),sent=[];session.input={readyState:'open',bufferedAmount:80,send:b=>sent.push([...new Uint8Array(b)])};
+ session.sendInput(new Uint8Array([2,10,0]));session.sendInput(new Uint8Array([2,20,0]));assert.equal(sent.length,0);
+ session.sendInput(new Uint8Array([3,0,1]));session.sendInput(new Uint8Array([3,0,0]));
+ assert.deepEqual(sent,[[2,20,0],[3,0,1],[3,0,0]]);
+});
