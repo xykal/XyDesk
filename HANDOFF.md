@@ -2561,3 +2561,17 @@ mengembalikan 204 dengan allow-origin yang tepat.
 Distribusi untuk tes operator via artefak Actions, **bukan promosi stabil**.
 Tidak ada bump versi atau overwrite aset v6.8.5; jangan memakai releases/latest
 sebagai bukti kandidat ini. Acceptance browser/Windows nyata tetap terbuka.
+
+## Hasil akhir rollout kandidat — 2026-09-27
+
+Hotfix routing web `bece719` lolos Build penuh 36294341595 dan deploy final
+36294668021. Pemeriksaan HTTP ulang: 18 URL sesuai, app root redirect 308,
+remote root no-store/noindex, remote robots Disallow, JS/CSS 200.
+Installer EXE/MSI dari source `00ae1b8` sudah dicocokkan SHA-256 dengan CI.
+Tidak ada perubahan source executable antara `00ae1b8` dan `bece719`;
+manifest tetap 6.8.5+59 dan rilis stabil/latest tidak diubah.
+
+Semua link unduh, checksum, run CI dan checklist perangkat nyata ada di
+`docs/qa/test-links-2026-09-27.md`. CI/deploy selesai, bukan klaim acceptance
+Windows/RDP/browser/audio end-to-end. Catatan hold/belum diuji sebelumnya
+adalah riwayat sebelum otorisasi rollout; lihat hasil akhir ini untuk status.

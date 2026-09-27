@@ -2,8 +2,13 @@
 
 Sesi `SESI-20260927-OPERATOR-HARDEN`, lanjutan atas pilihan pemilik.
 Baseline tetap `f5fd41f49ee0bd606cca8bd0bc0880c79c0a5318`.
-**Status: source lokal, belum build/test Actions, belum observasi browser/Windows,
-belum push/deploy/DNS/OAuth Console. Tidak ada bump versi.**
+**Update akhir: source dipush, validasi/build/installer Actions PASS dan domain
+www/remote sudah live. Link serta bukti: [panduan tes](test-links-2026-09-27.md).
+OAuth Console dikonfirmasi operator; login/browser/Windows-RDP nyata masih
+menunggu acceptance. Tidak ada bump versi atau promosi stabil.**
+
+Bagian desain dan rencana di bawah merekam keadaan sebelum rollout; status
+pelaksanaan terbaru ada di panduan tes, bukan pada label “belum” historis.
 
 ## Keputusan dan penilaian UX
 
