@@ -143,13 +143,13 @@ export function SessionRail({
   onPanel: () => void;
   onDisconnect: () => void;
 }) {
-  if(collapsed)return <button type="button" className="srail-reveal" title="Tampilkan kontrol" aria-label="Tampilkan kontrol" onPointerDown={e=>e.stopPropagation()} onClick={onToggleCollapsed}><IcChevronLeft/></button>;
+  if(collapsed)return <button type="button" className="srail-reveal" title="Tampilkan rail" aria-label="Tampilkan rail" onPointerDown={e=>e.stopPropagation()} onClick={onToggleCollapsed}><IcChevronLeft/></button>;
   return (<>
       <button type="button" className={`srail-keyboard${kbOpen ? ' on' : ''}`} title="Keyboard" aria-label="Keyboard" aria-pressed={kbOpen} onClick={onKeyboard}>
         <IcKeyboard />
       </button>
     <div className={collapsed?"srail compact":"srail"} role="toolbar" aria-label="Kontrol sesi" onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-      <button type="button" className="srail-btn" title={collapsed?"Kontrol":"Sembunyikan kontrol"} aria-label={collapsed?"Kontrol":"Sembunyikan kontrol"} onClick={onToggleCollapsed}>
+      <button type="button" className="srail-btn" title={collapsed?"Kontrol":"Sembunyikan rail"} aria-label={collapsed?"Kontrol":"Sembunyikan rail"} onClick={onToggleCollapsed}>
         {collapsed?<IcChevronLeft />:<IcChevronRight />}
       </button>
       <span className="srail-sep" />
@@ -160,7 +160,7 @@ export function SessionRail({
         <IcMic />
       </button>
 
-      <button type="button" className={`srail-btn${padOpen ? ' on' : ''}`} title="Tombol mapping" aria-label="Panel gaming" aria-pressed={padOpen} onClick={onPad}>
+      <button type="button" className={`srail-btn${padOpen ? ' on' : ''}`} title="Tombol mapping" aria-label="Kontrol layar" aria-pressed={padOpen} onClick={onPad}>
         <IcGamepad />
       </button>
       <button type="button" className={`srail-btn${trackpad ? ' on' : ''}`} title={trackpad?'Trackpad':'Direct'} aria-label="Mode trackpad" aria-pressed={trackpad} onClick={onTrackpad}>
@@ -497,9 +497,9 @@ export function transportLabel(stats:Pick<SessionStats,'transportPath'|'transpor
  const protocol=stats.transportProtocol?` · ${stats.transportProtocol}`:'';
  return stats.transportPath==='turn-relay'?`TURN relay${protocol}`:stats.transportPath==='direct-p2p'?`Langsung (P2P)${protocol}`:'Jalur belum terukur';
 }
-export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose:()=>void}){
- return <aside className="statistics-panel" aria-label="Statistik koneksi" onPointerDown={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
-  <header><strong>Statistik</strong><button type="button" aria-label="Tutup statistik" onClick={onClose}>×</button></header>
+export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose?:()=>void}){
+ return <aside className={`statistics-panel${onClose?'':' statistics-inline'}`} aria-label="Statistik koneksi" onPointerDown={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
+  <header><strong>Statistik koneksi</strong>{onClose&&<button type="button" aria-label="Tutup statistik" onClick={onClose}>×</button>}</header>
   {stats?<><div className="statistics-grid"><StatRow label="FPS" value={stats.fps?String(Math.round(stats.fps)):'—'}/><StatRow label="RTT" value={stats.rttMs?`${Math.round(stats.rttMs)} ms`:'—'}/><StatRow label="Video" value={`${stats.mbps.toFixed(1)} Mbps`}/><StatRow label="Resolusi" value={stats.width?`${stats.width}×${stats.height}`:'—'}/></div>
    <p className="statistics-path">{transportLabel(stats)}</p>
    {stats.noFrameWarning&&<p role="status">Frame video sedang tersendat.</p>}
@@ -508,12 +508,13 @@ export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose
  </aside>;
 }
 
-type PanelTab = 'gambar' | 'suara' | 'kontrol' | 'sesi';
+export type PanelTab = 'gambar' | 'suara' | 'kontrol' | 'statistik' | 'sesi';
 
 const PANEL_TABS: [PanelTab, string, React.ReactNode][] = [
-  ['gambar', 'Gambar', <Svg key="g"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></Svg>],
-  ['suara', 'Suara', <IcVolume key="v" />],
+  ['gambar', 'Video', <Svg key="g"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></Svg>],
   ['kontrol', 'Kontrol', <IcGamepad key="k" />],
+  ['suara', 'Audio', <IcVolume key="v" />],
+  ['statistik', 'Statistik', <Svg key="stats"><path d="M5 20V10M12 20V4M19 20v-7"/></Svg>],
   ['sesi', 'Sesi', <Svg key="s"><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></Svg>],
 ];
 
@@ -538,6 +539,7 @@ export function fmtDurasi(totalDetik: number): string {
 }
 
 export function SessionPanel({
+  activeTab, onTabChange, controlsVisible, onControlsVisibilityChange, audioOn, onAudio, micOn, onMic,
   prefs,
   onChange,
   onClose,
@@ -559,6 +561,11 @@ export function SessionPanel({
   fpsLimit,
   encoder,
 }: {
+  controlsVisible?:boolean;
+  onControlsVisibilityChange?:(on:boolean)=>void;
+  audioOn?:boolean; onAudio?:()=>void; micOn?:boolean; onMic?:()=>void;
+  activeTab?:PanelTab;
+  onTabChange?:(tab:PanelTab)=>void;
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
   encoder?:string;
@@ -583,28 +590,43 @@ export function SessionPanel({
   onResolution?: (resolution: SessionPrefs['resolution']) => void;
   onBitrate?: (mbps: BitrateMbps) => void;
 }) {
-  const [tab, setTab] = useState<PanelTab>('gambar');
+  const [localTab, setLocalTab] = useState<PanelTab>('gambar');
+  const tab=activeTab??localTab;
+  const setTab=(next:PanelTab)=>{setLocalTab(next);onTabChange?.(next);};
+  const tabsRef=useRef<HTMLDivElement>(null);
+  const drawerRef=useRef<HTMLElement>(null);
+  useEffect(()=>{const previous=document.activeElement;drawerRef.current?.querySelector<HTMLButtonElement>('.spanel-close')?.focus({preventScroll:true});return()=>{if(previous instanceof HTMLElement&&previous.isConnected)previous.focus({preventScroll:true});};},[]);
   const elapsed = useElapsedSec(connectedAt);
 
   return (
     <aside
-      className={`spanel${railCollapsed ? ' no-rail' : ''}`}
+      className={`spanel session-settings${railCollapsed ? ' no-rail' : ''}`}
+      ref={drawerRef}
+      aria-label="Pengaturan sesi"
+      onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();onClose();}}}
       onPointerDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
       <header className="spanel-head">
         <strong>Pengaturan sesi</strong>
-        <button type="button" className="spanel-close" onClick={onClose} title="Tutup">
+        <button type="button" className="spanel-close" onClick={onClose} title="Tutup" aria-label="Tutup pengaturan sesi">
           ✕
         </button>
       </header>
 
-      <div className="spanel-tabs" role="tablist">
+      <div ref={tabsRef} className="spanel-tabs" role="tablist" aria-label="Kategori pengaturan" onKeyDown={e=>{
+        const index=PANEL_TABS.findIndex(([id])=>id===tab);
+        const next=e.key==='ArrowRight'?(index+1)%PANEL_TABS.length:e.key==='ArrowLeft'?(index+PANEL_TABS.length-1)%PANEL_TABS.length:e.key==='Home'?0:e.key==='End'?PANEL_TABS.length-1:-1;
+        if(next>=0){e.preventDefault();e.stopPropagation();setTab(PANEL_TABS[next][0]);tabsRef.current?.querySelectorAll<HTMLButtonElement>('[role=tab]')[next]?.focus();}
+      }}>
         {PANEL_TABS.map(([id, label, icon]) => (
           <button
             key={id}
             type="button"
             role="tab"
+            id={`session-tab-${id}`}
+            aria-controls="session-settings-body"
+            tabIndex={tab===id?0:-1}
             aria-selected={tab === id}
             className={`spanel-tab${tab === id ? ' on' : ''}`}
             onClick={() => setTab(id)}
@@ -615,6 +637,8 @@ export function SessionPanel({
         ))}
       </div>
 
+      <div key={tab} id="session-settings-body" className="spanel-body" role="tabpanel" aria-labelledby={`session-tab-${tab}`} tabIndex={0}>
+      {tab === 'statistik' && <StatisticsPanel stats={stats}/>}
       {tab === 'gambar' && (
         <>
           <p className="spanel-section">Kualitas gambar</p>
@@ -701,6 +725,9 @@ export function SessionPanel({
 
       {tab === 'suara' && (
         <>
+          {onAudio&&<ToggleRow label="Suara PC" hint="Dengarkan audio dari host di perangkat ini." on={!!audioOn} onToggle={onAudio}/>}
+          {onMic&&<ToggleRow label="Mikrofon ke PC" hint="Izin mikrofon mengikuti pengaturan browser." on={!!micOn} onToggle={onMic}/>}
+
           <p className="spanel-section">Status suara</p>
           <div className="spanel-card">
             <StatRow label="Pemutar suara" value={stats?.audioPlayerState || 'Menunggu statistik'} />
@@ -728,6 +755,8 @@ export function SessionPanel({
 
       {tab === 'kontrol' && (
         <>
+          {onControlsVisibilityChange&&<ToggleRow label="Tampilkan kontrol layar" hint="Tombol mouse, keyboard dan stick; terpisah dari rail pengaturan." on={!!controlsVisible} onToggle={()=>onControlsVisibilityChange(!controlsVisible)}/>}
+
           <p className="spanel-section">Penunjuk mouse</p>
           <p className="spanel-note">Kursor Windows asli dikirim dalam video oleh host terbaru. Tidak ada panah lokal pengganti. Bentuk dan geraknya mengikuti desktop host.</p>
           <p className="spanel-section">Gerak kursor</p>
@@ -793,14 +822,13 @@ export function SessionPanel({
                   : '—'
               }
             />
-            <StatRow label="Kualitas" value={QUALITY_META[prefs.quality].label} />
-            <StatRow label="Bitrate" value={prefs.bitrateMbps === 0 ? 'Bawaan host' : `${prefs.bitrateMbps} Mbps`} />
           </div>
           <button type="button" className="spanel-disconnect" onClick={onDisconnect}>
             Putuskan sesi
           </button>
         </>
       )}
+      </div>
     </aside>
   );
 }

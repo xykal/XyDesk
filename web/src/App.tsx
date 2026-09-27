@@ -79,7 +79,7 @@ import {
 } from './version';
 import { vkFromCode } from './vk';
 import BillingPage from './Billing';
-import { VirtualKeyboard, StatisticsPanel, transportLabel, SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
+import { VirtualKeyboard, transportLabel, SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
 import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
 import { WhatsAppIcon, TelegramIcon, XIcon, FacebookIcon } from './brand-icons';
@@ -355,9 +355,13 @@ function SiteHeader({
 }
 
 function NavigationOverlay({onClose,navigate,current}:{onClose:()=>void;navigate:(route:Route)=>void;current:string}) {
-  useEffect(()=>{const close=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose();};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[onClose]);
+  const dialog=useRef<HTMLDialogElement>(null);
+  useEffect(()=>{const el=dialog.current;if(!el)return;const previous=document.body.style.overflow;document.body.style.overflow='hidden';el.showModal();return()=>{el.close();document.body.style.overflow=previous;};},[]);
   const links=[['/devices','Perangkat'],['/history','Riwayat sesi'],['/connect','Koneksi baru'],['/controls','Control Studio'],['/','Beranda'],['/news','Berita'],['/download','Unduh'],['/billing','Sewa PC'],['/legal','Legal']] as const;
-  return <nav id="mobile-nav" className="header-navigation" aria-label="Menu utama">{links.map(([path,label])=><button type="button" key={path} aria-current={current===path?'page':undefined} onClick={()=>{onClose();navigate(path);}}>{label}</button>)}</nav>;
+  return <dialog ref={dialog} className="mobile-navigation-screen" aria-label="Navigasi XyDesk" onCancel={e=>{e.preventDefault();onClose();}}>
+    <header><strong>XyDesk <small>Menu</small></strong><button type="button" aria-label="Tutup menu" onClick={onClose}>Tutup <span aria-hidden="true">×</span></button></header>
+    <nav id="mobile-nav" aria-label="Menu utama">{links.map(([path,label])=><button type="button" key={path} aria-current={current===path?'page':undefined} onClick={()=>{onClose();navigate(path);}}><span>{label}</span><span aria-hidden="true">↗</span></button>)}</nav>
+  </dialog>;
 }
 
 function RemoteHeader({route,navigate}:{route:Route;navigate:(r:Route)=>void}){
@@ -2111,7 +2115,7 @@ function ConnectScreen({
   const [padOpen, setPadOpen] = useState(true);
   const [trackpad, setTrackpad] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [statisticsOpen,setStatisticsOpen]=useState(false);
+  const [panelTab,setPanelTab]=useState<'gambar'|'kontrol'|'suara'|'statistik'|'sesi'>('gambar');
   // Password pairing bisa diperlihatkan — sengaja huruf besar semua di sisi
   // host (tanpa I/O/0/1 yang mudah tertukar), jadi lihat-langsung adalah
   // cara tercepat memastikan ketikan sama dengan layar PC.
@@ -2174,7 +2178,7 @@ function ConnectScreen({
   }, [remoteVideoStream]);
   useEffect(() => {
     if (phase === 'connected' && remoteVideoStream) resumeVideo();
-    return () => {
+      return () => {
       videoPlaybackStop.current?.();
       videoPlaybackStop.current = null;
     };
@@ -2683,6 +2687,28 @@ function ConnectScreen({
     error: 'Koneksi gagal. Coba lagi.',
   };
 
+  const toggleSessionAudio=()=>{
+            const next = !audioOn;
+            setAudioOn(next);
+            audioOnRef.current = next;
+            if (audioRef.current) audioRef.current.muted = !next;
+            void sessionRef.current?.setAudioEnabled(next);
+            if (next) resumeAudio();
+  };
+  const toggleSessionMic=async()=>{
+            if (micOn) {
+              await sessionRef.current?.disableMic();
+              setMicOn(false);
+              return;
+            }
+            const err = await sessionRef.current?.enableMic();
+            if (err) {
+              setHudToast(err);
+              return;
+            }
+            setMicOn(true);
+  };
+
   return (
     <>
     <section className={sessionOpen ? 'remote-session' : 'connect-card surface-card'}>
@@ -2859,7 +2885,7 @@ function ConnectScreen({
             </div>
           );
         })()}
-        {connected && stats && !statisticsOpen && !railHidden && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
+        {connected && stats && !(panelOpen && panelTab==='statistik') && !railHidden && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
           <span className="session-connection-dot" aria-hidden="true" />
           <strong>{stats.fps > 0 ? `${Math.round(stats.fps)} FPS` : 'FPS —'}</strong>
           <span>{stats.mbps > 0 ? `${Math.round(stats.mbps * 1000)} kbps` : 'kbps —'}</span>
@@ -2869,32 +2895,13 @@ function ConnectScreen({
         {connected && <>
         <SessionRail
           collapsed={railHidden}
-          onToggleCollapsed={() => {pointerRef.current?.reset();keyOwners.current?.reset();setKbOpen(false);setPanelOpen(false);setStatisticsOpen(false);setRailHidden(v=>!v);}}
+          onToggleCollapsed={() => setRailHidden(v=>!v)}
           audioOn={audioOn}
-          onAudio={() => {
-            const next = !audioOn;
-            setAudioOn(next);
-            audioOnRef.current = next;
-            if (audioRef.current) audioRef.current.muted = !next;
-            void sessionRef.current?.setAudioEnabled(next);
-            if (next) resumeAudio();
-          }}
+          onAudio={toggleSessionAudio}
           micOn={micOn}
-          onMic={async () => {
-            if (micOn) {
-              await sessionRef.current?.disableMic();
-              setMicOn(false);
-              return;
-            }
-            const err = await sessionRef.current?.enableMic();
-            if (err) {
-              setHudToast(err);
-              return;
-            }
-            setMicOn(true);
-          }}
+          onMic={toggleSessionMic}
           kbOpen={kbOpen}
-          onKeyboard={() => {setKbOpen(v=>!v);setPanelOpen(false);setPadOpen(false);}}
+          onKeyboard={() => {setKbOpen(v=>!v);setPanelOpen(false);}}
           padOpen={padOpen}
           onPad={() => {setPadOpen(v=>!v);setPanelOpen(false);setKbOpen(false);}}
           trackpad={trackpad}
@@ -2903,18 +2910,23 @@ function ConnectScreen({
           onClipboardPull={clipboardPull}
           onFullscreen={toggleFullscreen}
           fullscreenOn={fullscreenOn}
-          statisticsOpen={statisticsOpen}
-          onStatistics={()=>{setStatisticsOpen(v=>!v);setPanelOpen(false);}}
+          statisticsOpen={panelOpen&&panelTab==='statistik'}
+          onStatistics={()=>{setPanelTab('statistik');setPanelOpen(true);setKbOpen(false);}}
           panelOpen={panelOpen}
-          onPanel={() => {setPanelOpen(v=>!v);setStatisticsOpen(false);setKbOpen(false);setPadOpen(false);}}
+          onPanel={() => {setPanelOpen(v=>!v);setKbOpen(false);}}
           onDisconnect={disconnect}
         />
 
-        {statisticsOpen && !railHidden && <StatisticsPanel stats={stats} onClose={()=>setStatisticsOpen(false)}/>}
         {retryInfo && <p className="session-retry">{retryInfo}</p>}
         {hudToast && <p className="hud-toast" role="status">{hudToast}</p>}
         {panelOpen && (
           <SessionPanel
+            controlsVisible={padOpen}
+            onControlsVisibilityChange={setPadOpen}
+            audioOn={audioOn} onAudio={toggleSessionAudio}
+            micOn={micOn} onMic={()=>void toggleSessionMic()}
+            activeTab={panelTab}
+            onTabChange={setPanelTab}
             prefs={prefs}
             onChange={setPrefs}
             onFps={fps=>sessionRef.current?.setFps(fps)}
@@ -2948,7 +2960,7 @@ function ConnectScreen({
             }}
           />
         )}
-        {padOpen && !railHidden && !kbOpen && !panelOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
+        {padOpen && !kbOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');
         }} />}

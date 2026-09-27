@@ -39,14 +39,15 @@ try{
  await page.getByRole('button',{name:'Buka menu',exact:true}).click();
  const menu=page.getByRole('navigation',{name:'Menu utama'});
  await menu.waitFor({state:'visible'});
- const bounds=await menu.boundingBox();assert.ok(bounds.width>300);assert.ok(bounds.height<450);
- assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'HEADER');
+ const menuDialog=page.getByRole('dialog',{name:'Navigasi XyDesk'});
+ const bounds=await menuDialog.boundingBox();assert.equal(bounds.x,0);assert.equal(bounds.y,0);assert.equal(bounds.width,390);assert.equal(bounds.height,844);
+ assert.equal(await menu.evaluate(el=>el.parentElement.tagName),'DIALOG');
  assert.equal(await page.evaluate(()=>document.fullscreenElement===null),true);
- await page.screenshot({path:'browser-evidence/menu-desktop.png'});
+ await page.screenshot({path:'browser-evidence/menu-fullscreen-portrait.png'});
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
  await page.setViewportSize({width:1366,height:900});
  assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
- results.push('Desktop navigation has no hamburger; narrow-screen menu belongs to header and Escape closes');
+ results.push('Desktop has no hamburger; mobile navigation fills viewport without Fullscreen API and Escape closes');
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).click();
  // Custom dialog must stay in fullscreen and never invoke window.confirm.
  await page.getByRole('button',{name:'Batal',exact:true}).click();
@@ -98,22 +99,51 @@ try{
  assert.equal(await page.getByRole('button',{name:'Control Studio',exact:true}).count(),1);
  await page.screenshot({path:'browser-evidence/menu-mobile.png'});
  await page.keyboard.press('Escape');
- results.push('Mobile menu stays inside header with no duplicate remote navigation');
+ results.push('Mobile fullscreen navigation has no duplicate desktop links');
  // Mount real exported session components without a host or credentials.
  await page.evaluate(async()=>{
    const {mountControls}=await import('/test/session-controls-fixture.tsx');
-   const fixture=document.createElement('div');fixture.id='session-controls-fixture';fixture.style.cssText='position:fixed;inset:0;z-index:1000;background:#202428';document.body.append(fixture);
+   const fixture=document.createElement('div');fixture.id='session-controls-fixture';fixture.className='remote-session';fixture.style.cssText='position:fixed;inset:0;z-index:1000;background:#202428';document.body.append(fixture);
    window.fixturePackets=[];
    window.unmountControls=mountControls(fixture,b=>window.fixturePackets.push([...b]));
  });
- await page.getByRole('button',{name:'Sembunyikan kontrol',exact:true}).click();
+ const fixture=page.locator('#session-controls-fixture');
+ const mapping=fixture.locator('.mapping-button');const mappingCount=await mapping.count();assert.ok(mappingCount>0);
+ await page.getByRole('button',{name:'Sembunyikan rail',exact:true}).click();
+ assert.equal(await mapping.count(),mappingCount,'hiding rail preserves mapped controls');
+ assert.equal(await mapping.evaluateAll(items=>items.every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(el).backgroundImage==='none')),true,'input controls have no background');
+ await page.screenshot({path:'browser-evidence/controls-transparent.png'});
  assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
- await page.getByRole('button',{name:'Tampilkan kontrol',exact:true}).click();
+ await page.getByRole('button',{name:'Tampilkan rail',exact:true}).click();
  await page.getByRole('toolbar',{name:'Kontrol sesi'}).waitFor();
  await page.getByRole('button',{name:'Statistik koneksi',exact:true}).click();
  await page.getByRole('complementary',{name:'Statistik koneksi'}).waitFor();
  assert.ok((await page.getByRole('complementary',{name:'Statistik koneksi'}).textContent()).includes('Langsung (P2P)'));
- await page.getByRole('button',{name:'Tutup statistik',exact:true}).click();
+ const drawer=page.getByRole('complementary',{name:'Pengaturan sesi',exact:true});
+ assert.equal(await drawer.getByRole('tab').count(),5);
+ assert.equal(await mapping.count(),mappingCount,'opening settings preserves mapped controls');
+ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1366,height:900}]){
+   await page.setViewportSize(viewport);
+   await drawer.evaluate(el=>el.getAnimations().forEach(a=>a.finish()));
+   const rect=await drawer.boundingBox();assert.ok(Math.abs(rect.y)<1);assert.ok(Math.abs(rect.height-viewport.height)<1);assert.ok(Math.abs(rect.x+rect.width-viewport.width)<1,'drawer stays docked right and full height');
+   for(const name of ['Video','Kontrol','Audio','Statistik','Sesi']){
+    await drawer.getByRole('tab',{name,exact:true}).click();
+    const body=drawer.getByRole('tabpanel');assert.equal(await body.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'no horizontal overflow');
+   }
+   await drawer.getByRole('tab',{name:'Video',exact:true}).click();
+   await page.screenshot({path:`browser-evidence/session-video-${viewport.width}.png`});
+ }
+ await drawer.getByRole('tab',{name:'Kontrol',exact:true}).click();
+ await page.screenshot({path:'browser-evidence/session-control-desktop.png'});
+ await drawer.getByRole('tab',{name:'Statistik',exact:true}).click();
+ await page.screenshot({path:'browser-evidence/session-statistics-desktop.png'});
+ await page.emulateMedia({reducedMotion:'reduce'});
+ assert.equal(await drawer.evaluate(el=>getComputedStyle(el).animationName),'none');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.getByRole('button',{name:'Tutup pengaturan sesi',exact:true}).click();
+ assert.equal(await mapping.count(),mappingCount,'closing panel preserves mapping');
+ await page.setViewportSize({width:390,height:844});
+ results.push('Full-height right drawer across portrait/landscape/desktop; five categories; independent rail/mapping; reduced motion respected');
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
  const key=page.locator('.vkb-key').filter({hasText:/^q$/});
  const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
