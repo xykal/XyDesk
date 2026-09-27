@@ -6,7 +6,7 @@
 // sama persis (host/src/input.rs), hanya medianya yang beda.
 import { useEffect, useState, useRef } from 'react';
 import { InputCodec } from './rtc';
-import { relayReasonText, relayStatusText } from './session_guidance';
+import { relayReasonText } from './session_guidance';
 import type { SessionStats, HostMeta } from './rtc';
 
 type Send = (bytes: Uint8Array) => void;
@@ -100,6 +100,8 @@ const IcPower = () => (
 // ── Rail kontrol kanan, ala aplikasi ───────────────────────────
 export function SessionRail({
   collapsed,
+  statisticsOpen=false,
+  onStatistics,
   onToggleCollapsed,
   audioOn,
   onAudio,
@@ -120,6 +122,8 @@ export function SessionRail({
   onDisconnect,
 }: {
   collapsed: boolean;
+  statisticsOpen?:boolean;
+  onStatistics?:()=>void;
   onToggleCollapsed: () => void;
   audioOn: boolean;
   onAudio: () => void;
@@ -171,6 +175,7 @@ export function SessionRail({
       <button type="button" className={`srail-btn${fullscreenOn ? ' on' : ''}`} title={fullscreenOn ? 'Keluar layar penuh' : 'Layar penuh'} aria-label={fullscreenOn ? 'Keluar layar penuh' : 'Layar penuh'} aria-pressed={fullscreenOn} onClick={onFullscreen}>
         <IcFullscreen />
       </button>
+      {onStatistics&&<button type="button" className={`srail-btn${statisticsOpen?' on':''}`} aria-label="Statistik koneksi" title="Statistik koneksi" aria-pressed={statisticsOpen} onClick={onStatistics}><Svg><path d="M5 20V10M12 20V4M19 20v-7"/></Svg></button>}
       <button type="button" className={`srail-btn${panelOpen ? ' on' : ''}`} title="Pengaturan sesi" aria-label="Pengaturan sesi" aria-pressed={panelOpen} onClick={onPanel}>
         <IcSliders />
       </button>
@@ -219,6 +224,15 @@ const VKB_ROWS: KeySpec[][] = [
   ],
 ];
 
+function keyboardRows(layer:'abc'|'numbers'|'fn'|'full'):KeySpec[][] {
+ const letters=(text:string):KeySpec[]=>[...text].map(c=>[c,c.charCodeAt(0)]);
+ const bottom:KeySpec[]=[['Ctrl',0xa2,1,true],['Alt',0xa4,1,true],['Spasi',0x20,4],['Enter',0x0d,1.6]];
+ if(layer==='full')return VKB_ROWS;
+ if(layer==='numbers')return [VKB_ROWS[1].slice(1,11),[['-',0xbd],['=',0xbb],['[',0xdb],[']',0xdd],[';',0xba],["'",0xde],[',',0xbc],['.',0xbe],['/',0xbf],['⌫',0x08]], [['Esc',0x1b],['Tab',0x09],['Shift',0xa0,1,true],['←',0x25],['↑',0x26],['↓',0x28],['→',0x27]],bottom];
+ if(layer==='fn')return [0,1,2,3].map(row=>Array.from({length:6},(_,column):KeySpec=>{const n=row*6+column;return [`F${n+1}`,0x70+n];}));
+ return [letters('QWERTYUIOP'),[['Caps',0x14,1.3],...letters('ASDFGHJKL')],[['Shift',0xa0,1.3,true],...letters('ZXCVBNM'),['⌫',0x08,1.3]],bottom];
+}
+
 export function VirtualKeyboard({send,onClose}:{send:Send;onClose?:()=>void}) {
   const [mode,setMode]=useState<'virtual'|'native'>(()=>{try{return localStorage.getItem('xydesk.keyboard.mode')==='native'?'native':'virtual';}catch{return 'virtual';}});
   const [settings,setSettings]=useState(false);
@@ -237,6 +251,7 @@ export function VirtualKeyboard({send,onClose}:{send:Send;onClose?:()=>void}) {
 }
 
 function VirtualKeyGrid({ send }: { send: Send }) {
+  const [layer,setLayer]=useState<'abc'|'numbers'|'fn'|'full'>('abc');
   const [held, updateHeld] = useState<ReadonlySet<number>>(new Set());
   const [caps, setCaps] = useState(false);
   const [physicalShift,setPhysicalShift]=useState(false);
@@ -277,7 +292,9 @@ function VirtualKeyGrid({ send }: { send: Send }) {
 
   return (
     <div className="vkb" onPointerDown={(e) => e.stopPropagation()}>
-      {VKB_ROWS.map((row, i) => {
+      <div className="vkb-layers" aria-label="Lapisan keyboard">{([['abc','ABC'],['numbers','123 / simbol'],['fn','F1–F24'],['full','Lengkap']] as const).map(([value,label])=><button type="button" key={value} aria-pressed={layer===value} onClick={()=>setLayer(value)}>{label}</button>)}</div>
+      <div className={`vkb-keys ${layer==='full'?'full-layout':'touch-layout'}`}>
+      {keyboardRows(layer).map((row, i) => {
         // Huruf mengikuti mode seperti keyboard fisik: Caps XOR Shift =
         // huruf besar; selain itu kecil. Simbol tidak berubah.
         const shiftHeld = physicalShift || held.has(0xa0) || held.has(0xa1);
@@ -302,6 +319,7 @@ function VirtualKeyGrid({ send }: { send: Send }) {
         </div>
         );
       })}
+      </div>
     </div>
   );
 }
@@ -475,16 +493,19 @@ function StatRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function relayText(stats: SessionStats): string {
-  if (stats.relayState === 'ready') return relayStatusText('ready', stats.relayServers);
-  if (stats.relayState === 'unavailable') {
-    return `Tidak tersedia (${relayReasonText(stats.relayReason)})`;
-  }
-  return 'Belum diperiksa';
+export function transportLabel(stats:Pick<SessionStats,'transportPath'|'transportProtocol'>):string {
+ const protocol=stats.transportProtocol?` · ${stats.transportProtocol}`:'';
+ return stats.transportPath==='turn-relay'?`TURN relay${protocol}`:stats.transportPath==='direct-p2p'?`Langsung (P2P)${protocol}`:'Jalur belum terukur';
 }
-
-function idNum(n: number, digits = 0) {
-  return n.toFixed(digits).replace('.', ',');
+export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose:()=>void}){
+ return <aside className="statistics-panel" aria-label="Statistik koneksi" onPointerDown={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
+  <header><strong>Statistik</strong><button type="button" aria-label="Tutup statistik" onClick={onClose}>×</button></header>
+  {stats?<><div className="statistics-grid"><StatRow label="FPS" value={stats.fps?String(Math.round(stats.fps)):'—'}/><StatRow label="RTT" value={stats.rttMs?`${Math.round(stats.rttMs)} ms`:'—'}/><StatRow label="Video" value={`${stats.mbps.toFixed(1)} Mbps`}/><StatRow label="Resolusi" value={stats.width?`${stats.width}×${stats.height}`:'—'}/></div>
+   <p className="statistics-path">{transportLabel(stats)}</p>
+   {stats.noFrameWarning&&<p role="status">Frame video sedang tersendat.</p>}
+   <details><summary>Detail jaringan</summary><StatRow label="Loss interval" value={stats.recentLossPct===undefined?'—':`${stats.recentLossPct.toFixed(1)}%`}/><StatRow label="Buffer video" value={stats.jitterBufferMs===undefined?'—':`${Math.round(stats.jitterBufferMs)} ms`}/><p>Langsung berarti ICE memilih koneksi P2P. TURN relay hanya tampil saat salah satu kandidat terpilih bertipe relay. Beda jaringan tetap bisa langsung. RTT bukan latensi layar-ke-layar.</p></details>
+  </>:<p>Menunggu statistik koneksi.</p>}
+ </aside>;
 }
 
 type PanelTab = 'gambar' | 'suara' | 'kontrol' | 'sesi';
@@ -525,7 +546,6 @@ export function SessionPanel({
   stats,
   displays,
   wantedDisplay,
-  desktopMode,
   onSelectDisplay,
   connectedAt,
   railCollapsed,
@@ -538,8 +558,6 @@ export function SessionPanel({
   onFps,
   fpsLimit,
   encoder,
-  videoApplied,
-  capture,
 }: {
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
@@ -567,7 +585,6 @@ export function SessionPanel({
 }) {
   const [tab, setTab] = useState<PanelTab>('gambar');
   const elapsed = useElapsedSec(connectedAt);
-  const observedHd = Boolean(stats && stats.width >= 1280 && stats.height >= 720);
 
   return (
     <aside
@@ -661,49 +678,7 @@ export function SessionPanel({
             </p>
           )}
 
-          <p className="spanel-section">Yang sedang berjalan</p>
-          <div className="spanel-card">
-            {stats ? (
-              <>
-                <StatRow label="Ukuran gambar" value={stats.width ? `${stats.width}×${stats.height}` : '—'} />
-                <StatRow label="Kehalusan" value={stats.fps ? `${idNum(stats.fps)} fps` : '—'} />
-                <StatRow label="Pemakaian data" value={`${idNum(stats.mbps, stats.mbps > 0 && stats.mbps < 0.1 ? 3 : 1)} Mbps`} />
-                <StatRow label="RTT jaringan" value={stats.rttMs ? `${idNum(stats.rttMs)} ms` : '—'} />
-                <StatRow label="Jalur WebRTC" value={stats.transportPath === 'turn-relay' ? `TURN relay (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : stats.transportPath === 'direct-p2p' ? `P2P langsung (${stats.localCandidateType || '—'} / ${stats.remoteCandidateType || '—'})` : 'Belum terukur'} />
-                <StatRow label="Relay TURN" value={relayText(stats)} />
-                <StatRow label="Paket hilang (total)" value={`${idNum(stats.lossPct, 1)} %`} />
-                <StatRow label="Jitter RTP" value={stats.jitterMs===undefined?'—':`${idNum(stats.jitterMs,1)} ms`}/>
-                <StatRow label="Buffer video (interval)" value={stats.jitterBufferMs===undefined?'—':`${idNum(stats.jitterBufferMs,1)} ms`}/>
-                <StatRow label="Decode / frame (interval)" value={stats.decodeMs===undefined?'—':`${idNum(stats.decodeMs,1)} ms`}/>
-                <StatRow label="Paket hilang (interval)" value={stats.recentLossPct===undefined?'—':`${idNum(stats.recentLossPct,1)} %`}/>
-                <StatRow label="Freeze / frame dibuang (total)" value={`${stats.freezeCount??'—'} / ${stats.framesDropped??'—'}`}/>
-                <StatRow label="Antrean input lokal" value={stats.inputBufferedBytes===undefined?'—':`${stats.inputBufferedBytes} byte`}/>
-                <StatRow label="Gerak digabung (total)" value={String(stats.coalescedMoves??'—')}/>
-                <StatRow label="Codec" value={stats.codec || '—'} />
-                <StatRow label="Status video" value={stats.videoState || '—'} />
-                <StatRow label="Capture host" value={capture ? `${capture.state} · ${capture.backend} · ${capture.framesCaptured} frame${capture.lastError ? ` · ${capture.lastError}` : ''}` : 'Menunggu meta host'} />
-                {capture?.sessionMismatch && <p className="spanel-note" role="alert">Host berjalan di sesi Windows {capture.processSession ?? '—'}, tetapi desktop aktif ada di sesi {capture.activeSession ?? '—'}. Capture lintas sesi bisa menghasilkan layar hitam. Jalankan host dari desktop RDP yang sedang aktif.</p>}
-                {!capture?.sessionMismatch && capture?.blackFrames && <p className="spanel-note" role="alert">Host menerima frame, tetapi sampelnya hitam. Desktop mungkin terkunci/secure desktop atau backend capture membaca layar yang salah.</p>}
-                <StatRow label="Penunjuk kontrol" value={stats.cursorState || '—'} />
-                <StatRow label="Pemutar video" value={stats.playerState || '—'} />
-                <StatRow label="Ukuran pemutar" value={stats.playerSize || '—'} />
-                <StatRow label="Frame pemutar (total)" value={String(stats.playerFrames ?? '—')} />
-                <StatRow label="Byte video diterima" value={stats.bytesReceived?.toLocaleString('id-ID') ?? '—'} />
-                <StatRow label="Paket diterima / hilang" value={`${stats.packetsReceived ?? '—'} / ${stats.packetsLost ?? '—'}`} />
-                <StatRow label="Frame diterima / decode" value={`${stats.framesReceived ?? '—'} / ${stats.framesDecoded ?? '—'}`} />
-                <StatRow label="Keyframe decode" value={String(stats.keyFramesDecoded ?? '—')} />
-                <StatRow label="Permintaan PLI / NACK" value={`${stats.pliCount ?? '—'} / ${stats.nackCount ?? '—'}`} />
-              </>
-            ) : (
-              <p className="spanel-note">Angka kualitas muncul begitu koneksi mengalir.</p>
-            )}
-          </div>
-          {videoApplied && <p className="spanel-note" role="status">Output video host: {videoApplied.join('×')} · teramati decoder: {stats?.width && stats?.height ? `${stats.width}×${stats.height}` : 'menunggu decode'} · ukuran pemutar: {stats?.playerSize || 'menunggu decode'}{stats && !observedHd ? ' · PERINGATAN: output di bawah HD 1280×720' : ''}.</p>}
-          {desktopMode && <p className="spanel-note" role="status">
-            Desktop diminta {desktopMode.requested.join('×')} · terbaca {desktopMode.observed?.join('×') || 'belum tersedia'}.
-            {' '}{({applied:'Mode 16:9 terverifikasi.',already:'Desktop sudah sesuai.',unsupported:'Mode tidak tersedia dari Windows/RDP.',rejected:'Windows/RDP menolak perubahan.',unverified:'Perubahan belum terverifikasi.',overridden:'Resolusi diubah kembali oleh Windows/RDP.',unavailable:'Mode desktop tidak dapat diperiksa.'} as Record<string,string>)[desktopMode.status] || 'Status belum diketahui.'}
-            {' '}Ruang kosong masih bisa muncul jika rasio layar HP berbeda.
-          </p>}
+          <p className="spanel-note">Statistik aktual tersedia melalui ikon grafik di rail, terpisah dari pengaturan ini.</p>
           {displays.length > 1 && (
             <>
               <p className="spanel-section">Layar PC</p>

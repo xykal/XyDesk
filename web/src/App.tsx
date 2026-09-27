@@ -1,3 +1,4 @@
+import {confirmAction,showNotice} from './app_dialog';
 import {PUBLIC_ORIGIN, REMOTE_ORIGIN, routeHref} from './site_routes';
 import {readDestination, rememberDestination, forgetDestination, sessionPath} from './session_restore';
 import {ConnectionAttempt} from './connection_attempt';
@@ -77,7 +78,7 @@ import {
 } from './version';
 import { vkFromCode } from './vk';
 import BillingPage from './Billing';
-import { VirtualKeyboard,  SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
+import { VirtualKeyboard, StatisticsPanel, transportLabel, SessionPanel, SessionRail, DEFAULT_PREFS, QUALITY_META, fmtDurasi, normalizeResolution, useElapsedSec } from './session_ui';
 import type { SessionPrefs, StreamQuality, BitrateMbps } from './session_ui';
 import { QrScanModal, ConnectGuide, SupportLinks } from './connect_extras';
 import { WhatsAppIcon, TelegramIcon, XIcon, FacebookIcon } from './brand-icons';
@@ -1848,7 +1849,7 @@ function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{devi
               className="text-action danger-text"
               onClick={async () => {
                 if (!jwt) return;
-                const ok = window.confirm(
+                const ok = await confirmAction(
                   'Hapus akun XyDesk secara permanen? Tindakan ini tidak bisa dibatalkan.',
                 );
                 if (!ok) return;
@@ -1856,7 +1857,7 @@ function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{devi
                   await deleteAccount(jwt);
                   signOut();
                 } catch {
-                  window.alert('Gagal menghapus akun.');
+                  await showNotice('Akun belum berhasil dihapus. Periksa koneksi lalu coba lagi.', 'Gagal menghapus akun');
                 }
               }}
             >
@@ -1949,9 +1950,9 @@ function AuthPanel(props: AuthPanelProps) {
         <>
           <GoogleButton />
           <p className="or-label">atau dengan email</p>
-          <input placeholder="Nama lengkap" value={props.name} onChange={(e) => props.setName(e.target.value)} />
-          <input type="email" placeholder="email@contoh.com" value={props.email} onChange={(e) => props.setEmail(e.target.value)} />
-          {props.error && <p className="error">{props.error}</p>}
+          <label className="auth-field">Nama lengkap<input autoComplete="name" placeholder="Nama lu" value={props.name} onChange={(e) => props.setName(e.target.value)} /></label>
+          <label className="auth-field">Alamat email<input type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder="email@contoh.com" value={props.email} onChange={(e) => props.setEmail(e.target.value)} /></label>
+          {props.error && <p className="error" role="alert">{props.error}</p>}
           <button disabled={props.busy || props.name.trim().length < 2 || !props.email.includes('@')} onClick={props.requestOtp}>
             {props.busy ? 'Mengirim…' : 'Kirim kode OTP'}
           </button>
@@ -1959,8 +1960,8 @@ function AuthPanel(props: AuthPanelProps) {
       ) : (
         <>
           <p className="muted">Enam digit dikirim ke {props.email}.</p>
-          <input inputMode="numeric" maxLength={6} placeholder="000000" value={props.otp} autoFocus onChange={(e) => props.setOtp(e.target.value.replace(/\D/g, ''))} />
-          {props.error && <p className="error">{props.error}</p>}
+          <input aria-label="Kode verifikasi enam digit" autoComplete="one-time-code" className="otp-input" inputMode="numeric" maxLength={6} placeholder="000000" value={props.otp} autoFocus onChange={(e) => props.setOtp(e.target.value.replace(/\D/g, ''))} />
+          {props.error && <p className="error" role="alert">{props.error}</p>}
           <button disabled={props.busy || props.otp.length !== 6} onClick={props.verify}>
             {props.busy ? 'Memeriksa…' : 'Masuk'}
           </button>
@@ -2109,6 +2110,7 @@ function ConnectScreen({
   const [padOpen, setPadOpen] = useState(true);
   const [trackpad, setTrackpad] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [statisticsOpen,setStatisticsOpen]=useState(false);
   // Password pairing bisa diperlihatkan — sengaja huruf besar semua di sisi
   // host (tanpa I/O/0/1 yang mudah tertukar), jadi lihat-langsung adalah
   // cara tercepat memastikan ketikan sama dengan layar PC.
@@ -2856,17 +2858,17 @@ function ConnectScreen({
             </div>
           );
         })()}
-        {connected && stats && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
+        {connected && stats && !statisticsOpen && !railHidden && <div className={`session-connection-status${stats.noFrameWarning ? ' warning' : ''}`} role="status" aria-live="polite" title="Status koneksi live dari WebRTC">
           <span className="session-connection-dot" aria-hidden="true" />
           <strong>{stats.fps > 0 ? `${Math.round(stats.fps)} FPS` : 'FPS —'}</strong>
           <span>{stats.mbps > 0 ? `${Math.round(stats.mbps * 1000)} kbps` : 'kbps —'}</span>
-          <span>{stats.transportPath === 'turn-relay' ? 'UDP relay' : stats.transportPath === 'direct-p2p' ? `${stats.transportProtocol || 'UDP'} direct` : 'Jalur —'}</span>
+          <span>{transportLabel(stats)}</span>
           {stats.noFrameWarning && <span className="session-freeze-label">Freeze terdeteksi</span>}
         </div>}
         {connected && <>
         <SessionRail
           collapsed={railHidden}
-          onToggleCollapsed={() => {pointerRef.current?.reset();keyOwners.current?.reset();setKbOpen(false);setPanelOpen(false);setRailHidden(v=>!v);}}
+          onToggleCollapsed={() => {pointerRef.current?.reset();keyOwners.current?.reset();setKbOpen(false);setPanelOpen(false);setStatisticsOpen(false);setRailHidden(v=>!v);}}
           audioOn={audioOn}
           onAudio={() => {
             const next = !audioOn;
@@ -2900,11 +2902,14 @@ function ConnectScreen({
           onClipboardPull={clipboardPull}
           onFullscreen={toggleFullscreen}
           fullscreenOn={fullscreenOn}
+          statisticsOpen={statisticsOpen}
+          onStatistics={()=>{setStatisticsOpen(v=>!v);setPanelOpen(false);}}
           panelOpen={panelOpen}
-          onPanel={() => {setPanelOpen(v=>!v);setKbOpen(false);setPadOpen(false);}}
+          onPanel={() => {setPanelOpen(v=>!v);setStatisticsOpen(false);setKbOpen(false);setPadOpen(false);}}
           onDisconnect={disconnect}
         />
 
+        {statisticsOpen && !railHidden && <StatisticsPanel stats={stats} onClose={()=>setStatisticsOpen(false)}/>}
         {retryInfo && <p className="session-retry">{retryInfo}</p>}
         {hudToast && <p className="hud-toast" role="status">{hudToast}</p>}
         {panelOpen && (

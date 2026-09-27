@@ -16,6 +16,7 @@ const errors=[];const results=[];let page;
 try{
  page=await browser.newPage({viewport:{width:1366,height:900}});
  page.on('pageerror',e=>errors.push(e.message));
+ page.on('dialog',async dialog=>{errors.push('Unexpected browser dialog: '+dialog.type());await dialog.dismiss();});
  await page.goto(base+'/controls');
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).waitFor();
  // Browser-level reproduction of the original EMPTY srcObject dead-end.
@@ -42,6 +43,13 @@ try{
  await page.keyboard.press('Escape');await menu.waitFor({state:'hidden'});
  results.push('Hamburger navigation belongs to header, not a modal; Escape closes');
  await page.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).click();
+ // Custom dialog must stay in fullscreen and never invoke window.confirm.
+ await page.getByRole('button',{name:'Batal',exact:true}).click();
+ await page.getByRole('dialog',{name:'Batalkan perubahan?'}).waitFor();
+ assert.equal(await page.evaluate(()=>!!document.fullscreenElement),true);
+ await page.getByRole('dialog').getByRole('button',{name:'Batal',exact:true}).click();
+ results.push('Custom confirmation remains in device fullscreen');
+
  await page.locator('.mapping-studio-active').waitFor();
  await page.locator('.mapping-editor .mapping-options').getByRole('button',{name:'A',exact:true}).click();
  await page.getByLabel('Nama kontrol',{exact:true}).fill('Tes tombol');
@@ -97,7 +105,15 @@ try{
  assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
  await page.getByRole('button',{name:'Tampilkan kontrol',exact:true}).click();
  await page.getByRole('toolbar',{name:'Kontrol sesi'}).waitFor();
+ await page.getByRole('button',{name:'Statistik koneksi',exact:true}).click();
+ await page.getByRole('complementary',{name:'Statistik koneksi'}).waitFor();
+ assert.ok((await page.getByRole('complementary',{name:'Statistik koneksi'}).textContent()).includes('Langsung (P2P)'));
+ await page.getByRole('button',{name:'Tutup statistik',exact:true}).click();
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
+ const key=page.locator('.vkb-key').filter({hasText:/^q$/});
+ const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
+ await page.screenshot({path:'browser-evidence/touch-keyboard.png'});
+
  await page.getByRole('button',{name:'Pengaturan keyboard',exact:true}).click();
  await page.getByLabel('Jenis keyboard').selectOption('native');
  await page.getByLabel('Teks untuk PC').fill('Halo PC');
