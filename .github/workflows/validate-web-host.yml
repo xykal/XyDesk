@@ -139,6 +139,10 @@ jobs:
           if ($imageProcess.ExitCode -ne 0) { throw 'Snapshot panel gagal' }
           python tool/check_panel_shape.py $snapshot
           if ($LASTEXITCODE -ne 0) { throw 'Bentuk panel tidak sesuai' }
+          $dialogDir = (Join-Path $PWD 'validation-panel')
+          $dialogs = Start-Process -FilePath $exe -ArgumentList @('--dialog-snapshots', "`"$dialogDir`"") -PassThru
+          if (-not $dialogs.WaitForExit(15000)) { $dialogs.Kill(); throw 'Dialog screenshot timeout' }
+          if ($dialogs.ExitCode -ne 0) { throw 'Dialog screenshot failed' }
           foreach ($mode in @('pairing','collapsed')) {
             $output = Join-Path $PWD "validation-panel/$mode.bmp"
             $p = Start-Process -FilePath $exe -ArgumentList @("--panel-$mode-snapshot", "`"$output`"") -PassThru

@@ -2097,6 +2097,35 @@ int runPanelProbe(const std::wstring& path) {
     return ok && written == json.size() ? 0 : 3;
 }
 
+// Resource/render evidence only: no engine, credentials, network or browser launch.
+INT_PTR CALLBACK accountSnapshotDialog(HWND hwnd,UINT message,WPARAM,LPARAM){
+    if(message==WM_INITDIALOG){
+        SendDlgItemMessageW(hwnd,IDC_ACCOUNT_NAME,WM_SETFONT,reinterpret_cast<WPARAM>(g.fontTitle),TRUE);
+        SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,L"Belum masuk akun");
+        SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Masuk melalui browser untuk memakai akun XyDesk.");
+        SetDlgItemTextW(hwnd,IDC_ACCOUNT_LOCAL,L"Windows: operator (fixture)\nDevice ID: 123456789");return TRUE;
+    }return FALSE;
+}
+int runDialogSnapshots(const std::wstring& directory){
+    SetProcessDPIAware();g.layout=xydesk::panel::computeLayout(96);createFonts();g.deviceId=L"123456789";
+    const auto link=xydesk::panel_control::deviceLink(g.deviceId);const std::string text(link.begin(),link.end());
+    QrDialogState qr{qrcodegen::QrCode::encodeText(text.c_str(),qrcodegen::QrCode::Ecc::MEDIUM),link};SettingsState settings;
+    struct Entry{int id;DLGPROC proc;LPARAM state;const wchar_t* name;};
+    const Entry entries[]={{IDD_HOST_SETTINGS,settingsDialog,reinterpret_cast<LPARAM>(&settings),L"settings"},{IDD_ACCOUNT,accountSnapshotDialog,0,L"profile"},{IDD_GUIDE,guideDialog,0,L"guide"},{IDD_CONNECTION_QR,qrDialog,reinterpret_cast<LPARAM>(&qr),L"qr"}};
+    for(const auto& entry:entries){
+        HWND hwnd=CreateDialogParamW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(entry.id),nullptr,entry.proc,entry.state);if(!hwnd)return 10;
+        KillTimer(hwnd,1);ShowWindow(hwnd,SW_SHOWNOACTIVATE);UpdateWindow(hwnd);
+        RECT bounds{};GetWindowRect(hwnd,&bounds);const int width=bounds.right-bounds.left,height=bounds.bottom-bounds.top;
+        HDC dc=CreateCompatibleDC(nullptr);BITMAPINFO info{};info.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);info.bmiHeader.biWidth=width;info.bmiHeader.biHeight=-height;info.bmiHeader.biPlanes=1;info.bmiHeader.biBitCount=32;info.bmiHeader.biCompression=BI_RGB;info.bmiHeader.biSizeImage=width*height*4;
+        void* pixels=nullptr;HBITMAP bitmap=CreateDIBSection(dc,&info,DIB_RGB_COLORS,&pixels,nullptr,0);if(!bitmap)return 11;auto old=SelectObject(dc,bitmap);
+        const BOOL rendered=PrintWindow(hwnd,dc,0);GdiFlush();
+        BITMAPFILEHEADER header{};header.bfType=0x4D42;header.bfOffBits=sizeof(header)+sizeof(BITMAPINFOHEADER);header.bfSize=header.bfOffBits+info.bmiHeader.biSizeImage;
+        const auto path=directory+L"\\"+entry.name+L".bmp";HANDLE file=CreateFileW(path.c_str(),GENERIC_WRITE,0,nullptr,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);if(file==INVALID_HANDLE_VALUE)return 12;
+        DWORD n=0;bool ok=WriteFile(file,&header,sizeof(header),&n,nullptr)&&WriteFile(file,&info.bmiHeader,sizeof(BITMAPINFOHEADER),&n,nullptr)&&WriteFile(file,pixels,info.bmiHeader.biSizeImage,&n,nullptr)&&n==info.bmiHeader.biSizeImage;
+        CloseHandle(file);SelectObject(dc,old);DeleteObject(bitmap);DeleteDC(dc);DestroyWindow(hwnd);if(!ok||!rendered)return 13;
+    }return 0;
+}
+
 // `--panel-snapshot <berkas.bmp>`: menggambar panel ke berkas (32-bit, alpha
 // tidak dipremultiply) tanpa membuka jendela. Dipakai CI Windows untuk
 // memeriksa bentuk panel dari piksel: sudut harus transparan, tepi harus
@@ -2199,6 +2228,7 @@ bool hasArgument(const wchar_t* name) {
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+    if (hasArgument(L"--dialog-snapshots"))return runDialogSnapshots(commandLineArgument(L"--dialog-snapshots"));
     if (hasArgument(L"--panel-probe")) {
         return runPanelProbe(commandLineArgument(L"--panel-probe"));
     }

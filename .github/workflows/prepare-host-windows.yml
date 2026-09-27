@@ -100,6 +100,10 @@ jobs:
             & $testExe (Resolve-Path 'host/target/x86_64-pc-windows-msvc/release/xydesk-host.exe').Path
             if ($LASTEXITCODE -ne 0) { throw 'Native control integration failed' }
           } finally { Remove-Item $env:XYDESK_HOME -Recurse -Force; Remove-Item Env:XYDESK_HOME }
+          $dialogDir = $out
+          $dialogs = Start-Process -FilePath $exe -ArgumentList @('--dialog-snapshots', "`"$dialogDir`"") -PassThru
+          if (-not $dialogs.WaitForExit(15000)) { $dialogs.Kill(); throw 'Dialog screenshot timeout' }
+          if ($dialogs.ExitCode -ne 0) { throw 'Dialog screenshot failed' }
           foreach ($mode in @('pairing','collapsed')) {
             $image = Join-Path $out "$mode.bmp"
             $p = Start-Process -FilePath $exe -ArgumentList @("--panel-$mode-snapshot", "`"$image`"") -PassThru
