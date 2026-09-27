@@ -2904,7 +2904,7 @@ function ConnectScreen({
           kbOpen={kbOpen}
           onKeyboard={() => {setKbOpen(v=>!v);setPanelOpen(false);}}
           padOpen={padOpen}
-          onPad={() => {setPadOpen(v=>!v);setPanelOpen(false);setKbOpen(false);}}
+          onPad={() => {setPadOpen(v=>!v);setPanelOpen(false);}}
           trackpad={trackpad}
           onTrackpad={toggleTrackpad}
           onClipboardPush={() => void clipboardPush()}
@@ -2912,9 +2912,9 @@ function ConnectScreen({
           onFullscreen={toggleFullscreen}
           fullscreenOn={fullscreenOn}
           statisticsOpen={panelOpen&&panelTab==='statistik'}
-          onStatistics={()=>{setPanelTab('statistik');setPanelOpen(true);setKbOpen(false);}}
+          onStatistics={()=>{setPanelTab('statistik');setPanelOpen(true);}}
           panelOpen={panelOpen}
-          onPanel={() => {setPanelOpen(v=>!v);setKbOpen(false);}}
+          onPanel={() => {setPanelOpen(v=>!v);}}
           onDisconnect={disconnect}
         />
 
@@ -2961,7 +2961,7 @@ function ConnectScreen({
             }}
           />
         )}
-        {padOpen && !kbOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
+        {padOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');
         }} />}

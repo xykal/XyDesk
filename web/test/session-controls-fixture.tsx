@@ -18,7 +18,7 @@ export function mountControls(container:HTMLElement,send:(bytes:Uint8Array)=>voi
     prefs={prefs} onChange={setPrefs} onClose={()=>setPanel(false)} hostId="123456789" onDisconnect={noop}
     stats={{width:1280,height:720,fps:30,mbps:1,rttMs:90,lossPct:0,codec:"H264",transportPath:"direct-p2p",transportProtocol:"UDP"}}
     displays={[{index:0,name:'Monitor utama',width:1920,height:1080}]} wantedDisplay={0} onSelectDisplay={noop} connectedAt={null} railCollapsed={collapsed} totalSesiDetik={null} trackpad={false} onTrackpadMode={noop}/>}
-   {pad&&!kb&&<CustomControlMapping send={send}/>}
+   {pad&&<CustomControlMapping send={send}/>}
    {kb&&<VirtualKeyboard send={send} onClose={()=>setKb(false)}/>}</div>;
  }
  const root=createRoot(container);root.render(<Controls/>);return ()=>root.unmount();

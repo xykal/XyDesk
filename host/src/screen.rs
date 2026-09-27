@@ -362,12 +362,30 @@ impl FrameSource {
     }
 }
 
+impl FrameSource {
+    /// Forward until the consumer closes, even if capture produces no frames.
+    /// A silent old source must not retain its capture worker across reconnect.
+    pub fn forward_to(self, output: tokio::sync::mpsc::Sender<EncodedFrame>) {
+        while !output.is_closed() {
+            match self.recv_timeout(std::time::Duration::from_millis(100)) {
+                Ok(frame) => match output.try_send(frame) {
+                    Ok(()) => {}
+                    Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => break,
+                    Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => request_keyframe(),
+                },
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Err(mpsc::RecvTimeoutError::Disconnected) => break,
+            }
+        }
+    }
+}
+
 impl Drop for FrameSource {
     fn drop(&mut self) {
         self.alive.store(false, Ordering::Release);
-        // Jaring pengaman: jalur yang tidak melewati `pump_video` (mis. sesi
-        // gagal sebelum Connected) tetap tidak meninggalkan capture armed.
-        disarm_capture();
+        // This source owns only its worker. A late source drop must never
+        // disarm a newer connected session; capture permission is leased by
+        // pump_video, not by a receiver that may outlive that pump.
     }
 }
 
@@ -828,6 +846,31 @@ pub fn backend_label() -> &'static str {
 /// awal memunculkan border kuning padahal belum ada yang menonton, dan
 /// capture+encode tanpa penonton membuang GPU/CPU.
 static ARMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+// Serialize only lease acquisition/release, never frame delivery. Reconnect
+// can overlap old pump cleanup with a newly connected pump.
+static CAPTURE_OWNERS: std::sync::Mutex<usize> = std::sync::Mutex::new(0);
+
+pub struct CaptureLease(());
+
+pub fn acquire_capture() -> CaptureLease {
+    let mut owners = crate::recover_lock(&CAPTURE_OWNERS);
+    if *owners == 0 {
+        arm_capture();
+    }
+    *owners += 1;
+    CaptureLease(())
+}
+
+impl Drop for CaptureLease {
+    fn drop(&mut self) {
+        let mut owners = crate::recover_lock(&CAPTURE_OWNERS);
+        *owners -= 1;
+        if *owners == 0 {
+            disarm_capture();
+        }
+    }
+}
 
 /// Izinkan capture mulai (dipanggil saat Connected).
 pub fn arm_capture() {
@@ -2028,6 +2071,47 @@ mod tests {
             (33_000..=34_000).contains(&us),
             "durasi frame software harus ~33,333 ms, dapat {us} us"
         );
+    }
+
+    #[test]
+    fn repeated_reconnect_late_cleanup_cannot_disarm_new_capture() {
+        for _ in 0..4 {
+            let old = acquire_capture();
+            let new = acquire_capture();
+            drop(old);
+            assert!(capture_armed(), "old pump cleanup disabled new session");
+            let (_tx, rx) = mpsc::sync_channel::<EncodedFrame>(1);
+            let source = FrameSource {
+                rx,
+                alive: Arc::new(AtomicBool::new(true)),
+            };
+            drop(source);
+            assert!(capture_armed(), "late source drop disabled new session");
+            drop(new);
+            assert!(!capture_armed(), "last session must release capture");
+        }
+    }
+
+    #[test]
+    fn silent_source_bridge_exits_when_its_consumer_closes() {
+        let (_tx, rx) = mpsc::sync_channel::<EncodedFrame>(1);
+        let alive = Arc::new(AtomicBool::new(true));
+        let source = FrameSource {
+            rx,
+            alive: alive.clone(),
+        };
+        let (output, consumer) = tokio::sync::mpsc::channel(1);
+        let (done_tx, done_rx) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            source.forward_to(output);
+            done_tx.send(()).unwrap();
+        });
+        drop(consumer);
+        done_rx
+            .recv_timeout(std::time::Duration::from_secs(2))
+            .expect("silent capture bridge must not hang after disconnect");
+        worker.join().unwrap();
+        assert!(!alive.load(Ordering::Acquire));
     }
 
     #[test]

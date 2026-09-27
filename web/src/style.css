@@ -3203,3 +3203,30 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .video-surface:has(.keyboard-shell)>.srail,.video-surface:has(.keyboard-shell)>.srail-reveal{visibility:hidden}
 .keyboard-shell :focus-visible{box-shadow:none!important;outline:2px solid #35414f;outline-offset:2px}
 .keyboard-toolbar>span,.keyboard-settings{color:#1d252e;text-shadow:0 0 2px #fff,0 0 4px #fff}
+
+/* Floating rail: one explicit layout, independent of all input surfaces. */
+.video-surface>.srail{
+ display:grid!important;grid-template-columns:48px!important;grid-template-rows:none!important;
+ grid-auto-flow:row!important;grid-auto-rows:48px!important;grid-auto-columns:auto!important;
+ width:64px!important;gap:4px!important;padding:7px!important;box-sizing:border-box;
+ top:50%;bottom:auto;right:max(10px,env(safe-area-inset-right));transform:translateY(-50%);
+ max-height:calc(100% - 24px)!important;overflow-x:hidden;overflow-y:auto;
+ background:#191320f5!important;color:#efe9fb!important;border:1px solid #62586f!important;
+ border-radius:14px!important;box-shadow:none!important;backdrop-filter:none!important;
+}
+.video-surface>.srail .srail-btn{width:48px!important;height:48px!important;min-height:48px!important;flex-basis:48px;padding:0!important;background:transparent!important;color:#efe9fb!important;border:1px solid transparent!important;border-radius:9px!important}
+.video-surface>.srail .srail-btn.on{background:#ffffff12!important;border-color:#a89aB7!important}
+.video-surface>.srail .srail-btn:hover{background:#ffffff18!important}
+.video-surface>.srail .srail-btn svg{width:25px!important;height:25px!important}
+.video-surface>.srail .srail-sep{display:none!important}
+.video-surface>.srail-reveal,.video-surface>.srail-keyboard{background:#191320f5!important;color:#efe9fb!important;border-color:#62586f!important}
+@media(max-height:620px){.video-surface>.srail{grid-template-columns:repeat(2,48px)!important;width:116px!important}}
+/* Keep rail above the keyboard instead of hiding either. Short spaces scroll. */
+.video-surface:has(.keyboard-shell):not(:has(.session-settings)):not(.mapping-studio-active)>.srail,
+.video-surface:has(.keyboard-shell):not(:has(.session-settings)):not(.mapping-studio-active)>.srail-reveal{visibility:visible}
+.video-surface:has(.keyboard-shell)>.srail{top:12px;bottom:auto;transform:none;grid-template-columns:repeat(2,48px)!important;width:116px!important;max-height:calc(100% - var(--keyboard-height,60%) - 24px)!important}
+.video-surface:has(.keyboard-shell)>.srail-reveal{top:12px;transform:none}
+/* No double alpha stacking: gaps are clear, each painted surface gets ONE alpha. */
+.video-surface>.keyboard-shell{background:transparent!important;box-shadow:none!important;backdrop-filter:none!important}
+.keyboard-shell .keyboard-toolbar,.keyboard-shell .keyboard-settings{background:rgb(232 235 239 / var(--keyboard-fill,1))!important}
+.keyboard-shell .keyboard-toolbar>button,.keyboard-shell .keyboard-settings select{background:transparent!important}

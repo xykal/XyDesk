@@ -36,6 +36,22 @@ try{
  });
  await page.waitForFunction(()=>{const v=document.querySelector('#fixture-video');return v&&!v.paused&&v.videoWidth===160&&v.videoHeight===90&&v.readyState>=2;});
  results.push('Real canvas MediaStream attaches to empty video, plays and presents 160x90 frames');
+ for(let cycle=1;cycle<=3;cycle++){
+  await page.evaluate(async n=>{
+   const {startRemoteVideoPlayback}=await import('/src/video_playback.ts');
+   const oldStop=window.fixtureStop;oldStop();clearInterval(window.fixtureTimer);window.fixtureStream.getTracks().forEach(t=>t.stop());
+   const canvas=document.createElement('canvas');canvas.width=160+n*16;canvas.height=90;
+   const ctx=canvas.getContext('2d');let tick=0;
+   const paint=()=>{ctx.fillStyle=`rgb(${(tick++*37)%255},120,90)`;ctx.fillRect(0,0,canvas.width,90);};paint();
+   const stream=canvas.captureStream(10),video=document.querySelector('#fixture-video');
+   window.fixtureStream=stream;window.fixtureTimer=setInterval(paint,100);
+   window.fixtureStop=startRemoteVideoPlayback(video,stream,()=>video.isConnected);
+   oldStop();
+  },cycle);
+  await page.waitForFunction(width=>{const v=document.querySelector('#fixture-video');return v.srcObject===window.fixtureStream&&!v.paused&&v.videoWidth===width&&v.readyState>=2;},160+cycle*16);
+ }
+ results.push('Three disconnect/reconnect playback cycles attach fresh streams; late old cleanup cannot detach the current stream');
+
  await page.evaluate(()=>{window.fixtureStop();clearInterval(window.fixtureTimer);window.fixtureStream.getTracks().forEach(t=>t.stop());document.querySelector('#fixture-video').remove();});
  assert.equal(await page.locator('.remote-menu-toggle').isVisible(),false);
  await settledScreenshot({path:'browser-evidence/navigation-desktop.png'});
@@ -122,8 +138,19 @@ try{
  assert.equal(await mapping.evaluateAll(items=>items.every(el=>getComputedStyle(el).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(el).backgroundImage==='none')),true,'input controls have no background');
  await settledScreenshot({path:'browser-evidence/controls-transparent.png'});
  assert.equal(await page.getByRole('toolbar',{name:'Kontrol sesi'}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'Keyboard',exact:true}).isVisible(),true,'hidden rail preserves keyboard launcher');
  await page.getByRole('button',{name:'Tampilkan rail',exact:true}).click();
  await page.getByRole('toolbar',{name:'Kontrol sesi'}).waitFor();
+ for(const size of [{width:390,height:844},{width:844,height:390}]){
+  await page.setViewportSize(size);
+  const rail=page.locator('.srail');
+  const bounds=await rail.boundingBox();assert.ok(bounds.y>=0&&bounds.y+bounds.height<=size.height,'rail fits viewport');
+  assert.ok((await rail.evaluate(el=>getComputedStyle(el).backgroundColor)).startsWith('rgba(25, 19, 32'),'rail uses dark XyDesk surface');
+  const boxes=await rail.locator('.srail-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};}));
+  assert.equal(boxes.some((a,i)=>boxes.slice(i+1).some(b=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h)),false,'rail buttons never overlap');
+  await settledScreenshot({path:`browser-evidence/floating-rail-${size.width}.png`});
+ }
+ await page.setViewportSize({width:390,height:844});
  await page.getByRole('button',{name:'Statistik koneksi',exact:true}).click();
  await page.getByRole('complementary',{name:'Statistik koneksi'}).waitFor();
  assert.ok((await page.getByRole('complementary',{name:'Statistik koneksi'}).textContent()).includes('Langsung (P2P)'));
@@ -156,7 +183,14 @@ try{
  await page.setViewportSize({width:390,height:844});
  results.push('Full-height right drawer across portrait/landscape/desktop; five categories; independent rail/mapping; reduced motion respected');
  await page.getByRole('button',{name:'Keyboard',exact:true}).click();
- assert.equal(await page.locator('.srail').isVisible(),false,'rail cannot show through translucent keyboard');
+ assert.equal(await page.locator('.srail').isVisible(),true,'keyboard does not change rail visibility');
+ const keyboardMappingCount=await mapping.count();assert.ok(keyboardMappingCount>0,'keyboard does not unmount mapping/editor');
+ await page.getByRole('button',{name:'Sembunyikan rail',exact:true}).click();
+ assert.equal(await page.locator('.keyboard-shell').isVisible(),true,'hide is rail-only');
+ assert.equal(await mapping.count(),keyboardMappingCount);
+ assert.equal(await fixture.getByRole('button',{name:'Atur kontrol · fullscreen',exact:true}).isVisible(),true);
+ await page.getByRole('button',{name:'Tampilkan rail',exact:true}).click();
+
  const key=page.locator('.vkb-key').filter({hasText:/^q$/});
  const keyRect=await key.boundingBox();assert.ok(keyRect.height>=48&&keyRect.width>=28,'touch keyboard is not compressed desktop layout');
  assert.equal(await page.locator('.touch-layout .vkb-row').evaluateAll(rows=>rows.every(row=>row.scrollWidth<=row.clientWidth+1&&row.getBoundingClientRect().right<=innerWidth)),true,'every touch row fits without horizontal scrolling');
@@ -172,6 +206,11 @@ try{
  assert.ok(keyboardPaint.background.endsWith('0.35)'),keyboardPaint.background);
  assert.equal(keyboardPaint.opacity,'1');
  await settledScreenshot({path:'browser-evidence/keyboard-transparent.png'});
+ assert.equal(await page.locator('.keyboard-shell').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)','no second white backdrop behind translucent keys');
+ await opacity.focus();await page.keyboard.press('End');
+ assert.equal(await key.evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(255, 255, 255, 0)');
+ await settledScreenshot({path:'browser-evidence/keyboard-clear.png'});
+
  await page.getByLabel('Jenis keyboard').selectOption('native');
  await page.getByLabel('Teks untuk PC').fill('Halo PC');
  await page.getByRole('button',{name:'Kirim teks',exact:true}).click();

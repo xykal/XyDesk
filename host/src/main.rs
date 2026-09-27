@@ -1506,19 +1506,7 @@ async fn main() -> Result<()> {
                             let frames = xydesk_host::screen::spawn_frame_source();
                             let (vtx, vrx) =
                                 tokio::sync::mpsc::channel::<xydesk_host::screen::EncodedFrame>(1);
-                            std::thread::spawn(move || {
-                                while let Ok(frame) = frames.recv() {
-                                    match vtx.try_send(frame) {
-                                        Ok(()) => {}
-                                        Err(tokio::sync::mpsc::error::TrySendError::Closed(_)) => {
-                                            break
-                                        }
-                                        Err(tokio::sync::mpsc::error::TrySendError::Full(_)) => {
-                                            xydesk_host::screen::request_keyframe()
-                                        }
-                                    }
-                                }
-                            });
+                            std::thread::spawn(move || frames.forward_to(vtx));
 
                             xydesk_host::video::pump_video(&session, &track, vrx, control).await;
                         });

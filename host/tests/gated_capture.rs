@@ -8,9 +8,7 @@ use webrtc::rtp_transceiver::rtp_transceiver_direction::RTCRtpTransceiverDirecti
 use webrtc::rtp_transceiver::RTCRtpTransceiverInit;
 use xydesk_host::{control::ControlState, screen, session::Session, video};
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn idle_capture_starts_after_connected_and_stops_without_another_frame() -> anyhow::Result<()>
-{
+async fn connect_receive_disconnect() -> anyhow::Result<()> {
     screen::disarm_capture();
     let client = Session::new(vec![], vec![]).await?;
     let pc = client.peer();
@@ -112,5 +110,13 @@ async fn idle_capture_starts_after_connected_and_stops_without_another_frame() -
     assert!(!screen::capture_armed());
     drop(frames_tx);
     client.close().await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn repeated_reconnect_receives_frames_and_releases_capture() -> anyhow::Result<()> {
+    for _ in 0..3 {
+        connect_receive_disconnect().await?;
+    }
     Ok(())
 }

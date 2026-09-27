@@ -178,6 +178,7 @@ pub async fn pump_video(
 ) {
     println!("[xydesk-host] track video siap — streaming");
     let mut prev_connected = false;
+    let mut capture_lease = None;
     let mut clock = None;
     let mut chain = FrameChain::default();
     let mut rescue: Option<Rescue> = None;
@@ -198,7 +199,8 @@ pub async fn pump_video(
             // streaming tidak menggantung selamanya.
             // Capture ikut dilucuti: tanpa penonton, BitBlt/WGC yang terus
             // berjalan hanya membakar GPU/CPU dan menahan border capture.
-            screen::disarm_capture();
+            // The lease drops on every exit path; old pumps release only
+            // their own permission, never a newer session's permission.
             break;
         }
         let connected = state == RTCPeerConnectionState::Connected;
@@ -209,7 +211,9 @@ pub async fn pump_video(
             // Graphics Capture padahal belum ada yang menonton — dan itu juga
             // sebabnya pengguna melihat border sebelum koneksi benar-benar
             // tersambung. Lihat `screen::arm_capture`.
-            screen::arm_capture();
+            if capture_lease.is_none() {
+                capture_lease = Some(screen::acquire_capture());
+            }
             // Transisi baru ke Connected: minta IDR segar (SPS/PPS + slice).
             screen::request_keyframe();
             println!("[xydesk-host] koneksi Connected — keyframe segar diminta");
