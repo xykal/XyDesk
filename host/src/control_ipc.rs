@@ -121,15 +121,18 @@ mod tests {
         unsafe {
             SetNamedPipeHandleState(write, Some(&PIPE_NOWAIT), None, None).unwrap();
             let mut full = false;
-            for _ in 0..256 {
+            // A large nonblocking write can fail while a small frame still fits.
+            // Fill byte by byte so backpressure proves there is no spare byte.
+            let mut filled = 0usize;
+            for _ in 0..1_048_576 {
                 let mut written = 0;
-                if WriteFile(write, Some(&[0; 65536]), Some(&mut written), None).is_err()
-                    || written == 0
-                {
+                if WriteFile(write, Some(&[0]), Some(&mut written), None).is_err() || written == 0 {
                     full = true;
                     break;
                 }
+                filled += written as usize;
             }
+            assert!(filled > 0, "fixture pipe tidak pernah menerima data");
             assert!(full, "fixture pipe tidak mencapai backpressure");
         }
         let started = std::time::Instant::now();
