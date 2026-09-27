@@ -31,7 +31,7 @@ test('first session mounts the decoded stream on an initially EMPTY video elemen
  const el=player(), stream={}; const states=[];
  const stop=api().startRemoteVideoPlayback(el,stream,()=>true,b=>states.push(b));
  assert.equal(el.srcObject,stream);assert.equal(el.plays,1);
- await Promise.resolve();await Promise.resolve();
+ await new Promise(setImmediate);
  assert.equal(el.paused,false);assert.equal(states.at(-1),false);
  stop();assert.equal(el.srcObject,null);assert.equal(el.listeners.size,0);
 });
@@ -51,7 +51,7 @@ test('stale playback owner cannot attach or clear another stream',()=>{
 test('rejected play after teardown schedules no retry or blocked UI update',async()=>{
  const el=player();let reject;el.play=()=>new Promise((_,r)=>{reject=r;});
  const states=[];const stop=api().startRemoteVideoPlayback(el,{},()=>true,b=>states.push(b));
- stop();reject(Error('aborted'));await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ stop();reject(Error('aborted'));await new Promise(setImmediate);
  assert.deepEqual(states,[]);assert.equal(el.srcObject,null);
 });
 test('React session delegates first attachment to the lifecycle controller',()=>{

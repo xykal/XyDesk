@@ -1,6 +1,6 @@
 import type {Position, Rect} from './remote_pointer';
 
-export const SESSION_UI_REVISION = 'pointer-v2';
+export const SESSION_UI_REVISION = 'pointer-v3-video-bind';
 
 // Balik panah di tepi supaya seluruh bentuknya tidak jatuh di luar surface.
 // Hotspot tetap pada posisi perintah, bukan digeser menjauh dari tepi gambar.

@@ -1,0 +1,81 @@
+name: Validate and Deploy Web Candidate
+
+# Perubahan web saja: jangan membangun ulang APK/host yang tidak berubah.
+# Manual operator only; tidak memicu workflow Release.
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy web ke www/remote setelah unit, type-check dan browser smoke lulus
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: deploy-flutter-web-production
+  cancel-in-progress: false
+jobs:
+  web:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: npm test
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+      - name: Browser runner (ephemeral; no project dependency upgrades)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/xydesk-browser" --no-save --package-lock=false playwright@1.63.0
+          "$RUNNER_TEMP/xydesk-browser/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Chromium UI and real MediaStream playback smoke
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+          (cd web && npm run dev -- --host 127.0.0.1) > /tmp/xydesk-vite.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          node tool/web-browser-smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-browser-evidence-${{ github.sha }}
+          path: browser-evidence/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Prepare verified bundle
+        run: |
+          mkdir -p web_deploy/site
+          cp -a web/dist/. web_deploy/site/
+          cp web_deploy/static/_headers web_deploy/site/_headers
+      - uses: actions/upload-artifact@v4
+        with:
+          name: XyDesk-Web-${{ github.sha }}
+          path: web_deploy/site/
+          retention-days: 14
+      - name: Refuse stale production deployment
+        if: inputs.deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          current="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          test "$current" = "$GITHUB_SHA" || { echo '::error::main advanced; validate the newer SHA before deploying'; exit 1; }
+      - name: Deploy web only
+        if: inputs.deploy
+        working-directory: web_deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.86.0 deploy

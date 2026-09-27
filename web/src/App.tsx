@@ -216,9 +216,7 @@ export default function App() {
   const deviceRoute=typeof route==='object'&&route.page==='device'?route:null;
   const remote=!!sessionRoute||!!deviceRoute||['/connect','/devices','/history','/controls','/auth/callback'].includes(String(route));
   if(remote) return <div className="remote-workspace">
-    <header className="remote-header"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk <small>Remote</small></strong></a>
-      <nav aria-label="Aplikasi remote">{([['/devices','Perangkat'],['/history','Riwayat'],['/controls','Kontrol']] as const).map(([path,label])=><a key={path} href={path} aria-current={route===path||(path==='/devices'&&deviceRoute)?'page':undefined} onClick={e=>{e.preventDefault();navigate(path);}}>{label}</a>)}</nav>
-      <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button></header>
+    <RemoteHeader route={route} navigate={navigate} />
     {route==='/devices'||route==='/history'||deviceRoute?<SessionHistoryPage view={deviceRoute?'detail':route==='/history'?'history':'devices'} deviceId={deviceRoute?.deviceId}/>:route==='/controls'?<ControlMappingPage navigate={navigate}/>:<RemoteApp key={sessionRoute?.deviceId??'new'} reconnectDevice={sessionRoute?{deviceId:sessionRoute.deviceId,name:`PC ${sessionRoute.deviceId}`} :undefined} restoreScreen={!!sessionRoute}/>}
   </div>;
 
@@ -347,32 +345,30 @@ function SiteHeader({
         )}
       </div>
 
-      {menuOpen && !bare && (
-        <>
-          <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-          <nav id="mobile-nav" className="mobile-nav">
-            <button className={current === '/history' ? 'active' : ''} onClick={() => go('/history')}>Riwayat</button>
-            <button className={current === '/' ? 'active' : ''} onClick={() => go('/')}>
-              Beranda
-            </button>
-            <button className={current === '/news' ? 'active' : ''} onClick={() => go('/news')}>
-              Berita
-            </button>
-            <button className={current === '/billing' ? 'active' : ''} onClick={() => go('/billing')}>
-              Sewa PC
-            </button>
-            <button className={current === '/controls' ? 'active' : ''} onClick={() => go('/controls')}>
-              Kontrol
-            </button>
-            <button className={current === '/download' ? 'active' : ''} onClick={() => go('/download')}>
-              Unduh
-            </button>
-            <button onClick={() => go('/connect')}>Connect Web</button>
-          </nav>
-        </>
-      )}
+      {menuOpen && !bare && <NavigationOverlay onClose={()=>setMenuOpen(false)} navigate={go} current={current}/>}
+
     </header>
   );
+}
+
+function NavigationOverlay({onClose,navigate,current}:{onClose:()=>void;navigate:(route:Route)=>void;current:string}) {
+  const dialog=useRef<HTMLDialogElement|null>(null);
+  useEffect(()=>{const el=dialog.current;if(!el)return;const overflow=document.body.style.overflow;document.body.style.overflow='hidden';el.showModal();return()=>{el.close();document.body.style.overflow=overflow;};},[]);
+  const groups=[['REMOTE',[['/devices','Perangkat'],['/history','Riwayat sesi'],['/connect','Koneksi baru'],['/controls','Control Studio']]],['XYDESK',[['/','Beranda'],['/news','Berita'],['/download','Unduh'],['/billing','Sewa PC'],['/legal','Legal']]]] as const;
+  return <dialog ref={dialog} id="mobile-nav" className="navigation-overlay" aria-label="Menu utama" onCancel={e=>{e.preventDefault();onClose();}}>
+    <div className="navigation-overlay-head"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk</strong></a><button type="button" autoFocus onClick={onClose} aria-label="Tutup menu">Tutup ×</button></div>
+    <p className="eyebrow">PILIH TUJUAN</p><h2>Satu tempat.<br/>Semua akses.</h2><nav aria-label="Navigasi utama">{groups.map(([heading,links])=><section key={heading}><h3>{heading}</h3>{links.map(([path,label],index)=><button type="button" key={path} aria-current={current===path?'page':undefined} onClick={()=>{onClose();navigate(path);}}><small>{String(index+1).padStart(2,'0')}</small><span>{label}</span><span aria-hidden="true">↗</span></button>)}</section>)}</nav>
+    <p className="navigation-overlay-foot">Website publik · Remote desktop · Kontrol personal</p>
+  </dialog>;
+}
+function RemoteHeader({route,navigate}:{route:Route;navigate:(r:Route)=>void}){
+  const [open,setOpen]=useState(false);
+  useEffect(()=>setOpen(false),[route]);
+  return <header className="remote-header"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk <small>Remote</small></strong></a>
+    <nav aria-label="Aplikasi remote">{([['/devices','Perangkat'],['/history','Riwayat'],['/controls','Kontrol']] as const).map(([path,label])=><a key={path} href={path} aria-current={route===path?'page':undefined} onClick={e=>{e.preventDefault();navigate(path);}}>{label}</a>)}</nav>
+    <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button><button className="remote-menu-toggle" type="button" aria-label="Buka menu" aria-expanded={open} aria-controls="mobile-nav" onClick={()=>setOpen(true)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    {open&&<NavigationOverlay onClose={()=>setOpen(false)} navigate={navigate} current={typeof route==='string'?route:'/devices'}/>}
+  </header>;
 }
 
 function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
@@ -380,16 +376,16 @@ function ControlMappingPage({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <main className="content-page control-mapping-page">
       <p className="eyebrow">CONTROL MAPPING</p>
-      <h1>Atur tombol remote dengan nyaman.</h1>
+      <h1>Rancang kontrol. Mainkan caramu.</h1>
       <p className="page-lead">
-        Pilih preset, geser tombol, lalu simpan layout terpisah untuk portrait dan landscape.
-        Kontrol bawaan dibuat ringkas: klik kiri, klik kanan, switch, scroll atas, dan scroll bawah.
+        Buka editor fullscreen, pilih keyboard, stick, mouse atau kombinasi.
+        Ketuk kontrol untuk membuka properti di samping. Layout portrait dan landscape disimpan terpisah.
       </p>
       <div className="mapping-page-card">
         <div className="mapping-page-toolbar">
           <div>
             <strong>Pratinjau layout</strong>
-            <span>Mode: <b>{trackpad ? 'Trackpad' : 'Langsung'}</b> · Tekan <b>Atur tombol</b> untuk mengubah ukuran dan posisi.</span>
+            <span>Mode: <b>{trackpad ? 'Trackpad' : 'Langsung'}</b> · Tekan <b>Atur kontrol</b> untuk membuka editor fullscreen.</span>
           </div>
           <button className="btn ghost" type="button" onClick={() => navigate('/connect')}>Buka Connect</button>
         </div>
@@ -2654,7 +2650,7 @@ function ConnectScreen({
     return()=>{release();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',visibility);};
   },[connected]);
 
-  const isImageTarget = (e: { target: EventTarget }) => e.target === videoRef.current || e.target === surfaceRef.current || (e.target instanceof HTMLElement && e.target.classList.contains('remote-input-area'));
+  const isImageTarget = (e: { target: EventTarget }) => !surfaceRef.current?.classList.contains('mapping-studio-active') && (e.target === videoRef.current || e.target === surfaceRef.current || (e.target instanceof HTMLElement && e.target.classList.contains('remote-input-area')));
   const pointerMode = (e: React.PointerEvent) => trackpad && e.pointerType !== 'mouse';
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!connected || !isImageTarget(e)) return;
@@ -2662,7 +2658,7 @@ function ConnectScreen({
     if (accepted) { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); }
   };
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!connected) return;
+    if (!connected || surfaceRef.current?.classList.contains('mapping-studio-active')) return;
     if (!isImageTarget(e) && !e.currentTarget.hasPointerCapture(e.pointerId)) return;
     pointerRef.current!.move(e.pointerId, e.clientX, e.clientY, pointerMode(e), prefs.sens, prefs.reverseScroll);
   };
@@ -2956,7 +2952,7 @@ function ConnectScreen({
           onWindows={(owner,down)=>keyOwners.current?.set(91,down,'dock:'+owner)}
           onRelease={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}}
           onCenter={()=>{pointerRef.current?.center();paintCursor();}}/>}
-        {padOpen && <CustomControlMapping onToggleMode={toggleTrackpad} send={bytes=>{
+        {padOpen && <CustomControlMapping onEditStart={()=>{pointerRef.current?.reset();keyOwners.current?.reset();}} onToggleMode={toggleTrackpad} send={bytes=>{
           if(bytes[0]===3){if(bytes[2])pointerRef.current!.sync();pointerRef.current!.button(bytes[1],bytes[2]===1,'mapping');}
           else send(bytes,'mapping');
         }} />}

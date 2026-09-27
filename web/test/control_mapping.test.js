@@ -1,7 +1,7 @@
 import test from 'node:test';import assert from 'node:assert/strict';import vm from 'node:vm';import {readFileSync} from 'node:fs';import {transformWithOxc} from 'vite';
 let source=readFileSync(new URL('../src/rtc.ts',import.meta.url),'utf8').replace(/^import \{([^}]+)\} from '\.\/api';/m,'const {$1}=api;').replace(/^import .*$/gm,'').replace(/^export /gm,'');let {code}=await transformWithOxc(source+'\nexports.InputCodec=InputCodec;','rtc.ts');let rtc={};vm.runInNewContext(code,{exports:rtc,api:{},TextEncoder,TextDecoder,performance});
 let pointerSource=readFileSync(new URL('../src/remote_pointer.ts',import.meta.url),'utf8').replace(/^export /gm,'');let pointerCode=await transformWithOxc(pointerSource+'\nexports.canonicalKey=canonicalKey;','pointer.ts');const pointerExports={};vm.runInNewContext(pointerCode.code,{exports:pointerExports});
-source=readFileSync(new URL('../src/control_mapping.tsx',import.meta.url),'utf8').split('export function CustomControlMapping')[0].replace(/^import .*$/gm,'').replace(/^export /gm,'');({code}=await transformWithOxc(source+'\nexports.api={MappingHolds,normalizeMappings,withPointerDefaults};','control_mapping.tsx'));let exports={};const store=new Map();vm.runInNewContext(code,{exports,InputCodec:rtc.InputCodec,canonicalKey:pointerExports.canonicalKey,localStorage:{getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v))}});const {MappingHolds,normalizeMappings,withPointerDefaults}=exports.api;
+source=readFileSync(new URL('../src/control_mapping.tsx',import.meta.url),'utf8').split('export function CustomControlMapping')[0].replace(/^import .*$/gm,'').replace(/^export /gm,'');({code}=await transformWithOxc(source+'\nexports.api={MappingHolds,normalizeMappings,withPointerDefaults,normalizeStickKeys,stickDirections};','control_mapping.tsx'));let exports={};const store=new Map();vm.runInNewContext(code,{exports,InputCodec:rtc.InputCodec,canonicalKey:pointerExports.canonicalKey,localStorage:{getItem:k=>store.has(k)?store.get(k):null,setItem:(k,v)=>store.set(k,String(v))}});const {MappingHolds,normalizeMappings,withPointerDefaults}=exports.api;
 const key={id:'w',label:'W',kind:'key',code:87,x:50,y:50,size:56};
 test('mapping sanitizes bounds, duplicate ids, unknown action and max count',()=>{const m=normalizeMappings([{...key,x:999,y:-9,size:999},key,{...key,id:'bad',kind:'xxx'}]);assert.equal(m.length,1);assert.equal(m[0].x,100);assert.equal(m[0].y,0);assert.equal(m[0].size,160);assert.equal(normalizeMappings(Array.from({length:30},(_,i)=>({...key,id:String(i)}))).length,24);});
 test('multiple touches on same mapped key retain hold until final release',()=>{const events=[];const h=new MappingHolds(b=>events.push(Array.from(b)));h.down('a',key);h.down('b',key);h.up('a');assert.equal(events.length,1);h.up('b');assert.equal(events.length,2);assert.deepEqual(events.map(b=>[b[0],b[1],b[3]]),[[5,87,1],[5,87,0]]);});
@@ -21,3 +21,19 @@ test('side mouse buttons and horizontal wheel serialize correct axis',()=>{
 test('automatic action labels and radius survive normalized layout',()=>{const x=normalizeMappings([{...key,kind:'chord',keys:[67,17],radius:999},{...key,id:'right',kind:'mouse',code:1,radius:-2}]);assert.equal(x[0].label,'Ctrl + C');assert.equal(x[0].radius,80);assert.equal(x[1].label,'Klik kanan');assert.equal(x[1].radius,0);});
 
 test('pointer controls return once for saved layouts that predate them',()=>{const base=[{id:'w',label:'',kind:'key',code:87,x:14,y:52,size:52}];const once=withPointerDefaults(base.map(x=>({...x})));assert.ok(once.some(m=>m.kind==='mouse'&&m.code===0));assert.ok(once.some(m=>m.kind==='scroll'));assert.equal(withPointerDefaults(once).length,once.length);});
+
+test('custom text and internal name survive save; icon labels cannot be overridden',()=>{
+ const [text,mouse]=normalizeMappings([{...key,name:'Interact',displayLabel:'Use'},{...key,id:'mouse',kind:'mouse',code:1,name:'Aim',displayLabel:'not allowed'}]);
+ assert.equal(text.name,'Interact');assert.equal(text.displayLabel,'Use');assert.equal(text.label,'W');
+ assert.equal(mouse.name,'Aim');assert.equal(mouse.displayLabel,'');assert.equal(mouse.label,'Klik kanan');
+});
+test('stick keys retain four ordered directions and reject invalid keys',()=>{
+ const [stick]=normalizeMappings([{...key,kind:'stickKeys',keys:[38,40,37,39],size:144}]);
+ assert.deepEqual(Array.from(stick.keys),[38,40,37,39]);
+ assert.deepEqual(Array.from(exports.api.normalizeStickKeys([999,0,65,68])),[87,83,65,68]);
+ assert.deepEqual(Array.from(exports.api.stickDirections(1,-1)),[true,false,false,true]);
+ assert.deepEqual(Array.from(exports.api.stickDirections(0,0)),[false,false,false,false]);
+});
+test('raw joystick container never accidentally sends mouse button events',()=>{
+ const events=[];const holds=new MappingHolds(b=>events.push(b));holds.down('stick',{...key,kind:'stickKeys'});holds.down('mouse-stick',{...key,kind:'stickMouse'});holds.reset();assert.equal(events.length,0);
+});
