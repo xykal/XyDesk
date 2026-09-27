@@ -2626,3 +2626,28 @@ fixture. Real Google consent/restore/logout/cancel, physical QR scan and live-de
 UI acceptance remain manual, not claimed complete. Native analog still unsupported.
 Details: docs/qa/native-panel-settings-2026-09-27.md. Delivered new folder
 `deliverables/XyDesk-native-8ead5ce/`; old 1b873c3 installer retained as rollback.
+
+## Latest host workspace response — 2026-09-27
+
+User rejected sparse native layout and modal account/settings/help. Source
+95033148bdfd4316f4abf973414a0b1b54490e8f now has seven routes, actual embedded
+native screens, consistent sidebar icons, home quick actions and local status
+projection for active-client name/platform/ID/duration. Original Xiaomi photo
+only for exact Redmi Note 12 / 23021RAAEG matches; no universal device catalogue.
+Optional browser model hint does not delay pairing or change RTC protocol.
+Web desktop hamburger hidden on wide layouts; native WS_THICKFRAME sizing and
+work-area maximize/restore replace zoom-only behaviour. All protected engine,
+RTC/input/adaptive/coordination files remain unchanged from previous candidate.
+
+Baseline 36307028958, portable 36307312703, web deploy 36307313642, NSIS
+36307719511 all SUCCESS. Live JS/CSS bytes matched deployment artifact.
+Deliverables: `deliverables/XyDesk-workspace-9503314/`, includes installer, ZIP,
+checksums, native-render preview HTML, manual guide, NSIS validation record.
+Still unsigned/test, version unchanged 6.8.5, no stable/latest promotion.
+
+Important remaining work: see docs/qa/native-workspace-2026-09-27.md. Physical
+HP/OAuth/dragging and multi-DPI acceptance are not claimed. The small-monitor
+high-DPI fit path needs follow-up: WM_SIZE re-derives OS DPI after applyDpi caps
+the effective layout DPI, and resource controls use OS font metrics. Avoid
+claiming runtime 96-DPI checks prove every scale. Product-photo catalogue is
+explicitly limited; fixtures are not proof of a real connected phone.
