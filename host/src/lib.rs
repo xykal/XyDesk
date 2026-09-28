@@ -40,8 +40,8 @@ mod tests {
 }
 
 pub mod audio;
-pub mod brand;
 pub mod audio_forward;
+pub mod brand;
 pub mod clipboard;
 pub mod control;
 pub mod control_ipc;
