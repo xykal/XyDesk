@@ -6,6 +6,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/devlog.dart';
+import 'auto_preset.dart';
 import 'input_codec.dart';
 import 'signaling_client.dart';
 
@@ -85,7 +86,19 @@ class HostMeta {
     this.ram,
     this.storage,
     this.hardwareReported = false,
+    this.encoder,
+    this.videoLevel,
+    this.fpsLimit,
   });
+
+  /// Encoder aktif di host: 'nvenc' | 'openh264' | ... (null = host lama).
+  final String? encoder;
+
+  /// Level H264 hasil negosiasi (31 = hanya 720p; 40/51 = 1080p boleh).
+  final int? videoLevel;
+
+  /// Batas FPS host untuk mode saat ini.
+  final int? fpsLimit;
 
   final List<HostDisplay> displays;
   final int wantedDisplay;
@@ -121,6 +134,9 @@ class HostMeta {
     ram: j['hardware']?['ram'] as String?,
     storage: j['hardware']?['storage'] as String?,
     hardwareReported: j['hardware'] is Map,
+    encoder: j['encoder'] as String?,
+    videoLevel: (j['video']?['level'] as num?)?.toInt(),
+    fpsLimit: (j['video']?['fpsLimit'] as num?)?.toInt(),
   );
 }
 
@@ -385,6 +401,9 @@ class RtcService {
   bool get audioForwardEnabled => _audioForwardEnabled;
 
   /// Meta terakhir dari host (layar + audio pipeline), beserta alirannya.
+  /// Keputusan preset otomatis terakhir (diisi SessionPage), untuk panel.
+  AutoDecision? autoDecision;
+
   HostMeta? get hostMeta => _hostMeta;
   HostMeta? _hostMeta;
   Stream<HostMeta> get hostMetaStream => _metaCtrl.stream;
@@ -769,6 +788,32 @@ class RtcService {
     final ch = _inputChannel;
     if (ch?.state != RTCDataChannelState.RTCDataChannelOpen) return;
     ch!.send(RTCDataChannelMessage.fromBinary(InputCodec.displaySelect(index)));
+  }
+
+  /// Kirim preferensi video ke host lewat channel input. Sebelum 6.8.7 APK
+  /// tidak pernah mengirim ini — setelan Quality/Resolution di aplikasi hanya
+  /// label, host selalu memakai default 720p30. Null = tidak dikirim.
+  void sendVideoPrefs({int? quality, int? bitrateMbps, int? mode, int? fps}) {
+    final ch = _inputChannel;
+    if (ch?.state != RTCDataChannelState.RTCDataChannelOpen) return;
+    if (quality != null) {
+      ch!.send(
+        RTCDataChannelMessage.fromBinary(InputCodec.videoQuality(quality)),
+      );
+    }
+    if (bitrateMbps != null) {
+      ch!.send(
+        RTCDataChannelMessage.fromBinary(
+          InputCodec.videoBitrateMbps(bitrateMbps),
+        ),
+      );
+    }
+    if (mode != null) {
+      ch!.send(RTCDataChannelMessage.fromBinary(InputCodec.videoMode(mode)));
+    }
+    if (fps != null) {
+      ch!.send(RTCDataChannelMessage.fromBinary(InputCodec.videoFps(fps)));
+    }
   }
 
   /// Aktif/nonaktifkan pemutaran audio host (transceiver direction —

@@ -5,6 +5,7 @@ import {readDestination, rememberDestination, forgetDestination, sessionPath} fr
 import {ConnectionAttempt} from './connection_attempt';
 import {browserAccessScope,ensureGuestAccess,loadHostAccess,saveHostAccess,forgetHostAccess,mayRetrySession,retryDelay} from './guest_access';
 import {AdaptiveVideo} from './adaptive_video';
+import {AutoPreset, type AutoDecision, type AutoInput} from './auto_preset';
 import { flushSync } from 'react-dom';
 import { SessionHistoryPage, saveSessionHistory, accountHistoryToken } from './session_history';
 import type { HistoryItem, HistoryState } from './session_history';
@@ -2129,6 +2130,16 @@ function ConnectScreen({
     localStorage.setItem('xydesk.session.railHidden', railHidden ? '1' : '0');
   }, [railHidden]);
   const adaptive=useRef(new AdaptiveVideo());
+  const autoPreset=useRef(new AutoPreset());
+  const [autoDecision,setAutoDecision]=useState<AutoDecision|null>(null);
+  // Sisi terpanjang layar dalam piksel fisik — dasar plafon resolusi otomatis.
+  const clientLongEdgePx=()=>Math.round(Math.max(window.screen?.width??0,window.screen?.height??0)*(window.devicePixelRatio||1))||1280;
+  const autoInputFromMeta=(meta:HostMeta|null):AutoInput=>({clientLongEdgePx:clientLongEdgePx(),hostLevel:meta?.video?.level,fpsLimit:meta?.video?.fpsLimit,encoder:meta?.encoder});
+  const applyAutoDecision=(d:AutoDecision)=>{
+    setAutoDecision(d);
+    sessionRef.current?.setResolution(d.resolution);
+    sessionRef.current?.setFps(d.fps);
+  };
   const [stats, setStats] = useState<SessionStats | null>(null);
   const [connectedAt, setConnectedAt] = useState<number | null>(null);
   const [hudToast, setHudToast] = useState('');
@@ -2208,6 +2219,7 @@ function ConnectScreen({
   };
   const [micOn, setMicOn] = useState(false);
   const [hostMeta, setHostMeta] = useState<HostMeta | null>(null);
+  const hostMetaRef = useRef<HostMeta | null>(null);
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const pinRef = useRef<HTMLInputElement | null>(null);
 
@@ -2352,7 +2364,7 @@ function ConnectScreen({
     if (audioRef.current) audioRef.current.srcObject = null;
     setStats(null);
     setConnectedAt(null);
-    setHostMeta(null);
+    setHostMeta(null); hostMetaRef.current=null; setAutoDecision(null);
     flushSync(()=>setSessionOpen(true));
     if(!/^#session\/[0-9a-f]{64}$/.test(sessionFragmentRef.current))sessionFragmentRef.current=newSessionFragment();
     const target=hostId.replace(/[\s-]/g,'');
@@ -2453,7 +2465,7 @@ function ConnectScreen({
       session.onMeta = (meta) => {
         if (sessionRef.current !== session) return;
         setHostMeta(meta);
-        if(meta.video?.fpsControl&&meta.video.fpsRequested!==(prefsRef.current.fps===60?60:30))session.setFps(prefsRef.current.fps===60?60:30);
+        if(prefsRef.current.preset==='manual'&&meta.video?.fpsControl&&meta.video.fpsRequested!==(prefsRef.current.fps===60?60:30))session.setFps(prefsRef.current.fps===60?60:30);
         const attempt=historyAttempt.current;
         if(attempt && !attempt.done && meta.hardware) {
           const specs:Record<string,string>={};
@@ -2464,12 +2476,21 @@ function ConnectScreen({
         // preferensi sebelum channel siap atau mengirim ulang tiap ganti monitor.
         if (!initialPrefsSent) {
           initialPrefsSent = true;
-          session.setResolution(prefsRef.current.resolution||'1080p');
           session.setQuality(QUALITY_META[prefsRef.current.quality]?.num ?? 0);
           session.setBitrate(prefsRef.current.bitrateMbps||1);
           adaptive.current.reset(prefsRef.current.bitrateMbps||1);
-          session.setFps(prefsRef.current.fps===60?60:30);
+          if (prefsRef.current.preset === 'manual') {
+            session.setResolution(prefsRef.current.resolution||'1080p');
+            session.setFps(prefsRef.current.fps===60?60:30);
+          } else {
+            applyAutoDecision(autoPreset.current.initial(autoInputFromMeta(meta), performance.now()));
+          }
+        } else if (prefsRef.current.preset !== 'manual' && meta.encoder && meta.encoder !== hostMetaRef.current?.encoder) {
+          // Encoder host baru ketahuan di frame pertama (NVENC malas) — plafon bisa naik/turun.
+          const d = autoPreset.current.update({ ...autoInputFromMeta(meta) }, performance.now());
+          if (d) applyAutoDecision(d);
         }
+        hostMetaRef.current = meta;
       };
       // Balasan "ambil dari papan klip PC": salin ke papan klip perangkat
       // ini; kalau izin ditolak, tampilkan isinya biar tetap bisa disalin.
@@ -2601,6 +2622,10 @@ function ConnectScreen({
         const ceiling=p.bitrateMbps||((s.width??1280)*(s.height??720)>1280*720?20:12);
         const next=p.bitrateMbps===0?adaptive.current.update(s,ceiling,performance.now()):null;
         if(next!==null)sessionRef.current?.setBitrate(next);
+        if(p.preset!=='manual'){
+          const d=autoPreset.current.update({...autoInputFromMeta(hostMetaRef.current),rttMs:s.rttMs,recentLossPct:s.recentLossPct,jitterBufferMs:s.jitterBufferMs,deliveredFps:s.fps,glassMs:s.latencyEstimate?.totalMs},performance.now());
+          if(d)applyAutoDecision(d);
+        }
         setStats(s);
       }
     };
@@ -2963,6 +2988,15 @@ function ConnectScreen({
               if (on !== trackpad) toggleTrackpad();
             }}
             onResolution={resolution=>sessionRef.current?.setResolution(resolution)}
+            autoDecision={autoDecision}
+            onPreset={preset=>{
+              if(preset==='manual'){
+                sessionRef.current?.setResolution(prefsRef.current.resolution||'720p');
+                sessionRef.current?.setFps(prefsRef.current.fps===60?60:30);
+              } else {
+                applyAutoDecision(autoPreset.current.initial(autoInputFromMeta(hostMetaRef.current),performance.now()));
+              }
+            }}
             onQuality={(q: StreamQuality) => {
               const num = QUALITY_META[q].num;
               sessionRef.current?.setQuality(num);

@@ -43,6 +43,32 @@ class InputCodec {
     return b;
   }
 
+  /// 0x0A VIDEO_QUALITY — preset kualitas host (0=auto 1=medium 2=high 3=ultra).
+  /// Sama persis dengan `InputCodec.quality` di web/src/rtc.ts.
+  static Uint8List videoQuality(int q) {
+    final b = _msg8(0x0a);
+    b[1] = q.clamp(0, 3).toInt();
+    return b;
+  }
+
+  /// 0x0B VIDEO_BITRATE — target bitrate Mbps, u16 LE (0 = auto).
+  static Uint8List videoBitrateMbps(int mbps) {
+    final b = _msg8(0x0b);
+    ByteData.view(
+      b.buffer,
+    ).setUint16(1, mbps.clamp(0, 50).toInt(), Endian.little);
+    return b;
+  }
+
+  /// 0x0C VIDEO_MODE — resolusi maksimal (0=720p 1=1080p 2=native).
+  /// Pesan ini 2 byte, bukan 8: host mencocokkan `data.len() == 2`.
+  static Uint8List videoMode(int mode) =>
+      Uint8List.fromList([0x0c, mode.clamp(0, 2).toInt()]);
+
+  /// 0x0F VIDEO_FPS — 30 atau 60. Juga 2 byte (host: `data.len() == 2`).
+  static Uint8List videoFps(int fps) =>
+      Uint8List.fromList([0x0f, fps == 60 ? 60 : 30]);
+
   /// Gerak mouse relatif (mode trackpad / FPS). dx, dy dalam piksel host.
   static Uint8List mouseMoveRel(int dx, int dy) {
     final b = _msg8(0x01);

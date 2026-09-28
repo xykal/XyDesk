@@ -18,6 +18,7 @@ import '../../core/pip_controller.dart';
 import '../../core/session_preview.dart';
 import '../../core/store.dart';
 import '../../core/tokens.dart';
+import '../../webrtc/auto_preset.dart';
 import '../../webrtc/input_codec.dart';
 import '../../webrtc/rtc_service.dart';
 import '../../webrtc/session_transport.dart';
@@ -88,6 +89,13 @@ class _SessionPageState extends ConsumerState<SessionPage>
 
   /// Aliran statistik sesi (FPS, bitrate, noFrameWarning).
   StreamSubscription<SessionStats>? _statsSub;
+
+  /// Preset video otomatis (resolusi + FPS) — lihat webrtc/auto_preset.dart.
+  /// Preferensi bitrate/quality dikirim sekali saat meta host pertama tiba;
+  /// sebelum 6.8.7 tidak ada yang dikirim sama sekali.
+  final AutoPreset _autoPreset = AutoPreset();
+  bool _videoPrefsSent = false;
+  String? _lastEncoder;
   SessionStats? _lastStats;
 
   KbLayout _keyboardLayout = KbLayout.split;
@@ -119,6 +127,7 @@ class _SessionPageState extends ConsumerState<SessionPage>
         widget.initialTransport ??
         SessionTransport(jwt: ref.read(authProvider).token);
     _transport.addListener(_onTransportChanged);
+    ref.listenManual(settingsProvider, _onStreamPrefsChanged);
     // Kalau transport sudah disediakan dari halaman Connect (pairing sudah
     // diterima), tidak perlu start ulang — cukup dengarkan perubahannya.
     if (widget.initialTransport == null) {
@@ -251,6 +260,7 @@ class _SessionPageState extends ConsumerState<SessionPage>
           } else {
             _lastStats = st;
           }
+          _driveAutoPreset(st);
         });
       }
     }
@@ -266,6 +276,10 @@ class _SessionPageState extends ConsumerState<SessionPage>
     if (!s.live && _metaSub != null) {
       unawaited(_metaSub!.cancel());
       _metaSub = null;
+    }
+    if (!s.live) {
+      _videoPrefsSent = false;
+      _lastEncoder = null;
     }
     if (!s.live && _statsSub != null) {
       unawaited(_statsSub!.cancel());
@@ -321,6 +335,107 @@ class _SessionPageState extends ConsumerState<SessionPage>
   void _onHostMeta(HostMeta meta) {
     // Update device dengan hardware info dari host.
     unawaited(_updateDeviceWithHardwareInfo(meta));
+    _applyVideoPrefs(meta);
+  }
+
+  /// Sisi terpanjang layar HP dalam piksel fisik — plafon resolusi otomatis.
+  int _clientLongEdgePx() {
+    final size = View.of(context).physicalSize;
+    final edge = size.longestSide.round();
+    return edge > 0 ? edge : 1280;
+  }
+
+  AutoInput _autoInput(HostMeta? meta) => AutoInput(
+    clientLongEdgePx: _clientLongEdgePx(),
+    hostLevel: meta?.videoLevel,
+    fpsLimit: meta?.fpsLimit,
+    encoder: meta?.encoder,
+  );
+
+  /// Kirim quality/bitrate sekali, lalu resolusi+FPS: dari preset Auto
+  /// (AutoPreset) atau nilai tetap milik preset Medium/High/Ultra.
+  void _applyVideoPrefs(HostMeta meta) {
+    final rtc = _transport.rtc;
+    if (rtc == null) return;
+    final prefs = ref.read(settingsProvider);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (!_videoPrefsSent) {
+      _videoPrefsSent = true;
+      rtc.sendVideoPrefs(
+        quality: prefs.quality.index,
+        bitrateMbps: prefs.bitrateMbps,
+      );
+      if (prefs.quality == StreamQuality.auto) {
+        _pushDecision(rtc, _autoPreset.initial(_autoInput(meta), now));
+      } else {
+        rtc.sendVideoPrefs(
+          mode: prefs.quality.videoMode,
+          fps: prefs.quality.fps,
+        );
+        DevLog.i(
+          'video',
+          'Preset tetap dikirim',
+          '${prefs.quality.resolution} ${prefs.bitrateMbps} Mbps',
+        );
+      }
+    } else if (prefs.quality == StreamQuality.auto &&
+        meta.encoder != null &&
+        meta.encoder != _lastEncoder) {
+      // Encoder host baru ketahuan di frame pertama (NVENC malas).
+      final d = _autoPreset.update(_autoInput(meta), now);
+      if (d != null) _pushDecision(rtc, d);
+    }
+    _lastEncoder = meta.encoder;
+  }
+
+  void _driveAutoPreset(SessionStats st) {
+    final rtc = _transport.rtc;
+    if (rtc == null || !_videoPrefsSent) return;
+    if (ref.read(settingsProvider).quality != StreamQuality.auto) return;
+    final d = _autoPreset.update(
+      _autoInput(rtc.hostMeta).copyWith(
+        rttMs: st.rttMs,
+        recentLossPct: st.packetLossPercent,
+        jitterBufferMs: st.jitterBufferMs,
+        deliveredFps: st.fps,
+      ),
+      DateTime.now().millisecondsSinceEpoch,
+    );
+    if (d != null) _pushDecision(rtc, d);
+  }
+
+  /// Pengguna mengganti preset/bitrate di panel saat sesi berjalan.
+  void _onStreamPrefsChanged(AppSettings? prev, AppSettings next) {
+    final rtc = _transport.rtc;
+    if (rtc == null || !_videoPrefsSent) return;
+    if (prev?.quality == next.quality &&
+        prev?.bitrateMbps == next.bitrateMbps) {
+      return;
+    }
+    rtc.sendVideoPrefs(
+      quality: next.quality.index,
+      bitrateMbps: next.bitrateMbps,
+    );
+    if (prev?.quality == next.quality) return;
+    if (next.quality == StreamQuality.auto) {
+      _pushDecision(
+        rtc,
+        _autoPreset.initial(
+          _autoInput(rtc.hostMeta),
+          DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+    } else {
+      rtc.autoDecision = null;
+      rtc.sendVideoPrefs(mode: next.quality.videoMode, fps: next.quality.fps);
+    }
+  }
+
+  void _pushDecision(RtcService rtc, AutoDecision d) {
+    rtc.autoDecision = d;
+    rtc.sendVideoPrefs(mode: d.mode, fps: d.fps);
+    DevLog.i('video', 'Preset otomatis', '$d — ${d.reason}');
+    if (mounted) setState(() {});
   }
 
   /// Update device di repo dengan hardware info dari HostMeta.

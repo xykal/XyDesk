@@ -422,7 +422,11 @@ export function normalizeResolution(value: unknown): ResolutionMode {
   return value === '1080p' ? '1080p' : '720p';
 }
 
+export type VideoPreset = 'auto' | 'manual';
+
 export type SessionPrefs = {
+  /** 'auto' = resolusi + FPS dipilih AutoPreset dari layar client, encoder host, dan latensi terukur. */
+  preset: VideoPreset;
   volume: number;
   sens: number;
   cursorSize: number;
@@ -454,6 +458,7 @@ export const BITRATE_OPTIONS: { value: BitrateMbps; label: string; hint: string 
 ];
 
 export const DEFAULT_PREFS: SessionPrefs = {
+  preset: 'auto',
   volume: 0.8,
   sens: 1.7,
   cursorSize: 36,
@@ -598,6 +603,8 @@ export function SessionPanel({
   onFps,
   fpsLimit,
   encoder,
+  autoDecision,
+  onPreset,
 }: {
   controlsVisible?:boolean;
   onControlsVisibilityChange?:(on:boolean)=>void;
@@ -607,6 +614,9 @@ export function SessionPanel({
   onFps?:(fps:30|60)=>void;
   fpsLimit?:number;
   encoder?:string;
+  /** Keputusan AutoPreset saat ini (hanya bermakna bila prefs.preset === 'auto'). */
+  autoDecision?: {resolution:ResolutionMode; fps:30|60; reason:string} | null;
+  onPreset?:(preset:VideoPreset)=>void;
   videoApplied?: [number, number] | null;
   capture?: HostMeta['capture'];
   prefs: SessionPrefs;
@@ -706,12 +716,26 @@ export function SessionPanel({
           </div>
           <p className="spanel-note">{QUALITY_META[prefs.quality].desc}</p>
 
+          <p className="spanel-section">Resolusi dan FPS</p>
+          <div className="display-chips">
+            <button type="button" className={prefs.preset!=='manual'?'active':''} onClick={()=>{onChange({...prefs,preset:'auto'});onPreset?.('auto');}}>Otomatis</button>
+            <button type="button" className={prefs.preset==='manual'?'active':''} onClick={()=>{onChange({...prefs,preset:'manual'});onPreset?.('manual');}}>Manual</button>
+          </div>
+          {prefs.preset!=='manual' ? (
+            <p className="spanel-note">
+              {autoDecision ? <>Sekarang <strong>{autoDecision.resolution} · {autoDecision.fps} FPS</strong> — {autoDecision.reason}. </> : 'Menunggu info host. '}
+              Dipilih dari layar perangkat ini, encoder host ({encoder??'belum diketahui'}), dan latensi terukur: mulai ringan, naik bertahap saat stabil, turun begitu jaringan atau host keteteran.
+            </p>
+          ) : (
+            <>
           <p className="spanel-section">Frame per detik</p>
-          <div className="display-chips">{([30,60] as const).map(fps=><button type="button" key={fps} className={prefs.fps===fps?'active':''} onClick={()=>{onChange({...prefs,fps});onFps?.(fps);}}>{fps} FPS</button>)}</div>
-          <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
-          <p className="spanel-section">Resolusi maksimal</p>
-          <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'1080p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
-          <p className="spanel-note">Mode 720p menjaga output HD 1280×720, termasuk saat desktop RDP lebih kecil; sumber akan diskalakan halus agar tidak berhenti di tinggi 529. Mode 1080p memakai ukuran yang tersedia tanpa mengarang detail.</p>
+              <div className="display-chips">{([30,60] as const).map(fps=><button type="button" key={fps} className={prefs.fps===fps?'active':''} onClick={()=>{onChange({...prefs,fps});onFps?.(fps);}}>{fps} FPS</button>)}</div>
+              <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
+              <p className="spanel-section">Resolusi maksimal</p>
+              <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'1080p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
+              <p className="spanel-note">Mode 720p menjaga output HD 1280×720, termasuk saat desktop RDP lebih kecil; sumber akan diskalakan halus agar tidak berhenti di tinggi 529. Mode 1080p memakai ukuran yang tersedia tanpa mengarang detail.</p>
+            </>
+          )}
           <p className="spanel-section">Bitrate</p>
           <div className="display-chips bitrate-chips">
             {BITRATE_OPTIONS.map((opt) => (

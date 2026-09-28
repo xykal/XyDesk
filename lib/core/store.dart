@@ -85,13 +85,13 @@ extension StreamQualityX on StreamQuality {
   String get desc {
     switch (this) {
       case StreamQuality.auto:
-        return 'Adaptive — adjusts to network';
+        return 'Resolusi, FPS, dan bitrate dipilih dari layar HP, encoder host, dan latensi terukur';
       case StreamQuality.medium:
-        return '720p60 • ~8 Mbps • balanced';
+        return '720p 30 FPS • 8 Mbps • paling ringan';
       case StreamQuality.high:
-        return '1080p60 • ~15 Mbps • sharp';
+        return '1080p 30 FPS • 15 Mbps • tajam';
       case StreamQuality.ultra:
-        return '1440p60 • ~25-50 Mbps • best';
+        return '1080p 60 FPS • 25 Mbps • butuh encoder hardware di host';
     }
   }
 
@@ -108,18 +108,27 @@ extension StreamQualityX on StreamQuality {
     }
   }
 
+  /// Label yang jujur terhadap apa yang benar-benar diminta ke host
+  /// (protokol 0x0C/0x0F). Host membatasi 720p/1080p dan 30/60 FPS; label
+  /// lama "1440p60 (QHD)" tidak pernah dikirim ke mana pun.
   String get resolution {
     switch (this) {
       case StreamQuality.auto:
         return 'Auto';
       case StreamQuality.medium:
-        return '720p60';
+        return '720p30';
       case StreamQuality.high:
-        return '1080p60 (FHD)';
+        return '1080p30 (FHD)';
       case StreamQuality.ultra:
-        return '1440p60 (QHD)';
+        return '1080p60 (FHD)';
     }
   }
+
+  /// Mode resolusi protokol 0x0C: 0 = 720p, 1 = 1080p.
+  int get videoMode => this == StreamQuality.medium ? 0 : 1;
+
+  /// FPS protokol 0x0F.
+  int get fps => this == StreamQuality.ultra ? 60 : 30;
 }
 
 @immutable

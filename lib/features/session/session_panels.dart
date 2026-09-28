@@ -599,6 +599,19 @@ class _StreamPanel extends ConsumerWidget {
                     ref.read(settingsProvider.notifier).setQuality(q),
               ),
               const SizedBox(height: 10),
+              if (settings.quality == StreamQuality.auto &&
+                  service?.autoDecision != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    'Sekarang ${service!.autoDecision} — ${service.autoDecision!.reason}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: context.c.textHi,
+                    ),
+                  ),
+                ),
               Text(
                 settings.quality.desc,
                 style: TextStyle(
