@@ -140,21 +140,16 @@ export function postComment(
   slug: string,
   content: string,
   parentId?: number | null,
-  admin?: { token?: string; googleToken?: string },
+  admin?: { googleToken: string },
 ): Promise<{ comment: NewsComment }> {
   return getJson(`${NEWS_BASE}/api/news/${encodeURIComponent(slug)}/comments`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
       // Badge resmi tetap keputusan SERVER: header ini cuma bukti, worker
-      // yang memvalidasi. Dua bukti yang diterima: token ADMIN_TOKEN lama,
-      // atau Google ID token (diprioritaskan bila tersedia — founder tidak
-      // perlu lagi menempel token manual).
-      ...(admin?.googleToken
-        ? { 'x-admin-google-token': admin.googleToken }
-        : admin?.token
-          ? { 'x-admin-token': admin.token }
-          : {}),
+      // yang memvalidasi lewat Google ID token founder. ADMIN_TOKEN mentah
+      // tidak pernah dipegang web publik — itu urusan app admin/.
+      ...(admin ? { 'x-admin-google-token': admin.googleToken } : {}),
     },
     body: JSON.stringify({
       fp: newsFingerprint(),
@@ -165,23 +160,12 @@ export function postComment(
   });
 }
 
-// ── Mode admin ─────────────────────────────────────────────────
+// ── Mode founder ───────────────────────────────────────────────
 // Email Google founder → balasan tampil sebagai Haekal Saputra dengan foto
 // profil resmi + badge XySpace. Email hanya MEMBUKA UI-nya; otoritas
-// sesungguhnya tetap ADMIN_TOKEN yang divalidasi worker — email saja tidak
-// bisa memalsukan badge.
+// sesungguhnya adalah Google ID token yang divalidasi worker.
 export const ADMIN_EMAIL = 'xycdigital@gmail.com';
 export const ADMIN_DISPLAY_NAME = 'Haekal Saputra';
-const ADMIN_TOKEN_KEY = 'xydesk.news.adminToken';
-
-export function getAdminToken(): string {
-  return localStorage.getItem(ADMIN_TOKEN_KEY) ?? '';
-}
-
-export function setAdminToken(token: string): void {
-  if (token.trim()) localStorage.setItem(ADMIN_TOKEN_KEY, token.trim());
-  else localStorage.removeItem(ADMIN_TOKEN_KEY);
-}
 
 /// Daftarkan email untuk dikabari nanti.
 ///

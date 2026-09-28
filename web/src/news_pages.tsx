@@ -23,14 +23,12 @@ import {
   fetchNewsPost,
   formatNewsDate,
   formatRelativeTime,
-  getAdminToken,
   NEWS_CATEGORIES,
   NEWS_SHARE_BASE,
   NewsComment,
   NewsPost,
   newsAvatarUrl,
   postComment,
-  setAdminToken,
   subscribeNews,
   toggleLike,
 } from './news';
@@ -201,9 +199,8 @@ export function NewsDetailPage({
   const [notice, setNotice] = useState('');
   const [replyTo, setReplyTo] = useState<NewsComment | null>(null);
   // Mode founder: login Google xycdigital@gmail.com membuka UI-nya;
-  // keabsahan badge tetap diputuskan worker dari ADMIN_TOKEN.
+  // keabsahan badge tetap diputuskan worker dari Google ID token.
   const [adminEligible, setAdminEligible] = useState(false);
-  const [adminToken, setAdminTokenState] = useState(getAdminToken);
   const [googleToken, setGoogleToken] = useState<string | null>(getStoredGoogleIdToken);
   // Tombol lompat: panah bawah menuju komentar di dasar artikel; setelah
   // sampai, berubah jadi panah atas untuk kembali ke judul. Artikel
@@ -218,7 +215,6 @@ export function NewsDetailPage({
     window.addEventListener('scroll', cek, { passive: true });
     return () => window.removeEventListener('scroll', cek);
   }, []);
-  const [adminDraft, setAdminDraft] = useState('');
   useEffect(() => {
     const jwt = localStorage.getItem('xydesk.web.jwt');
     if (!jwt) return;
@@ -226,9 +222,7 @@ export function NewsDetailPage({
       .then((r) => setAdminEligible(r.user?.email?.toLowerCase() === ADMIN_EMAIL))
       .catch(() => {});
   }, []);
-  // Admin aktif bila founder dan (Google id_token masih berlaku ATAU sudah
-  // menempel ADMIN_TOKEN). Google id_token diutamakan saat kirim komentar.
-  const adminActive = adminEligible && (googleToken !== null || adminToken !== '');
+  const adminActive = adminEligible && googleToken !== null;
   // Form komentar ada di BAWAH daftar; saat "Balas" ditekan dari komentar
   // paling atas, gulirkan ke form supaya pengguna tidak mencarinya.
   const commentFormRef = useRef<HTMLDivElement | null>(null);
@@ -299,16 +293,10 @@ export function NewsDetailPage({
       // Username acak per perangkat — kecuali mode founder yang terverifikasi
       // server: tampil sebagai Haekal Saputra + badge XySpace.
       // Cek ulang id_token saat kirim (bisa saja kedaluwarsa sejak halaman
-      // dibuka); bila masih ada, pakai jalur Google — bila tidak, fallback
-      // ke ADMIN_TOKEN yang ditempel. Kalau keduanya kosong, komentar jatuh
-      // ke mode publik biasa (nama acak), bukan kredensial kosong.
+      // dibuka). Kalau kosong, komentar jatuh ke mode publik biasa.
       const gt = getStoredGoogleIdToken();
       if (gt !== googleToken) setGoogleToken(gt);
-      const adminCredential = gt
-        ? { googleToken: gt }
-        : adminToken
-          ? { token: adminToken }
-          : undefined;
+      const adminCredential = gt && adminEligible ? { googleToken: gt } : undefined;
       const r = await postComment(
         post.slug,
         commentText.trim(),
@@ -556,8 +544,6 @@ export function NewsDetailPage({
                     type="button"
                     title="Matikan mode tim di perangkat ini"
                     onClick={() => {
-                      setAdminToken('');
-                      setAdminTokenState('');
                       clearStoredGoogleIdToken();
                       setGoogleToken(null);
                     }}
@@ -570,7 +556,7 @@ export function NewsDetailPage({
                 <div className="admin-setup">
                   <p>
                     Login founder terdeteksi. Masuk dengan Google untuk membalas
-                    sebagai tim — tanpa token manual:
+                    sebagai tim:
                   </p>
                   <button
                     type="button"
@@ -579,30 +565,6 @@ export function NewsDetailPage({
                   >
                     Lanjutkan dengan Google
                   </button>
-                  <details className="admin-token-fallback">
-                    <summary>Cara lama: tempel ADMIN_TOKEN</summary>
-                    <p>Token tersimpan hanya di perangkat ini.</p>
-                    <div className="admin-setup-row">
-                      <input
-                        type="password"
-                        placeholder="ADMIN_TOKEN"
-                        value={adminDraft}
-                        onChange={(e) => setAdminDraft(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="btn primary"
-                        disabled={!adminDraft.trim()}
-                        onClick={() => {
-                          setAdminToken(adminDraft);
-                          setAdminTokenState(adminDraft.trim());
-                          setAdminDraft('');
-                        }}
-                      >
-                        Aktifkan
-                      </button>
-                    </div>
-                  </details>
                 </div>
               )}
               {replyTo && (
