@@ -9,7 +9,7 @@ menggantikannya.
 
 Ditulis untuk SESI-20260903-GALIH-HOST-AUDIT (perubahan: masa tenggang
 koneksi, penutupan peer connection saat slot dilepas, injeksi teks per batch).
-Kalau hasil sebuah uji menyimpang, catat di `HANDOFF.md` bagian
+Kalau hasil sebuah uji menyimpang, catat di `../docs/project/HANDOFF.md` bagian
 "Untuk: Host Engine" beserta log mentahnya — jangan dibiarkan hanya di chat.
 
 ## 0. Persiapan
@@ -108,5 +108,5 @@ masuk, dengan batas 4.096 unit UTF-16 per pesan.
 Sebut keempat blok di atas lolos bila: sesi tahan blip ≤ 10 detik, semua
 penlepasan slot membuat capture berhenti, teks 2.000 karakter masuk utuh, dan
 tidak pernah ada dua sesi media hidup bersamaan. Setelah itu, tulis hasilnya ke
-`HANDOFF.md` (perbarui item verifikasi lab Windows) — angka dan baris log
+`../docs/project/HANDOFF.md` (perbarui item verifikasi lab Windows) — angka dan baris log
 aslinya, bukan hanya "udah oke".

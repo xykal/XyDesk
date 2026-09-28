@@ -47,11 +47,7 @@ func main() {
 		return
 	}
 
-	up := websocket.Upgrader{
-		// Dev/LAN: izinkan asal mana pun. Untuk produksi publik, batasi
-		// CheckOrigin agar hanya domain app yang boleh terhubung.
-		CheckOrigin: func(*http.Request) bool { return true },
-	}
+	up := websocket.Upgrader{CheckOrigin: originChecker(os.Getenv("XYDESK_ALLOWED_ORIGINS"))}
 
 	mux := http.NewServeMux()
 

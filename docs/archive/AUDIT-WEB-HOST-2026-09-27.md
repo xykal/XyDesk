@@ -10,7 +10,7 @@
 Seluruh WH-01–WH-17 kini memiliki kandidat perubahan source lokal pada sesi
 `SESI-20260927-OPERATOR-HARDEN`, melanjutkan batch 1. Pemilik memilih
 **per akun Windows**, bukan koordinasi lintas user. Lihat
-[matriks implementasi, batasan dan validasi tertahan](qa/web-host-hardening-2026-09-27.md).
+[matriks implementasi, batasan dan validasi tertahan](../qa/web-host-hardening-2026-09-27.md).
 Belum compile/unit test CI maupun acceptance perangkat; temuan tidak ditutup
 hanya karena kode berubah. Audit di bawah adalah bukti baseline awal, bukan
 uraian source sesudah patch. Seluruh push/dispatch/rilis tetap ditahan.
@@ -295,7 +295,7 @@ WH-07/08/10/11/12/17. Prioritaskan stop/cancel yang benar sebelum optimasi laten
 
 ### Batch D — auth, acceptance, dan gate rilis
 
-WH-13/14 memerlukan review auth tersendiri. WH-16 memisahkan validasi dari deployment. Jalankan [checklist manual](WEB-HOST-MANUAL-QA.md) pada SHA artefak yang sama dengan kandidat source.
+WH-13/14 memerlukan review auth tersendiri. WH-16 memisahkan validasi dari deployment. Jalankan [checklist manual](../WEB-HOST-MANUAL-QA.md) pada SHA artefak yang sama dengan kandidat source.
 
 **Definisi selesai:** setiap P1 diperbaiki dan mendapat regresi; seluruh acceptance wajib punya bukti pada mesin pemilik; P2 ditutup atau diterima eksplisit dengan batas terdokumentasi. Tidak menyatakan “support semua hardware” dari satu VM.
 
@@ -303,7 +303,7 @@ WH-13/14 memerlukan review auth tersendiri. WH-16 memisahkan validasi dari deplo
 
 - Menghapus `.github/workflows/test-lab.yml` dari checkout lokal atas arahan pemilik.
 - Memperbarui `docs/CI.md`: lab manual pemilik, dampak penghapusan, dan peringatan rantai Build → deploy/rilis.
-- Menambahkan fokus web + host di `ROADMAP.md`.
+- Menambahkan fokus web + host di `../project/ROADMAP.md`.
 - Membuat laporan ini dan `docs/WEB-HOST-MANUAL-QA.md`.
 - Mencatat hasil ke changelog, handoff, dan papan sesi.
 

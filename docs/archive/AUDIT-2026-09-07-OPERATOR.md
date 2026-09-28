@@ -38,7 +38,7 @@ Tiga test baru jaga kontrak.
 `permission_handler` 11.3.1 + `lib/core/permissions.dart`: izin diminta pada momen fitur dipakai (toggle mic, QR scanner, permissions page). Deny permanen → dialog buka Settings. Manifest tanpa `request` runtime tidak pernah munculkan dialog — itu akar keluhan "izin mic tidak muncul".
 
 ### 1.6 Domain xystudio → xydesk — TUNTAS (kode)
-Grep `xystudio.my.id` di `lib/`, `web/src/`, `host/`, `desktop/`, `cloudflare/`, `news/` → 0 hasil (kecuali riwayat `AGENT_BOARD.md` + `CHANGELOG.md` yang memang sengaja dibiarkan). `_headers` CSP sudah `signal.xydesk.my.id` + `news.xydesk.my.id`. `robots.txt` sitemap domain baru.
+Grep `xystudio.my.id` di `lib/`, `web/src/`, `host/`, `desktop/`, `cloudflare/`, `news/` → 0 hasil (kecuali riwayat `../project/AGENT_BOARD.md` + `CHANGELOG.md` yang memang sengaja dibiarkan). `_headers` CSP sudah `signal.xydesk.my.id` + `news.xydesk.my.id`. `robots.txt` sitemap domain baru.
 
 ---
 
@@ -54,10 +54,10 @@ Grep `xystudio.my.id` di `lib/`, `web/src/`, `host/`, `desktop/`, `cloudflare/`,
 2. `npx wrangler secret put TURN_STATIC_URLS` + `TURN_STATIC_SECRET` (atau via GitHub Secrets `TURN_STATIC_URLS` / `TURN_STATIC_SECRET` → dispatch `Deploy Signaling`)
 3. Verifikasi: `tool/check_turn_live.js` (baru di sesi ini) → harus ada `providers[0].ok=true`
 
-Jangan pakai Cloudflare Realtime dulu — butuh kartu kredit, nabrak `ROADMAP.md`.
+Jangan pakai Cloudflare Realtime dulu — butuh kartu kredit, nabrak `../project/ROADMAP.md`.
 
 ### 2.2 Latency glass-to-glass belum terukur
-`ROADMAP.md` Fase 0 minta `<40ms LAN`, `<80ms via TURN`. `host/src/main.rs --bench` cuma ukur encode. Belum ada foto 2 layar (host + client berjejer) dengan timestamp overlay.
+`../project/ROADMAP.md` Fase 0 minta `<40ms LAN`, `<80ms via TURN`. `host/src/main.rs --bench` cuma ukur encode. Belum ada foto 2 layar (host + client berjejer) dengan timestamp overlay.
 
 **Protokol ada di `docs/LATENCY.md`:** overlay timestamp di host, foto bareng, baca selisih. Butuh 10 sampel. Ini yang menentukan apakah positioning "untuk gaming" sah atau harus pivot ke "kerja remote".
 
@@ -80,7 +80,7 @@ HANDOFF 2026-09-06 bilang 4 branch mati tertinggal 100k baris: `feat/nvenc`, `fe
 Ini keputusan produk, bukan teknik. Founder yang putuskan.
 
 ### 2.6 Watchdog "connected tapi belum ada frame"
-`HANDOFF.md` item Client Flutter: `RtcPhase.connected` dipicu transport ICE/DTLS, bukan frame video pertama. Kalau track video tidak pernah sampai, user tatap layar hitam yang klaim tersambung. `SessionStats.hasVideo` + `resolutionLabel='Belum ada gambar'` sudah ada — tinggal jadi pemicu timer 10 detik → banner jujur + tawarkan `selectDisplay`/retry.
+`../project/HANDOFF.md` item Client Flutter: `RtcPhase.connected` dipicu transport ICE/DTLS, bukan frame video pertama. Kalau track video tidak pernah sampai, user tatap layar hitam yang klaim tersambung. `SessionStats.hasVideo` + `resolutionLabel='Belum ada gambar'` sudah ada — tinggal jadi pemicu timer 10 detik → banner jujur + tawarkan `selectDisplay`/retry.
 
 Belum dikerjakan karena butuh Flutter toolchain.
 
@@ -99,14 +99,14 @@ Kondisi sekarang:
 2. **Pilih adapter diskrit sebelum encoder** — `CreateDXGIFactory1` + `EnumAdapters1` + prefer GPU dengan `NVENC` caps, bukan GPU yang render UI.
 3. **Per-app audio capture** — `AUDIOCLIENT_ACTIVATION_PARAMS` + `PROCESS_LOOPBACK_MODE_TARGET` (Win10 2004+) biar cuma suara game yang ke HP, bukan semua output PC.
 
-Ketiganya dicatat di `HANDOFF.md` Host Engine, belum dikerjakan. Estimasi gain: 15-20ms.
+Ketiganya dicatat di `../project/HANDOFF.md` Host Engine, belum dikerjakan. Estimasi gain: 15-20ms.
 
 ---
 
 ## 4. Keputusan yang TIDAK diambil (sengaja)
 
 - **C++: JANGAN.** Sudah diputuskan di audit 6 Sep: C sudah jalan (`build.rs` + libopus vendor via `cc`), NVENC Rust murni FFI dinamis, IddCx butuh EV signing berbayar nabrak ROADMAP. Pakai `ge9/IddSampleDriver` MIT+CC0 kalau butuh display virtual.
-- **Dark mode Android: JANGAN.** `ROADMAP.md` bilang terang (Paper) saja — satu set kontras teruji.
+- **Dark mode Android: JANGAN.** `../project/ROADMAP.md` bilang terang (Paper) saja — satu set kontras teruji.
 - **Garis pemisah di web/desktop: BIARKAN DULU.** `docs/DESIGN.md` catat sebagai penyimpangan disengaja. Hapus 282 pemakaian `border` di web tanpa ganti hierarki = visual collapse. Butuh design pass terpisah.
 
 ---

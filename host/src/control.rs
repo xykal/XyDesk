@@ -682,7 +682,7 @@ async fn action(
                 ))))
             }
         }
-        // Quality preset: auto, medium, high, ultra — Founder request 2026-09-07
+        // Preset kualitas: auto, medium, high, ultra
         "video-quality" => {
             let Some(q) = req.quality.as_deref() else {
                 return Ok(Json(ActionResponse::err(
@@ -1017,7 +1017,7 @@ mod tests {
     async fn aksi_video_bitrate_di_luar_batas_ditolak() {
         let (addr, token) = spawn().await;
         let _g = crate::screen::test_support::BITRATE_LOCK.lock().unwrap();
-        // 0 = Auto is allowed (Founder request 2026-09-07), only 999 out of range rejected
+        // 0 = otomatis sah; hanya 999 (di luar rentang) ditolak
         let (code, resp) = http_request(
             addr,
             "POST",

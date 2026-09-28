@@ -17,7 +17,7 @@ import '../core/tokens.dart';
 ///
 /// Kolom penuh "upload foto lalu simpan ke Cloudinary" butuh `image_picker`
 /// + pembaruan `docs/THIRD-PARTY-LICENSES.md` (Dependensi Baru → CI). Itu
-/// dicatat sebagai pekerjaan lintas role di `HANDOFF.md`, sehingga sesi ini
+/// dicatat sebagai pekerjaan lintas role di `docs/project/HANDOFF.md`, sehingga sesi ini
 /// memakai jalur preset/URL yang sudah bekerja penuh.
 
 const _avatarKey = 'profile_avatar';

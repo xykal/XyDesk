@@ -3,7 +3,7 @@
 // sewa mulai 1 jam / Rp 5.000.
 //
 // JUJUR SOAL OTOMASI: pembayaran & pembuatan billing otomatis belum aktif —
-// backend + gateway pembayarannya belum dibangun (lihat HANDOFF.md bagian
+// backend + gateway pembayarannya belum dibangun (lihat docs/project/HANDOFF.md bagian
 // Backend). Sampai itu siap, pemesanan berjalan lewat WhatsApp dan operator
 // mengirim ID + password + kode billing secara manual. Halaman ini TIDAK
 // berpura-pura punya pembayaran otomatis.

@@ -240,7 +240,6 @@ class _SessionControlPanelState extends ConsumerState<SessionControlPanel> {
               const SizedBox(height: 1),
               Expanded(
                 child: SingleChildScrollView(
-                  // Founder: panel sempit → lega, padding besar
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
                   child: switch (_section) {
                     SessionPanelSection.stream => _StreamPanel(
@@ -489,7 +488,6 @@ class _StreamPanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Live stats — more spacious now (Founder: panel sempit buat lega)
         const _SectionTitle(
           title: 'Live Stats',
           subtitle: 'Realtime from connection — ms, fps, bitrate',
@@ -578,7 +576,6 @@ class _StreamPanel extends ConsumerWidget {
         const SizedBox(height: 20),
         if (service != null) _DisplayPicker(rtc: service),
 
-        // Quality presets — Founder request: Auto, Medium, High, Ultra
         const _SectionTitle(
           title: 'Quality',
           subtitle: 'Auto adapts to network — or pick fixed',
@@ -1050,7 +1047,7 @@ class _ControlsPanel extends StatelessWidget {
               ? 'Touch HUD, joystick, keypad, keyboard — spacious & complete'
               : 'Pointer, click, keyboard, clipboard — all adjustable',
         ),
-        // Keyboard selection — Founder: pastikan ada pemilihan keyboard
+        // Pemilihan keyboard
         const _SectionTitle(
           title: 'Keyboard Selection',
           subtitle: 'Pick input source — XyDesk full or system IME',
@@ -1125,7 +1122,7 @@ class _ControlsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        // Joystick & Gamepad & Keypad — Founder: belum sempurna, buat lega & lengkap
+        // Joystick, gamepad, keypad
         const _SectionTitle(
           title: 'Joystick & Gamepad & Keypad',
           subtitle: 'Complete mapping — not yet perfect, now more spacious',
@@ -1243,14 +1240,14 @@ class _ControlsPanel extends StatelessWidget {
           icon: LucideIcons.info,
           title: 'Controls ready',
           body:
-              'All controls (keyboard, joystick, gamepad, keypad, mouse) can be remapped in Control Mapping page. Panel now spacious per Founder request.',
+              'All controls (keyboard, joystick, gamepad, keypad, mouse) can be remapped in Control Mapping page.',
         ),
       ],
     );
   }
 }
 
-/// Wrapper — real control mapping page (Founder: control mapping lengkap)
+/// Pembungkus halaman pemetaan kontrol.
 class ControlMappingPageWrapper extends StatelessWidget {
   const ControlMappingPageWrapper({super.key});
 
@@ -1724,7 +1721,6 @@ class _PanelCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.c;
-    // Founder: panel sempit → buat lega, padding lebih besar
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -1752,7 +1748,6 @@ class _CardGapLarge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Founder request: panel sempit buat lega — increase gap
     // No Divider per design rule seamless — use Container 1px
     return SizedBox(
       height: 8,

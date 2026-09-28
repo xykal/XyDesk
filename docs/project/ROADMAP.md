@@ -11,7 +11,7 @@
 Matangkan **web + host Windows/panel native** terlebih dahulu: capture nyata,
 negosiasi video, lifecycle sesi, input, audio, dan observabilitas. Penyambungan
 platform lain ditunda; kontrak web–host tetap diuji sejak awal agar kedua sisi
-tidak berkembang sendiri-sendiri. Audit terperinci: `docs/AUDIT-WEB-HOST-2026-09-27.md`.
+tidak berkembang sendiri-sendiri. Audit terperinci: `../archive/AUDIT-WEB-HOST-2026-09-27.md`.
 Lab RDP/Tailscale Actions dihapus dari source; acceptance dilakukan pemilik
 di perangkat sendiri (`docs/WEB-HOST-MANUAL-QA.md`). Build/kompilasi tetap
 melalui CI setelah izin. Status historis di bawah bukan snapshot kesiapan rilis.

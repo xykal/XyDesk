@@ -5,19 +5,19 @@ perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
 
 ## Workflow
 
+Lima workflow. Sepuluh workflow eksperimen (`validate-web-host`, `prepare-host-*`,
+`prepare-windows-installer`, `publish-host-*`, `build-apk-only`,
+`deploy-web-candidate`, `test-vdd-setup`) dihapus 28 Sep 2026: semuanya
+`workflow_dispatch` tanpa pemakai, menggandakan pekerjaan `build.yml`, dan
+memperlebar permukaan serangan (tiap workflow = jalur lain ke secret repo).
+
 | Berkas | Pemicu | Hasil |
 |---|---|---|
-| `.github/workflows/validate-web-host.yml` | **manual** (`workflow_dispatch`) | web test/build, host Linux/Windows unit/clippy + startup konkuren, parser panel/IPC privat, kandidat Windows + panel probe; tidak deploy/rilis, artefak 3 hari |
-| `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja — tidak otomatis oleh push | gerbang mutu per-area, APK Android, satu bundle Windows native C++ + engine Rust, bundle Web |
-| `.github/workflows/deploy-signaling.yml` | **manual** (`workflow_dispatch`) | deploy Cloudflare Worker API/signaling |
-| `.github/workflows/deploy-web.yml` | Build `main` sukses, manual recovery | deploy bundle Flutter Web terverifikasi ke Cloudflare Static Assets |
-| `.github/workflows/release.yml` | Build `main` sukses + nilai `version` berubah (menolak SHA yang tertinggal dari `main`), manual recovery via `release_sha` | GitHub Release x64 Windows + Android + push OneSignal |
-| `.github/workflows/prepare-host-windows.yml` | **manual** (`workflow_dispatch`) | validasi/paket Native C++ x64 manual |
-| `.github/workflows/prepare-host-nsis.yml` | **manual** (`workflow_dispatch`) | installer NSIS Native C++ x64 test dari payload terverifikasi |
-| `.github/workflows/prepare-windows-installer.yml` | **manual** (`workflow_dispatch`) | MSI WiX + NSIS EXE Windows x64 dari bundle Build Native C++ yang sama |
-| `.github/workflows/deploy-news.yml` | **manual** (`workflow_dispatch`) | deploy Worker berita + migrasi D1 |
-| ~~`.github/workflows/test-lab.yml`~~ | **dihapus dari source 27 Sep 2026 atas arahan pemilik** | lab RDP/Tailscale diganti pengujian manual di perangkat pemilik; tidak menahan runner |
-| ~~`.github/workflows/verify-push-auth.yml`~~ | **dihapus** operator 5 Sep 2026 (`b4ce4a4`) — resep pemulihan ada di bawah | dulu: audit izin push, commit wajib memuat `Izin: <ID>` berstatus `DISETUJUI` di `AGENT_BOARD.md` |
+| `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja | gerbang mutu per-area, APK Android per ABI, bundle Windows native C++ + engine Rust, bundle Web |
+| `.github/workflows/release.yml` | Build `main` sukses + `version` berubah; manual via `release_sha` | GitHub Release: APK, EXE (NSIS), MSI (WiX), `update.json`, push OneSignal |
+| `.github/workflows/deploy-web.yml` | Build `main` sukses; manual recovery | deploy bundle web ke Cloudflare |
+| `.github/workflows/deploy-signaling.yml` | **manual** | deploy Cloudflare Worker API/signaling |
+| `.github/workflows/deploy-news.yml` | **manual** | deploy Worker berita + migrasi D1 |
 
 ## Pengujian web + host tanpa runner interaktif
 
@@ -25,8 +25,7 @@ Fokus saat ini adalah web dan host; integrasi platform lain ditunda. Pengujian
 Windows/RDP/audio/input dijalankan pemilik di mesin sendiri dengan
 [`WEB-HOST-MANUAL-QA.md`](WEB-HOST-MANUAL-QA.md). Build/kompilasi tetap melalui
 Actions setelah izin; unit test, gerbang build, dan workflow packaging manual
-tidak dihapus. Workflow `test-vdd-setup.yml` adalah gerbang pengujian driver
-terpisah, bukan lab RDP/Tailscale yang dihapus.
+tidak dihapus.
 
 Menghapus file workflow tidak membatalkan run yang sudah berjalan atau
 mencabut secret/node Tailscale. Periksa dan batalkan run lama bila masih aktif;
@@ -35,13 +34,9 @@ di branch remote setelah perubahan dipush.
 
 **Perhatian:** Build sukses dapat memicu `deploy-web.yml` dan `release.yml`
 melalui `workflow_run` sesuai syarat masing-masing. Jangan memperlakukan
-dispatch Build sebagai validasi tanpa efek produksi. Untuk kandidat uji, pilih
-`Validate Web Host` setelah izin. Nama workflow ini tidak cocok dengan
-listener `workflow_run: workflows: [Build]`, tidak memakai credential produksi,
-tidak menaikkan versi, dan tidak menyediakan runner RDP interaktif. Saat ini
-baru kandidat source lokal, belum pernah dijalankan. Artefak Windows debug
-bernama `validation-only-windows-<sha>`; gabungkan panel dan engine di satu
-folder untuk QA pemilik, bukan distribusi produksi.
+dispatch Build sebagai validasi tanpa efek produksi. Untuk kandidat uji,
+jalankan Build di branch selain `main`: listener `workflow_run` hanya
+bereaksi pada `main` dan Release menolak versi yang tidak berubah.
 
 ## Kebijakan pemicu (sejak 3 Sep 2026): push TIDAK memicu actions
 
@@ -70,7 +65,7 @@ kumulatif — semuanya, bukan pilih salah satu:
 2. build memakai env produksi yang benar (mis. `VITE_GOOGLE_CLIENT_ID`);
 3. verifikasi pasca-deploy dijalankan **dan dicatat** (contoh Web: md5 bundle
    live == artefak build, `content-type` JS benar);
-4. dicatat terbuka di baris sesi papan + item `HANDOFF.md` ke CI/Release pada
+4. dicatat terbuka di baris sesi papan + item `project/HANDOFF.md` ke CI/Release pada
    sesi yang sama.
 
 Yang TIDAK ikut pengecualian ini: **build/rilis penuh** — APK, Windows,
@@ -86,13 +81,13 @@ Aturan operator — bukan saran, bukan kebiasaan:
    menetapkan nomor versi, tidak memilih isi berita, dan tidak menaikkan
    `pubspec.yaml` atas inisiatif sendiri. Semua lewat arahan operator.
 2. **Cek kerjaan agent lain dulu.** Sebelum mengajukan build penuh/rilis:
-   baca `AGENT_BOARD.md` (sesi aktif) + `HANDOFF.md` dan pastikan sesi
+   baca `project/AGENT_BOARD.md` (sesi aktif) + `project/HANDOFF.md` dan pastikan sesi
    yang menyentuh area rilis (client, host, desktop, web) sudah `SELESAI`.
    Kalau masih ada yang berjalan: TAHAN, laporkan ke operator — jangan
    memaksakan rilis.
 3. **Push wajib izin operator.** Termasuk bump versi dan push yang
    menyentuh `pubspec.yaml`/`release.yml`/`build.yml` — antre di
-   `AGENT_BOARD.md`, tunggu `DISETUJUI`, baru push. Push sendiri tidak
+   `project/AGENT_BOARD.md`, tunggu `DISETUJUI`, baru push. Push sendiri tidak
    menjalankan build apa pun — hanya gerbang audit izin.
 4. **Satu gerakan saat siap.** Rilis penuh dikerjakan SEKALIGUS ketika
    operator menyatakan siap: bump → Build → Release → deploy → berita
@@ -121,7 +116,7 @@ filternya (ubah bersama `docs/CI.md` bila bergeser):
 | `news/**` | `check-news` |
 | `cloudflare/**`, `signaling/**` | `check-signaling` |
 | `packaging/**` | `installer-lint` |
-| `docs/`, `AGENT.md`, `AGENT_BOARD.md`, `HANDOFF.md`, `CHANGELOG.md`, `CONTRIBUTORS.md`, `README.md`, `ROADMAP.md`, `SETUP.md`, `.github/workflows/**`, manifest versi | `check-meta` (konsistensi versi) |
+| `docs/`, `AGENT.md`, `project/AGENT_BOARD.md`, `project/HANDOFF.md`, `CHANGELOG.md`, `project/CONTRIBUTORS.md`, `README.md`, `project/ROADMAP.md`, `project/SETUP.md`, `.github/workflows/**`, manifest versi | `check-meta` (konsistensi versi) |
 | `workflow_dispatch` | **semua** job (build penuh untuk pemulihan) |
 
 Konsekuensi yang dijaga:
@@ -167,7 +162,7 @@ menyimpang dari Worker produksi).
 Aturan yang tetap berlaku sebagai kebiasaan tim (bukan sebagai gerbang
 mesin): setiap commit non-merge pada push ke `main` WAJIB memuat penanda
 `Izin: <ID-SESI>` di body, dan ID-nya harus punya baris di
-`AGENT_BOARD.md`. Pengecualian: commit merge (tindakan operator), commit
+`project/AGENT_BOARD.md`. Pengecualian: commit merge (tindakan operator), commit
 yang ditulis operator (`OPERATOR_LOGIN` di repository variables), dan
 commit dari `Operator - XyDesk Team` (role Operator, `AGENT.md` bagian
 2.1) — ia mewakili operator, jadi penanda `Izin:`-nya tetap dicatat

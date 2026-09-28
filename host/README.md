@@ -180,7 +180,7 @@ tetap bisa pairing, host menampilkan ID saja. Host menyimpannya di
 `SessionStatus` → `GET /status` (`clientName`/`clientPlatform`). Nilainya boleh
 dikarang peer, jadi ia tidak pernah dipakai untuk memutuskan akses — hanya
 tampilan + tooltip tray/judul jendela. Yang masih perlu digarap di sisi lain:
-`lib/` & `web/` harus mengirim field itu (lihat `HANDOFF.md`), dan hub
+`lib/` & `web/` harus mengirim field itu (lihat `../docs/project/HANDOFF.md`), dan hub
 signaling Go dev (`signaling/protocol.go`) memakai struct bertipe sehingga
 field asing HILANG saat relay — Cloudflare hub (`{ ...msg, from }`) lolos.
 
@@ -221,7 +221,7 @@ Yang masih bisa menaikkan performa TANPA driver dan belum dikerjakan, sudah
 dicatat sebagai opsi: zero-copy penuh DXGI→NVENC (hindari bolak-balik CPU),
 preference adapter/L0 sebelum encoder dipilih, dan audio capture per-aplikasi
 (`AUDIOCLIENT_ACTIVATION_PARAMS` / `PROCESS_LOOPBACK_MODE`, Windows 10+) biar
-hanya suara aplikasi target yang ikut ke HP. Lihat `HANDOFF.md`.
+hanya suara aplikasi target yang ikut ke HP. Lihat `../docs/project/HANDOFF.md`.
 
 **Keyboard & mouse fisik di PC host: aman, tidak dibajak.** `SendInput`
 MENAMBAH event ke antrean input sistem, bukan mengambil alih perangkat, jadi

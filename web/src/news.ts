@@ -165,7 +165,7 @@ export function postComment(
   });
 }
 
-// ── Mode admin (founder) ───────────────────────────────────────
+// ── Mode admin ─────────────────────────────────────────────────
 // Email Google founder → balasan tampil sebagai Haekal Saputra dengan foto
 // profil resmi + badge XySpace. Email hanya MEMBUKA UI-nya; otoritas
 // sesungguhnya tetap ADMIN_TOKEN yang divalidasi worker — email saja tidak

@@ -179,7 +179,7 @@ di footer web dan di aplikasi menunjuk ke sana secara otomatis
 > Ini sudah terjadi: artikel rilis **6.4.0** terbit sebagai `p-8f5aa26aa3bc`,
 > sehingga `changelog-v6-4-0` → HTTP 404 (terverifikasi 3 Sep 2026), sementara
 > `changelog-v6-2-0` … `changelog-v6-3-0` semuanya masih HTTP 200. Rilis 6.1
-> dan 6.0 kena hal yang sama. Ditindaklanjuti lewat `HANDOFF.md` (area News +
+> dan 6.0 kena hal yang sama. Ditindaklanjuti lewat `project/HANDOFF.md` (area News +
 > prosedur rilis).
 
 ---

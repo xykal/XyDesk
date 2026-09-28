@@ -2,7 +2,7 @@
 
 > **WAJIB dibaca penuh di awal SETIAP sesi, sebelum menyentuh satu file pun.**
 > Dokumen ini adalah kontrak kerja. Melanggar dokumen ini = kerja sesi itu
-> dianggap tidak sah. Sumber kebenaran teknis tetap `ROADMAP.md`; dokumen ini
+> dianggap tidak sah. Sumber kebenaran teknis tetap `docs/project/ROADMAP.md`; dokumen ini
 > mengatur **cara kerja dan perilaku**.
 
 ---
@@ -10,12 +10,12 @@
 ## 0. Ritual awal sesi (urut, jangan dilompati)
 
 1. Baca `AGENT.md` (file ini) sampai habis.
-2. Baca `AGENT_BOARD.md` — papan koordinasi. Ini yang membuat agent-agent
+2. Baca `docs/project/AGENT_BOARD.md` — papan koordinasi. Ini yang membuat agent-agent
    **saling tahu**: siapa lagi mengunci area mana, siapa yang sedang kerja
    apa, dan push siapa yang sudah diizinkan.
-3. Baca `ROADMAP.md` bagian fase yang aktif, lalu `CHANGELOG.md` bagian
+3. Baca `docs/project/ROADMAP.md` bagian fase yang aktif, lalu `CHANGELOG.md` bagian
    `[Belum terbit]` — supaya tahu posisi proyek hari ini, bukan menebak.
-   Baca juga `HANDOFF.md`: kalau ada item untuk role-mu, itu antrian
+   Baca juga `docs/project/HANDOFF.md`: kalau ada item untuk role-mu, itu antrian
    kerjamu.
 4. Tentukan **SATU role** untuk sesi ini (lihat bagian 2):
    - Kalau operator (pemilik repo) sudah menyebut role/tugas → pakai itu.
@@ -43,7 +43,7 @@
   Catat di laporan akhir sesi sebagai "temuan untuk role lain", biar sesi
   berikutnya (dengan role yang tepat) yang mengerjakan.
 - Pengecualian sempit: file lintas-area yang memang wajib disentuh oleh
-  semua role, yaitu `CHANGELOG.md`, `CONTRIBUTORS.md`, dan bump versi yang
+  semua role, yaitu `CHANGELOG.md`, `docs/project/CONTRIBUTORS.md`, dan bump versi yang
   memang bagian dari tugasmu. Selain itu, keluar scope = pelanggaran.
 
 ---
@@ -59,7 +59,7 @@
 | **Backend / Edge** | `cloudflare/`, `signaling/` | Worker signaling, auth (OTP/JWT/OAuth), TURN, D1, rate-limit |
 | **News & Konten** | `news/`, `web/public/news/` | Artikel berita rilis — WAJIB ikut `docs/NEWS_STYLE.md`: detail lengkap (apa + kenapa), changelog versi pengguna, screenshot asli; penulis `Haekal Saputra` |
 | **CI / Release** | `.github/`, `tool/`, `packaging/` | Workflow, build, release, generator aset |
-| **Docs & Audit** | `docs/`, `README.md`, `ROADMAP.md`, `SETUP.md` | Dokumentasi, audit, sinkronisasi status agar README tidak bohong |
+| **Docs & Audit** | `docs/`, `README.md`, `docs/project/ROADMAP.md`, `docs/project/SETUP.md` | Dokumentasi, audit, sinkronisasi status agar README tidak bohong |
 | **Operator** | Seluruh repo — tidak ada batasan folder | Wakil pemilik repo: koordinasi lintas area (lihat 2.1) |
 
 Kalau tugas dari operator menyentuh dua area besar sekaligus, bilang jujur:
@@ -82,7 +82,7 @@ Haknya mengikuti pemilik repo, bukan mengikuti role area biasa:
    yang menyentuh banyak folder sekaligus.
 2. **Tidak perlu antrean izin push.** Commit darinya sah seperti commit
    operator sendiri (bagian 5). Jejaknya tetap wajib: baris sesi di
-   `AGENT_BOARD.md` dan penanda `Izin: <ID-SESI>` di body setiap commit,
+   `docs/project/AGENT_BOARD.md` dan penanda `Izin: <ID-SESI>` di body setiap commit,
    supaya audit tetap bisa membaca siapa mengerjakan apa.
 3. **Boleh mengambil alih area yang sedang dikunci** bila operator
    memerintahkannya langsung, asal baris `LAGI KERJA` milik agent lain di
@@ -121,7 +121,7 @@ operator yang menang** — role ini wakil, bukan pengganti.
   ```
   (email: nama kecil + `.xyspace@users.noreply.github.com`, konsisten
   selamanya untuk nama itu).
-- **Daftarkan diri di `CONTRIBUTORS.md`** pada commit pertamamu:
+- **Daftarkan diri di `docs/project/CONTRIBUTORS.md`** pada commit pertamamu:
   - **TAMBAHKAN baris baru di bawah daftar. DILARANG mengubah, menghapus,
     atau menimpa nama yang sudah ada** — termasuk nama pemilik repo dan
     agent-agent sebelumnya. Daftar itu hanya bertambah, tidak pernah
@@ -186,7 +186,7 @@ operator yang menang** — role ini wakil, bukan pengganti.
 
 ## 5. Koordinasi antar agent — saling tahu, tidak tabrakan
 
-`AGENT_BOARD.md` adalah papan bersama. Tujuannya satu: **tidak ada dua
+`docs/project/AGENT_BOARD.md` adalah papan bersama. Tujuannya satu: **tidak ada dua
 agent yang mengerjakan area yang sama, dan semua orang tahu siapa lagi
 kerja apa.** Aturannya:
 
@@ -214,7 +214,7 @@ kerja apa.** Aturannya:
      `Izin:` di body commit tetap wajib ditulis, karena itu satu-satunya
      jejak yang tersisa untuk audit. Operator bisa menghidupkan kembali
      gerbangnya kapan saja — resepnya ada di `docs/CI.md`.
-- **Kapan pun ragu soal tabrakan: baca `AGENT_BOARD.md` dulu.** Papan lebih
+- **Kapan pun ragu soal tabrakan: baca `docs/project/AGENT_BOARD.md` dulu.** Papan lebih
   baru daripada percakapan.
 - **Commit merge dianggap sah** (itu tindakan operator menggabungkan PR).
   Commit dengan alamat `users.noreply.github.com` milik operator
@@ -265,7 +265,7 @@ kerja apa.** Aturannya:
   (aturan #2 ROADMAP).
 - **Izin push per sesi (aturan baru 3 Sep 2026, tanpa pengawas mesin sejak
   5 Sep 2026)**: push ke `main` WAJIB lewat alur di bagian 5 — klaim sesi
-  → kerja + CI area hijau → minta izin → `DISETUJUI` di `AGENT_BOARD.md`
+  → kerja + CI area hijau → minta izin → `DISETUJUI` di `docs/project/AGENT_BOARD.md`
   → push dengan penanda `Izin: <ID-SESI>` di body setiap commit.
   `verify-push-auth.yml` sudah dihapus operator, jadi pelanggaran tidak
   lagi ditandai merah oleh mesin — yang menilai sekarang hanya papan dan
@@ -282,11 +282,11 @@ kerja apa.** Aturannya:
 
 Sebelum pamit:
 
-0. **Tutup sesimu di `AGENT_BOARD.md`**: pindahkan baris sesimu dari
+0. **Tutup sesimu di `docs/project/AGENT_BOARD.md`**: pindahkan baris sesimu dari
    *Sesi aktif* dan *Antrean izin push* ke *Riwayat sesi* dengan status
    `SELESAI` + tautan run CI. Riwayat tidak dihapus — itu jejak bukti.
    Kalau pekerjaan belum tuntas, tulis ulang klaim (status `LAGI KERJA`
-   dengan catatan apa yang tersisa) atau serahkan ke `HANDOFF.md`.
+   dengan catatan apa yang tersisa) atau serahkan ke `docs/project/HANDOFF.md`.
    **Jangan pamit dengan papan masih menyatakan kamu sedang kerja.**
 1. Tulis **laporan akhir sesi** ke operator (di chat, bukan ke file
    proyek) berisi:
@@ -297,7 +297,7 @@ Sebelum pamit:
    (kolom `Run CI` di papan).
 5. Apa yang BELUM selesai / diragukan / berisiko.
 6. Temuan di luar scope (untuk sesi/role lain), kalau ada — dan ini TIDAK
-   cukup hanya diucapkan di chat: **tulis ke `HANDOFF.md`** (tambahkan di
+   cukup hanya diucapkan di chat: **tulis ke `docs/project/HANDOFF.md`** (tambahkan di
    bagian role tujuan, ikut di-commit bersama kerjaanmu). Item milikmu yang
    selesai dipindahkan ke bagian "Selesai" di file yang sama.
 

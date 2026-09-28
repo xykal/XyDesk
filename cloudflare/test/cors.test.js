@@ -9,7 +9,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { corsResponse } from '../src/worker.js';
+import { corsResponse, browserOriginAllowed } from '../src/worker.js';
 
 const APP = 'https://app.xydesk.my.id';
 
@@ -95,4 +95,21 @@ test('domain publik dan remote diizinkan tanpa wildcard subdomain',()=>{
   const env={CORS_ORIGINS:'https://www.xydesk.my.id,https://remote.xydesk.my.id'};
   for(const origin of ['https://www.xydesk.my.id','https://remote.xydesk.my.id'])assert.equal(cors(origin,env).headers.get('Access-Control-Allow-Origin'),origin);
   assert.equal(cors('https://remote.xydesk.my.id.evil.test',env).headers.get('Access-Control-Allow-Origin'),null);
+});
+
+function ws(origin, env) {
+  const headers = origin === undefined ? {} : { Origin: origin };
+  return browserOriginAllowed(new Request('https://signal.xydesk.my.id/ws?id=abc', { headers }), env);
+}
+
+test('upgrade /ws: tanpa Origin (native host/APK) selalu lolos', () => {
+  assert.equal(ws(undefined, {}), true);
+  assert.equal(ws(undefined, { CORS_ORIGINS: APP }), true);
+});
+
+test('upgrade /ws: Origin terdaftar lolos, asing ditolak, kosong konfigurasi = tolak semua browser', () => {
+  assert.equal(ws(APP, { CORS_ORIGINS: APP }), true);
+  assert.equal(ws('https://evil.example', { CORS_ORIGINS: APP }), false);
+  assert.equal(ws(APP, {}), false);
+  assert.equal(ws('https://evil.example', { CORS_ORIGINS: '*' }), true);
 });

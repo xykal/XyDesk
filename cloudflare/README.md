@@ -67,7 +67,7 @@ sebelum deploy.
 
 ### Memilih penyedia TURN tanpa kartu kredit
 
-`ROADMAP.md` mengikat: semua gratis, tanpa kartu kredit, tanpa VM/VPS. Itu
+`../docs/project/ROADMAP.md` mengikat: semua gratis, tanpa kartu kredit, tanpa VM/VPS. Itu
 menyisakan pilihan sempit dan tidak semuanya enak:
 
 | Penyedia | Secret | Penilaian jujur |

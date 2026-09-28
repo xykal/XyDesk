@@ -1,7 +1,7 @@
 # Operator Roadmap 6.8.0 — Prioritas Pasca-6.7.0
 
 > Disusun Operator - XyDesk Team, 2026-09-07, sesi SESI-20260907-OPERATOR-ALL
-> Sumber kebenaran teknis tetap ROADMAP.md; ini adalah turunan operasional untuk 1 rilis ke depan.
+> Sumber kebenaran teknis tetap ../project/ROADMAP.md; ini adalah turunan operasional untuk 1 rilis ke depan.
 
 ## Prinsip
 1. **Bukti dulu, baru poles** — Fase 0 belum lulus sampai angka latency ada.
@@ -35,7 +35,7 @@
   3. Ketikan 2000 char + emoji masuk utuh
   4. Satu sesi media pada satu waktu (reload client tidak bikin 2 encoder)
   5. Papan klip 200x tidak bocor memori
-- **Bukti:** log asli + screenshot Task Manager, tulis ke HANDOFF.md (bukan "udah oke")
+- **Bukti:** log asli + screenshot Task Manager, tulis ke ../project/HANDOFF.md (bukan "udah oke")
 - **Role:** Host Engine + Desktop Shell
 
 ---

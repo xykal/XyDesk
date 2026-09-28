@@ -137,9 +137,9 @@ allocate ikut berjalan di CI.
 - Alat baru hanya memeriksa URL `turn:` (UDP). URL `turns:` (TLS) dilewati
   dengan jujur, belum diperiksa.
 - **Kebocoran (diredaksi 23 Sep 2026, rotasi tetap wajib):** username +
-  credential TURN produksi tertulis apa adanya di `AGENT_BOARD.md` (sesi
-  2026-09-07 dan 2026-09-11), `HANDOFF.md`, `cloudflare/README.md`, dan
-  `docs/BACKEND_FIX_20260911.md` pada repo **publik** sejak 7 Sep 2026.
+  credential TURN produksi tertulis apa adanya di `../project/AGENT_BOARD.md` (sesi
+  2026-09-07 dan 2026-09-11), `../project/HANDOFF.md`, `cloudflare/README.md`, dan
+  `../archive/BACKEND_FIX_20260911.md` pada repo **publik** sejak 7 Sep 2026.
   Nilainya sudah diganti penanda di lima berkas itu, tetapi **riwayat git
   tidak bisa dihapus** — cukup lama bagi crawler. Satu-satunya obat adalah
   memutar kredensial di ExpressTurn lalu memasang ulang `TURN_DIRECT_*`;

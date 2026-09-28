@@ -75,7 +75,7 @@ sebabnya kini jujur.
    'WixToolset.UI.wixext' could not be found`. Tidak ada `wix extension add`
    di workflow mana pun, sedangkan `release.yml` dan
    `prepare-windows-installer.yml` memakai `-ext` yang sama. Area CI/Release;
-   dicatat di `HANDOFF.md` dengan saran perbaikan.
+   dicatat di `../project/HANDOFF.md` dengan saran perbaikan.
 
 ## Status rilis
 

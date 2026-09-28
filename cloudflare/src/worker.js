@@ -72,6 +72,13 @@ export default {
       return new Response('not found', { status: 404 });
     }
 
+    // Browser selalu mengirim Origin saat upgrade WebSocket; native client
+    // (host Windows, APK) tidak. Origin asing ditolak sebelum token dibaca:
+    // token yang bocor lewat halaman lain tidak bisa dipakai lintas situs.
+    if (!browserOriginAllowed(request, env)) {
+      return new Response('origin not allowed', { status: 403 });
+    }
+
     // ── Autentikasi ──
     const deviceId = url.searchParams.get('id') || '';
     if (!/^[A-Za-z0-9_-]{3,64}$/.test(deviceId)) {
@@ -117,12 +124,24 @@ export default {
 // environment pratinjau yang belum disetel, atau typo nama — dan kegagalan
 // akibat konfigurasi lupa harus berbunyi "tidak ada yang boleh masuk",
 // bukan "semua orang boleh masuk".
-export function corsResponse(response, request, env) {
-  const origin = request.headers.get('Origin') || '';
-  const configured = String(env.CORS_ORIGINS || '')
+function allowedOrigins(env) {
+  return String(env.CORS_ORIGINS || '')
     .split(',')
     .map((v) => v.trim())
     .filter(Boolean);
+}
+
+/** Tanpa header Origin = bukan browser, lolos. Dengan Origin = harus terdaftar. */
+export function browserOriginAllowed(request, env) {
+  const origin = request.headers.get('Origin');
+  if (origin === null || origin === '') return true;
+  const configured = allowedOrigins(env);
+  return configured.includes('*') || configured.includes(origin);
+}
+
+export function corsResponse(response, request, env) {
+  const origin = request.headers.get('Origin') || '';
+  const configured = allowedOrigins(env);
   const allowOrigin = configured.includes('*')
     ? '*'
     : configured.includes(origin)

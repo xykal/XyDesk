@@ -654,7 +654,7 @@ class _DisplaySpec extends StatelessWidget {
   }
 }
 
-/// Realtime ping — Founder request: ms ga realtime, harus realtime
+/// Ping realtime (diperbarui tiap detik).
 class _RealtimePing extends StatefulWidget {
   const _RealtimePing({required this.pingMs});
   final int pingMs;

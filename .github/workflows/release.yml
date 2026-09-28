@@ -327,12 +327,20 @@ jobs:
           New-Item -ItemType Directory -Force -Path $driverAudio | Out-Null
           $cableZip = "$env:RUNNER_TEMP\vbcable.zip"
           $cableUrl = "https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip"
+          # Rantai pasok: zip vendor dipaku ke SHA-256 (Driver Pack 45, 2024-09-30).
+          # Hash berbeda = berhenti, jangan pernah mengemas driver yang tidak dikenal.
+          $cableSha256 = "b950e39f01af1d04ea623c8f6d8eb9b6ea5c477c637295fabf20631c85116bfb"
           try {
             Invoke-WebRequest -Uri $cableUrl -OutFile $cableZip -UseBasicParsing -ErrorAction Stop
-            Expand-Archive $cableZip -DestinationPath $driverAudio -Force
-            Write-Host "[OK] Driver Virtual Audio (VB-CABLE) berhasil diunduh & diekstrak."
           } catch {
             Write-Host "[WARN] Gagal unduh VB-CABLE: $($_.Exception.Message)"
+            $cableZip = $null
+          }
+          if ($cableZip) {
+            $actual = (Get-FileHash $cableZip -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $cableSha256) { throw "VB-CABLE SHA-256 tidak cocok: $actual (diharapkan $cableSha256)" }
+            Expand-Archive $cableZip -DestinationPath $driverAudio -Force
+            Write-Host "[OK] Driver Virtual Audio (VB-CABLE) diunduh, hash cocok, diekstrak."
           }
 
           $audioCopy = @(

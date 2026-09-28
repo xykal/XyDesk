@@ -96,7 +96,7 @@
 
 ### 4.2 Yang kurang
 - **Belum ada SDK di sandbox** — `flutter analyze --fatal-infos --fatal-warnings` & `flutter test` belum dijalankan sesi ini (catatan Operator: bisa diverifikasi Linux dengan download `flutter_linux_3.44.9-stable.tar.xz` ±5 GB).
-- 48 HANDOFF pending banyak di Flutter: `Billing sewa PC otomatis`, avatar komentar, form komentar bawah + auto-scroll, waktu relatif, rebrand warna aksen, dll. (lihat HANDOFF.md).
+- 48 HANDOFF pending banyak di Flutter: `Billing sewa PC otomatis`, avatar komentar, form komentar bawah + auto-scroll, waktu relatif, rebrand warna aksen, dll. (lihat ../project/HANDOFF.md).
 - `lib/webrtc/rtc_service.dart` TURN direct `kind` sudah dikunci, tapi perlu cek `PER_PROVIDER_TIMEOUT_MS` 2.5s sinkron dengan cloudflare.
 - Screenshot asli `web/public/news/shots/<versi>-*.jpg` belum ada untuk 6.7.12 (butuh lab Windows + Android).
 

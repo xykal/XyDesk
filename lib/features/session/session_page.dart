@@ -701,7 +701,7 @@ class _SessionPageState extends ConsumerState<SessionPage>
 
   @override
   Widget build(BuildContext context) {
-    // FIX 2026-09-07 Founder: jangan pernah tampilkan Loading Connection di
+    // Jangan pernah tampilkan Loading Connection di
     // session screen. Validasi pairing sudah di ConnectPage sebelum push.
     // SessionPage langsung live — placeholder _RemoteScreenPlaceholder
     // menampilkan status transport asli (MENGHUBUNGI, NEGOSIASI, GAGAL) bila
@@ -712,7 +712,6 @@ class _SessionPageState extends ConsumerState<SessionPage>
       body: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxHeight < 440;
-          // Founder request 2026-09-07: panel sempit buat lega — increase width
           final panelWidth = (constraints.maxWidth * 0.52)
               .clamp(380.0, 480.0)
               .toDouble();

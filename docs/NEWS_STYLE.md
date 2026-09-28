@@ -46,7 +46,7 @@ Ringkasnya:
   gaya dokumen ini.
 - **Satu rilis = SATU artikel.** Role CI/Release menyatukan bahan semua agent
   menjadi satu artikel saat rilis; jangan menerbitkan artikel per fitur.
-  Detail alurnya di [`../AGENT_BOARD.md`](../AGENT_BOARD.md) → "Aturan
+  Detail alurnya di [`project/AGENT_BOARD.md`](project/AGENT_BOARD.md) → "Aturan
   operator" dan [`../news/README.md`](../news/README.md).
 
 ---

@@ -352,7 +352,7 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   `AGENT.md`, `docs/DESKTOP_SHELL.md`, komentar di `host/src/*.rs`.
   Yang sengaja dibiarkan: changelog versi lama dan `docs/AUDIT_*`
   (catatan sejarah). Sisa yang perlu disisir role Docs & Audit:
-  `docs/OPERATOR-ROADMAP-6.8.0.md` (dua penyebutan `desktop/` sebagai lokasi
+  `../archive/OPERATOR-ROADMAP-6.8.0.md` (dua penyebutan `desktop/` sebagai lokasi
   grep `update.json` dan "garis pemisah web/desktop"), `docs/DESIGN.md`,
   `docs/PROTOCOL.md`, `docs/BRAND_ASSETS.md`, dan `docs/qa/host-finish-*.json`.
   Sekalian: `docs/qa/native-ui-windows-2026-09-23.md` menyebut Wine, bukan
@@ -995,7 +995,7 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   menjawab 503 dan klien tetap jalan STUN saja. Prioritas penyedia ber-secret
   statis (ExpressTurn/coturn) — hanya jenis itu yang tidak butuh panggilan
   jaringan, jadi selalu hidup walau penyedia lain mogok.
-  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** sama seperti item TURN di atas — `TURN_DIRECT` sudah hidup, `collectIceServers` paralel 2.5s + cache, `/turn-ice` tanpa secret → `503 turn-not-configured` dengan hint, dengan secret → 1 provider. Lihat bukti live di `docs/BACKEND_FIX_20260911.md`.
+  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** sama seperti item TURN di atas — `TURN_DIRECT` sudah hidup, `collectIceServers` paralel 2.5s + cache, `/turn-ice` tanpa secret → `503 turn-not-configured` dengan hint, dengan secret → 1 provider. Lihat bukti live di `../archive/BACKEND_FIX_20260911.md`.
 - [x] (dari Galih - XySpace Team, 2026-09-03) — **`signaling/` (hub Go)
   MENGHAPUS field asing saat relay, jadi label perangkat tidak sampai ke host
   lewat hub dev.** `hub.go` `relay(from, toID, msg Message)` men-serialize
@@ -1324,7 +1324,7 @@ _(kosong)_
   operator memutuskan **web sebagai acuan**, jadi yang mengikuti justru aplikasi + desktop: `bg`/`raised`
   `#ffffff`, `overlay`/`input` `#f5f3ff` di ketiga platform. Keputusan lama (biarkan berbeda) batal.
 - [ ] (dari Operator - XyDesk Team, 2026-09-06) — **Laporan audit lengkap ada di
-  `docs/AUDIT-2026-09-06.md`** (paritas UI/UX tiga platform, diagnosis stuck,
+  `../archive/AUDIT-2026-09-06.md`** (paritas UI/UX tiga platform, diagnosis stuck,
   dan keputusan C++ dengan bukti). Kesimpulan bagian C: **jangan menambah C++.**
   C sudah ada dan jalan (`host/build.rs` mengompilasi libopus 1.5.2 dari
   `host/vendor/opus/` lewat crate `cc`); NVENC sudah selesai di Rust murni via
@@ -2504,7 +2504,7 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 
 ## Audit statis — 27 September 2026
 
-- [ ] Client Flutter: konfirmasi lanjutan item pra-welcome 25 September; `id sudah online` belum ditangani khusus di `rtc_service.dart`, dan connect belum menunggu welcome. Lihat A1 pada `docs/AUDIT-2026-09-27.md`; belum diuji runtime.
+- [ ] Client Flutter: konfirmasi lanjutan item pra-welcome 25 September; `id sudah online` belum ditangani khusus di `rtc_service.dart`, dan connect belum menunggu welcome. Lihat A1 pada `../archive/AUDIT-2026-09-27.md`; belum diuji runtime.
 - [ ] CI/Release: tambahkan cakupan admin + lockfile; evaluasi test/clippy Windows dan penghentian lab saat pengujian selesai. Lihat A2/A3/A6; perubahan dan dispatch memerlukan sesi/izin terpisah.
 - [ ] Docs & Audit: selaraskan pembuka ROADMAP, diagram ARCHITECTURE, serta komentar trigger CI dengan keadaan source (A4).
 - Backend/Edge: A5 mengonfirmasi catatan hardening Hub 25 September; bukan temuan bypass publik. Tidak menambahkan item duplikat.
@@ -2513,7 +2513,7 @@ Field note for next session: installed ce95f51 host remains valid; new web alone
 ## Fokus web + host — audit 27 September 2026
 
 Arahan pemilik: matangkan web + host dahulu; integrasi platform lain ditunda.
-Sumber: `docs/AUDIT-WEB-HOST-2026-09-27.md`. Semua temuan berikut statis,
+Sumber: `../archive/AUDIT-WEB-HOST-2026-09-27.md`. Semua temuan berikut statis,
 belum direproduksi di browser/Windows pada sesi ini. Jangan klaim sudah fix.
 
 - [ ] Host Engine: WH-01 frame kosong pada fallback GDI; WH-02 desain koordinasi lintas sesi/user; WH-03 mutex diambil oleh standby yang belum eligible. P1, dahulukan capture dan ownership. Perubahan ACL/auth lintas user perlu persetujuan desain keamanan khusus.

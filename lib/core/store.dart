@@ -65,7 +65,7 @@ final storeProvider = Provider<Store>((_) => throw UnimplementedError());
 //  Pengaturan aplikasi (termasuk Mesin Streaming & Kualitas Audio/Video)
 // ══════════════════════════════════════════════════════════
 
-/// Quality preset for streaming — Founder request 2026-09-07: auto, medium, high, ultra
+/// Preset kualitas streaming: auto, medium, high, ultra.
 enum StreamQuality { auto, medium, high, ultra }
 
 extension StreamQualityX on StreamQuality {
@@ -141,7 +141,7 @@ class AppSettings {
     this.reduceMotion = false,
     this.codec = 'AV1 (NVENC / AMF GPU)',
     this.resolution = '1080p60 (FHD)',
-    this.bitrateMbps = 0, // 0 = Auto (Founder request)
+    this.bitrateMbps = 0, // 0 = otomatis
     this.quality = StreamQuality.auto,
     this.relativeMouseMode = false,
     this.audioEnabled = true,
