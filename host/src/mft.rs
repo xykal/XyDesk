@@ -165,12 +165,12 @@ impl Mft {
                     }
                 };
                 match MF_EVENT_TYPE(event.GetType().unwrap_or(0) as i32) {
-                    METransformNeedInput if !submitted => {
+                    t if t == METransformNeedInput && !submitted => {
                         self.submit(nv12)?;
                         submitted = true;
                     }
-                    METransformNeedInput => self.need_input = true,
-                    METransformHaveOutput => self.drain(&mut out)?,
+                    t if t == METransformNeedInput => self.need_input = true,
+                    t if t == METransformHaveOutput => self.drain(&mut out)?,
                     _ => {}
                 }
             }
@@ -182,13 +182,17 @@ impl Mft {
         let buffer = MFCreateMemoryBuffer(nv12.len() as u32)
             .map_err(|e| format!("MFCreateMemoryBuffer: {e}"))?;
         let mut dst: *mut u8 = std::ptr::null_mut();
-        buffer.Lock(&mut dst, None, None).map_err(|e| format!("Lock input: {e}"))?;
+        buffer
+            .Lock(&mut dst, None, None)
+            .map_err(|e| format!("Lock input: {e}"))?;
         std::ptr::copy_nonoverlapping(nv12.as_ptr(), dst, nv12.len());
         buffer.Unlock().map_err(|e| format!("Unlock input: {e}"))?;
         buffer
             .SetCurrentLength(nv12.len() as u32)
             .map_err(|e| format!("SetCurrentLength: {e}"))?;
-        sample.AddBuffer(&buffer).map_err(|e| format!("AddBuffer: {e}"))?;
+        sample
+            .AddBuffer(&buffer)
+            .map_err(|e| format!("AddBuffer: {e}"))?;
         sample
             .SetSampleTime(self.frames * HNS_PER_FRAME)
             .map_err(|e| format!("SetSampleTime: {e}"))?;
@@ -243,7 +247,9 @@ impl Mft {
             .map_err(|e| format!("ConvertToContiguousBuffer: {e}"))?;
         let mut src: *mut u8 = std::ptr::null_mut();
         let mut len = 0u32;
-        buffer.Lock(&mut src, None, Some(&mut len)).map_err(|e| format!("Lock output: {e}"))?;
+        buffer
+            .Lock(&mut src, None, Some(&mut len))
+            .map_err(|e| format!("Lock output: {e}"))?;
         out.extend_from_slice(std::slice::from_raw_parts(src, len as usize));
         let _ = buffer.Unlock();
         Ok(())
@@ -253,8 +259,12 @@ impl Mft {
 impl Drop for Mft {
     fn drop(&mut self) {
         unsafe {
-            let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
-            let _ = self.transform.ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
+            let _ = self
+                .transform
+                .ProcessMessage(MFT_MESSAGE_NOTIFY_END_OF_STREAM, 0);
+            let _ = self
+                .transform
+                .ProcessMessage(MFT_MESSAGE_NOTIFY_END_STREAMING, 0);
             let _ = self.activate.ShutdownObject();
         }
     }

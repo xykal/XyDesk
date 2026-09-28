@@ -20,8 +20,7 @@ pub(crate) fn startup() -> Result<(), String> {
     STARTED
         .get_or_init(|| unsafe {
             let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET)
-                .map_err(|e| format!("MFStartup gagal: {e}"))
+            MFStartup(MF_VERSION, MFSTARTUP_NOSOCKET).map_err(|e| format!("MFStartup gagal: {e}"))
         })
         .clone()
 }
@@ -108,7 +107,9 @@ fn variant_bool(v: bool) -> VARIANT {
                 wReserved1: 0,
                 wReserved2: 0,
                 wReserved3: 0,
-                Anonymous: VARIANT_0_0_0 { boolVal: VARIANT_BOOL::from(v) },
+                Anonymous: VARIANT_0_0_0 {
+                    boolVal: VARIANT_BOOL::from(v),
+                },
             }),
         },
     }
@@ -148,7 +149,9 @@ pub(crate) unsafe fn input_type(width: u32, height: u32) -> Result<IMFMediaType,
 }
 
 pub(crate) unsafe fn tune_codec(transform: &IMFTransform, bitrate_bps: u32) {
-    let Ok(api) = transform.cast::<ICodecAPI>() else { return };
+    let Ok(api) = transform.cast::<ICodecAPI>() else {
+        return;
+    };
     let opts: [(&GUID, VARIANT); 6] = [
         (&CODECAPI_AVLowLatencyMode, variant_bool(true)),
         (&CODECAPI_AVEncCommonRealTime, variant_u32(1)),

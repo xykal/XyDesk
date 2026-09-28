@@ -1282,8 +1282,7 @@ pub fn wanted_display() -> usize {
 /// Benar bila encoder NVENC hardware sedang dipakai (hanya bisa di Windows).
 /// Dibaca oleh control API (`control::VideoStats`) untuk ditampilkan shell
 /// desktop. Ditulis oleh modul `windows` saat encoder dipilih.
-static HW_ENCODER: std::sync::atomic::AtomicU8 =
-    std::sync::atomic::AtomicU8::new(HW_NONE);
+static HW_ENCODER: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(HW_NONE);
 const HW_NONE: u8 = 0;
 const HW_NVENC: u8 = 1;
 const HW_MFT: u8 = 2;
@@ -1330,7 +1329,10 @@ mod windows {
         let (w, h, bps) = (width as u32, height as u32, super::target_bitrate_bps());
         match crate::nvenc::NvEnc::new(w, h, bps) {
             Ok(enc) => {
-                println!("[xydesk-host] {source}: NVENC aktif {w}x{h} @ {} kbps CBR", bps / 1000);
+                println!(
+                    "[xydesk-host] {source}: NVENC aktif {w}x{h} @ {} kbps CBR",
+                    bps / 1000
+                );
                 super::HW_ENCODER.store(super::HW_NVENC, std::sync::atomic::Ordering::Relaxed);
                 return Some(EncoderKind::Nvenc(enc));
             }
@@ -1338,7 +1340,10 @@ mod windows {
         }
         match crate::mft::Mft::new(w, h, bps) {
             Ok(enc) => {
-                println!("[xydesk-host] {source}: MFT aktif {w}x{h} @ {} kbps CBR", bps / 1000);
+                println!(
+                    "[xydesk-host] {source}: MFT aktif {w}x{h} @ {} kbps CBR",
+                    bps / 1000
+                );
                 super::HW_ENCODER.store(super::HW_MFT, std::sync::atomic::Ordering::Relaxed);
                 Some(EncoderKind::Mft(enc))
             }
