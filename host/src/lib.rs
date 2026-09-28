@@ -77,6 +77,12 @@ pub mod virtual_mic;
 
 // Tipe data FFI NVENC (layout diverifikasi vs header C — test jalan di semua
 // platform). Driver NVENC sendiri hanya untuk Windows.
+/// Encoder H.264 hardware lewat Media Foundation (AMD/Intel/NVIDIA) —
+/// fallback kedua setelah NVENC, sebelum openh264.
+#[cfg(target_os = "windows")]
+pub mod mft;
+#[cfg(target_os = "windows")]
+pub mod mft_setup;
 #[cfg(target_os = "windows")]
 pub mod nvenc;
 /// Konstanta, status, dan perakit konfigurasi NVENC — lintas platform, teruji.
