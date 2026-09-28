@@ -117,7 +117,15 @@ function runtimeDartNames() {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
     });
-    graph = JSON.parse(raw);
+    // `flutter pub deps --json` kadang menyelipkan teks non-JSON di stdout
+    // (mis. pengingat "N packages have newer versions"). Ambil hanya objek
+    // JSON-nya; kalau tidak, parse gagal dan generator diam-diam jatuh ke
+    // "semua entri lockfile" (473 vs 463) — inventaris jadi tidak stabil
+    // antara mesin dan run CI (terjadi 28 Sep 2026).
+    const start = raw.indexOf('{');
+    const end = raw.lastIndexOf('}');
+    if (start < 0 || end < start) throw new Error('pub deps tanpa JSON');
+    graph = JSON.parse(raw.slice(start, end + 1));
   } catch {
     // Flutter tidak tersedia (mis. generator dijalankan di mesin tanpa SDK).
     // Jangan menebak — pakai perilaku lama: sertakan semua entri lockfile.
