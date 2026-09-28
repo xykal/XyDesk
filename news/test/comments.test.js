@@ -59,8 +59,8 @@ test('nama tim dikenali dalam berbagai penyamaran', () => {
     'XyDesk',
     'Tim XyDesk',
     'admin',
-    'XySpace Tech',
-    'Haekal Saputra (XySpace)',
+    'XyVerse Technology Global',
+    'Haekal Saputra (XyVerse)',
   ]) {
     assert.equal(isProtectedName(n), true, `harus terlindungi: ${n}`);
   }

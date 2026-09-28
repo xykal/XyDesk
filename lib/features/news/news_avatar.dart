@@ -9,7 +9,7 @@
 //! (`news/src/worker.js`) lewat tanda `official`; file ini hanya menggambar
 //! hasil keputusan itu, tidak pernah menebak dari nama.
 
-/// Foto pendiri XySpace — dipakai untuk penulis artikel & komentar resmi.
+/// Foto pendiri XyVerse — dipakai untuk penulis artikel & komentar resmi.
 /// Web memuat `/team/founder.jpg` dari domain ini; Flutter mengambil lewat
 /// URL penuh karena tidak punya jaminan path relatif terhadap lokasi deploy.
 const newsFounderAvatar = 'https://app.xydesk.my.id/team/founder.jpg';

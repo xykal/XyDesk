@@ -188,7 +188,7 @@ export function SiteFooter({ navigate }: { navigate: (r: Route) => void }) {
               bukan ke GitHub Releases — pengguna butuh penjelasan, bukan
               artefak build. */}
           <span>
-            © 2026 XySpace Tech ·{' '}
+            © 2026 XyVerse Technology Global ·{' '}
             <button
               className="footer-version"
               onClick={() => navigate({ page: 'news-detail', slug: CHANGELOG_SLUG })}

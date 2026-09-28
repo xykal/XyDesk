@@ -17,7 +17,7 @@ Unicode True
 !endif
 
 !define PRODUCT "XyDesk"
-!define COMPANY "XySpace Tech"
+!define COMPANY "XyVerse Technology Global"
 !define UNKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\XyDesk"
 !define INSTALLKEY "Software\XyDesk"
 

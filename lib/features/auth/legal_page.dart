@@ -69,7 +69,7 @@ class LegalPage extends StatelessWidget {
   List<Widget> _terms(BuildContext c) => [
     _para(
       c,
-      'Berlaku sejak 1 September 2026. XyDesk dibuat oleh XySpace Tech, '
+      'Berlaku sejak 1 September 2026. XyDesk dibuat oleh XyVerse Technology Global, '
       'Indonesia. Dokumen ini adalah perjanjian antara kamu sebagai pemakai '
       'dan kami sebagai penyedia layanan.',
     ),
@@ -135,7 +135,7 @@ class LegalPage extends StatelessWidget {
       'kamu izin yang tidak eksklusif, tidak bisa dipindahtangankan, dan '
       'bisa dicabut, untuk memasang serta memakai aplikasi ini di perangkat '
       'yang kamu kuasai. Semua hak yang tidak disebut di sini tetap milik '
-      'XySpace Tech.',
+      'XyVerse Technology Global.',
     ),
     _sec(c, '7. Data dan konten kamu'),
     _para(
@@ -213,7 +213,7 @@ class LegalPage extends StatelessWidget {
   List<Widget> _privacy(BuildContext c) => [
     _para(
       c,
-      'Berlaku sejak 1 September 2026. Pengendali data: XySpace Tech, '
+      'Berlaku sejak 1 September 2026. Pengendali data: XyVerse Technology Global, '
       'Indonesia. Dokumen ini menjelaskan data apa yang kami pegang, kenapa, '
       'dan berapa lama.',
     ),
@@ -370,7 +370,7 @@ class LegalPage extends StatelessWidget {
       'XyDesk adalah perangkat lunak proprietary (bukan sumber terbuka): '
       'bebas dipakai, tetapi dilarang meng-clone, menyalin, merekayasa '
       'balik, atau mendistribusikan ulang kode sumbernya tanpa izin '
-      'tertulis dari XySpace Tech. Seluruh UI/UX dirancang sendiri oleh tim '
+      'tertulis dari XyVerse Technology Global. Seluruh UI/UX dirancang sendiri oleh tim '
       'XyDesk.',
     ),
     _para(
@@ -458,7 +458,7 @@ class _LicenseRegistryButton extends StatelessWidget {
           context: context,
           applicationName: 'XyDesk',
           applicationVersion: AppVersion.full,
-          applicationLegalese: '© 2026 XySpace Tech. Proprietary.',
+          applicationLegalese: '© 2026 XyVerse Technology Global. Proprietary.',
         ),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
@@ -501,7 +501,7 @@ Widget _sec(BuildContext c, String t) => Padding(
 /// Kata/frasa penting yang disorot (warna aksen, sedikit tebal) di teks
 /// legal. Ini murni penyajian — tidak mengubah makna atau isi.
 const _importantTerms = <String>[
-  'XySpace Tech',
+  'XyVerse Technology Global',
   'Republik Indonesia',
   'Pelindungan Data Pribadi',
   'DTLS-SRTP',

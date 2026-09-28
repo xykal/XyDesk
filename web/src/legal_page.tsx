@@ -12,7 +12,7 @@ export function LegalPage() {
       <p className="eyebrow">LEGAL & PRIVASI</p>
       <h1>Kendali tetap milik kamu.</h1>
       <p className="lede">
-        Berlaku sejak 1 September 2026. XyDesk dibuat oleh XySpace Tech, Indonesia.
+        Berlaku sejak 1 September 2026. XyDesk dibuat oleh XyVerse Technology Global, Indonesia.
         Versi lengkap Syarat &amp; Ketentuan dan Kebijakan Privasi juga ada di dalam
         aplikasi, lewat Akun → Tentang → Legal.
       </p>
@@ -117,7 +117,7 @@ export function LegalPage() {
           XyDesk adalah perangkat lunak <strong>proprietary (bukan sumber terbuka)</strong>.
           Kamu bebas memakai aplikasinya, tetapi dilarang meng-clone, menyalin,
           merekayasa balik, atau mendistribusikan ulang kode sumbernya tanpa izin
-          tertulis dari XySpace Tech. Teks lengkap Perjanjian Lisensi ada di dokumen
+          tertulis dari XyVerse Technology Global. Teks lengkap Perjanjian Lisensi ada di dokumen
           lisensi proyek dan di Pengaturan → Legal di aplikasi Android/Desktop.
         </p>
       </section>

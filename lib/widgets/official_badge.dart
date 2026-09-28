@@ -24,7 +24,7 @@ import 'brand.dart';
 /// Widget ini hanya menggambar hasil keputusan itu. Ia tidak pernah menebak
 /// dari nama; kalau `official` salah, tidak ada badge.
 ///
-/// Sejak rebrand, penanda resmi memakai foto pendiri XySpace
+/// Sejak rebrand, penanda resmi memakai foto pendiri XyVerse
 /// (samakan dengan web) — bukan lagi badge logo X.
 class AuthorName extends StatelessWidget {
   const AuthorName({

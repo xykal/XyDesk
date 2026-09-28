@@ -135,7 +135,7 @@ class _BillingPageState extends State<BillingPage> {
 
   Future<void> _pesan() async {
     final pesan =
-        'Halo XySpace! Mau sewa PC:\n'
+        'Halo XyVerse! Mau sewa PC:\n'
         '- Paket: ${_paket.nama}\n'
         '- Durasi: $_jam jam\n'
         '- Total: ${_rupiah(_total)}';

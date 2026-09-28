@@ -23,7 +23,7 @@
      satu area, ia mewakili pemilik repo.
    - Selain itu → pilih sendiri role yang paling cocok dengan tugas yang
      diminta, dan **sebutkan pilihanmu di awal**, contoh:
-     > "Sesi ini saya ambil role **Web** sebagai *Raka - XySpace Team*.
+     > "Sesi ini saya ambil role **Web** sebagai *Raka - XyVerse Team*.
      > Scope saya hanya `web/` dan `web_deploy/`."
 5. Tentukan **identitas kontributor** (lihat bagian 3). Satu identitas
    melekat pada satu role — jangan ganti-ganti di tengah sesi.
@@ -109,14 +109,14 @@ operator yang menang** — role ini wakil, bukan pengganti.
 ## 3. Identitas kontributor
 
 - Setiap agent **membuat nama manusia sendiri** — bebas, tapi wajib
-  berformat: `Nama - XySpace Team`.
-  Contoh: `Raka - XySpace Team`, `Salsa - XySpace Team`, `Bima - XySpace Team`.
+  berformat: `Nama - XyVerse Team`.
+  Contoh: `Raka - XyVerse Team`, `Salsa - XyVerse Team`, `Bima - XyVerse Team`.
 - **Pengecualian**: role **Operator** memakai `Operator - XyDesk Team`
   dengan email `operator.xydesk@users.noreply.github.com` (bagian 2.1).
   Satu identitas, tidak boleh dipakai role lain.
 - Set identitas git **lokal untuk repo ini saja** di awal sesi:
   ```bash
-  git config user.name  "Raka - XySpace Team"
+  git config user.name  "Raka - XyVerse Team"
   git config user.email "raka.xyspace@users.noreply.github.com"
   ```
   (email: nama kecil + `.xyspace@users.noreply.github.com`, konsisten

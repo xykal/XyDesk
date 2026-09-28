@@ -95,7 +95,7 @@ export default function BillingPage() {
     if (value !== '' && Number.isFinite(n) && n >= 1 && n <= MAKS_JAM) setJam(Math.round(n));
   };
 
-  const pesan = `Halo XySpace! Mau sewa PC:%0A- Paket: ${paket.nama}%0A- Durasi: ${jamAman} jam%0A- Total: ${rupiah(total)}`;
+  const pesan = `Halo XyVerse! Mau sewa PC:%0A- Paket: ${paket.nama}%0A- Durasi: ${jamAman} jam%0A- Total: ${rupiah(total)}`;
   const orderHref = ORDER_WA ? `https://wa.me/${ORDER_WA}?text=${pesan}` : WA_CHANNEL;
 
   return (
