@@ -123,10 +123,8 @@ async fn loopback_video_flows_and_input_roundtrips() -> anyhow::Result<()> {
                         if raw.len() >= 8 {
                             let mut b = [0u8; 8];
                             b.copy_from_slice(&raw[..8]);
-                            capture_ntp.store(
-                                u64::from_be_bytes(b),
-                                std::sync::atomic::Ordering::Relaxed,
-                            );
+                            capture_ntp
+                                .store(u64::from_be_bytes(b), std::sync::atomic::Ordering::Relaxed);
                         }
                     }
                 }
@@ -371,7 +369,10 @@ async fn loopback_video_flows_and_input_roundtrips() -> anyhow::Result<()> {
     // abs-capture-time harus terisi dan masuk akal: NTP detik ≈ sekarang
     // (toleransi 60 s — waktu capture selalu sedikit di masa lalu).
     let ntp = capture_ntp.load(std::sync::atomic::Ordering::Relaxed);
-    assert!(ntp != 0, "paket video tidak membawa abs-capture-time padahal dinegosiasi");
+    assert!(
+        ntp != 0,
+        "paket video tidak membawa abs-capture-time padahal dinegosiasi"
+    );
     let now_ntp = xydesk_host::abs_capture_time::ntp_from_system_time(std::time::SystemTime::now());
     let selisih = (now_ntp >> 32).abs_diff(ntp >> 32);
     assert!(

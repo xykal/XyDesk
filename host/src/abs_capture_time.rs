@@ -50,11 +50,16 @@ impl AbsCaptureTime {
     /// Dari waktu dinding. Waktu sebelum 1970 tidak mungkin di sini; bila
     /// jam sistem rusak, jatuh ke 0 (client mengabaikan nilai yang mustahil).
     pub fn from_system_time(t: SystemTime) -> Self {
-        Self { ntp: ntp_from_system_time(t) }
+        Self {
+            ntp: ntp_from_system_time(t),
+        }
     }
 
     pub fn into_header_extension(self) -> HeaderExtension {
-        HeaderExtension::Custom { uri: URI.into(), extension: Box::new(self) }
+        HeaderExtension::Custom {
+            uri: URI.into(),
+            extension: Box::new(self),
+        }
     }
 }
 
@@ -89,7 +94,11 @@ pub fn ntp_from_system_time(t: SystemTime) -> u64 {
 /// Waktu dinding saat frame di-capture, diturunkan dari `Instant` capture
 /// dan pasangan (`Instant`, `SystemTime`) "sekarang". Capture selalu terjadi
 /// sebelum "sekarang"; kalau tidak (jam monotonic aneh), pakai "sekarang".
-pub fn capture_wall_time(captured_at: Instant, now_instant: Instant, now_wall: SystemTime) -> SystemTime {
+pub fn capture_wall_time(
+    captured_at: Instant,
+    now_instant: Instant,
+    now_wall: SystemTime,
+) -> SystemTime {
     let age = now_instant.saturating_duration_since(captured_at);
     now_wall.checked_sub(age).unwrap_or(now_wall)
 }
@@ -104,7 +113,9 @@ pub fn header_extension_for(captured_at: Instant) -> HeaderExtension {
 /// client menawarkannya. Dipanggil SETELAH `register_default_codecs`.
 pub fn register(media: &mut MediaEngine) -> webrtc::error::Result<()> {
     media.register_header_extension(
-        RTCRtpHeaderExtensionCapability { uri: URI.to_string() },
+        RTCRtpHeaderExtensionCapability {
+            uri: URI.to_string(),
+        },
         RTPCodecType::Video,
         None,
     )
@@ -136,7 +147,9 @@ mod tests {
 
     #[test]
     fn marshal_big_endian_8_byte() {
-        let ext = AbsCaptureTime { ntp: 0x0102_0304_0506_0708 };
+        let ext = AbsCaptureTime {
+            ntp: 0x0102_0304_0506_0708,
+        };
         let mut buf = [0u8; 8];
         assert_eq!(ext.marshal_to(&mut buf).unwrap(), 8);
         assert_eq!(buf, [1, 2, 3, 4, 5, 6, 7, 8]);
@@ -160,7 +173,10 @@ mod tests {
         let captured = now_i - Duration::from_millis(25);
         let now_w = UNIX_EPOCH + Duration::from_secs(1_000_000);
         let wall = capture_wall_time(captured, now_i, now_w);
-        assert_eq!(now_w.duration_since(wall).unwrap(), Duration::from_millis(25));
+        assert_eq!(
+            now_w.duration_since(wall).unwrap(),
+            Duration::from_millis(25)
+        );
     }
 
     #[test]

@@ -119,7 +119,10 @@ async fn tulis_frame(
     // di client memuat encode + antre host. Dilewati otomatis oleh
     // webrtc-rs bila client tidak menegosiasikannya.
     let capture_ext = [crate::abs_capture_time::header_extension_for(captured_at)];
-    if let Err(e) = track.write_sample_with_extensions(&sample, &capture_ext).await {
+    if let Err(e) = track
+        .write_sample_with_extensions(&sample, &capture_ext)
+        .await
+    {
         eprintln!("[xydesk-host] kirim frame gagal: {e}");
         return false;
     }

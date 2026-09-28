@@ -885,8 +885,8 @@ class RtcService {
             packetsReceived = (v['packetsReceived'] as num?)?.toInt();
             codecId = v['codecId'] as String?;
             jitterBufferDelay = (v['jitterBufferDelay'] as num?)?.toDouble();
-            jitterBufferEmitted =
-                (v['jitterBufferEmittedCount'] as num?)?.toInt();
+            jitterBufferEmitted = (v['jitterBufferEmittedCount'] as num?)
+                ?.toInt();
             totalDecodeTime = (v['totalDecodeTime'] as num?)?.toDouble();
             framesDecoded = (v['framesDecoded'] as num?)?.toInt();
           } else if (kind == 'audio') {
