@@ -19,8 +19,13 @@ Done:
   klien, host, installer NSIS/Inno/WiX, legal, docs); nama tim baru ikut
   masuk daftar nama terlindungi worker berita (commit f346ca0, de56db3;
   Build 36494761138 hijau, deploy-web + deploy-news hijau).
+- HIGH-2 selesai: 11 GitHub Action di-pin SHA penuh (d9a75ad, Build
+  36496526154 hijau). OG image dibuat ulang lewat tool/art/og_image.py
+  (tagline lama terpotong) (360b78c).
+- i18n: kStrings -> 12 ARB + flutter gen-l10n, API context.tr tetap
+  (af9724e, c2df261; Build 36498369872 hijau).
 Blocked:
-- HIGH-2 pin SHA action: menunggu resolusi SHA per action lewat API.
+- tidak ada.
 Next:
-- MFT encoder host (NVENC > MFT > openh264), i18n ARB id+en, harness
-  latency lanjutan.
+- MFT encoder host (NVENC > MFT > openh264); ekstraksi string hardcode
+  Indonesia ke ARB; harness latency lanjutan.
