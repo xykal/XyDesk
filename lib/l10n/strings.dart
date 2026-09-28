@@ -49,8 +49,9 @@ class L {
   static final Map<String, AppLocalizations> _cache = {};
 
   static AppLocalizations _lookup(String code) {
-    final supported =
-        AppLocalizations.supportedLocales.any((l) => l.languageCode == code);
+    final supported = AppLocalizations.supportedLocales.any(
+      (l) => l.languageCode == code,
+    );
     final key = supported ? code : 'en';
     return _cache[key] ??= lookupAppLocalizations(Locale(key));
   }
