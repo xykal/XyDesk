@@ -10,20 +10,20 @@ bersama aplikasi, beserta lisensinya — diambil langsung dari lockfile dan
 teks lisensi paket yang benar-benar terpasang, bukan dari daftar ketik
 tangan yang bisa ketinggalan zaman.
 
-**Total komponen: 463**
-(Dart/Flutter 115 · Rust 332 · npm 4 · aset & layanan 12)
+**Total komponen: 473**
+(Dart/Flutter 125 · Rust 332 · npm 4 · aset & layanan 12)
 
 ## Ringkasan lisensi
 
 | Lisensi | Jumlah komponen |
 |---|---|
 | MIT OR Apache-2.0 | 199 |
-| BSD-3-Clause | 92 |
+| BSD-3-Clause | 101 |
 | MIT | 56 |
 | Apache-2.0 OR MIT | 30 |
 | Unicode-3.0 | 18 |
 | MIT/Apache-2.0 | 17 |
-| Apache-2.0 | 9 |
+| Apache-2.0 | 10 |
 | Unlicense OR MIT | 5 |
 | Zlib OR Apache-2.0 OR MIT | 3 |
 | BSD-2-Clause | 3 |
@@ -130,7 +130,7 @@ Login opsional dengan akun Google.
 
 ---
 
-## 2. Paket Dart / Flutter (115)
+## 2. Paket Dart / Flutter (125)
 
 Termasuk dependensi transitif yang ikut ter-bundle di APK.
 
@@ -138,6 +138,7 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 |---|---|---|
 | `args` | 2.7.0 | BSD-3-Clause |
 | `async` | 2.11.0 | BSD-3-Clause |
+| `boolean_selector` | 2.1.2 | BSD-3-Clause |
 | `characters` | 1.4.1 | BSD-3-Clause |
 | `clock` | 1.1.2 | Apache-2.0 |
 | `code_assets` | 1.2.1 | BSD-3-Clause |
@@ -145,6 +146,7 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `cross_file` | 0.3.5+5 | BSD-3-Clause |
 | `crypto` | 3.0.7 | BSD-3-Clause |
 | `dart_webrtc` | 1.8.1 | MIT |
+| `fake_async` | 1.3.3 | Apache-2.0 |
 | `ffi` | 2.2.0 | BSD-3-Clause |
 | `ffi_leak_tracker` | 0.1.2 | BSD-3-Clause |
 | `file` | 7.0.1 | BSD-3-Clause |
@@ -152,6 +154,7 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `file_selector_macos` | 0.9.5+1 | BSD-3-Clause |
 | `file_selector_platform_interface` | 2.7.0 | BSD-3-Clause |
 | `file_selector_windows` | 0.9.3+6 | BSD-3-Clause |
+| `flutter_lints` | 4.0.0 | BSD-3-Clause |
 | `flutter_plugin_android_lifecycle` | 2.0.35 | BSD-3-Clause |
 | `flutter_riverpod` | 2.6.1 | MIT |
 | `flutter_secure_storage` | 11.0.0 | BSD-3-Clause |
@@ -184,9 +187,14 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `jni_flutter` | 1.0.2 | BSD-3-Clause |
 | `jni_util` | 1.0.0 | BSD-3-Clause |
 | `js` | 0.7.2 | BSD-3-Clause |
+| `leak_tracker` | 11.0.2 | BSD-3-Clause |
+| `leak_tracker_flutter_testing` | 3.0.10 | BSD-3-Clause |
+| `leak_tracker_testing` | 3.0.2 | BSD-3-Clause |
+| `lints` | 4.0.0 | BSD-3-Clause |
 | `logger` | 2.7.0 | MIT |
 | `logging` | 1.3.0 | BSD-3-Clause |
 | `lucide_icons_flutter` | 3.1.15 | MIT |
+| `matcher` | 0.12.19 | BSD-3-Clause |
 | `material_color_utilities` | 0.13.0 | Apache-2.0 |
 | `meta` | 1.18.0 | BSD-3-Clause |
 | `mime` | 2.1.0 | BSD-3-Clause |
@@ -230,6 +238,7 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `string_scanner` | 1.3.0 | BSD-3-Clause |
 | `synchronized` | 3.4.1+2 | MIT |
 | `term_glyph` | 1.2.1 | BSD-3-Clause |
+| `test_api` | 0.7.11 | BSD-3-Clause |
 | `typed_data` | 1.4.0 | BSD-3-Clause |
 | `url_launcher` | 6.3.2 | BSD-3-Clause |
 | `url_launcher_android` | 6.3.17 | BSD-3-Clause |
@@ -243,6 +252,7 @@ Termasuk dependensi transitif yang ikut ter-bundle di APK.
 | `vector_graphics_codec` | 1.1.13 | BSD-3-Clause |
 | `vector_graphics_compiler` | 1.3.0 | BSD-3-Clause |
 | `vector_math` | 2.2.0 | BSD-3-Clause |
+| `vm_service` | 15.3.0 | BSD-3-Clause |
 | `web` | 1.1.1 | BSD-3-Clause |
 | `web_socket` | 1.0.1 | BSD-3-Clause |
 | `web_socket_channel` | 3.0.3 | BSD-3-Clause |
@@ -620,12 +630,3 @@ Teks penuh setiap lisensi tersedia di dalam paketnya masing-masing:
 Di aplikasi Android, **Pengaturan → Tentang → Lisensi → Lisensi pihak ketiga
 lengkap** membuka registry lisensi bawaan Flutter yang memuat teks penuh
 setiap paket Dart secara langsung dari biner yang sedang berjalan.
-
-### Native panel QR and account JSON
-
-- QR Code generator, Project Nayuki, MIT; pinned commit
-  `3c6d0b3cefb4e049dc337e82237c9644399716a8`. Source and license header:
-  `packaging/native-host/vendor/qrcodegen/`; distribution notice `QR-CODE-LICENSE.txt`.
-- JSON for Modern C++, Niels Lohmann, MIT, v3.12.0; pinned commit
-  `55f93686c01528224f448c19128836e7df245f72`. Source/license:
-  `packaging/native-host/vendor/json/`; distribution notice `JSON-LICENSE.txt`.

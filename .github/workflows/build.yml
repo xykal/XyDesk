@@ -695,7 +695,8 @@ jobs:
           Write-Host ($layout | ConvertTo-Json -Compress)
           if ($layout.windowWidth -ne 1100 -or $layout.windowHeight -ne 720) { throw "Ukuran jendela panel tidak sesuai: $($layout.windowWidth)x$($layout.windowHeight)" }
           if ($layout.panelWidth -ne 1100 -or $layout.panelHeight -ne 720) { throw 'Ukuran panel tidak sesuai' }
-          if ($layout.radiusPanel -ne 10) { throw "Radius sudut panel bukan 10: $($layout.radiusPanel)" }
+          # Radius 24 sejak rounded host workspace 655ef35 (27 Sep 2026); gerbang lama masih 10 dan membuat Build merah.
+          if ($layout.radiusPanel -ne 24) { throw "Radius sudut panel bukan 24: $($layout.radiusPanel)" }
           if ($layout.shadowMargin -ne 0) { throw "Panel harus tanpa bayangan (margin 0): $($layout.shadowMargin)" }
           $hits = ($layout.hits -join ',')
           if ($hits -ne 'Minimize,Maximize,Close,PageStatus,PagePairing,Start,CopyId,None') { throw "Hit-test panel tidak sesuai: $hits" }
