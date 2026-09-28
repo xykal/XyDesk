@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
-const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+const app=readFileSync(new URL('../src/connect_screen.tsx',import.meta.url),'utf8');
 test('rail collapse cannot disable or unmount screen mapping controls',()=>{
  assert.match(app,/onToggleCollapsed=\{\(\) => setRailHidden\(v=>!v\)\}/);
  assert.match(app,/padOpen && <CustomControlMapping/);

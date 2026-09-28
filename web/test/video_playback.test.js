@@ -55,7 +55,7 @@ test('rejected play after teardown schedules no retry or blocked UI update',asyn
  assert.deepEqual(states,[]);assert.equal(el.srcObject,null);
 });
 test('React session delegates first attachment to the lifecycle controller',()=>{
- const source=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/connect_screen.tsx',import.meta.url),'utf8');
  assert.match(source,/videoPlaybackStop\.current = startRemoteVideoPlayback\(video, remoteVideoStream/);
  assert.doesNotMatch(source,/if\s*\([^\n]*video\.srcObject !== remoteVideoStream\) return/);
 });
