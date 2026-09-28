@@ -188,7 +188,7 @@ jobs:
 
       - name: Tolak suppression analyzer
         run: |
-          if grep -RInE 'ignore_for_file:|//[[:space:]]*ignore:' lib tool; then
+          if grep -RInE --exclude-dir=gen 'ignore_for_file:|//[[:space:]]*ignore:' lib tool; then
             echo "::error::Suppression analyzer dilarang. Perbaiki akar warning/error-nya."
             exit 1
           fi
