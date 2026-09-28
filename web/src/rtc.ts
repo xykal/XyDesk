@@ -233,6 +233,38 @@ export interface HostMeta {
   micInput?: { available: boolean; route: string };
 }
 
+/// URI header extension abs-capture-time — sama persis dengan
+/// `host/src/abs_capture_time.rs`. Chrome membiarkannya `stopped` secara
+/// default, jadi harus diminta eksplisit sebelum createOffer.
+export const ABS_CAPTURE_TIME_URI = 'http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time';
+
+type NegotiableTransceiver = RTCRtpTransceiver & {
+  getHeaderExtensionsToNegotiate?: () => { uri: string; direction: string }[];
+  setHeaderExtensionsToNegotiate?: (exts: { uri: string; direction: string }[]) => void;
+};
+
+/// Minta browser menawarkan abs-capture-time di m=video. Dengan itu host
+/// menstempel waktu capture di tiap paket dan `requestVideoFrameCallback`
+/// mengisi `captureTime` → probe latensi masuk mode `measured`.
+/// Browser tanpa API ini (Firefox/Safari lama) diabaikan tanpa error —
+/// probe tetap jalan dalam mode lower-bound. Mengembalikan true bila diminta.
+export function requestAbsCaptureTime(transceiver: RTCRtpTransceiver): boolean {
+  const t = transceiver as NegotiableTransceiver;
+  if (typeof t.getHeaderExtensionsToNegotiate !== 'function' || typeof t.setHeaderExtensionsToNegotiate !== 'function') return false;
+  try {
+    const exts = t.getHeaderExtensionsToNegotiate();
+    const target = exts.find(e => e.uri === ABS_CAPTURE_TIME_URI);
+    if (!target) return false;
+    if (target.direction === 'stopped') {
+      t.setHeaderExtensionsToNegotiate(exts.map(e => e.uri === ABS_CAPTURE_TIME_URI ? { ...e, direction: 'recvonly' } : e));
+    }
+    return true;
+  } catch {
+    // Browser bisa menolak arah tertentu; tanpa stempel waktu bukan kegagalan sesi.
+    return false;
+  }
+}
+
 /// Statistik sesi yang dibaca langsung dari koneksi (getStats).
 /// Nilai bitrate/fps adalah laju sesaat — dihitung dari delta antar bacaan.
 export interface SessionStats {
@@ -601,7 +633,8 @@ export class RtcSession {
     });
     this.pc = pc;
 
-    pc.addTransceiver('video', { direction: 'recvonly' });
+    const videoTransceiver = pc.addTransceiver('video', { direction: 'recvonly' });
+    requestAbsCaptureTime(videoTransceiver);
     // Audio dua arah (host → browser, dan mic browser → host).
     //
     // Arahnya HARUS sendrecv sejak offer pertama, bukan recvonly lalu

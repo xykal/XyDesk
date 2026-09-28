@@ -86,6 +86,8 @@ async fn tulis_frame(
     if !crate::virtual_target::healthy() {
         return false;
     }
+    // Simpan waktu capture asli sebelum `at` digeser untuk pacing RTP.
+    let captured_at = at;
     // webrtc 0.11 advances its timestamp AFTER packetization; an empty
     // sample advances without packets, so THIS frame has the capture delta.
     let at = clock.map_or(at, |last| at.max(last + Duration::from_nanos(11112)));
@@ -113,7 +115,11 @@ async fn tulis_frame(
         prev_dropped_packets: 0,
         prev_padding_packets: 0,
     };
-    if let Err(e) = track.write_sample(&sample).await {
+    // abs-capture-time: waktu capture DXGI (bukan waktu kirim) supaya angka
+    // di client memuat encode + antre host. Dilewati otomatis oleh
+    // webrtc-rs bila client tidak menegosiasikannya.
+    let capture_ext = [crate::abs_capture_time::header_extension_for(captured_at)];
+    if let Err(e) = track.write_sample_with_extensions(&sample, &capture_ext).await {
         eprintln!("[xydesk-host] kirim frame gagal: {e}");
         return false;
     }

@@ -11,7 +11,8 @@ Budget yang sudah dapat diukur otomatis vs yang belum:
 | Jitter buffer + decode per frame | panel Statistik (web & APK) | ✅ otomatis |
 | Terima → tampil per frame (p50/p95) | panel Statistik web → "Latensi" | ✅ otomatis (Chrome/Edge) |
 | Estimasi glass-to-glass **tanpa** capture/encode host | panel Statistik web → "Latensi" (lower-bound) | ✅ otomatis |
-| **Glass-to-glass total sejati** | **metode foto (bawah)** atau abs-capture-time (2b) | ⚠️ manual |
+| **Glass-to-glass total (capture host → tampil client)** | panel Statistik web → "Layar ke layar" via abs-capture-time (2b) | ✅ otomatis (Chrome/Edge + host ≥ 6.8.6) |
+| Glass-to-glass termasuk refresh layar fisik | metode foto (3) | ⚠️ manual, hanya untuk kalibrasi |
 
 ---
 
@@ -59,16 +60,30 @@ Di APK, panel sesi menampilkan **Buffer video** dan **Decode / frame** dari
 **Total sebenarnya** = angka "Perkiraan" + `encode_ms` dari log/`--bench`
 host + waktu capture DXGI (biasanya 1 frame). Jumlahkan manual sampai 2b ada.
 
-## 2b. Langkah berikut untuk angka sejati tanpa foto: abs-capture-time
+## 2b. Angka sejati tanpa foto: abs-capture-time (sejak 6.8.6)
 
-Bila host menyertakan RTP header extension
-`http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time` pada paket
-video, Chrome mengisi `captureTime` di `requestVideoFrameCallback` dan probe
-web **otomatis** beralih ke mode `measured` (capture→display langsung,
-tanpa perlu RTT/2). Ini pekerjaan di `host/` (webrtc-rs: daftarkan
-extension di `MediaEngine` + isi `abs-capture-time` per paket dari
-timestamp capture DXGI, sinkron NTP). Belum dikerjakan — butuh verifikasi
-di Windows nyata, bukan runner.
+Host menstempel **waktu capture** (bukan waktu kirim) ke setiap paket video
+lewat RTP header extension
+`http://www.webrtc.org/experiments/rtp-hdrext/abs-capture-time`
+(`host/src/abs_capture_time.rs`, NTP 64-bit dari `EncodedFrame.captured_at`).
+Web meminta Chrome menawarkannya (`requestAbsCaptureTime` di `web/src/rtc.ts`;
+Chrome membiarkannya `stopped` secara default). Begitu dinegosiasi, Chrome
+mengisi `captureTime` di `requestVideoFrameCallback` dan probe web beralih ke
+mode **measured**: baris "Latensi" berubah dari "Perkiraan (tanpa encode PC)"
+menjadi **"Layar ke layar"** = capture DXGI → encode → jaringan → jitter
+buffer → decode → jadwal tampil. Yang tidak termasuk hanya scan-out monitor
+fisik (0–1 frame refresh), itulah gunanya metode foto di §3 sebagai kalibrasi.
+
+Syarat jam: nilai NTP memakai jam dinding host dan client. Selisih jam kedua
+mesin ikut masuk ke angka. Di LAN dengan NTP aktif biasanya < 5 ms; bila
+angka "Layar ke layar" negatif atau > 1 detik, jam salah satu mesin melenceng
+— sinkronkan NTP dulu, jangan salahkan codec.
+
+Kompatibilitas: APK/host lama tidak terpengaruh — extension hanya disisipkan
+bila client menawarkannya (`write_sample_with_extensions` melewati yang tidak
+dinegosiasi). Bukti: `host/tests/loopback.rs` menawarkan extension dari sisi
+client, memastikan SDP jawaban memuatnya, dan membaca NTP dari paket RTP nyata
+(toleransi 60 s terhadap jam sekarang).
 
 ## 3. Glass-to-glass total — metode foto (paling jujur)
 

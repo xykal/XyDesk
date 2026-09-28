@@ -15,9 +15,18 @@ karena import `.ts` langsung (butuh Node ≥ 22.6 seperti CI) — bukan regresi.
 Dart **belum dikompilasi** di sesi ini (tanpa toolchain) — verifikasi lewat
 `build-apk-only.yml`. Root repo: 7 dokumen dipindah ke `docs/articles/`,
 `docs/reports/`, `docs/`; rujukan di HANDOFF/AGENT_BOARD diperbarui.
-Host/Rust tidak disentuh. Langkah berikut untuk angka sejati: host
-menyertakan RTP header extension `abs-capture-time` — lihat `docs/LATENCY.md`
-bagian 2b.
+**Host (lanjutan sesi yang sama):** `host/src/abs_capture_time.rs` — RTP
+header extension abs-capture-time (NTP 64-bit dari `captured_at`), didaftarkan
+di `Session::new`, disisipkan di `video::tulis_frame` lewat
+`write_sample_with_extensions`. Web `requestAbsCaptureTime` mengaktifkan
+penawaran di Chrome sebelum offer. Loopback produksi diperluas: client
+menawarkan extension, SDP jawaban wajib memuatnya, NTP dibaca dari paket RTP
+nyata. Diverifikasi di Linux: `cargo test` 209 lulus, clippy bersih. Windows
+(DXGI nyata) tetap lewat `prepare-host-windows.yml`. Untuk role Client
+Flutter: `flutter_webrtc` belum mengekspos `captureTime` per frame, jadi APK
+tetap memakai jitterBuffer/decode saja; kalau mau paritas, jalannya lewat
+`RTCVideoRenderer` native (Android `VideoSink` → `VideoFrame.timestampNs`),
+bukan Dart.
 
 
 ## 27 Sep 2026 — rounded host workspace SELESAI, 655ef35

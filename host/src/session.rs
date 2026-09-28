@@ -138,6 +138,11 @@ impl Session {
         media
             .register_default_codecs()
             .context("gagal daftar codec")?;
+        // Stempel waktu capture per paket video (abs-capture-time). Hanya
+        // aktif bila client menawarkannya di SDP; client lama tidak
+        // terpengaruh. Lihat `abs_capture_time.rs` + docs/LATENCY.md §2b.
+        crate::abs_capture_time::register(&mut media)
+            .context("gagal daftar header extension abs-capture-time")?;
 
         let mut registry = Registry::new();
         registry = register_default_interceptors(registry, &mut media)
