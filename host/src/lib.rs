@@ -97,6 +97,7 @@ pub mod video_policy;
 pub mod native_cursor;
 pub mod video_layout;
 
+pub mod input_dispatch;
 pub mod input_queue;
 
 pub mod desktop_mode;
