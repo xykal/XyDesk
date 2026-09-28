@@ -161,3 +161,16 @@ test('update.json di Flutter mengarah ke GitHub Release resmi, bukan domain cust
     'update_repository.dart keliru mengarah ke domain custom yang belum ada endpoint update.json-nya',
   );
 });
+
+test('header transport: HSTS preload, frame-ancestors none, object-src none', () => {
+  const isi = baca(HEADERS).toLowerCase();
+  const hsts = /strict-transport-security:\s*max-age=(\d+)([^\n]*)/.exec(isi);
+  assert.ok(hsts, 'Strict-Transport-Security tidak ada');
+  assert.ok(Number(hsts[1]) >= 31536000, 'HSTS max-age kurang dari 1 tahun');
+  assert.match(hsts[2], /includesubdomains/);
+  assert.match(hsts[2], /preload/);
+  assert.deepEqual(sumberCsp(cspProduksi(), 'frame-ancestors'), ["'none'"]);
+  assert.deepEqual(sumberCsp(cspProduksi(), 'object-src'), ["'none'"]);
+  assert.doesNotMatch(cspProduksi(), /unsafe-eval/);
+  assert.doesNotMatch(sumberCsp(cspProduksi(), 'script-src').join(' '), /unsafe-inline|https?:/);
+});

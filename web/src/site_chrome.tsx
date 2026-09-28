@@ -1,6 +1,7 @@
 import { RELEASE_BASE, Route, WHATSAPP_CHANNEL } from './app_routes';
 import {PUBLIC_ORIGIN} from './site_routes';
 import { useEffect, useRef, useState } from 'react';
+import { BRAND_POWERED_BY } from './config/brand';
 
 import {
   APP_VERSION,
@@ -196,6 +197,7 @@ export function SiteFooter({ navigate }: { navigate: (r: Route) => void }) {
             </button>
           </span>
           <span>Media sesi tidak disimpan oleh server.</span>
+          <span className="footer-powered">{BRAND_POWERED_BY}</span>
         </div>
       </div>
     </footer>

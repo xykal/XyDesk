@@ -36,6 +36,7 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       should_release: ${{ steps.release.outputs.should_release }}
       version: ${{ steps.release.outputs.version }}
@@ -189,6 +190,7 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Unduh artefak Build terverifikasi
         env:
@@ -440,6 +442,7 @@ jobs:
     needs: [prepare, clients, windows-installer]
     if: needs.prepare.outputs.should_release == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}

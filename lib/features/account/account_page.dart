@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/brand.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -465,6 +467,13 @@ class AboutPage extends StatelessWidget {
           Center(
             child: Text(
               AppVersion.versiFull,
+              style: TextStyle(fontSize: 11.5, color: c.textLow),
+            ),
+          ),
+          const SizedBox(height: Gap.xs),
+          Center(
+            child: Text(
+              brandPoweredBy,
               style: TextStyle(fontSize: 11.5, color: c.textLow),
             ),
           ),

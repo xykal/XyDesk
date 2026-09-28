@@ -3225,3 +3225,5 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 /* On short landscape screens, the independent keyboard launcher must not
    overlap the bottom row of the right rail. */
 @media(max-height:620px){.video-surface>.srail-keyboard{left:max(12px,env(safe-area-inset-left));right:auto;bottom:max(12px,env(safe-area-inset-bottom))}}
+
+.footer-powered { opacity: 0.7; font-size: 12px; }

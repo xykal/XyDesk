@@ -160,7 +160,11 @@ async fn close_signaling_session(
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "xydesk-host", about = "XyDesk host — stream layar ke client")]
+#[command(
+    name = "xydesk-host",
+    about = "XyDesk host — stream layar ke client",
+    version = concat!(env!("CARGO_PKG_VERSION"), " — ", "XyVerse Technology Global")
+)]
 struct Args {
     /// Mode strict: hanya virtual display terverifikasi1280x720, tanpa fallback RDP.
     #[arg(long, conflicts_with = "keep_desktop_resolution")]
