@@ -534,6 +534,22 @@ class _StreamPanel extends ConsumerWidget {
                       value: st.rttLabel,
                     ),
                     const _CardGapLarge(),
+                    // Dua komponen latensi sisi client yang bisa diukur
+                    // langsung dari getStats. Ping saja tidak menjelaskan
+                    // "lag" — frame bisa menunggu lebih lama di buffer
+                    // decoder daripada di jaringan.
+                    _InfoRow(
+                      icon: LucideIcons.timer,
+                      title: 'Buffer video',
+                      value: st.jitterBufferLabel,
+                    ),
+                    const _CardGapLarge(),
+                    _InfoRow(
+                      icon: LucideIcons.cpu,
+                      title: 'Decode / frame',
+                      value: st.decodeLabel,
+                    ),
+                    const _CardGapLarge(),
                     _InfoRow(
                       icon: LucideIcons.triangleAlert,
                       title: 'Packet loss',

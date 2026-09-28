@@ -47,6 +47,17 @@ fn client_api() -> anyhow::Result<webrtc::api::API> {
     media
         .register_default_codecs()
         .context("gagal daftar codec default")?;
+    // Seperti web (setHeaderExtensionsToNegotiate): client MENAWARKAN
+    // abs-capture-time; host harus menjawab dan mengisinya di tiap paket.
+    media
+        .register_header_extension(
+            webrtc::rtp_transceiver::rtp_codec::RTCRtpHeaderExtensionCapability {
+                uri: xydesk_host::abs_capture_time::URI.to_string(),
+            },
+            RTPCodecType::Video,
+            None,
+        )
+        .context("gagal daftar abs-capture-time di client")?;
     let mut registry = Registry::new();
     registry = register_default_interceptors(registry, &mut media).context("interceptor gagal")?;
     Ok(APIBuilder::new()
@@ -86,12 +97,37 @@ async fn loopback_video_flows_and_input_roundtrips() -> anyhow::Result<()> {
     let (packets_tx, mut packets_rx) = mpsc::unbounded_channel::<usize>();
     let sps_seen = Arc::new(std::sync::atomic::AtomicBool::new(false));
     let sps_seen_in_track = sps_seen.clone();
-    pc.on_track(Box::new(move |track, _receiver, _transceiver| {
+    // abs-capture-time: NTP 64-bit terakhir yang terbaca dari paket (0 = belum).
+    let capture_ntp = Arc::new(std::sync::atomic::AtomicU64::new(0));
+    let capture_ntp_in_track = capture_ntp.clone();
+    pc.on_track(Box::new(move |track, _receiver, transceiver| {
         let packets_tx = packets_tx.clone();
         let sps_seen = sps_seen_in_track.clone();
+        let capture_ntp = capture_ntp_in_track.clone();
         Box::pin(async move {
+            // ID extension hasil negosiasi — dibaca dari parameter receiver,
+            // bukan ditebak angka tetap.
+            let capture_id = transceiver
+                .receiver()
+                .await
+                .get_parameters()
+                .await
+                .header_extensions
+                .iter()
+                .find(|e| e.uri == xydesk_host::abs_capture_time::URI)
+                .map(|e| e.id as u8);
             let mut n = 0usize;
             while let Ok((pkt, _attrs)) = track.read_rtp().await {
+                if let Some(id) = capture_id {
+                    if let Some(raw) = pkt.header.get_extension(id) {
+                        if raw.len() >= 8 {
+                            let mut b = [0u8; 8];
+                            b.copy_from_slice(&raw[..8]);
+                            capture_ntp
+                                .store(u64::from_be_bytes(b), std::sync::atomic::Ordering::Relaxed);
+                        }
+                    }
+                }
                 // Payload RTP H264 (packetization-mode=1):
                 //  - NAL tunggal: byte pertama = header NAL.
                 //  - STAP-A (24): agregasi [2-byte ukuran][NAL]...
@@ -220,6 +256,13 @@ async fn loopback_video_flows_and_input_roundtrips() -> anyhow::Result<()> {
     let host = Arc::new(Session::new(vec![], vec![]).await?);
     let (answer_sdp, track) = host.answer(&offer_sdp).await?;
 
+    // abs-capture-time WAJIB dinegosiasi bila client menawarkannya —
+    // tanpa ini probe latensi web tidak pernah masuk mode `measured`.
+    assert!(
+        answer_sdp.contains(xydesk_host::abs_capture_time::URI),
+        "SDP jawaban tidak memuat extmap abs-capture-time.\n--- jawaban ---\n{answer_sdp}"
+    );
+
     // Bug guard A: jawaban WAJIB memuat m-line video.
     assert!(
         answer_sdp.contains("m=video"),
@@ -322,6 +365,19 @@ async fn loopback_video_flows_and_input_roundtrips() -> anyhow::Result<()> {
         pong.as_deref(),
         Some(b"PONG".as_slice()),
         "host tidak membalas PING lewat data channel"
+    );
+    // abs-capture-time harus terisi dan masuk akal: NTP detik ≈ sekarang
+    // (toleransi 60 s — waktu capture selalu sedikit di masa lalu).
+    let ntp = capture_ntp.load(std::sync::atomic::Ordering::Relaxed);
+    assert!(
+        ntp != 0,
+        "paket video tidak membawa abs-capture-time padahal dinegosiasi"
+    );
+    let now_ntp = xydesk_host::abs_capture_time::ntp_from_system_time(std::time::SystemTime::now());
+    let selisih = (now_ntp >> 32).abs_diff(ntp >> 32);
+    assert!(
+        selisih <= 60,
+        "abs-capture-time meleset {selisih} detik dari jam sekarang (ntp={ntp:#x})"
     );
     println!(
         "[loopback] OK: {packets} paket video (dengan SPS/PPS) + PING/PONG dua arah — \

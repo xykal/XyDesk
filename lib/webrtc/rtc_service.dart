@@ -212,6 +212,8 @@ class SessionStats {
     this.kbps,
     this.rttMs,
     this.jitterMs,
+    this.jitterBufferMs,
+    this.decodeMs,
     this.packetLossPercent,
     this.codec,
     this.audioKbps,
@@ -228,6 +230,15 @@ class SessionStats {
   final double? kbps;
   final double? rttMs;
   final double? jitterMs;
+
+  /// Rata-rata waktu frame menunggu di jitter buffer sejak bacaan terakhir
+  /// (ms) — delta `jitterBufferDelay / jitterBufferEmittedCount`. Ini
+  /// komponen latensi client terbesar yang bisa diukur tanpa mengubah host.
+  final double? jitterBufferMs;
+
+  /// Rata-rata waktu decode per frame sejak bacaan terakhir (ms) — delta
+  /// `totalDecodeTime / framesDecoded`. Target roadmap: < 8 ms.
+  final double? decodeMs;
   final double? packetLossPercent;
   final String? codec;
   final double? audioKbps;
@@ -269,6 +280,11 @@ class SessionStats {
 
   String get rttLabel => rttMs == null ? '-' : '${rttMs!.round()} ms';
 
+  String get jitterBufferLabel =>
+      jitterBufferMs == null ? '-' : '${jitterBufferMs!.round()} ms';
+
+  String get decodeLabel => decodeMs == null ? '-' : '${decodeMs!.round()} ms';
+
   String get lossLabel => packetLossPercent == null
       ? '-'
       : '${packetLossPercent!.toStringAsFixed(1)}%';
@@ -286,6 +302,8 @@ class SessionStats {
     double? kbps,
     double? rttMs,
     double? jitterMs,
+    double? jitterBufferMs,
+    double? decodeMs,
     double? packetLossPercent,
     String? codec,
     double? audioKbps,
@@ -302,6 +320,8 @@ class SessionStats {
       kbps: kbps ?? this.kbps,
       rttMs: rttMs ?? this.rttMs,
       jitterMs: jitterMs ?? this.jitterMs,
+      jitterBufferMs: jitterBufferMs ?? this.jitterBufferMs,
+      decodeMs: decodeMs ?? this.decodeMs,
       packetLossPercent: packetLossPercent ?? this.packetLossPercent,
       codec: codec ?? this.codec,
       audioKbps: audioKbps ?? this.audioKbps,
@@ -312,6 +332,26 @@ class SessionStats {
       relayHint: relayHint ?? this.relayHint,
     );
   }
+}
+
+/// Rata-rata per-item dari dua bacaan penghitung kumulatif WebRTC:
+/// `(total - totalLama) / (count - countLama) × 1000` (detik → ms).
+///
+/// Null bila salah satu nilai hilang, penghitung tidak maju, atau total
+/// mundur (laporan direset karena track baru). Lebih baik "-" daripada angka
+/// yang tampak meyakinkan tapi basi. Paritas: `average()` di `web/src/rtc.ts`.
+@visibleForTesting
+double? averageDeltaMs(
+  double? total,
+  int? count,
+  double? oldTotal,
+  int? oldCount,
+) {
+  if (total == null || count == null || oldTotal == null || oldCount == null) {
+    return null;
+  }
+  if (count <= oldCount || total < oldTotal) return null;
+  return (total - oldTotal) / (count - oldCount) * 1000;
 }
 
 class RtcService {
@@ -367,6 +407,11 @@ class RtcService {
   Timer? _statsTimer;
   int? _lastVideoBytes;
   int? _lastAudioBytes;
+  // Akumulator timing inbound-rtp untuk delta jitter buffer / decode.
+  double? _lastJitterBufferDelay;
+  int? _lastJitterBufferEmitted;
+  double? _lastTotalDecodeTime;
+  int? _lastFramesDecoded;
   int? _lastPacketsLost;
   int? _lastPacketsReceived;
   DateTime? _lastStatsAt;
@@ -822,7 +867,8 @@ class RtcService {
     final reports = await pc.getStats();
     final now = DateTime.now();
     int? width, height, videoBytes, audioBytes, packetsLost, packetsReceived;
-    double? fps, rtt, jitter;
+    int? jitterBufferEmitted, framesDecoded;
+    double? fps, rtt, jitter, jitterBufferDelay, totalDecodeTime;
     String? codecId, codecName;
 
     for (final r in reports) {
@@ -838,6 +884,11 @@ class RtcService {
             packetsLost = (v['packetsLost'] as num?)?.toInt();
             packetsReceived = (v['packetsReceived'] as num?)?.toInt();
             codecId = v['codecId'] as String?;
+            jitterBufferDelay = (v['jitterBufferDelay'] as num?)?.toDouble();
+            jitterBufferEmitted = (v['jitterBufferEmittedCount'] as num?)
+                ?.toInt();
+            totalDecodeTime = (v['totalDecodeTime'] as num?)?.toDouble();
+            framesDecoded = (v['framesDecoded'] as num?)?.toInt();
           } else if (kind == 'audio') {
             audioBytes = (v['bytesReceived'] as num?)?.toInt();
             jitter = (v['jitter'] as num?)?.toDouble();
@@ -889,6 +940,25 @@ class RtcService {
       }
     }
 
+    // Delta rata-rata per frame (detik → ms). Null bila penghitung tidak maju
+    // atau laporan direset (mis. track baru) — jangan tampilkan angka basi.
+    final jitterBufferMs = averageDeltaMs(
+      jitterBufferDelay,
+      jitterBufferEmitted,
+      _lastJitterBufferDelay,
+      _lastJitterBufferEmitted,
+    );
+    final decodeMs = averageDeltaMs(
+      totalDecodeTime,
+      framesDecoded,
+      _lastTotalDecodeTime,
+      _lastFramesDecoded,
+    );
+    _lastJitterBufferDelay = jitterBufferDelay;
+    _lastJitterBufferEmitted = jitterBufferEmitted;
+    _lastTotalDecodeTime = totalDecodeTime;
+    _lastFramesDecoded = framesDecoded;
+
     _lastVideoBytes = videoBytes;
     _lastAudioBytes = audioBytes;
     _lastPacketsLost = packetsLost;
@@ -908,6 +978,8 @@ class RtcService {
       kbps: kbps,
       rttMs: rtt,
       jitterMs: jitter == null ? null : jitter * 1000,
+      jitterBufferMs: jitterBufferMs,
+      decodeMs: decodeMs,
       packetLossPercent: loss,
       codec: codecName?.toUpperCase(),
       audioKbps: audioKbps,

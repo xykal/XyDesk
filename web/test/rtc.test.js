@@ -440,3 +440,41 @@ test('small reliable backlog coalesces latest position before click, without dro
  session.sendInput(new Uint8Array([3,0,1]));session.sendInput(new Uint8Array([3,0,0]));
  assert.deepEqual(sent,[[2,20,0],[3,0,1],[3,0,0]]);
 });
+
+// ── abs-capture-time: permintaan negosiasi header extension ────────────────
+test('requestAbsCaptureTime: mengaktifkan hanya bila stopped, aman tanpa API', () => {
+  const ctx = { exports: {} };
+  vm.runInNewContext(source + '\nexports.requestAbsCaptureTime = requestAbsCaptureTime; exports.ABS_CAPTURE_TIME_URI = ABS_CAPTURE_TIME_URI;', Object.assign(ctx, {
+    api: {}, console, setTimeout, clearTimeout, performance: { now: () => 0 }, crypto: webcrypto, WebSocket: class {}, RTCPeerConnection: class {}, navigator: {}, window: {}, document: {}, localStorage: {},
+  }));
+  const { requestAbsCaptureTime, ABS_CAPTURE_TIME_URI } = ctx.exports;
+
+  // Tanpa API (Firefox/Safari lama, mock test lama): false, tanpa lempar.
+  assert.equal(requestAbsCaptureTime({}), false);
+
+  // Chrome: extension ada tapi stopped → di-set recvonly, yang lain utuh.
+  let applied = null;
+  const chrome = {
+    getHeaderExtensionsToNegotiate: () => [
+      { uri: 'urn:ietf:params:rtp-hdrext:toffset', direction: 'sendrecv' },
+      { uri: ABS_CAPTURE_TIME_URI, direction: 'stopped' },
+    ],
+    setHeaderExtensionsToNegotiate: exts => { applied = exts; },
+  };
+  assert.equal(requestAbsCaptureTime(chrome), true);
+  assert.deepEqual(applied.map(e => [e.uri, e.direction]), [
+    ['urn:ietf:params:rtp-hdrext:toffset', 'sendrecv'],
+    [ABS_CAPTURE_TIME_URI, 'recvonly'],
+  ]);
+
+  // Sudah aktif → tidak di-set ulang.
+  applied = null;
+  assert.equal(requestAbsCaptureTime({ ...chrome, getHeaderExtensionsToNegotiate: () => [{ uri: ABS_CAPTURE_TIME_URI, direction: 'sendrecv' }] }), true);
+  assert.equal(applied, null);
+
+  // Browser tanpa extension itu di daftar → false.
+  assert.equal(requestAbsCaptureTime({ ...chrome, getHeaderExtensionsToNegotiate: () => [] }), false);
+
+  // set melempar (arah ditolak) → false, sesi tidak boleh gagal karenanya.
+  assert.equal(requestAbsCaptureTime({ ...chrome, setHeaderExtensionsToNegotiate: () => { throw new Error('InvalidModificationError'); } }), false);
+});

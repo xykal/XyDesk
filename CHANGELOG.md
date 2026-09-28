@@ -163,6 +163,11 @@ Kebijakan rilis:
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
 
+## [6.8.6] - 2026-09-28
+
+- **Latensi mulai diukur, bukan diklaim.** Panel Statistik web mendapat bagian **Latensi**: per frame lewat `requestVideoFrameCallback` — terima→tampil p50/p95/max, jarak frame p95. **Host** menstempel waktu capture ke tiap paket video (RTP header extension `abs-capture-time`, `host/src/abs_capture_time.rs`) dan web memintanya dinegosiasi; di Chrome/Edge baris latensi menjadi **"Layar ke layar"** terukur langsung (capture DXGI → tampil). Tanpa itu, tampil "Perkiraan (tanpa encode PC)" = RTT/2 + terima→tampil, dilabeli jujur sebagai batas bawah. Tombol **Unduh laporan latensi** menghasilkan JSON `xydesk-latency-report/1` untuk dilampirkan ke laporan lag. APK: panel sesi menampilkan **Buffer video** dan **Decode / frame**. Client/host lama tidak terpengaruh (extension hanya dikirim bila dinegosiasi). Verifikasi: 8 unit + loopback produksi (paket RTP membawa NTP capture yang cocok jam), 209 test host lulus, clippy/fmt bersih; web 7 test probe + 42 rtc, `tsc -b` bersih.
+- Root repo dirapikan: bahan artikel → `docs/articles/`, diagnosis/ringkasan → `docs/reports/`, `CONTROL_MAPPING_PROFILE.md` & `GUEST_SESSION_COUNTDOWN.md` → `docs/`; item HANDOFF watchdog no-frame yang sudah selesai sejak lama ditutup. Rincian: `docs/LATENCY.md` §2a–2b.
+
 ## [6.8.5] - 2026-09-13
 
 > Build 59. Semua tombol admin nyata — ban/role/revoke/kick/terminate/purge/logs Hibernation+storage, gada dummy.
