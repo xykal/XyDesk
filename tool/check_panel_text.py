@@ -28,10 +28,13 @@ from pathlib import Path
 
 # Teks yang HARUS utuh di dalam EXE. Sengaja memuat tanda baca non-ASCII:
 # itulah bagian yang paling mudah rusak karena codepage.
+# Diperbarui 28 Sep 2026: tiga teks lama (header/footer panel pra-rounded)
+# sudah tidak ada di main.cpp sejak sesi UI 27 Sep, gate ini merah sejak itu.
+# Setiap entri di sini WAJIB ada persis di packaging/native-host/main.cpp.
 EXPECTED = (
-    "Panel host Windows · tanpa terminal",
-    "Tutup = sembunyi ke tray, host tetap jalan. Dobel-klik judul = perbesar.",
-    "Tab pindah tombol · Enter menjalankan · Esc menyembunyikan.",
+    "X menyembunyikan ke tray · Tab untuk navigasi · Enter untuk memilih",
+    "Standby — sesi lain akun ini memegang host",
+    "Proses host dimulai — menunggu status engine",
     "XyDesk Host — klik kanan untuk kontrol",
     "Menyalakan host…",
     "Host aktif sebagai user Windows ini",
