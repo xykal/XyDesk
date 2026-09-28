@@ -282,10 +282,11 @@ kerja apa.** Aturannya:
 
 Sebelum pamit:
 
-0. **Tutup sesimu di `docs/project/AGENT_BOARD.md`**: pindahkan baris sesimu dari
-   *Sesi aktif* dan *Antrean izin push* ke *Riwayat sesi* dengan status
-   `SELESAI` + tautan run CI. Riwayat tidak dihapus — itu jejak bukti.
-   Kalau pekerjaan belum tuntas, tulis ulang klaim (status `LAGI KERJA`
+0. **Tutup sesimu di `docs/project/AGENT_BOARD.md`**: hapus baris sesimu dari
+   *Sesi aktif*; baris *Antrean izin push* diberi status `SELESAI` + tautan
+   run CI, lalu dipindah ke `docs/archive/AGENT_BOARD-2026-09.md` (arsip
+   berjalan). Hasil kerja dicatat di `CHANGELOG.md` `[Belum terbit]` — itu
+   jejak buktinya, bukan papan. Kalau pekerjaan belum tuntas, tulis ulang klaim (status `LAGI KERJA`
    dengan catatan apa yang tersisa) atau serahkan ke `docs/project/HANDOFF.md`.
    **Jangan pamit dengan papan masih menyatakan kamu sedang kerja.**
 1. Tulis **laporan akhir sesi** ke operator (di chat, bukan ke file
@@ -299,7 +300,8 @@ Sebelum pamit:
 6. Temuan di luar scope (untuk sesi/role lain), kalau ada — dan ini TIDAK
    cukup hanya diucapkan di chat: **tulis ke `docs/project/HANDOFF.md`** (tambahkan di
    bagian role tujuan, ikut di-commit bersama kerjaanmu). Item milikmu yang
-   selesai dipindahkan ke bagian "Selesai" di file yang sama.
+   selesai **dihapus** dari HANDOFF (buktinya ada di CHANGELOG), bukan
+   ditandai `[x]` dan dibiarkan menumpuk.
 
 Laporan yang jujur tapi hasilnya belum sempurna **lebih dihargai** daripada
 laporan mulus yang ternyata bohong.

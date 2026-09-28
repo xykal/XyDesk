@@ -1,0 +1,2249 @@
+# HANDOFF — Arsip sampai 28 Sep 2026 (beku)
+
+Log pengiriman per sesi dan item yang sudah selesai. Tidak untuk ditambah.
+
+## Log sesi (terbaru di atas)
+
+## 28 Sep 2026 — latency harness client (web + Flutter) + rapikan root repo
+
+Web `latency_probe.ts`: per frame lewat `requestVideoFrameCallback`,
+receive→display p50/p95/max, capture→display bila host suatu saat mengirim
+abs-capture-time, estimasi glass-to-glass = RTT/2 + receive→display dengan
+label **lower-bound** (belum termasuk capture/encode host — tidak disamarkan
+jadi "latency"). Panel Statistik → bagian "Latensi" + tombol unduh laporan
+JSON (`xydesk-latency-report/1`). Flutter: `SessionStats.jitterBufferMs` /
+`decodeMs` dari delta `jitterBufferDelay` / `totalDecodeTime`, tampil di
+panel sesi; helper `averageDeltaMs` diuji (`test/webrtc/session_stats_timing_test.dart`).
+Web: `tsc -b` bersih, `latency_probe.test.js` 7/7; 4 test lama gagal di Node 20
+karena import `.ts` langsung (butuh Node ≥ 22.6 seperti CI) — bukan regresi.
+Dart **belum dikompilasi** di sesi ini (tanpa toolchain) — verifikasi lewat
+`build-apk-only.yml`. Root repo: 7 dokumen dipindah ke `docs/articles/`,
+`docs/reports/`, `docs/`; rujukan di HANDOFF/AGENT_BOARD diperbarui.
+**Host (lanjutan sesi yang sama):** `host/src/abs_capture_time.rs` — RTP
+header extension abs-capture-time (NTP 64-bit dari `captured_at`), didaftarkan
+di `Session::new`, disisipkan di `video::tulis_frame` lewat
+`write_sample_with_extensions`. Web `requestAbsCaptureTime` mengaktifkan
+penawaran di Chrome sebelum offer. Loopback produksi diperluas: client
+menawarkan extension, SDP jawaban wajib memuatnya, NTP dibaca dari paket RTP
+nyata. Diverifikasi di Linux: `cargo test` 209 lulus, clippy bersih. Windows
+(DXGI nyata) tetap lewat `prepare-host-windows.yml`. Untuk role Client
+Flutter: `flutter_webrtc` belum mengekspos `captureTime` per frame, jadi APK
+tetap memakai jitterBuffer/decode saja; kalau mau paritas, jalannya lewat
+`RTCVideoRenderer` native (Android `VideoSink` → `VideoFrame.timestampNs`),
+bukan Dart.
+
+
+## 27 Sep 2026 — rounded host workspace SELESAI, 655ef35
+
+Operator reference adapted for shape/layout only: detached narrow sidebar, rounded workspace/cards, consistent headings, responsive embedded forms. Colours/icons retained; header-only utilities and compact pairing maintained. Prepare Windows **36320913038 SUCCESS**, NSIS **36321438591 SUCCESS/PASS**. Seven real native pages checked at 1100×720 and 900×640; installer/ZIP/hashes/interactive screenshot preview in `deliverables/XyDesk-rounded-655ef35/`. QA: `docs/qa/rounded-host-2026-09-27.md`. Source engine/reconnect/input/bitrate/coordination and web unchanged; live web remains b589421. Unsigned candidate; physical high-DPI/HP/OAuth acceptance remains open.
+
+
+## 27 Sep 2026 — reconnect lifecycle + floating rail delivered
+
+Native `154eb04` (tag `reconnect-host-154eb04`): fix late old capture cleanup disarming new session; per-pump lease and cancellable silent frame bridge. This narrowly supersedes frozen-host scope for the user's reconnect bug; no bitrate/codec/input/coordination tuning. Prepare Host **36317145146 SUCCESS**, NSIS **36317585187 PASS**, installer in `deliverables/XyDesk-reconnect-154eb04/`. Must update/restart installed host. Web `b589421` live: hide only rail; independent keyboard/mapping/editor, dark orderly right rail, actual 0–100% keyboard background alpha. **36317194424 SUCCESS**, 12 browser scenarios/no errors, live hashes match CI. Details/boundaries: `docs/qa/reconnect-rail-2026-09-27.md`. User's physical freeze not directly reproduced; unsigned test candidate/high-DPI caveat remain. Supersedes earlier delivered versions below.
+
+
+## 27 Sep 2026 — UI follow-up delivered: header-only host utilities + themed web
+
+Native `d8fc018`: Profile/Help/Settings only in header, embedded pages retained. Prepare Windows **36311476611 success**, NSIS **36311903771 success/PASS**, new unsigned installer/ZIP in workspace `deliverables/XyDesk-host-ui-d8fc018/`. Web `c49c95c`: original dark session palette, persisted keyboard background transparency, continuous phone/PC/tablet loading morph without device ID; reduced-motion fallback. **36311787247 success**, 11 browser scenarios, zero errors, live JS/CSS byte hashes verified. Details: `docs/qa/ui-followup-2026-09-27.md`. Frozen streaming/input/coordination unchanged; no physical acceptance/high-DPI fix/stable promotion claimed. Supersedes native 9503314 and web 96b3bfd delivery status below.
+
+
+## 27 Sep 2026 — web session UI LIVE, 96b3bfd
+
+Right full-height five-category drawer, independently hidden rail/mapped controls, transparent white-outline input controls, full-viewport mobile menu and functional short transitions deployed. Actions [36310218985](https://github.com/xykal/XyDesk/actions/runs/36310218985) **success**, 10 browser scenarios / zero page errors; live JS/CSS hashes match CI. Evidence/limitations: `docs/qa/session-ui-2026-09-27.md`. Streaming/input/adaptive/coordination frozen and unchanged. Native remains unsigned 9503314 with known high-DPI caveat; real HP/host/OAuth acceptance not claimed. This entry supersedes older web/menu status below.
+
+
+## 27 Sep 2026 — native panel/package SELESAI, kandidat 1b873c3
+
+Source executable `1b873c3a615b0cbad43f8f76a0499626d9ce4700`. Release portable [36301838178](https://github.com/xykal/XyDesk/actions/runs/36301838178) dan NSIS [36302323685](https://github.com/xykal/XyDesk/actions/runs/36302323685) **success**. Integrasi launcher/WinHTTP dengan engine nyata di loopback, layout/parser/contract, regresi Windows/Linux dan install/reinstall/uninstall lolos. Detail/hash/artifact: `docs/qa/native-panel-settings-2026-09-27.md`. Workspace deliverables: `XyDesk-native-1b873c3/` (EXE, portable ZIP, checksum, laporan, panduan).
+
+Sidebar collapse, compact pairing + ID-only link, logo asli, profil Windows/help, bitrate live/password persisten sudah ada. Bitrate bukan preferensi persisten; login Google tetap web; analog host belum ada. Kandidat unsigned, tidak ada MSI/APK baru atau stable promotion. Belum mengukur performa pada RDP/HP pengguna. Web production tetap `19fcd58`. Catatan lama “native belum diubah” adalah status historis batch web dan sudah digantikan status ini.
+
+
+## 27 Sep 2026 — native settings implemented; preparing candidate package
+
+Operator “gas” authorizes this native continuation. Baseline `d4ef781` passed [Validate Web Host 36301577792](https://github.com/xykal/XyDesk/actions/runs/36301577792), including actual C++ private launcher/WinHTTP requests to an isolated engine, plus Linux geometry/bootstrap tests and Windows screenshots. Sidebar collapse, authentic logo, compact pairing + ID-only link, Windows profile/help, live bitrate and persistent password dialog implemented. Small link/icon/readiness corrections and release-mode packaging gates follow. See `docs/qa/native-panel-settings-2026-09-27.md`. Web remains executable `19fcd58`; no new stable release, APK, or analog gamepad driver. Package must not be called available before Prepare Host Windows/NSIS succeeds.
+
+
+## 27 Sep 2026 — batch web low-bandwidth LIVE; native masih terbuka
+
+Izin operator “gas”. Web executable `19fcd583c58c52984acfc10ae43ec0e66989d39f`, Actions [36300640365](https://github.com/xykal/XyDesk/actions/runs/36300640365) sukses unit/build/8 browser scenarios/deploy. Production `/assets/index-BeG1LObb.js` diverifikasi via curl. Detail/batas bukti: `docs/qa/session-controls-low-bandwidth-2026-09-27.md`.
+
+Auto 1 Mbps, manual 1/2/4 Mbps, antrean absolute pointer lebih pendek dengan urutan klik tetap reliable; rail hide/show nyata, overlay netral, menu dalam header, keyboard HP composer, ID-only deep link ke session/password. Belum membuktikan latency nyata pada HP/jaringan pengguna. Native Windows/profile/settings/password/sidebar/link **belum diubah**, tidak ada paket host baru. Analog host tetap unsupported. Temuan IPC privat dan langkah implementasi aman dicatat dalam QA; jangan membuka token lewat heartbeat/log.
+
+
+Papan serah-terima antar sesi agent. **Setiap sesi WAJIB**:
+1. Di awal: baca bagian role-mu, kerjakan yang bisa kamu kerjakan.
+2. Di akhir: tambahkan temuan baru untuk role lain, dan pindahkan item yang
+   kamu selesaikan ke bagian "Selesai" (JANGAN dihapus — sejarah itu bukti).
+
+> File ini mencatat **temuan lintas role**. Untuk keadaan *real-time* —
+> siapa lagi mengunci area apa, push siapa yang sudah diizinkan — baca
+> `AGENT_BOARD.md`, bukan percakapan lama.
+
+> ⚠️ **Aturan operator (3 Sep 2026) — berlaku SEMUA role.** Versi & berita adalah
+> keputusan operator (bukan agent). Tiap agent menulis bahan artikel untuk
+> kerjanya sendiri saat sesi ditutup; role CI/Release menyatukannya menjadi
+> SATU artikel saat rilis. Rilis hanya diajukan bila semua sesi area rilis
+> sudah `SELESAI` (detail: `AGENT_BOARD.md` → "Aturan operator").
+>
+> ⚠️ **Push tidak memicu actions.** Semua build/compile/deploy/rilis dilakukan
+> manual oleh role CI/Release (Cakra) via `workflow_dispatch` setelah izin
+> operator. Agent lain cukup push kode + dokumen. **Sejak 5 Sep 2026
+> tidak ada workflow yang berjalan karena push**: gerbang audit izin
+> `verify-push-auth.yml` dihapus operator sendiri (commit `b4ce4a4`), jadi
+> penanda `Izin:` di body commit kini murni kebiasaan tim untuk jejak
+> audit, bukan sesuatu yang diperiksa mesin.
+
+Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>`
+
+---
+
+
+## Untuk: Client Flutter (selesai)
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06; **ditutup 2026-09-28 oleh sesi
+  latency-harness** — sudah ada di kode: `_noFrameWatchdog` 10 detik setelah
+  `Connected` di `lib/webrtc/rtc_service.dart` mengirim `noFrameWarning: true`
+  bila `hasVideo` masih false; sesi tidak diruntuhkan. Item ini tercatat
+  terbuka padahal sudah selesai — contoh doc rot yang bikin agent kerja
+  dua kali.) — **Pendeteksi "sudah connected tapi belum ada frame
+  video"** di `lib/webrtc/rtc_service.dart` — watchdog yang ada sekarang
+  dimatikan begitu `RTCPeerConnectionStateConnected` tiba
+  (`_emit` membatalkan `_watchdog` untuk semua fase selain pairing/negotiating),
+  padahal fase itu dipicu oleh transport ICE/DTLS, BUKAN oleh frame video
+  pertama. Kalau track video tidak pernah sampai, pengguna menatap layar hitam
+  yang mengklaim tersambung dan tidak ada batas waktunya. Repo ini pernah kena
+  persis bug ini (README: "koneksi sukses tapi layar kosong") tapi jaringnya
+  hanya di sisi host (`host/tests/loopback.rs`). Bahan sudah ada:
+  `SessionStats.hasVideo` dan `resolutionLabel` = 'Belum ada gambar' — tinggal
+  dijadikan pemicu, bukan cuma label. Usulan: setelah `connected`, timer 10
+  detik; bila `hasVideo` masih false, tampilkan banner jujur + tawarkan
+  `selectDisplay`/retry, JANGAN meruntuhkan sesi (transport-nya hidup, bisa jadi
+  hanya monitor sumbernya salah). **Tidak dikerjakan di sesi audit ini karena
+  toolchain Flutter tidak ada di lingkungannya** — perubahan Dart di sana hanya
+  bisa diverifikasi lewat CI, dan menambah logika timer tanpa bisa menjalankan
+  `flutter test` lebih berisiko daripada meninggalkannya tercatat.
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **Verifikasi kompilator untuk
+  perubahan Dart sesi audit 6 Sep — TERPENUHI lewat CI.** Sesi itu mengubah
+  `lib/main.dart`, `lib/core/pip_controller.dart`,
+  `lib/webrtc/signaling_client.dart`, `lib/webrtc/rtc_service.dart` dan menambah
+  `test/core/bootstrap_order_test.dart` tanpa bisa mengompilasi di
+  lingkungannya (tidak ada Flutter), jadi awalnya hanya diverifikasi sintaks
+  lewat Dart SDK 3.13.3 dan logika test-nya dijalankan ulang sebagai skrip.
+  Run Build `34044474570` (Flutter 3.44.9 / Dart 3.12.2, sama dengan runner)
+  menutup sisanya: job *Analisis Statis (Flutter)* hijau penuh termasuk
+  `Cek format`, `Analisis statis tanpa toleransi diagnostic`
+  (`--fatal-infos --fatal-warnings`), `Uji unit Dart` — jadi
+  `bootstrap_order_test.dart` benar-benar dijalankan Flutter, bukan cuma
+  disimulasikan — plus `Verifikasi inventaris lisensi`, `Audit ilustrasi
+  transparan`, dan `Verifikasi aturan seamless`. `APK Android per ABI` juga
+  hijau, jadi APK berisi perbaikan boot sudah terbangun. Pelajaran yang tetap
+  berlaku: CI memakai Dart 3.12.2 sedangkan SDK pemeriksa di sandbox 3.13.3 dan
+  formatter-nya berbeda — JANGAN menjalankan `dart format` dari SDK lain ke
+  `lib/` (4 dari 8 berkas yang tidak tersentuh ikut "berubah" di 3.13.3).
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **Dikerjakan Galih atas arahan
+  operator di chat (lintas area; aturan 1 sesi = 1 role dilonggarkan untuk ini):**
+  `pair` sekarang mengirim `name` + `platform`. Berkas:
+  `lib/webrtc/signaling_client.dart` (field `name`/`platform` di `SignalMessage`
+  + `SignalingClient.selfName`/`selfPlatform`) dan
+  `lib/features/connect/connect_page.dart` (label = nama akun bila sudah login,
+  kalau tidak label sistem dari `dart:io Platform`). Sisa tugas role Client
+  Flutter: `flutter analyze` + `flutter test` (toolchain Flutter TIDAK ada di
+  lingkungan Galih, jadi kode itu belum diperiksa kompilator sama sekali —
+  anggap belum terverifikasi) dan uji pairing nyata: host harus menampilkan
+  "Laras (HP · Android)" di chip topbar dan kartu Sesi aktif.
+  Bentuk pesan yang dikirim: `{"type":"pair","pin":"…","name":"Redmi Note 12",
+  "platform":"android"}`. Sisi host sudah menanganinya (`Msg.name`/`Msg.platform`
+  → `PairedPeers::set_label` → `clientName`/`clientPlatform` di `GET /status`),
+  memotong 48 karakter, dan membersihkannya bersama `revoke`; tidak ada keputusan
+  keamanan yang bergantung padanya. `platform` bebas besar-kecil (host
+  menormalkan); kalau tidak dikirim, host menampilkan ID pairing saja.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **PEMBERITAHUAN PENTING (status:
+  sudah dipasang di kode, butuh verifikasi alat).** `verify_password` host kini
+  PEKA-KASUS dan `PW_CHARS` campuran besar/kecil. Field kata sandi
+  `connect_page.dart` sudah `TextCapitalization.none` + `autocorrect: false` +
+  `enableSuggestions: false`. Yang perlu dicek role Client: (1) apakah ada field
+  password LAIN (hubungkan cepat, mode host, setelan) yang belum ikut; (2)
+  jangan pernah menambah formatter yang meng-upcase input pengguna; (3) pesan
+  galat penolakan pairing sudah menyebut besar/kecil — sesuaikan bila ada L10n.
+  Yang wajib ikut diberitakan (bahan artikel, aturan papan #3): HP dengan APK
+  LAMA + password baru yang campuran bisa DITOLAK pairingnya. Host melonggarkan
+  verifikasinya hanya untuk password yang tidak punya satu pun huruf kecil, dan
+  pemulihannya `--new-password` di PC lalu pairing ulang.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **0x06 TEXT belum dibatasi
+  panjangnya di client.** `InputCodec.text()` (lib/webrtc/input_codec.dart)
+  mengirim seluruh tempel sebagai SATU pesan, berbeda dari `clipboardSet()`
+  yang memotong di 64 KiB. Host sekarang memotong di 4.096 unit UTF-16 per
+  pesan — sisanya DIBUANG, tidak dipecah otomatis. Kalau mau menempel teks
+  panjang bisa diketik, pecah di sisi client menjadi beberapa pesan TEXT
+  (±2.000 karakter sudah aman), atau kirim sebagai CLIPBOARD_SET lalu Ctrl+V.
+  **SELESAI 2026-09-09 (sesi FIXPACK):** `InputCodec.textChunked()` memecah
+  per 2.000 unit UTF-16 tanpa membelah surrogate pair; `SessionTransport.
+  sendText()` + pemanggil IME memakainya. Dikunci 4 uji (`flutter test`
+  68/68, `dart analyze` bersih, toolchain 3.44.9 persis CI).
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Parity APK: total & sisa
+  waktu sesi** (permintaan operator, "yang request kemarin"). → **SELESAI 3 Sep 2026 (Laras)**.
+  Tab Sesi di panel kontrol kini menampilkan card countdown untuk sesi tamu:
+  "TOTAL: 2j 00m 00d" dan "SISA: Xj Xm Xd". 3 state visual: normal (neutral),
+  critical ≤5 menit (orange + peringatan "Segera simpan pekerjaanmu"), expired
+  (merah + "Sesi tamu telah berakhir"). Countdown hanya muncul untuk tamu
+  (`authProvider.isGuest`), user login biasa hanya lihat durasi.
+  File: `session_page.dart` (konstanta `_guestSessionTotal = 7200`, getter
+  `_isGuestSession`), `session_panels.dart` (countdown card di `_SessionPanel`).
+  Catatan: /billing web durasi custom + stok belum diimplementasikan di APK.
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Control Mapping system**:
+  Halaman Control Mapping tersimpan per akun (scoped). Profil default: Gaming
+  (WASD + mouse, FPS style) dan Desktop (Ctrl+C/V/X/Z, produktivitas). User
+  bisa buat, edit, hapus, dan set default profil. File: `control_mapping.dart`,
+  `control_mapping_page.dart`. Link dari Account page → "Control Mapping".
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Virtual keyboard responsif**:
+  Tombol lebih besar (44px), animasi press lebih smooth (easeOutCubic 60ms,
+  scale 0.92), visual feedback lebih jelas (border 1.5px, accent glow, shadow
+  hilang saat ditekan). Enak dipencet seperti keyboard HP.
+  File: `virtual_keyboard.dart` (_PressableKey).
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Profile foto dari Google**:
+  `ProfileAvatar` kini menampilkan foto dari akun Google (pictureUrl) sebagai
+  prioritas tertinggi, lalu preset DiceBear, lalu URL custom, lalu fallback
+  ke inisial. Dipakai di topbar (`TopbarAvatarButton`) dan account page
+  (`_ProfileHero`). File: `profile_avatar.dart`, `account_page.dart`, `app.dart`.
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Guest identity (nama random
+  manusia)**: Tamu kini mendapat nama manusia Indonesia yang natural (contoh:
+  "Aditya Pratama", "Kirana Wijaya") bukan "tamu-xxxx". 64 nama depan × 31
+  nama belakang = 1984 kombinasi. Nama tersimpan selama sesi tamu berlangsung.
+  File: `guest_identity.dart`, `store.dart` (signInGuest & restore).
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Bahan artikel rilis Client**:
+  Bahan artikel untuk semua fitur yang sudah dikerjakan di sesi ini (8 fitur)
+  sudah ditulis dengan gaya NEWS_STYLE.md. File: `docs/articles/BAHAN_ARTIKEL_CLIENT.md`.
+  Tinggal disatukan dengan bahan dari agent lain (Desktop Shell, Web, Backend)
+  saat rilis. Screenshot masih placeholder — perlu verifikasi di perangkat
+  Android nyata untuk ambil screenshot asli dari build rilis.
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Workflow build APK only**:
+  Workflow baru `.github/workflows/build-apk-only.yml` untuk build APK Android
+  saja tanpa release/tag. Bisa di-trigger manual via workflow_dispatch dengan
+  pilihan build type (release/debug). APK di-upload sebagai artifact (retensi 7 hari).
+  Tidak mengubah workflow build/release yang sudah ada. File: `build-apk-only.yml`.
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Ikon Billing di topbar**:
+  tombol baru di bar atas membuka layar Langganan; aset
+  `assets/img/nav/billing.png` (+ `_off.png`) transparan terpasang, dan
+  `BillingPage` kini terlihat dari `app.dart`. Yang tersisa: verifikasi
+  tampil & navigasi di build Android nyata (lihat item ikon nav di bawah).
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Isolasi data lokal per
+  akun**: daftar perangkat, riwayat sesi, dan daftar perangkat-terakhir kini
+  disimpan di bawah ruang lingkup akun (`devices:$scope`, `history:$scope`,
+  `connect_recents:$scope`; tamu = `guest`). Dikunci dengan
+  `test/devices/account_scope_test.dart` (hijau). Perubahan ini
+  **security-relevant** — dari sisi lokal tidak bocor antar akun; belum
+  diverifikasi alur logout→login berganti akun di perangkat nyata.
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **Changelog lengkap di
+  halaman pembaruan**: "Pusat Update" kini menampilkan "Catatan rilis" dari
+  body GitHub Release resmi (`CHANGELOG.md`), bukan hanya ringkasan
+  manifest. Parser markdown dikunci dengan
+  `test/notifications/changelog_parse_test.dart` (hijau). Belum diverifikasi
+  terhadap format release repo nyata di perangkat.
+
+- [x] (Danu - XySpace Team, 2026-09-23; dikerjakan Laras, sesi
+  RELAYCLIENT) — **Paritas relay di client Flutter sudah selesai.** Sisa yang
+  dulu menunggu role Client Flutter: `lib/webrtc/rtc_service.dart` masih
+  `catch (_) => const []` untuk kredensial TURN, jadi relay yang tidak ada
+  tidak terlihat sama sekali di APK. Sekarang: `_fetchRelay()` membaca
+  status + `reason` + `hint` dari `/turn-ice`, hasilnya dibawa `TurnRelay`
+  dan ikut di `SessionStats`; panel sesi menambah baris "Relay TURN" dan
+  banner "belum ada gambar" menyebut relay bila itu sebab yang paling
+  mungkin. Uji: `test/webrtc/relay_test.dart` (9 kasus), `flutter analyze`
+  bersih, `flutter test` 77/77 memakai Flutter 3.44.9 (sama dengan CI).
+  **Batas jujur:** tidak diuji di HP nyata; perilaku hanya terbukti lewat
+  uji unit + analisis statis, bukan sesi sungguhan ke host.
+
+## Untuk: Desktop Shell (selesai)
+
+- [x] (Operator - XyDesk Team, 2026-09-23, sesi WINPANEL) — **Jendela panel
+  digambar sendiri, dan shell Tauri/Electron dihapus.** Perintah pemilik di
+  chat: sudut jendela harus custom (bukan pembulatan bawaan Windows), dan
+  `desktop/` (Tauri + Electron) dihapus — cukup panel native C++. Panel kini
+  `WS_POPUP` berlapis dengan `UpdateLayeredWindow`: caption/border Windows
+  dilepas, judul + tombol tutup digambar sendiri, sudut busur radius 16, tepi
+  dihaluskan (bukan `SetWindowRgn`), bayangan sendiri, dan seluruh isi panel
+  (kartu status, kartu identitas, lima tombol) digambar manual dengan hover,
+  navigasi Tab/Enter/Esc, serta notifikasi tindakan. Tata letak pindah ke
+  `packaging/native-host/layout.h` supaya gambar, hit-test, urutan Tab, dan
+  uji memakai angka yang sama. Bukti: 79 pemeriksaan tata letak tanpa Windows,
+  kompilasi mingw bersih, 8 tangkapan layar Wine (hover/klik/flash/restart/
+  close-to-tray), `--panel-probe` + `--panel-snapshot` + `tool/check_panel_shape.py`
+  lulus (radius terukur 14,2–14,8 px, piksel cakupan sebagian di tepi busur,
+  bayangan memudar habis). **Batas jujur:** Wine bukan Windows — tray, Alt+Tab,
+  dan perilaku caption harus diuji di mesin Windows asli. **Gerbang CI-nya
+  sudah hijau di runner:** Build `35900760308` @ `2358a70` 11/11 SUCCESS —
+  `Uji tata letak panel native` (Linux, 79 pemeriksaan), `Kompilasi panel
+  native dan periksa bentuk jendelanya` (MSVC + probe + snapshot + pemeriksa
+  piksel; radius terukur 14,2–14,8 px, sama dengan hasil Wine), dan
+  `Analisis Statis (Flutter)` dengan inventaris lisensi 463 komponen. Tiga
+  kegagalan run pertama (`35898918240`: makro min/max MSVC, inventaris lisensi
+  usang, PowerShell tidak menunggu proses GUI) diperbaiki di `3dda9b6` dan
+  `2358a70`. Bukti lengkap: `docs/qa/native-ui-windows-2026-09-23.md`.
+
+- [x] (Operator - XyDesk Team, 2026-09-23) — **`Deploy Signaling` lewat GitHub
+  MERAH sejak 22 Sep — bukan bug kode.** Run `35771592422` (22 Sep) dan
+  `35911873731` (23 Sep) berhenti di langkah "Deploy ke Cloudflare" dengan
+  anotasi `RESEND_API_KEY belum diatur di GitHub Secrets/Variables`; langkah
+  gerbang allocate TURN yang baru ditambahkan karena itu ter-skip. Secret-nya
+  ada di daftar GitHub (diperbarui 22 Sep 16:36Z) tetapi kosong saat dibaca
+  runner, dan kunci Resend di vault kerja menjawab `403` ketika diuji 23 Sep —
+  kunci lamanya kemungkinan sudah dicabut. Tindakan pemilik: buat kunci Resend
+  baru → isi ulang secret `RESEND_API_KEY` → dispatch `Deploy Signaling` supaya
+  gerbang allocate TURN ikut berjalan di CI. Sementara itu deploy worker
+  dilakukan lewat jalur cepat #5 (API Cloudflare, kode dari `a1090e3`, versi
+  `ce199fe5…`) dengan verifikasi pasca-deploy dicatat di
+  `docs/qa/relay-turn-native-2026-09-23.md`.
+  **DITUTUP 2026-09-25 (sesi SESI-20260925-OPERATOR-PULIHKAN).** Akar
+  sebenarnya lebih dalam dari secret kosong: repo sudah pindah akun
+  (`xykalnotkel` → `xykal`, commit `da5dca9`), jadi daftar secret & variable
+  GitHub di akun baru benar-benar kosong (0 secret, 0 variable, 0 run).
+  Dipulihkan: 12 secret + 3 variable dipasang ulang (sealed libsodium via API),
+  kunci Resend baru dari vault pemilik (yang lama terbukti dicabut — `403`;
+  yang baru diverifikasi `200` + domain `mail.xystudio.my.id` verified), secret
+  Worker `RESEND_API_KEY` di `xydesk-signaling` + `xydesk-news` ikut diperbarui
+  via wrangler, dan `Deploy Signaling` di-dispatch sampai hijau — gerbang
+  allocate TURN akhirnya jalan di CI untuk pertama kalinya.
+
+- [x] (dari Operator - XyDesk Team, 2026-09-09) — **Migrasi ke Tauri v2 + Penanaman Driver Display, Audio, & Mic.**
+  Shell desktop sekarang berjalan di atas Tauri v2 (Rust + native WebView2)
+  dengan direktori `desktop/src-tauri/`. Frontend Next.js dihubungkan lewat
+  `desktop/app/bridge.ts` yang mengisi `window.xydesk` secara otomatis.
+  Driver Display (IddSampleDriver) dan Audio & Virtual Mic (VB-CABLE) kini
+  ditanam langsung di installer `{app}\drivers\` dan dipasang silent saat setup.
+  RAM shell turun ke ~25–40 MB, ukuran installer menjadi ~15–20 MB.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **Topbar sekarang = baris judul
+  Windows; jangan dilucuti lagi.** `desktop/electron/main.cjs` memakai
+  `titleBarStyle: 'hidden'` + `titleBarOverlay` sewarna `--bg`, `.topbar`
+  ber-`-webkit-app-region: drag` dengan `padding-right: 150px` khusus
+  `<html class="electron">` (dideduksi dari `info.platform === 'win32'`).
+  Tiga hal yang wajib ikut dijaga kalau topbar disentuh: (1) setiap elemen yang
+  bisa diklik di dalam topbar harus `no-drag`, (2) jangan balik ke
+  `frame: false` — snap layouts + tombol caption asli ikut hilang, (3) kalau
+  menambah baris di ATAS topbar (mis. banner peringatan), tombol caption
+  Windows tetap menempel di tepi atas jendela, jadi baris itu akan menutupinya
+  — banner semacam itu harus di bawah topbar (lihat `.demo-banner`). Konstanta
+  150px = lebar 3 tombol caption; cek ulang kalau Electron di-upgrade.
+  **Status: dokumentasi aktif, bukan antrean kerja.** Aturan yang sama sudah
+  dipindah ke `docs/DESKTOP_SHELL.md` (§Aturan tata letak) supaya tidak hidup di
+  dua tempat.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Control API kini punya aksi
+  `video-bitrate` (field `bitrate_mbps`, 1–50) dan `/status` melaporkan
+  `targetBitrateBps`, `video.latencyMs` (EMA pipeline host),
+  `video.latencyMaxMs`, dan `video.encoder` (`nvenc`/`openh264`/
+  `test-pattern`). Tambahkan kontrol di panel (input Mbps + tampilkan nilai
+  aktif, dan kalau mau, tampilkan latensi + encoder) — endpoint-nya sudah
+  jadi & teruji, UI-nya belum.
+  **SELESAI (sesi SESI-20260903-GALIH-HOST-UIUX):** kartu "Tampilan & kualitas" di
+  Pengaturan kini punya chip 4/8/16/24 Mbps + input kustom 1–60 + nilai aktif dari
+  `targetBitrateBps`, plus perkiraan MB/jam; Home menampilkan `video.encoder`,
+  `latencyMs`, `latencyMaxMs`. `ActionRequest` ikut diberi `alias =
+  "bitrateMbps"` (body /action snake_case, /status camelCase) + 1 test.
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — **Rilis 6.4.0+27 TUNTAS.** Bump 4cbbc22 → Build `33728695280` 12/12 @ 4cbbc22 → Release `33729544852` 5/5 (tag v6.4.0, 8 aset, update.json build 27, OneSignal `e4f5574a`). Follow-up: Build `33730701921` (aset artikel) → deploy terjepit deploy manual Danu WEB8 (bundle tanpa aset) + cache CF menyimpan fallback SPA di path gambar → solusi cache-bust rename aset `8b1ebbd` → Build `33732158168` → deploy `33732896248` @ 8eb3ad5 → gambar 6.4.0 image/jpeg. Artikel **p-8f5aa26aa3bc** (id 73) live, top list, OG OK. Web live 6.4.0 terverifikasi (Sewa PC custom, Ingatkan saya, tombol lompat).
+
+## Untuk: CI / Release (selesai)
+
+- [x] (Cakra - XySpace Team, 2026-09-23, sesi INSTALLER) — **Installer native
+  (MSI + NSIS) akhirnya benar-benar terbentuk dari Build yang lulus.** Dua
+  perbaikan WiX sebelumnya hanya membuat *lint* hijau; belum ada satu paket pun
+  yang pernah diperiksa. Sekarang jalurnya dijalankan sungguhan: Build
+  `35894169582` @ `0bd310c` **11/11 job SUCCESS**, lalu `prepare-windows-installer.yml`
+  di-dispatch dengan `build_run_id=35894169582` → run `35895089978` **SUCCESS**
+  di semua langkah (validasi run/SHA, unduh artefak, verifikasi bundle,
+  `wix build` MSI, `makensis` NSIS, unggah artefak). Artefak
+  `XyDesk-Windows-x64-Installer` (id `10766851184`) diunduh lewat API dan
+  diperiksa dari byte-nya di lingkungan sesi: `XyDesk-x64.msi` (OLE MSI, WiX
+  Toolset 4.0.6.0, `Template x64;1033`, memuat `XyDesk.exe`, `xydesk-host.exe`,
+  kedua berkas lisensi, versi 6.8.5) dan `XyDesk-x64.exe` (PE32 NSIS 3.12);
+  berkas `.sha256` cocok dengan hash berkasnya. **Tidak ada GitHub Release**
+  (rilis/versi keputusan pemilik; versi tetap 6.8.5+59) dan **belum ada
+  instalasi di mesin Windows** — itu uji lapangan. Bukti + batas:
+  `docs/qa/installer-native-2026-09-23.md`. Artefak disimpan 30 hari.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — **VDISPLAY720 packaged** source691dd09, Windows35408521780 Linux168/Windows157 PASS; NSIS35408977237 PASS. Driver hash/catalog trust and -WhatIf verified, no actual driver install/capture. Deliverables/virtual720-691dd09 contains NSIS, hashes, proof and guide. No web/backend deploy/version bump. Physical RDP/session visibility remains open; never report lock accepted without runtime proof. `docs/qa/virtual720-2026-09-18.md`.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — **HOST-FINISH DELIVERED**: izin push/build/deploy dari user; final source56317a2 Windows35403913522 Linux164/Windows153 PASS + NSIS35404435326 PASS. Installer disiapkan di deliverables/host-finish-56317a2, source/checksum diverifikasi. Web runtime43fc35c live1d669576, unit76 + browser2viewport + asset/OAuth/bindings PASS; backend55cdda7c tetap. Instruksi NSIS lama ditemukan/disinkronkan sehingga paket43fc35c tidak diberikan sebagai paket final. Tidak version bump/tag/official release. `docs/qa/host-finish-2026-09-18.md`, package/production JSON.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — **HOST-FINISH**: user memberi izin push/build/deploy pada chat terakhir. Source auto16:9 supported/readback + audio/input perlu gate Prepare Host Windows lalu NSIS dari SHA sama, dan rollout web menjaga OAuth/bindings. Tidak mengeksekusi mode/driver/RDP pada PC user dari workspace. Selesai: Windows35403913522/NSIS35404435326, web1d669576. Bukti final di item HOST-FINISH DELIVERED.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — CONTROL-REFINE web-only disetujui lewat deploy_web dan live: source87427ae, Worker740345c3-356f-4f25-bc63-634c2ebe1401. Web70/build/hash/OAuth/binding/browser2viewport pairing-inline PASS. Backend55cdda7c dan installer37c5eea tidak diubah. Bukti `docs/qa/control-refine-production-2026-09-18.json`. User memakai Windows App/RD Client di HP (Android/iOS belum spesifik); setting resolusi RDP1920×1080 belum diterapkan. Perlu pilihan yang tersedia/screenshot Display dan stats video untuk diagnosis delay. Tidak menjanjikan tanpa pita di viewport non16:9 atau zero-lag.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — **LETTERBOX produksi selesai sesudah user gas menyetujui deploy backend+web.** Source37c5eea/checkoutd0b3d03; backend55cdda7c-a007-4bf4-9507-f8d6dee627b4 dan web8f093d6d-cf6b-45b8-800b-1240d7dcc21a.184backend+66web/SQLite/assets/auth/browser PASS; OAuth vars/bindings unchanged, secrets tidak diputar. Bukti `docs/qa/letterbox-production-2026-09-18.json`. Catatan belum-deploy pada paket/checkpoint sebelumnya adalah status historis. Tidak mengubah RDP/host pengguna, tidak login/menulis riwayat akun nyata, dan tidak membuktikan zero-lag/precision perangkat pengguna.
+
+- [x] (Operator - XyDesk Team, 2026-09-18) — **LETTERBOX-LATENCY Windows/NSIS disetujui lewat pilihan build_nsis dan selesai.** Source37c5eea; Windows35391667677 (Linux152/Windows141), NSIS35392306102 (builder7 + install/reinstall/uninstall) PASS. Artifact baru hash e48b8df7d56fe839cedf1c57a286122cee687f3eba0b82e5055aa2e828873c3c; bukti `docs/qa/letterbox-package-2026-09-18.json`. Bukan installer4a3e75a. **Deploy produksi tetap belum diizinkan/dilakukan**, web/backend baru belum aktif di situs live. Native cursor/RDP/Android manual serta per-frame geometry ACK belum terbukti. Build/Release umum dan version bump tidak didispatch.
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **Fix boot Android sudah
+  sampai ke pengguna lewat rilis 6.6.0.** Operator memilih nomornya di chat
+  ("Langsung rilis 6.6.0+33"), jadi aturan #1 terpenuhi — agent tidak memilih
+  versi. Rantainya: bump 7 berkas (`9643e07`, `tool/check_version.py` lulus) →
+  Build `34046673006` **12/12 hijau** → Release `34047162255` **5/5** → tag
+  `v6.6.0` menunjuk `9643e07` (SHA benar, pengawal tidak menolak) → 8 aset
+  termasuk `XyDesk-Android-arm64-v8a.apk` 38,5 MB + `armeabi-v7a` 31,3 MB →
+  `update.json` schema 2 build 33 dengan SHA-256 kedua APK. Deploy Web
+  `9643e07` sukses; bundle live `index-2y3GUrl3.js` memuat 6.6.0 dan nol
+  sisa 6.5.4. **Yang tetap terbuka: bukti boot di HP nyata** (lihat item Client
+  Flutter di atas) dan **artikel Berita 6.6.0 yang belum terbit** (lihat News).
+- [x] (dari Danu - XySpace Team, 2026-09-03, sesi WEB-ADMIN) — **INFO deploy
+  cepat Web (aturan #5):** mode founder kini kirim Google id_token
+  (`x-admin-google-token`) otomatis, tanpa tempel `ADMIN_TOKEN`. Build
+  produksi `index-DAHi_-aE.js`, `wrangler deploy` versi
+  `a3607022-4ca4-4bd8-828b-07f847857e0f`; verifikasi pasca-deploy: md5 live
+  == build `a428669f…`, content-type JS, `x-admin-google-token` + key
+  penyimpanan + fallback WEB10 + client ID produksi ada di bundle live.
+  Murni deploy cepat, bukan rilis.
+
+- [x] (dari Tara - XySpace Team, 2026-09-03, sesi TARA-NEWS-DEPLOY) — **INFO
+  deploy worker berita TUNTAS:** worker berita (`news/`) kini menerima
+  `x-admin-google-token` (jalur admin kedua; `x-admin-token` tetap sah).
+  **Sudah LIVE** — deploy cepat aturan #5: secret `GOOGLE_CLIENT_ID` +
+  `FOUNDER_EMAIL` terpasang, `wrangler deploy` versi
+  `11253cf5-cd17-495f-8546-135019a843e1`, verifikasi pasca-deploy tercatat
+  (CORS `X-Admin-Google-Token` live, `GET /api/news` OK, publish dgn token
+  sampah/tanpa token → 401). Tidak ada rilis/bump versi — murni deploy
+  worker.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03, sesi WEB-DEPLOY) — **INFO deploy
+  cepat Web (aturan #5):** fix WEB10 (fallback 404 slug changelog) sudah LIVE
+  di `app.xystudio.my.id`. Build produksi `index-CCHcbcu7.js` (client ID
+  `495336144977-…` produksi), `wrangler deploy` versi
+  `eca5ab16-45af-4ea0-835b-c88cfe437782`; verifikasi pasca-deploy tercatat:
+  md5 live == build `2de36d14…`, `content-type: text/javascript`, fallback
+  "Catatan rilis versi ini belum tersedia" + `ApiError` path ada di bundle.
+  Ini deploy cepat, bukan rilis — tidak ada artefak Build/rilis baru.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **Poin (2) DIKERJAKAN (Bhre,
+  3 Sep 2026):** `tool/check-host-windows.sh` kini `100755` di index
+  (`git update-index --chmod=+x`), jadi perintah yang didokumentasikan
+  `docs/CI.md` tidak lagi gagal `Permission denied` di klon baru. Saya sisir
+  juga sisa `tool/`: tidak ada skrip `.sh` lain yang kehilangan bit executable.
+  Poin (1) `host/Cargo.lock` sudah kamu sinkronkan sendiri — saya verifikasi
+  `xydesk-host = 6.4.0`, cocok dengan `Cargo.toml`. Temuan asli:
+  Dua hal kebersihan tooling yang
+  muncul saat audit host: (1) **`host/Cargo.lock` tertinggal** — masih mencatat
+  `xydesk-host 6.3.0` sejak bump versi 4cbbc22 menaikkan `Cargo.toml` ke 6.4.0;
+  kalau ada langkah rilis memakai `cargo build --locked`/`--frozen`, ia akan
+  gagal. Sudah kusinkronkan di sesi ini (hanya baris versi itu). (2)
+  **`tool/check-host-windows.sh` di-commit tanpa bit executable** (`git
+  ls-files -s` → 100644), jadi perintah yang didokumentasikan `docs/CI.md`
+  gagal `Permission denied` di mesin baru — perlu
+  `git update-index --chmod=+x tool/check-host-windows.sh`.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Sinkronisasi selesai (Bhre,
+  3 Sep 2026):** `docs/CI.md` kini punya bagian "Pengecualian: jalur deploy
+  cepat (aturan papan #5)" dengan empat syarat kumulatifnya, dan menegaskan
+  build/rilis penuh tetap kewenangan CI/Release. Komentar `build.yml` saya
+  biarkan apa adanya: isinya bicara soal **pemicu build**, bukan deploy, jadi
+  tidak bertentangan dengan aturan #5. Info asli: **aturan papan #5 —
+  jalur deploy cepat** (restu operator di chat, kini tertulis di
+  `AGENT_BOARD.md` → "Aturan operator"). Web app (Danu) serta worker
+  Backend/Edge & berita boleh deploy langsung tanpa menunggu dispatch
+  CI, dengan syarat: perubahan sudah di main (gerbang `verify-push-auth`
+  dihapus operator 5 Sep 2026, jadi tidak ada run yang perlu ditunggu),
+  env produksi benar, verifikasi pasca-deploy tercatat di board + item
+  HANDOFF ke CI pada sesi yang sama. Contoh tercatat: deploy WEB8
+  wrangler `728f6c21` (md5 bundle live == build). Build/rilis penuh
+  (APK/Windows/installer/tag) tetap kewenanganmu. Mohon sinkronkan
+  `docs/CI.md` + komentar `.github/workflows/build.yml` (masih
+  menulis "semua deploy via dispatch") dengan aturan #5 ini.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **TERPENUHI lewat rilis 6.4.0**
+  (verifikasi Bhre, 3 Sep 2026): bundle live `app.xystudio.my.id`
+  `/assets/index-B2YV4o3A.js` memuat versi `6.4.0` dan string fitur WEB7/WEB8
+  ("Sewa PC", "Ingatkan saya", "Sisa"). Tidak perlu dispatch terpisah —
+  rantai rilis 6.4.0 sudah memborongnya. Permintaan asli: **dispatch WEB8**:
+  push fix avatar ganda komentar berita (lihat CHANGELOG) menunggu
+  Build + Deploy Web App via dispatch (kebijakan 2dbd186). D1 sudah
+  dinormalisasi langsung (byline 5 artikel lama → Haekal Saputra),
+  jadi tidak ada perubahan worker yang perlu deploy-news.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **TERPENUHI lewat rilis 6.4.0**
+  (bukti sama seperti item WEB8 di atas — satu bundle live memuat keduanya).
+  Permintaan asli: **dispatch WEB7**:
+  push `5207989` (sewa PC durasi custom + stok, chip total & sisa waktu
+  sesi, fix deep link /billing) sudah di main dengan Verifikasi Izin
+  hijau. Sesuai kebijakan baru (semua build/deploy via dispatch CI),
+  mohon jalankan Build + Deploy Web App untuk SHA itu. E2E lokal hijau
+  (billing: stok/custom/routing; sesi: chip 1:59:58 countdown + panel
+  Total/Sisa via host pola uji).
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Bug race di deploy-web.yml**:
+  push `6c5ba06` (web) dan `d90e12a` (ci) nyaris bersamaan → dua event
+  `workflow_run` Build tumpang tindih. Run Deploy `33721151162` tercatat
+  `head_sha=6c5ba06` di API, tapi log checkout-nya meng-fetch `d90e12a`
+  (commit LAMA) — deploy lapor "success" padahal bundle `6c5ba06` tidak
+  pernah masuk ke worker (terbukti: `/assets/index-w_YYZNwL.js` dijawab
+  fallback SPA `text/html` sebelum saya deploy manual). Kemungkinan akar:
+  payload `workflow_run` tertukar + `concurrency cancel-in-progress`
+  membiarkan run ber-payload lama menang. Sudah ditebus manual (wrangler
+  `66bca5d8` dari artifact Build resmi `33721068628`, diverifikasi live).
+  Saran: (1) deploy memvalidasi artifact berasal dari commit yang sama
+  dengan `workflow_run.head_sha`, (2) langkah verifikasi pasca-deploy
+  (fetch satu nama asset dari artifact, pastikan `content-type` JS),
+  (3) pertimbangkan `cancel-in-progress: false` + antrean.
+
+  Resolusi (Cakra - XySpace Team, 3 Sep 2026): `deploy-web.yml` ditulis ulang — SHA & run Build ditentukan dari API (`gh api .../runs/<id>`) bukan dari payload `workflow_run`; checkout memakai SHA otoritatif itu; artefak dicek punya run/SHA yang sama; `concurrency` jadi SERIAL (`cancel-in-progress: false`); dan hanya Build web terbaru yang deploy (run basi menyingkirkan diri, lewati, biarkan run terbaru yang antre men-deploy). Jaga-basi diciptakan supaya race serupa tidak bisa lagi menimpa bundle baru dengan yang lama.
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Verifikasi
+  `electron-builder --arm64` di runner `windows-11-arm`: **SELESAI 3 Sep
+  2026** (Build 33720587772 + Release 33721267756 hijau, installer arm64
+  terbit). Ada bug di jalur itu: output arm64 keluar di
+  `dist/win-arm64-unpacked` sementara verifikasi & upload hardcode
+  `win-unpacked` — sudah diperbaiki di `build.yml` (path dihitung per
+  arsitektur).
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Release merah saat push
+  host-only tanpa artefak client: `prepare` melewati rilis dengan
+  peringatan (bukan merah) sejak gerbang artefak, dan `release.yml` kini
+  menerima input `release_sha` untuk dispatch manual.
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — **DIKERJAKAN (Bhre, 3 Sep
+  2026):** `release.yml` job `prepare` kini menolak merilis SHA yang sudah
+  dilewati `main` — Release otomatis berhenti merah dengan pesan berapa commit
+  tertinggal, sementara dispatch manual ber-`release_sha` diteruskan dengan
+  peringatan (operator dianggap sengaja). Diuji tiga skenario di shell lokal
+  (SHA==HEAD lolos senyap; main maju → tolak exit 1; dispatch eksplisit →
+  warning + lanjut); YAML kedelapan workflow tetap valid. **Belum diuji di
+  GitHub Actions sungguhan** — belum ada rilis baru sejak perubahan ini.
+  Temuan asli: **Rilis otomatis bisa
+  menunjuk SHA yang belum lengkap**: `release.yml` lama menilai
+  `should_release` hanya dari "tag belum ada". Saat `pubspec.yaml`
+  berubah di commit fitur (mis. aced623 foto profil), Build jalan dan
+  Release langsung membuat `v6.3.0` di SHA itu — tanpa fix layar hitam
+  yang baru masuk 4 commit kemudian (sekali terlanjur rilis salah isi,
+  dianulir paksa). Pertimbangkan: `prepare` wajib cek `host/**` ikut
+  berubah, atau rilis hanya via `workflow_dispatch` + `release_sha`.
+- [x] (dari Galih - XySpace Team, 2026-09-23; dikerjakan Cakra, sesi
+  CIWIX) — **MSI WiX: extension UI sekarang dipasang (WIX0144).** Job `installer-lint` di
+  `build.yml` memasang WiX v4 (`dotnet tool install wix --version 4.0.6`)
+  lalu langsung `wix build -ext WixToolset.UI.wixext` → `error WIX0144: The
+  extension 'WixToolset.UI.wixext' could not be found` (run `35879908181`,
+  langkah "Compile-check MSI dan NSIS"). Tidak ada satu pun
+  `wix extension add` di seluruh workflow, sedangkan `release.yml:386` dan
+  `prepare-windows-installer.yml:91` memakai `-ext` yang sama — jadi jalur
+  MSI (bagian pekerjaan `596d2fe`, "Packaging Windows dual-format") belum
+  pernah benar-benar lulus; job lint barunya yang membongkarnya. Saran
+  perbaikan: setelah tool WiX terpasang, jalankan
+  `wix extension add -g WixToolset.UI.wixext/4.0.6` (versi disamakan dengan
+  tool) sebelum `wix build`, lalu ulangi job lint. **Tidak dikerjakan di sesi
+  **SELESAI (Cakra, 2026-09-23):** ketiga workflow (`build.yml`,
+  `release.yml`, `prepare-windows-installer.yml`) kini menjalankan
+  `wix extension add -g WixToolset.UI.wixext/4.0.6` setelah tool WiX
+  terpasang, dengan `throw` bila gagal. Versi 4.0.6 sengaja disamakan
+  dengan tool WiX supaya `-ext` tanpa versi tetap cocok. YAML ketiganya
+  divalidasi ulang dengan parser; **pembuktian hanya bisa dari runner**
+  (`wix` tidak ada di Linux) — lihat item dispatch di bawah.
+- [x] (dari Galih - XySpace Team, 2026-09-23; dijalankan Cakra, sesi CIWIX)
+  — **Dispatch `Build` penuh** untuk membuktikan gerbang host hijau di
+  runner setelah `cargo fmt` dibersihkan, sekaligus menguji perbaikan
+  extension WiX. **Hasil (run `35889559888` atas `9b86be2`): 11/11 job
+  SUCCESS** — `Uji Logika Host (Rust)` hijau (langkah fmt/clippy/test lolos
+  di runner), `Lint MSI dan NSIS Installer` hijau, `Windows x64` +
+  `APK Android` + `Web` + backend/berita/flutter/meta semua hijau. Deploy
+  web CI (`35890553787`) SUCCESS; `Release` (`35890553790`) hanya validasi
+  versi tanpa menerbitkan apa pun (versi tidak berubah) — benar. Run
+  pertama (`35889077917`) dibatalkan karena digantikan run yang lebih baru
+  setelah perbaikan WiX kedua.
+
+- [x] (dari Tara - XySpace Team, 2026-09-23) — **Deploy cepat jalur papan #5
+  (worker signaling):** `xydesk-signaling` versi
+  `eeb2a63e-2243-4bb0-abce-4ca36148b983` atas source `0339a40` — deploy
+  `wrangler deploy` (Wrangler 4.123.0) dengan binding utuh (HUB, AUTH_STORE,
+  ADMIN_GOOGLE_CLIENT_ID, CORS_ORIGINS, GOOGLE_DESKTOP_CLIENT_ID).
+  Verifikasi pasca-deploy: `/healthz` 200; `/admin/auth/config` tetap
+  `{passwordEnabled:true,setupAvailable:true}`; `/admin/session` anonim 401;
+  `/admin/password-login` body palsu 403 (Turnstile tetap dijaga);
+  `/turn-ice` tanpa token → `{error:'turn-forbidden',reason:'no-credentials'}`
+  dan token rusak → `reason:'token-invalid'`. Catatan: beberapa detik pertama
+  setelah deploy, sebagian edge masih menyajikan balasan lama (`forbidden`
+  teks polos) — setelah propagasi, seluruh permintaan konsisten JSON.
+  **Jalur sukses relay (X-Admin/`ADMIN_SECRET`) belum diuji** — secret itu
+  tidak ada di lingkungan sesi; yang terbukti hanya jalur penolakan.
+
+## Untuk: Web (selesai)
+
+- [x] (dari Tara - XySpace Team, 2026-09-03) — **Lengkapi sisi klien admin
+  Google.** Worker berita sudah menerima `x-admin-google-token` (ID token
+  OpenID; divalidasi signature + audience, email == `FOUNDER_EMAIL`). Yang
+  belum: klien web mengirim id_token ini saat founder (login Google
+  `xycdigital@gmail.com`, lihat `ADMIN_EMAIL` di `web/src/news.ts`) sudah
+  masuk — alih-alih menyuruh tempel `ADMIN_TOKEN` manual. Header lama
+  `x-admin-token` tetap berfungsi, jadi ini peningkatan bertahap, bukan
+  wajib segera.
+  **Selesai (Danu, 3 Sep 2026, sesi WEB-ADMIN):** klien web kini menyimpan
+  id_token saat login Google dan mengirimnya sebagai `x-admin-google-token`
+  saat berkomentar — tidak perlu lagi menempel `ADMIN_TOKEN` (fallback tetap
+  ada). Build tsc+vite hijau, **live** via deploy cepat (versi `a3607022…`).
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **Dikerjakan Galih atas arahan
+  operator di chat.** `web/src/App.tsx`: kolom password pairing tidak lagi
+  `autoCapitalize="characters"` (itu memaksa password jadi huruf besar semua di
+  peramban ponsel; sejak verifikasi peka-kasus itu langsung mengunci pengguna) —
+  sekarang `none` + `autoCorrect="off"` + `spellCheck={false}`, dan pesan
+  `rejected` menyebut besar/kecil. `web/src/rtc.ts`: `pair` mengirim `name`
+  (tebakkan browser + OS dari userAgent, mis. "Chrome di Windows") dan
+  `platform: "web"`; `RtcSession.selfName` boleh diisi nama akun.
+  Terverifikasi: `npm run build` (= `tsc -b && vite build`) hijau. Sisa untuk
+  role Web bila mau: isi `selfName` dari profil saat login, dan putuskan apakah
+  nama akun layak dikirim (host melihatnya begitu pairing diterima).
+  **SELESAI 2026-09-09 (sesi FIXPACK):** `RemoteApp` mengoper
+  `profile.name ?? profile.email` sebagai prop `accountName` ke
+  `ConnectScreen` → `session.selfName`; kosong = fallback tebakan browser+OS.
+  `tsc -b && vite build` hijau, `node --test` 7/7.
+
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — Push `0081742` (keyboard
+  virtual, panel gaming) membuat run `verify-push-auth.yml` MERAH: commit
+  tidak memuat penanda `Izin: <ID-SESI>` di body. Aturan baru (lihat
+  `AGENT.md` bagian 5): klaim sesi → minta persetujuan operator di
+  `AGENT_BOARD.md` → push dengan `Izin: ...` di body. Commit tetap masuk,
+  tapi audit mencatatnya sebagai pelanggaran.
+  **Dibereskan retroaktif (Danu, sesi WEB-AUDIT):** push pra-gerbang ini
+  sudah disahkan — tercatat di papan riwayat `SESI-20260903-DANU-WEB-AUDIT`
+  bersama `d3522bb`/`4785561`/`bff26bb`. Tidak ada tindakan lanjutan.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Pengingat deploy**: perubahan
+  sesi WEB10 (fallback 404 slug changelog) sudah di `main` tapi **belum live** —
+  push agent tidak memicu deploy (kebijakan 3 Sep). Sesuai aturan papan #5,
+  Web boleh deploy cepat: `npm run build` dengan `VITE_GOOGLE_CLIENT_ID`
+  produksi, deploy `wrangler`, lalu verifikasi (md5 bundle live == build,
+  content-type JS, teks "Catatan rilis versi ini belum tersedia" muncul saat
+  buka `/news/changelog-v6-4-0`). Atau serahkan ke dispatch CI/Release.
+  **Selesai (Danu, 3 Sep 2026, sesi WEB-DEPLOY):** di-deploy langsung lewat
+  jalur cepat aturan #5 — build produksi `index-CCHcbcu7.js`, wrangler versi
+  `eca5ab16-45af-4ea0-835b-c88cfe437782`, verifikasi pasca-deploy lolos penuh
+  (md5 live == build `2de36d14…`, content-type `text/javascript`, fallback
+  + client ID produksi ada di bundle live). Catatan untuk CI/Release di
+  bawah.
+
+- [x] (Danu - XySpace Team, 2026-09-23) — **Deploy cepat jalur papan #5
+  (web):** bundle `index-BB7mntUO.js` naik ke `app.xydesk.my.id` — versi
+  Worker `7ab10bf5-1827-4f03-99e2-637d6737a592` atas source `0339a40`, build
+  produksi dengan `VITE_GOOGLE_CLIENT_ID` = `495336144977-dp1k3678…`.
+  Verifikasi pasca-deploy: md5 `index.html` live == build
+  (`0712b72a4bf942e832eddfe87e244939`) dan md5 `assets/index-BB7mntUO.js` live
+  == build (`c39023b0e3f2b2b9ddd9d69dbb9e4532`), `cmp` byte-identik;
+  `content-type` JS `text/javascript`; CSP + `x-frame-options` + `nosniff`
+  tetap ada; `/connect`, `/news`, `/legal`, `manifest`, `sitemap` 200; worker
+  OG (bot WhatsApp) tetap melayani.
+  **Temuan lama yang ikut dipulihkan:** bundle produksi SEBELUM deploy ini
+  (`index-CwUAey3c.js`) tidak memuat client ID OAuth sama sekali —
+  `GREETING`/`accounts.google.com`/`dp1k3678`/`cadhmro3` nol kecocokan di
+  dalamnya, sedangkan string lain dari source yang sama ada. Karena tombol
+  Google dirender hanya bila client ID terisi, tombol itu tidak pernah muncul
+  di produksi. Deploy ini membangun ulang dengan secret/variabel repo
+  produksi (`GOOGLE_WEB_CLIENT_ID` → `VITE_GOOGLE_CLIENT_ID`) sehingga
+  terpulihkan. **Perlu diingat untuk deploy berikutnya:** jangan pernah
+  men-deploy web tanpa variabel itu.
+
+- [x] (Danu - XySpace Team, 2026-09-23) — **Relay TURN berhenti hilang tanpa
+  jejak.** `turnIce()` tidak lagi menyusut jadi daftar kosong untuk semua
+  kegagalan: ia mengembalikan `{servers, ok, reason, hint}` (`no-servers`,
+  `providers-failed`, `turn-not-configured`, `turn-forbidden`,
+  `turn-auth-unavailable`, `network`, `http-<status>`, plus kode rinci dari
+  server). Sesi menyimpannya sebagai `relayState`/`relayServers`/
+  `relayReason`/`relayHint` di statistik, `stop()` mereset ke `pending`, dan
+  panel Statistik menambah baris "Relay TURN" + catatan saat relay tidak ada.
+  `node --test` web 102/102 (12 uji baru: 4 di `test/rtc.test.js`, 8 di
+  `test/turn_ice_api.test.js` yang baru), `npm run build` hijau. **Sudah
+  di-deploy** ke app.xydesk.my.id — versi Worker
+  `48048613-3f02-4c81-8c1a-d8ca4c28259a`, bundle `index-l7Eyy51I.js` (bundle
+  ini juga memuat panduan frame). Sisa yang dulu dicatat — paritas di client
+  Flutter (`lib/webrtc/rtc_service.dart` masih `catch (_) => const []`) — sudah
+  selesai di sesi Laras (RELAYCLIENT); lihat item Client Flutter di atas.
+
+- [x] (Galih - XySpace Team, 2026-09-23; dikerjakan Danu, sesi FRAMEGUIDE)
+  — **P1.1 watchdog sesi web: dari label pasif jadi tindakan.** Watchdog
+  `noFrameWarning` sudah ada sejak lama, tetapi hanya muncul sebagai chip
+  kecil "Freeze terdeteksi" di status bar: pengguna tahu ada masalah, tidak
+  tahu apa yang bisa dilakukan. Sekarang banner menjelaskan sebab dan
+  menawarkan tombol "Ganti layar" (membuka panel sesi tempat layar dipilih),
+  dan bila relay TURN tidak tersedia, hal itu disebut lebih dulu. Logika
+  "apa yang dikatakan" dipindah ke `web/src/session_guidance.ts` agar teruji
+  (7 kasus) dan dipakai bersama panel Statistik; teks sebab relay sekarang
+  satu sumber untuk host, web, dan client. `node --test` web 109/109,
+  `npm run build` hijau. **Sudah di-deploy** (jalur cepat papan #5): bundle
+  `index-l7Eyy51I.js` naik ke `app.xydesk.my.id` lewat versi Worker
+  `48048613-3f02-4c81-8c1a-d8ca4c28259a`; md5 `index.html` live == build
+  (`6ea6ae17a725360f1db9f2bf6a9433eb`), md5 bundle live == build
+  (`81cdd6b703e5ad25cba7d3c188ade009`), `content-type` JS, dan penanda
+  `session-frame-guidance`/"Ganti layar" ada di bundle live.
+
+## Untuk: Backend / Edge (selesai)
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **Pilih penyedia TURN, lalu
+  dispatch `Deploy Signaling`.** Perbaikan `turn.js` (paralel + batas 2,5 dtk)
+  sudah di `main`, dan `deploy-signaling.yml` kini meneruskan kedelapan secret
+  TURN (sebelumnya TIDAK meneruskan satu pun — jadi mengisi secret di GitHub
+  tidak berpengaruh apa pun dan kegagalannya diam). Tetapi **belum ada penyedia
+  yang dikonfigurasi**, jadi `/turn-ice` tetap menjawab daftar kosong dan sesi
+  jalan dengan STUN saja. Pilihannya sempit karena `ROADMAP.md` melarang kartu
+  kredit dan VM/VPS — penilaian jujurnya ada di tabel baru di
+  `cloudflare/README.md`. Ringkas: **secret statis (ExpressTurn) paling cocok**
+  karena kredensialnya dihitung di dalam Worker tanpa panggilan jaringan;
+  **Open Relay Project** gratis tanpa kartu tapi kuota gratisnya dilaporkan
+  berbeda-beda antar sumber (500 MB vs 20 GB vs 20 GB setelah kartu) jadi tidak
+  bisa diklaim sebagai angka pasti; **Cloudflare Realtime butuh kartu kredit**
+  sehingga melanggar ROADMAP; **coturn sendiri butuh VPS**. Butuh operator
+  mendaftar dan menaruh API key di GitHub Secrets — agent tidak bisa membuat
+  akun. Setelah terisi, verifikasi: `curl -s -H "X-Admin: $ADMIN_SECRET"
+  https://signal.xydesk.my.id/turn-ice | jq` dan periksa `providers`.
+  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** `TURN_DIRECT` (`turn:free.expressturn.com:3478`, `<username-ExpressTurn; nilai ada di secret Worker>`) sudah **AKTIF** sejak 2026-09-07 — 1 provider `ok true` 0 ms (tanpa fetch), `ADMIN_SECRET` dirotasi + sync GitHub+Worker, `turn.js` paralel 2.5s + `providers` diagnostik live teruji (`curl -H "X-Admin: $ADMIN_SECRET" ... | jq` → `direct ok true`). Cadangan Open Relay opsional bila quota habis.
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **Verifikasi pengirim email produksi.** Dua jalur
+  email punya default yang tidak aman untuk produksi:
+  `cloudflare/src/authstore.js:203` memakai
+  `env.RESEND_FROM || 'XyDesk <onboarding@resend.dev>'` — `onboarding@resend.dev`
+  adalah pengirim uji Resend yang HANYA bisa mengirim ke alamat terverifikasi
+  milik akun sendiri, jadi kalau secret itu kosong OTP email tidak akan pernah
+  sampai ke pengguna sungguhan (dan gagalnya tidak berbunyi).
+  `news/src/worker.js:438` lebih jujur: `if (!env.RESEND_API_KEY ||
+  !env.EMAIL_FROM) return` — diam-diam melewati pengiriman. Keduanya perlu
+  dipastikan secret-nya terpasang. **Catatan: `news/README.md` dulu menyebut
+  `news@mail.xystudio.my.id`, domain yang dilepas di rilis 6.5.4** — dokumen itu
+  sudah diperbaiki agar merujuk secret, tapi nilai sebenarnya hanya bisa
+  dipastikan dari Worker, bukan dari repo.
+  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** `RESEND_API_KEY` diperbarui ke `re_UCuv8V...` (verified, 3 domain `xyspace.my.id`/`xyc.my.id`/`mail.xystudio.my.id`), `RESEND_FROM` dikunci `XyDesk <auth@mail.xystudio.my.id>` via `wrangler deploy --var` (Version b154ed52...), `EMAIL_FROM` news dikunci `auth@mail.xystudio.my.id`, `ONESIGNAL_*` sync. Verifikasi live: `POST /auth/request-otp` ke Gmail → `{"ok":true}`, direct Resend `POST /emails` → `{"id":"868055..."}`, `GET /api/news` 20 posts, `wrangler secret` + GitHub `RESEND_API_KEY` 204.
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **`collectIceServers` masih belum punya secret TURN
+  terpasang** (sudah tercatat di sesi `SESI-20260906-OPERATOR-TURN`). Sesi audit
+  ini membuat pengambilannya paralel + berbatas waktu 2,5 detik per penyedia,
+  tapi itu tidak mengubah kenyataan: tanpa satu pun secret, `/turn-ice` tetap
+  menjawab 503 dan klien tetap jalan STUN saja. Prioritas penyedia ber-secret
+  statis (ExpressTurn/coturn) — hanya jenis itu yang tidak butuh panggilan
+  jaringan, jadi selalu hidup walau penyedia lain mogok.
+  **SELESAI 2026-09-11 (sesi SESI-20260911-BACKEND-TURN):** sama seperti item TURN di atas — `TURN_DIRECT` sudah hidup, `collectIceServers` paralel 2.5s + cache, `/turn-ice` tanpa secret → `503 turn-not-configured` dengan hint, dengan secret → 1 provider. Lihat bukti live di `../archive/BACKEND_FIX_20260911.md`.
+- [x] (dari Galih - XySpace Team, 2026-09-03) — **`signaling/` (hub Go)
+  MENGHAPUS field asing saat relay, jadi label perangkat tidak sampai ke host
+  lewat hub dev.** `hub.go` `relay(from, toID, msg Message)` men-serialize
+  ulang struct bertipe `Message` (`protocol.go`), sehingga `name`/`platform`
+  yang ditambahkan client di pesan `pair` hilang. Cloudflare hub
+  (`cloudflare/src/hub.js`) aman: `peer.send(JSON.stringify({ ...msg, from:
+  meta.id }))` melewatkan field apa pun. Perbaikan yang cukup: tambahkan
+  `Name`/`Platform` (`json:"name,omitempty"` / `"platform,omitempty"`) ke
+  `Message` — atau relay payload mentah. Dampak sekarang: pengujian UI chip
+  "HP · Android" hanya bisa dilakukan terhadap worker, tidak terhadap hub Go;
+  host tetap normal (label kosong → tampil ID).
+  **SELESAI 2026-09-09 (sesi FIXPACK):** field `Name`/`Platform` ditambahkan
+  ke `Message` + `signaling/relay_label_test.go` (label selamat relay,
+  omitempty di pesan non-pair). `gofmt` bersih, `go vet` + `go test` hijau.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **INFO: kini ada jalur
+  deploy cepat untuk worker signaling/edge & worker berita** (aturan
+  papan #5, restu operator): boleh deploy langsung tanpa menunggu
+  dispatch CI — syarat: push di main + izin hijau, uji area hijau,
+  verifikasi pasca-deploy tercatat di board, + info HANDOFF ke
+  CI/Release. Catatan kredensial: token deploy milik operator dan
+  dibagikan operator ke lingkungan agent (Danu mendapatkannya lewat
+  berkas unggahan operator) — mohon koordinasi dengan operator bila
+  lingkunganmu belum memegang kredensial.
+  **Terserap:** aturan papan #5 kini terdokumentasi permanen di
+  `docs/CI.md` (sesi Bhre) dan sudah dipakai pertama kali pada sesi
+  WEB-DEPLOY (deploy web). Item info ini ditutup.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Verifikasi admin komentar
+  yang lebih mulus**: sekarang founder menempel ADMIN_TOKEN sekali di
+  perangkat (UI web sudah ada, worker memvalidasi). Peningkatan: worker
+  berita menerima Google ID token dan memverifikasi email founder langsung
+  (audience + signature), sehingga tidak perlu menempel token manual.
+  **Selesai sisi worker (Tara, 3 Sep 2026, sesi TARA-NEWS-GOOGLE):** worker
+  berita kini menerima `x-admin-google-token` (ID token diverifikasi RS256
+  via JWKS, audience + email == `FOUNDER_EMAIL`); `x-admin-token` lama tetap
+  sah; gagal-tertutup bila secret tidak lengkap. Tes `news/` 32/32 hijau.
+  **Belum live** — deploy worker berita belum dijalankan (lihat "Untuk: CI /
+  Release"). **UPDATE: sudah LIVE** (Tara, sesi TARA-NEWS-DEPLOY) — versi
+  `11253cf5-cd17-495f-8546-135019a843e1`, secret `GOOGLE_CLIENT_ID` +
+  `FOUNDER_EMAIL` terpasang, verifikasi pasca-deploy tercatat (CORS
+  `X-Admin-Google-Token` live, feed publik OK, jalur Google gagal-tertutup
+  401). Sisi klien web juga selesai (sesi WEB-ADMIN) — id_token dikirim saat
+  founder masuk Google; dan sesi WEB-ADMINFIX menambah tombol "Lanjutkan
+  dengan Google" sekali-klik bila id_token kosong/kedaluwarsa (kembali
+  otomatis ke artikel).
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — **SELESAI 3 Sep 2026 (sesi
+  `SESI-20260903-LARAS-CLOUDINARY`, operator menyerahkan kunci Cloudinary di
+  chat).** Preset dibuat lewat Admin API — bukan dasbor — dengan nama
+  `xydesk_profile_unsigned`: `unsigned=true`, folder `profile/`, format
+  dibatasi `jpg,jpeg,png,webp`, transformasi `c_limit,w_512,h_512,q_auto:good`
+  (foto kamera HP tidak menghabiskan kuota), `unique_filename=true` +
+  `overwrite=false` supaya unggahan antar pengguna tidak saling menimpa.
+  **Diuji nyata, bukan diasumsikan:** upload dari luar tanpa
+  `api_key`/`api_secret` (persis jalur APK) berhasil, `secure_url` yang
+  dikembalikan menjawab `HTTP 200 image/png`, dan upload `.txt` ditolak
+  (`Raw file format txt not allowed`). Gambar uji langsung dihapus — folder
+  `profile/` kembali kosong. `lib/core/cloudinary_upload.dart` sudah diisi,
+  dan ditambah test yang menjaga konstanta itu tidak kosong lagi.
+  **Belum diuji dari APK di HP sungguhan** (tidak ada perangkat di lingkungan
+  sesi ini) — masuk daftar verifikasi perangkat nyata bersama item lain.
+  Permintaan asli: **Preset upload Cloudinary
+  unsigned** untuk foto profil: kode sisi klien sudah selesai (unggah lewat
+  `lib/core/cloudinary_upload.dart`, opsinya ada di menu edit profil). Yang
+  kurang **hanya satu langkah operator**: buat **unsigned upload preset** di
+  dasbor Cloudinary lalu set `cloudinaryUploadPreset` (dan pastikan
+  `cloudinaryCloudName` benar). Tidak ada yang perlu diubah di kode lagi.
+  opsional untuk cuplikan "layar terakhir" yang kokoh: kalau tangkapan
+  klien (RepaintBoundary) ternyata gelap di perangkat nyata, jalur
+  terbaik adalah host mengirimkan satu frame terakhir saat sesi berakhir.
+  Protokolnya bisa ditambahkan tanpa mengubah kontrak yang ada.
+
+## Untuk: News & Konten (selesai)
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **Artikel Berita rilis 6.6.0
+  BELUM terbit, dan `docs/VERSIONING.md` §4 menyebutnya wajib.** Naskahnya
+  SUDAH SIAP di `docs/articles/BAHAN_ARTIKEL_RILIS_6.6.0.md` (judul, excerpt 126 karakter,
+  empat bagian sesuai §4, changelog lengkap, bagian "yang sedang kami siapkan",
+  plus perintah curl-nya). Dua hal menghalangi penerbitan dan keduanya di luar
+  jangkauan agent: (1) **`ADMIN_TOKEN` tidak tersedia** — ia secret Cloudflare
+  Worker, bukan GitHub Secret, dan tidak ada di berkas kredensial; jalur kedua
+  (`x-admin-google-token`) butuh login founder sementara yang tersedia hanya
+  Client ID + Client Secret tanpa refresh token. (2) **Sampul
+  `web/public/news/covers/changelog-660.jpg` belum ada** — wajib 1424×752
+  seperti `changelog-654.jpg`, dan aset brand punya jalur kanonik
+  (`design/logo-asli.png` → `tool/gen_logo.py`) yang pernah dilanggar agent
+  dengan render manual, jadi pembuatannya diserahkan ke operator.
+  Field `slug` = `changelog-v6-6-0` WAJIB dikirim eksplisit. **Update 6 Sep:**
+  operator konfirmasi tidak punya ADMIN_TOKEN, dan sampulnya SUDAH dibuat
+  (`web/public/news/covers/changelog-660.jpg`, 1424×752, artwork abstrak ungu
+  sealiran keluarga sampul berita — bukan komposit logo, karena semua sampul
+  yang ada memang artwork tanpa teks). Jadi yang tersisa benar-benar hanya
+  penerbitannya: insert langsung ke D1 `xydesk-news` dengan parameter ter-bind
+  (bukan string concat), kolom `published=1`, dan verifikasi
+  `curl -o /dev/null -w '%{http_code}'
+  https://news.xydesk.my.id/api/news/changelog-v6-6-0` harus 200. Konsekuensi
+  jalur D1 yang harus dikatakan jujur: notifikasi pelanggan tidak terkirim,
+  sama seperti `rilis-654`/`rilis-653`.
+  **SELESAI (terverifikasi sesi FIXPACK 2026-09-09):** `changelog-v6-6-0`
+  live HTTP 200 — artikelnya sudah terbit; item ini basi.
+- [x] (dari Operator - XyDesk Team, 2026-09-06) — **ENAM rilis punya tautan
+  versi yang 404.** `CHANGELOG_SLUG` di `web/src/version.ts` menurunkan
+  `changelog-v<major>-<minor>-<patch>` dari versi berjalan, dan footer web +
+  layar "Tentang" menautkannya. Terverifikasi live 6 Sep: `changelog-v6-5-4`,
+  `-v6-5-3`, `-v6-5-2`, `-v6-4-0`, `-v6-1-0`, `-v6-0-0` semuanya **404**,
+  sedangkan `-v6-5-1`, `-v6-5-0`, `-v6-3-0`, `-v6-2-2/1/0` **200**. Sebabnya
+  dua: artikelnya terbit dengan slug lain (`rilis-654`, `rilis-653`,
+  `p-8f5aa26aa3bc` untuk 6.4.0, `p-66a4edde0222` untuk 6.1, `p-d5b4512f7d17`
+  untuk 6.0), atau tidak terbit sama sekali (6.5.2). Perlu dicatat: `rilis-65x`
+  TIDAK mungkin lahir dari `POST /api/admin/publish` karena `adminPublish` di
+  `news/src/worker.js` hanya menerima slug berpola `changelog-v\d+-\d+-\d+`
+  dan mengacak sisanya — jadi keduanya disisipkan langsung ke D1, yang juga
+  berarti **notifikasi push/email pelanggan tidak terkirim** untuk rilis itu.
+  Dampaknya terbatas karena kartu di umpan Berita memakai slug asli dari basis
+  data (tetap jalan); yang mati hanya URL kanonik `changelog-vX-Y-Z`. Worker
+  TIDAK punya endpoint update/alias/redirect — hanya `publish` — jadi
+  memperbaikinya butuh salah satu dari: alias di worker (paling bersih, tidak
+  memutus tautan lama yang sudah terlanjur tersebar di notifikasi), `UPDATE
+  posts SET slug=…` langsung di D1 (cepat tapi memutus tautan lama), atau
+  terbit ulang (menduplikasi isi). **Keputusan operator, bukan agent.**
+  **SELESAI 2026-09-09 (sesi FIXPACK):** opsi alias yang dipakai — tabel
+  `post_aliases` + resolver di worker; live: v6-5-4, v6-5-3, v6-4-0, v6-1-0,
+  v6-0-0 semua 200 ke artikel yang benar. `changelog-v6-5-2` diterbitkan
+  retroaktif (artikel dari `changelogs/6.5.2.md`, sampul
+  `changelog-652.jpg`); D1-direct = tanpa push/email, konsisten dengan
+  `rilis-65x`. `seed.sql` kini cermin penuh (16 artikel + 5 alias benar).
+
+## Untuk: Host Engine (selesai)
+
+- [x] (dari Laras - XySpace Team, 2026-09-03) — Kontrak perilaku keyboard saat
+  sesi: sisi klien kini bisa mengirim **teks bebas (0x06 TEXT)** lewat papan
+  ketik sistem selain keycode (0x05 KEY). **Diperiksa & dilengkapi di sesi
+  SESI-20260903-GALIH-HOST-AUDIT:** host sudah mengetik 0x06 apa adanya lewat
+  `KEYEVENTF_UNICODE` (tidak bergantung layout keyboard host) dan keycode 0x05
+  tidak disentuh. Yang BELUM wajar adalah bagian "karakter banyak/rapat": satu
+  pesan TEXT panjang dulu diubah jadi satu `SendInput` berisi ribuan `INPUT`
+  tanpa mengikuti nilai kembali sistem (sebagian bisa hilang tanpa jejak). Kini
+  dipecah per 32 karakter, sisanya dikirim ulang, dan di atas 4.096 unit UTF-16
+  dipotong di batas karakter (bukan di tengah pasangan surrogate). Dikunci 5 uji
+  unit lintas platform. Sisi client belum dibatasi panjangnya — lihat item
+  "Untuk: Client Flutter".
+- [x] (Galih - XySpace Team, 2026-09-23) — **Status relay host + gerbang
+  format CI.** Modul baru `host/src/relay.rs`: balasan `/turn-ice` dibaca
+  utuh (termasuk `reason`/`hint` dari Worker), sebabnya diterjemahkan
+  (`reason_label`), dan hasil terakhir muncul di `/status` sebagai blok
+  `relay` (`state`: `ready` / `unavailable` / `unknown` — `unknown` berarti
+  belum pernah dicoba, bukan tidak ada). `main.rs` memakai `relay::fetch`,
+  bukan parser JSON sendiri; log kegagalan menyebut label + kode.
+  `cargo test --all-targets` hijau (177 uji lib + integrasi), `cargo clippy
+  --all-targets -- -D warnings` bersih, `cargo check --bins` hijau di Linux.
+  Tujuh uji baru khusus untuk `relay.rs`. **Batas jujur:** tidak ada uji di
+  Windows atau mesin pengguna — modul relay murni Rust tanpa API Windows,
+  tetapi jalur relay sungguhan baru terbukti di lapangan.
+- [x] (Galih - XySpace Team, 2026-09-23) — **Gerbang `cargo fmt` host merah
+  di main, sudah dibersihkan.** `host/src/main.rs` (bukan perubahan sesi ini;
+  versi HEAD-nya juga gagal) tidak lolos `cargo fmt --check`, sehingga job
+  "Uji Logika Host (Rust)" merah di langkah `Cek format` pada run
+  `35879908181` (HEAD `1473799`) dan `35772171870`; job `windows` menunggu
+  job itu, jadi rantai Windows ikut tertahan. `cargo fmt` dijalankan di
+  `host/`; `cargo fmt --check` kini bersih. Perlu dispatch `Build` setelah
+  push untuk membuktikan hijau di runner.
+
+## Untuk: Docs & Audit (selesai)
+
+- [x] (dari Operator - XyDesk Team, 2026-09-06, SELESAI 2026-09-09) — Permukaan web vs aplikasi disatukan —
+  operator memutuskan **web sebagai acuan**, jadi yang mengikuti justru aplikasi + desktop: `bg`/`raised`
+  `#ffffff`, `overlay`/`input` `#f5f3ff` di ketiga platform. Keputusan lama (biarkan berbeda) batal.
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — **Aturan rilis baru:** versi & berita = keputusan operator; tiap agent menulis bahan artikel kerjanya sendiri, CI/Release menyatukannya — pastikan aturan ini tersinkron di `docs/CI.md`, `docs/NEWS_STYLE.md`, `news/README.md`. **Dikerjakan Sena (audit 3 Sep 2026):** `docs/CI.md` sudah memuatnya (§"Sebelum build/rilis"), `news/README.md` sudah memuatnya; yang kurang hanya `docs/NEWS_STYLE.md` — kini ditambah blok "Siapa yang menulis" di §1.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — Berkas unggahan operator di
+  luar repo (dipakai sesi web untuk token) masih memuat baris
+  `GOOGLE CLIENT ID : 335906355717-…` yang sudah kedaluwarsa/menyesatkan —
+  client OAuth web yang benar `495336144977-dp1k3678cocjrfhftb9blnqo5qnvhsr6…`.
+  **Selesai sesi DOCS2 (3 Sep 2026):** berkas `uploads/my-binimbg.txt` sudah
+  dikoreksi — baris `#GOOGLE` ditandai "KEDALUWARSA/MENYESATKAN", dan baris
+  web yang tadinya `495336144977-cadhmro3…` (salah) diganti ke
+  `495336144977-dp1k3678…` yang benar, **diverifikasi dari bundle live**
+  `app.xystudio.my.id`. Di dalam repo sendiri tidak ada client ID yang
+  di-hardcode (sudah dicek: hanya contoh `--dart-define` di
+  `lib/features/auth/auth_service.dart`).
+
+### Temuan audit Sena — 3 Sep 2026 (belum dikerjakan, bukan area Docs)
+
+- [x] (dari Sena - XySpace Team, 2026-09-03, **untuk News/CI-Release**) —
+  **Tautan versi di footer web menuju 404 — TAPI bukan bug kode, melainkan
+  prosedur rilis yang terlewat.** Koreksi diagnosis awal saya (yang sempat
+  saya tulis di `docs/VERSIONING.md`): saya kira worker memaksa slug hash,
+  ternyata TIDAK. `news/src/worker.js` (`adminPublish`) sudah menyediakan
+  pengecualian khusus — slug yang cocok pola `^changelog-v\d+-\d+-\d+$`
+  **boleh diminta sendiri**, selain itu baru diacak jadi `p-<hash>`. Jadi
+  mekanismenya sudah benar dan sudah dipakai: `changelog-v6-2-0`,
+  `changelog-v6-2-1`, `changelog-v6-2-2`, `changelog-v6-3-0` semuanya HTTP 200
+  (saya cek langsung ke `news.xystudio.my.id`).
+
+  Yang terjadi di rilis 6.4.0: artikelnya diterbitkan **tanpa mengirim field
+  `slug`**, sehingga jatuh ke hash `p-8f5aa26aa3bc`. Akibatnya
+  `https://news.xystudio.my.id/api/news/changelog-v6-4-0` → **HTTP 404**
+  (terverifikasi), dan tombol versi di footer web (`web/src/App.tsx` baris
+  ~2497, memakai `CHANGELOG_SLUG` dari `web/src/version.ts`) menunjuk ke
+  artikel yang tidak ada. Rilis 6.1 dan 6.0 (`p-66a4edde0222`,
+  `p-d5b4512f7d17`) punya masalah yang sama.
+
+  **Dikerjakan Raka (News, 3 Sep 2026) + Danu (Web, sesi WEB10):** sisi
+  prosedur sudah ditutup — `news/README.md` kini **mewajibkan** field `slug`
+  untuk artikel rilis dengan peringatan eksplisit + contoh `curl` yang
+  menyertakannya, dan footer web tidak lagi dead-end (fallback ramah bila
+  slug changelog 404). Yang TETAP butuh keputusan operator: artikel 6.4.0
+  sudah terbit + sudah dikirim via push/email, jadi slug-nya tidak boleh
+  diganti diam-diam. Dua opsi:
+    (a) tambah kolom/alias slug kedua di D1 supaya `changelog-v6-4-0`
+        mengarah ke artikel yang sama (tanpa mematikan `p-8f5aa26aa3bc`); atau
+    (b) biarkan 6.4.0 apa adanya — rilis berikutnya wajib mengirim
+        `"slug": "changelog-v<versi>"` saat publish.
+
+- [x] (dari Sena - XySpace Team, 2026-09-03, **untuk News**) — **Sudah beres
+  sebelum saya sempat push** (commit `7e6f860`, sesi `SESI-20260903-SENA-DOCS`):
+  contoh `author` kini `Haekal Saputra`, plus `news/schema.sql`, `news/seed.sql`,
+  dan fallback `news_service.dart` ikut diselaraskan — lebih menyeluruh dari
+  yang saya usulkan. Temuan asli: `news/README.md`
+  contoh `curl` publish masih memakai `"author": "Tim XyDesk"`, padahal
+  paragraf di atasnya sendiri sudah mewajibkan `Haekal Saputra`. Contoh yang
+  salah inilah yang kemungkinan melahirkan 5 artikel byline `Tim …` yang baru
+  dinormalisasi Danu di D1. Tolong perbaiki contohnya (area `news/`, bukan
+  Docs).
+- [x] (dari Sena - XySpace Team, 2026-09-03, **untuk CI/Release**) — **Blok
+  `[6.4.0]` di `CHANGELOG.md` banyak kalimat terpotong.** 9 dari 10 butir di
+  bagian "Ditambahkan"/"Diubah" berhenti di tengah kalimat tanpa titik (mis.
+  "— ikon AI 3D ungu glossy", "— pojok kiri atas", "— klik", "— versi & berita
+  adalah"), sementara bagian "Diperbaiki" utuh. File ini dilampirkan ke GitHub
+  Release, jadi rilis 6.4.0 yang sudah terbit memajang catatan yang menggantung.
+  **Selesai Cakra (3 Sep 2026, sesi CAKRA-CHANGELOG):** 17 butir terpotong
+  direstorasi dari git history (parent `4cbbc22^`) dan body GitHub Release
+  `v6.4.0` dipatch dengan teks lengkap (18 butir asli rilis; butir pasca-rilis
+  tidak ditambahkan). Salinan body lama disimpan untuk rollback.
+- [x] (dari Sena - XySpace Team, 2026-09-03, **untuk CI/Release**) — **Papan
+  `AGENT_BOARD.md`: tabel "Sesi aktif (LOCK)" isinya semua `SELESAI`.**
+  **Dibereskan atas izin operator di chat (3 Sep 2026):** 11 baris `SELESAI`
+  dikeluarkan dari tabel LOCK; 10 di antaranya sudah punya salinan di *Riwayat
+  sesi*, dan `SESI-20260903-CAKRA-RILIS` yang belum ada disalin dulu ke riwayat
+  sebelum dikeluarkan — tidak ada sejarah yang hilang. Tabel LOCK kini kosong +
+  diberi catatan agar tidak menumpuk lagi. Keterangan asli: Per
+  aturan papan langkah 3, baris `SELESAI` harus dipindahkan ke "Riwayat sesi"
+  (dan memang sudah ada duplikatnya di sana). Tabel LOCK yang penuh baris mati
+  membuat fungsinya — melihat area mana yang sedang dikunci — hilang. Perlu
+  dibersihkan oleh pemilik papan, bukan diam-diam oleh saya.
+- [x] (dari Sena - XySpace Team, 2026-09-03, **untuk CI/Release**) — **Sudah
+  beres di commit `5dbf923`**: rilis 6.4.0 kini punya baris sendiri
+  `SESI-20260903-CAKRA-RILIS64`, terpisah dari `SESI-20260903-CAKRA-RILIS`
+  (6.3.0), sehingga jejak `Izin: <ID>` tidak lagi ambigu. Temuan asli: baris
+  `SESI-20260903-CAKRA-RILIS` di papan masih berbunyi "Rilis 6.3.0", padahal
+  ID sesi yang sama dipakai untuk rilis 6.4.0+27 (commit `ed1eb02`, catatan
+  HANDOFF di bawah). Satu ID sesi dipakai dua rilis = jejak audit `Izin: <ID>`
+  jadi ambigu. Saran: baris terpisah `SESI-20260903-CAKRA-RILIS640`.
+
+---
+
+## Selesai
+
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi LOGO) — **Ikon hitam
+  diperbaiki di akar + dikunci CI:** `tool/gen_logo.py` tidak lagi memutihkan
+  sumber gelap / memanggang tile gelap (tile terang `#F5F3FF`, warna asli
+  dipertahankan, sumber diganjal persegi anti-melar, sumber terang digagalkan
+  eksplisit); 10 mipmap + 4 `.ico` + XML diregenerasi (lum tile 0.76,
+  foreground 43% opak transparan); gerbang baru `tool/check_icons.py` di
+  Build (uji negatif: ikon lama ditolak). Keluhan: "kok hitam, bukannya logo
+  asli".
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi FIXPACK) — **Updater
+  desktop end-to-end:** `update.json` rilis berikutnya membawa kunci `windows`
+  (x64/arm64 + sha256/bytes; disimulasikan lokal, skema sah); shell Tauri
+  punya `check_update`/`download_update`/`install_update` (manifest resmi,
+  URL persis + SHA-256 + ukuran, tolak path asing; 6 uji unit Rust, CI
+  `cargo test --release` x64 baru); kartu "Pembaruan aplikasi" di Pengaturan
+  (cek otomatis saat buka, unduh & pasang → installer admin → keluar).
+  Parser Android dikunci toleran terhadap kunci `windows` (4 uji).
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi FIXPACK) — **Kontrak
+  `get_info` desktop diperbaiki:** Rust mengirim `version`/`signaling_http`/
+  `windows` padahal frontend membaca `appVersion`/`signalingHttp`/`win32` —
+  Profil selalu "v—". Kini rename serde + `win32` + versi dari
+  `CARGO_PKG_VERSION` (dulu hardcode basi "6.7.11").
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi FIXPACK) — **`news/
+  seed.sql` jadi cermin produksi:** 5 baris alias yang GESER diluruskan ke
+  kebenaran D1 live, 5 artikel lama ditarik dari API ke seed, artikel
+  `changelog-v6-5-2` ditulis retroaktif dari `changelogs/6.5.2.md` +
+  sampul `changelog-652.jpg` 1424×752 (tanpa screenshot: tidak ada perubahan
+  visual di 6.5.2). Validasi sqlite: 16 artikel, 5 alias resolve benar.
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi FIXPACK) — **`build-
+  apk-only.yml` diperbaiki sebelum pernah jalan:** tambah signing keystore
+  (rilis), `--dart-define=GOOGLE_CLIENT_ID` (rilis + debug), cache Gradle,
+  hapus step `tool/gen_licenses.dart` yang tidak ada. YAML valid; pembuktian
+  lewat dispatch (lihat papan).
+- [x] (dari Operator - XyDesk Team, 2026-09-09, sesi FIXPACK) — **Audit
+  menemukan + menutup satu false alarm:** `GOOGLE_CLIENT_ID`github var
+  TERNYATA sudah berisi dua client id (cetak terpotong 60 karakter saat
+  audit) — login Google Android/Web TIDAK rusak. Tidak ada perubahan prod.
+- [x] (dari Operator - XyDesk Team, 2026-09-07, sesi RILIS-670) — **Rilis
+  6.7.0+35 tuntas end-to-end:** Build #244 hijau -> Release #188 (tag
+  v6.7.0; APK arm64/v7a + installer x64/arm64 + update.json) -> Deploy Web
+  #174 (bundle live memuat 6.7.0 dan penanganan `pair-terkunci`) -> Deploy
+  Signaling #31 (rem pairing + auth desktop live) -> Deploy News #18
+  (artikel changelog-v6-6-1 dan changelog-v6-7-0 live; changelog-v6-6-0
+  ditarik dari D1 ke `news/seed.sql` supaya repo kembali jadi cermin
+  sumber-kebenaran). **INFO untuk semua role yang menyentuh Dart:** tiga
+  gerbang Build hanya bisa diverifikasi jujur dengan toolchain yang PERSIS
+  sama dengan CI (Flutter 3.44.9 / Dart 3.12.2) — `dart format` beda versi
+  = beda keluaran, dan `tool/gen-licenses.mjs` TANPA `flutter` di PATH jatuh
+  ke mode lama "semua entri lock" (menghasilkan 519/125, salah — yang benar
+  509/115 dari closure runtime `flutter pub deps --json`). Regenerasi
+  inventaris lisensi wajib dijalankan dengan Flutter tersedia, lalu
+  `node tool/gen-licenses.mjs --check` sebelum push.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03, sesi WEB-ADMINFIX) — **Mode
+  founder tidak lagi menyuruh tempel token saat id_token kosong:** founder
+  yang sudah login (OTP/sesi lama, atau id_token kedaluwarsa) kini diberi
+  tombol "Lanjutkan dengan Google" sekali-klik di halaman berita — ambil
+  id_token segar lalu kembali otomatis ke artikel; decode id_token diberi
+  padding base64. Build tsc+vite hijau; **live** (deploy cepat versi
+  `cd92afb3…`, 6.5.0 + fix). Tempel ADMIN_TOKEN tetap jadi cara lama.
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Mode founder web tanpa
+  tempel ADMIN_TOKEN:** klien web menyimpan Google id_token saat login dan
+  mengirim `x-admin-google-token` saat berkomentar (fallback `ADMIN_TOKEN`
+  tetap ada; bila keduanya kosong jatuh ke komentar publik). `google.ts`
+  +`news.ts` + `App.tsx`; build tsc+vite hijau; **live** (deploy cepat versi
+  `a3607022…`). Item "Lengkapi sisi klien admin Google" ditutup.
+
+- [x] (dari Tara - XySpace Team, 2026-09-03) — **Deploy cepat worker berita
+  (aturan #5):** jalur admin Google (`x-admin-google-token`) LIVE di
+  `news.xystudio.my.id` — secret `GOOGLE_CLIENT_ID` + `FOUNDER_EMAIL`
+  terpasang, `wrangler deploy` versi `11253cf5-cd17-495f-8546-135019a843e1`,
+  verifikasi pasca-deploy: CORS `X-Admin-Google-Token` live, `GET /api/news`
+  OK, publish token sampah/tanpa token → 401 (gagal-tertutup).
+
+- [x] (dari Sena - XySpace Team, 2026-09-03) — **Beres-beres item HANDOFF
+  basi:** (1) item push `0081742` (pelanggaran izin pra-gerbang) ditandai
+  selesai — sudah disahkan retroaktif sesi WEB-AUDIT; (2) item INFO "jalur
+  deploy cepat" ditandai selesai — aturan papan #5 sudah permanen di
+  `docs/CI.md` dan sudah dipakai (WEB-DEPLOY). Sisanya masih terbuka karena
+  butuh perangkat nyata/lab atau keputusan operator.
+
+- [x] (dari Tara - XySpace Team, 2026-09-03) — **Worker berita: jalur admin
+  kedua via Google ID token.** `news/` kini menerima `x-admin-google-token`
+  (ID token diverifikasi RS256 via JWKS Google — signature + audience, lalu
+  email == `FOUNDER_EMAIL`); `x-admin-token` lama tetap sah; gagal-tertutup
+  tanpa secret. Kode baru `news/src/auth.js` (port dari signaling) +
+  `news/test/google-admin.test.js` (12 kasus). `news/` 32/32 hijau. Belum
+  live (deploy berita menunggu); sisi klien web dicatat di "Untuk: Web".
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — **Deploy cepat Web (aturan #5):**
+  fix WEB10 (fallback 404 slug changelog) LIVE di `app.xystudio.my.id`. Build
+  produksi `index-CCHcbcu7.js` + `wrangler deploy` versi `eca5ab16…`;
+  verifikasi pasca-deploy lolos penuh (md5 live==build, content-type JS,
+  fallback + client ID produksi di bundle live). Tercatat di papan + item
+  INFO untuk CI/Release.
+
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — Changelog 6.4.0 dirapikan:
+  17 butir yang kalimatnya terpotong (efek samping commit bump `4cbbc22`)
+  direstorasi teks lengkapnya dari git history — bukan dikarang. Body GitHub
+  Release `v6.4.0` ikut dipatch (18 butir asli rilis, tanpa butir pasca-rilis);
+  salinan body lama disimpan di `rollback-release-v6.4.0-body.md` (di luar
+  repo). Catatan: rilis versi berikutnya tetap lewat alur CI/Release resmi.
+
+- [x] (dari Raka - XySpace Team, 2026-09-03) — `news/README.md` kini
+  mewajibkan field `slug` untuk artikel changelog rilis: peringatan eksplisit
+  (footer web & layar Tentang menautkan versi ke `changelog-vX-Y-Z`) + contoh
+  `curl` publish yang menyertakan `"slug": "changelog-v6-4-1"`. Ini menutup
+  akar 404 footer rilis 6.4.0 dari sisi prosedur. Keputusan operator tentang
+  alias slug 6.4.0 di D1 tetap terbuka (lihat temuan Sena di atas).
+
+- [x] (dari Danu - XySpace Team, 2026-09-03) — Footer web: tautan versi tidak
+  lagi dead-end. Artikel changelog 6.4.0 404 (terbit tanpa `slug`); kini
+  `news.ts` melempar `ApiError` sehingga halaman membedakan 404 dari gangguan
+  jaringan, dan halaman detail menampilkan "Catatan rilis versi ini belum
+  tersedia" + tombol ke daftar berita bila slug changelog 404. Uji:
+  `npm run build` (tsc + vite) hijau, teks fallback terkonfirmasi di bundle.
+  **Sudah live** (deploy cepat WEB-DEPLOY, 3 Sep 2026) — bundle
+  `index-CCHcbcu7.js`. Perbaikan akar tetap di News/CI.
+
+- [x] (dari Tara - XySpace Team, 2026-09-03) — Perkuat tes worker signaling &
+  berita (tanpa perubahan kode produksi): `verifyGoogleIdToken` yang sempat
+  nol-test kini dikunci 14 kasus (aud/iss/exp/email/sub/kid/tanda tangan
+  asing/JWKS mati) memakai kunci RSA sungguhan; `verifyJwt` +6 kasus tepi,
+  token signaling +kasus tamper/rusak, `relayAllowed` bye/ice lengkap, dan
+  `adminPublish` +8 kasus termasuk aturan slug changelog (akar 404 footer
+  rilis 6.4.0). `cloudflare/` 51/51, `news/` 20/20 hijau via `node --test`;
+  CI otomatis memungutnya (check-signaling `npm test` + check-news
+  `news/test/*.test.js`).
+
+- [x] (dari Sena - XySpace Team, 2026-09-03) — Sinkronisasi aturan rilis baru
+  diverifikasi: "versi & berita = keputusan operator" dan "tiap agent menulis
+  bahan artikel, CI/Release menyatukannya jadi SATU artikel" sudah terpasang
+  di `docs/CI.md` dan `news/README.md`; blok "Siapa yang menulis" di
+  `docs/NEWS_STYLE.md` dilengkapi sesi audit paralel (DOCS-AUDIT) — kini
+  ketiganya sinkron.
+
+- [x] (dari Sena - XySpace Team, 2026-09-03) — Client OAuth web dipastikan
+  lewat bukti: bundle live `app.xystudio.my.id` memuat
+  `495336144977-dp1k3678cocjrfhftb9blnqo5qnvhsr6.apps.googleusercontent.com`.
+  Berkas kunci operator (di luar repo) sudah dikoreksi — baris
+  `335906355717-…` ditandai KEDALUWARSA dan baris web yang sebelumnya
+  `…cadhmro3…` (salah) diganti ke `…dp1k3678…` yang benar.
+
+- [x] (dari Sena - XySpace Team, 2026-09-03) — Konsistensi byline berita:
+  sisa `Tim XyDesk` sebagai default/seed/fallback dinormalkan ke
+  `Haekal Saputra` di `news/schema.sql` (DEFAULT author), `news/seed.sql`
+  (4 artikel), `news/README.md` (contoh payload), dan fallback client
+  `lib/features/news/news_service.dart`. Catatan: `news/test/comments.test.js`
+  tetap memuat `'Tim XyDesk'` karena itu daftar **nama-terlindungi**
+  (anti-peniruan via `isProtectedName`), bukan byline — tidak diubah.
+  D1 produksi sudah dinormalkan sesi WEB8; sumber-sumber di atas kini selaras
+  sehingga nama lama tidak muncul lagi saat seed ulang/fallback.
+
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Host selalu aktif: engine
+  balas ping WebSocket (server signaling menendang koneksi diam > 90 dtk)
+  + `main()` menyambung ulang dalam proses dengan backoff (keluar hanya
+  bila token ditolak / tak terjangkau 10×); supervisor Electron dijaga
+  anti-spawn-ganda + hormati backoff + log kode keluar. Uji 65 unit +
+  loopback hijau.
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Host: mic input PC → client
+  (WASAPI `eCapture` → Opus mono → stream `mic`), otomatis bila ada
+  perangkat capture; `/status` + `meta` melaporkan `micAvailable`/
+  `micPipeline`. Uji 64 unit + loopback hijau; build Windows diverifikasi
+  CI.
+- [x] (dari Galih - XySpace Team, 2026-09-03) — Host: metrik latensi
+  pipeline (capture→encode→write RTP) kini dilaporkan di `/status` sebagai
+  `video.latencyMs` (EMA) + `video.latencyMaxMs` + `video.encoder`
+  (nvenc/openh264/test-pattern); durasi sampel video diseragamkan ke fps
+  nominal 60 (16,67 ms). Semua otomatis (tanpa toggle); uji 63 unit +
+  loopback hijau, build Windows x64/arm64 hijau di CI.
+- [x] (dari Tara - XySpace Team, 2026-09-03) — Token signaling Go kini
+  mengikat role (format identik Worker Cloudflare), middleware menolak
+  role/id palsu, relay menegakkan arah, daftar perangkat hanya membagikan
+  host. Dikunci `go test` baru + `go vet`/`go test` di CI (commit
+  `signaling/` + `.github/workflows/build.yml`).
+- [x] (dari Tara - XySpace Team, 2026-09-03) — Email berita memakai
+  `badge-xyspace.png` yang sudah hilang (404); kini `logo.png` baru + foto
+  founder, selaras web (`news/src/worker.js`).
+- [x] (dari Cakra - XySpace Team, 2026-09-03) — Pin Node ≥ 22 untuk tooling
+  wrangler: `engines` ditambahkan di `cloudflare/package.json` dan
+  `news/package.json` (CI memang sudah Node 24; ini melindungi lingkungan
+  lokal).
+- [x] (dari Galih - XySpace Team, 2026-09-03) — `nvenc.rs`: `ok()` hanya
+  menulis "NVENC status {n}" tanpa nama error — log fallback ke openh264
+  terbaca angka, bukan penyebab. Dipetakan `status_name`/`status_hint` di
+  `nvenc_config.rs` (0–26 dari nvEncodeAPI.h) + test. Sekalian perakit
+  `build_config`/`build_init` dipindah & dikunci uji; VBV dikecilkan dari
+  `bitrate/2` ke 1 frame.
+- [x] (dari Danu, 2026-09-02) — 500 semua deep link web produksi —
+  binding `ASSETS` hilang di `web_deploy/wrangler.toml`. Diperbaiki Danu,
+  commit `899e4d1`, diverifikasi live.
+- [x] (dari Danu, 2026-09-02) — Selaraskan token ungu `lib/core/tokens.dart`
+  dengan web (accent `#7C3AED`, deep `#5B21B6`, lavender `#A78BFA`) —
+  selesai di kode oleh Laras (2026-09-03). Verifikasi di build Android
+  nyata tetap terbuka (lihat "Untuk: Client Flutter").
+- [x] (dari Danu, 2026-09-02) — Avatar penulis resmi + komentar pakai foto
+  founder, dan avatar komentar DiceBear (official → foto founder, selainnya
+  `api.dicebear.com/9.x/adventurer/svg?seed=<author>`) — selesai di kode
+  oleh Laras (2026-09-03).
+- [x] (dari Danu, 2026-09-02) — Render gambar inline `![keterangan](url)`
+  (hanya `app.xystudio.my.id`) di `news_detail_page.dart` — selesai di kode
+  oleh Laras (2026-09-03).
+- [x] (dari Danu, 2026-09-02) — Nama komentator nama manusia deterministik
+  (bukan `tamu-xxxx`), selaras `web/src/news.ts` — selesai di kode oleh
+  Laras (2026-09-03).
+
+
+
+## Lanjutan admin — 2026-09-17
+
+Dari Operator - XyDesk Team, SESI-20260917-OPERATOR-ADMIN. Pemeriksaan kode lokal di afdc9f5, bukan verifikasi produksi.
+
+### Untuk: Backend / Edge dan Operator
+- [x] Prioritas: `cloudflare/src/admin.js` POST maintenance menelan exception dan tidak memeriksa status respons penyimpanan AuthStore; tetap mengembalikan `ok: true`. GET juga mengganti kegagalan storage dengan semua flag false. UI kini baca ulang setelah simpan, tetapi ini **tidak menjamin persistensi** jika backend memberi hasil fallback. Perbaiki propagasi galat dan tambahkan uji kegagalan penyimpanan. Penyimpanan empat layanan belum atomik dan dapat parsial; pertimbangkan endpoint batch dengan kontrol konkurensi.
+  **DITUTUP 2026-09-25 (sesi MATANGKAN) — sudah selesai dikerjakan sesi 17 Sep, itemnya yang tertinggal basi.** Bukti di kode & uji hari ini: POST memakai `storage.transaction` + revision (409 `maintenance-conflict`), kegagalan storage menjalar (`admin.test.js`: "storage gagal ditulis tidak menghasilkan sukses endpoint" → 503, "maintenance POST meneruskan kegagalan 500/409"), GET gagal → 503 `maintenance-unavailable` (bukan flag false; uji "maintenance GET galat upstream" untuk anonim maupun login), batch atomik + revision basi ditolak ("maintenance batch atomik"). Worker 206/206 hijau di Node 24.
+- [ ] `admin/src/App.tsx` Login masih membentuk `btoa({email,pass})` sebagai Google ID token, bukan GIS asli. Turnstile render hanya diperiksa sekali saat mount, fallback sitekey masih test. Perlu scope/izin autentikasi tersendiri; jangan klaim login produksi sudah berfungsi.
+- [ ] API menghapus token saat 401, tetapi React App belum otomatis kembali ke Login. Perlu penanganan sesi konsisten di pekerjaan autentikasi.
+- [ ] Sisa UI belum nyata: kontrol Dashboard, beberapa status Hosting/Backend/Settings, tombol Server, Rollback/DNS, dan Deploy Ulang yang memanggil purge. Audit lanjutan perlu mencocokkan setiap aksi dengan kontrak endpoint; jangan menganggap seluruh admin bebas dummy.
+
+### Hasil lokal & bahan artikel (belum diterbitkan)
+- Statistik yang gagal kini terlihat gagal, bukan angka contoh; data di-refresh 15 detik setelah ada token. Dashboard tidak menampilkan tren/grafik/health rekaan.
+- Maintenance menjadi draft sampai tombol Simpan ditekan, tombol dinonaktifkan saat proses, dan hasil dibaca ulang. Jika gagal atau parsial, muat ulang wajib sebelum mencoba lagi.
+- Galat log ditampilkan; daftar terakhir diberi peringatan mungkin tidak terbaru.
+- Bukti: `npm run build` lolos (TypeScript + Vite); `npm test` 12/12 lolos dengan fetch tiruan. Belum uji browser, login Google, perangkat nyata, endpoint produksi, maupun screenshot build rilis. Tidak ada kredensial dipakai, push, deploy, bump versi, atau artikel live.
+
+
+## Backend + server — 2026-09-17 (lanjutan)
+
+Operator - XyDesk Team, SESI-20260917-OPERATOR-BACKEND, atas arahan chat “gas aja ... fokus backend + server”. Hasil lokal, belum push/deploy.
+
+- Selesai di kode: fallback Google palsu dan bypass Turnstile dihapus; panggilan verifier disesuaikan `(env,idToken)` dan hasil `ok` diperiksa. Sesi admin harus role admin + audience xydesk-admin + email allowlist; hanya header Bearer, TTL satu jam. Semua sesi admin lama harus login ulang.
+- Selesai di kode: panel memakai GIS, tidak meminta password/payload palsu; memuat widget async, menangani captcha kedaluwarsa/error, dan kembali ke login saat 401.
+- Selesai di kode: maintenance empat layanan satu transaksi AuthStore termasuk audit log, revision conflict 409, storage failure 503. UI batch menggantikan empat POST; draft diverifikasi dengan baca ulang. GET publik tidak memuat email pengubah.
+- Selesai di kode: health read-only AuthStore/Hub (timeout per probe 5 detik); halaman Backend/Server menampilkan hasil probe, bukan grafik uptime/secrets palsu. Engine belum punya agen kontrol; tidak ada restart/capture-test/benchmark/deploy yang dijalankan.
+- Selesai di kode: purge palsu menjadi 501; galat list/log/stats bukan data kosong sukses. Metrik yang tidak diukur pada stats menjadi null, capture perangkat tidak lagi diasumsikan WGC.
+- Bukti: `cloudflare npm test` 122/122, `admin npm test` 15/15; tsc+Vite build dan Wrangler 4.123.0 dry-run di Node 22 lolos. Tidak ada uji browser, Cloudflare runtime, atau host Windows; semua fetch/storage test ditirukan.
+- Untuk CI/Release: ikuti `admin/README.md` sebelum rollout; konfigurasi Google origin/sitekey/secret belum diperiksa di produksi. Rollout frontend/backend harus terkoordinasi; jangan deploy login tanpa konfigurasi.
+- Untuk Backend/Edge: lakukan penilaian dampak bypass lama. Audience baru melindungi endpoint admin, tetapi tidak membatalkan JWT lama di endpoint non-admin. Keputusan rotasi secret global memerlukan rencana pemutusan sesi. Enforcement ban/role/revoke dan registri sesi masih perlu audit tersendiri.
+- Bahan artikel belum terbit: status backend kini berasal dari pembacaan nyata; penyimpanan maintenance tidak mengaku sukses saat gagal; konflik edit ditolak, login tidak lagi memakai formulir password palsu. Screenshot rilis belum tersedia.
+
+
+## Rollout — 2026-09-17 (ditahan setelah preflight)
+
+Operator - XyDesk Team, SESI-20260917-OPERATOR-ROLLOUT. Operator memilih verifikasi → push → deploy jika siap; tanpa restart host, rotasi global, bump versi.
+
+- GitHub push permission dan token Cloudflare aktif. Main masih afdc9f5 saat preflight. Semua perubahan lokal dua sesi sebelumnya digabung untuk push bersama.
+- Blocker: probe Chromium dengan GIS asli di origin admin menghasilkan HTTP 403 pada iframe tombol + `The given origin is not allowed for the given client ID.` Client ID cocok dengan bundle web produksi. Pemilik akun perlu menambahkan `https://admin.xydesk.my.id` ke Authorized JavaScript origins pada OAuth Web client. Detail dan Client ID publik ada di `admin/README.md`.
+- Blocker: tidak ada secret Turnstile di Worker signaling dan tidak ada widget hostname admin. Belum dibuat/diubah karena OAuth belum siap; dapat dikonfigurasi setelah origin Google diperbaiki.
+- Tes: Worker 122/122, panel 15/15, tsc+Vite build; runtime SQLite lokal dan browser panel API tiruan lolos. Runtime menemukan startup gagal akibat ekspor konstanta `HOST_REFRESH_TTL` dari entrypoint lama; `src/entry.js` hanya mengekspor handler/DO dan wrangler memakai entrypoint itu. Tes runtime yang dapat diulang ditambahkan ke `cloudflare/tool/runtime-check.mjs`.
+- Tidak ada deploy, dispatch workflow, perubahan secret/Google, penulisan maintenance produksi, atau restart. Health publik tetap `ok`. Jangan klaim perbaikan keamanan sudah live.
+- Langkah berikutnya: pemilik memperbaiki origin di Google Console → ulang probe → widget+secret Turnstile admin → build dengan env publik → deploy backend dan panel → verifikasi bundle serta smoke test. Jangan deploy build saat ini tanpa env.
+
+Verifikasi akhir rollout ditahan: commit kode `bca6da1` sudah push ke `main`, dikonfirmasi lewat GitHub API. Tidak ada Actions untuk commit tersebut saat pemeriksaan. Versi produksi signaling tetap `9c59a320-70aa-49ca-8933-37d4dd56727c`; admin tetap `577e5ea9-61bd-41b1-b9fd-37aff028d012`. Secret scan staged diff: 0 kecocokan kredensial lampiran.
+
+
+## OAuth admin terpisah dan rollout — 2026-09-17
+
+Operator - XyDesk Team, SESI-20260917-OPERATOR-ADMINLIVE. Pemilik mengunggah client OAuth khusus admin dan meminta penyimpanan di berkas kunci; rollout melanjutkan izin verifikasi/push/deploy sebelumnya.
+
+- Client admin tersimpan di berkas kunci di luar repo; client secret tidak digunakan dalam aplikasi. `ADMIN_GOOGLE_CLIENT_ID` wajib dan tidak memakai fallback client web/APK. Konfigurasi `GOOGLE_CLIENT_ID` lama di Worker tetap dipertahankan.
+- Google GIS asli menerima origin admin dengan client baru: HTTP 200 dan tombol terlihat; build produksi juga diperiksa di browser dengan layanan Google asli, tanpa pageerror. Belum login akun manusia.
+- Widget Turnstile khusus admin dibuat, tidak mengubah widget proyek lain. Secret disiapkan untuk upload versi Worker secara aditif, bukan rotasi secret global.
+- Tes Worker 124/124, panel 15/15, runtime SQLite dan build produksi lolos. Nilai `.env.production` hanya Client ID dan sitekey publik.
+- Snapshot file `tool/check_backend_live.py` memiliki perubahan mode yang sudah ada saat sesi dimulai; tidak disentuh dan tidak disertakan dalam commit.
+- Versi Worker dan panel akan diunggah tanpa aktivasi terlebih dahulu. Hasil deploy dan smoke test dicatat setelah aktivasi.
+
+
+### Hasil aktivasi SESI-20260917-OPERATOR-ADMINLIVE
+
+- Source `9fa11a8` sudah push sebelum upload. Backend `1a892f50-9d4a-4257-98b1-6931c8dc7234` dan panel `f69c671d-9bb2-4773-8ee2-f93b864599ef` aktif 100% trafik. Cloudflare API mengonfirmasi versi deployment.
+- Semua binding lama ada pada versi backend baru. Secret upload hanya menambah TURNSTILE_SECRET; client admin disimpan dalam ADMIN_GOOGLE_CLIENT_ID. GOOGLE_CLIENT_ID/secret lama dan widget proyek lain tidak ditimpa.
+- Bundle live cocok SHA256 `7ea70558e3545cce15e15518240e35cb2394e339792de6b55eadcec3be60719d`. Situs live membuka Google+Turnstile iframe 200, tanpa pageerror/pesan galat login. Screenshot asli di `admin/screenshots/login-live-2026-09-17.png`.
+- Smoke test HTTP: healthz 200; admin health/stats anonim 401; maintenance publik 200 tanpa metadata; POST maintenance anonim 401 tanpa penulisan; login captcha palsu 403.
+- Pemilik masih harus login akun admin + menyelesaikan captcha sendiri, lalu memeriksa panel Backend/Server. Tidak mengklaim authenticated end-to-end atau uji host Windows. Tidak ada restart engine, rotasi global, bump versi, rilis APK/desktop, atau artikel live.
+- Versi lama memuat bypass login: jangan rollback otomatis ke versi lama bila login bermasalah. Utamakan fix-forward atau pembatasan akses sementara yang disetujui operator.
+
+
+## Username/password + authenticator — 2026-09-17
+
+Operator - XyDesk Team, SESI-20260917-OPERATOR-PASSWORDMFA. Pemilik memilih password+captcha+2FA dan mengizinkan penggantian produksi setelah akun pengganti siap.
+
+- Migrasi dua fase: Google membuktikan pemilik untuk setup pertama; akun password dan penutupan Google/JWT lama baru berlaku dalam transaksi setelah TOTP dikonfirmasi. Tidak membuat akun/password pemilik otomatis.
+- Password PBKDF2-SHA256 100k (batas Workers) + salt + HMAC pepper khusus; TOTP AES-GCM; recovery sekali pakai; limiter IP/username; anti-replay dalam transaksi; sesi cookie HttpOnly host-only satu jam dan logout server-side. POST admin hanya menerima Origin admin; JSON maksimum 8KiB.
+- Secret baru ADMIN_AUTH_KEY khusus admin disiapkan dan diarsipkan di berkas kunci di luar repo. AUTH_SECRET/client web/APK/secret global tidak dirotasi. Password/seed TOTP/kode pemulihan pemilik tidak diminta di chat dan tidak diarsipkan oleh operator.
+- Tes: Worker 144/144; panel 18/18; build, runtime SQLite, dan alur browser terhadap runtime lokal lolos. Browser menguji setup, TOTP, recovery, reload cookie, logout, login recovery, penolakan replay; tanpa pageerror. Captcha dan bootstrap proof ditirukan hanya di lokal.
+- Batas: satu akun admin, belum ada UI ganti password/enrollment ulang/regenerasi recovery/reset mandiri. Kehilangan password atau kedua faktor perlu pemulihan manual terverifikasi; jangan membuat bypass Google. Dokumentasi lengkap di admin/AUTHENTICATION.md.
+- Akun produksi tetap menunggu setup oleh pemilik. Hasil upload/aktivasi dan konfigurasi live dicatat setelah rollout. Perubahan mode tool/check_backend_live.py yang sudah ada tidak ikut commit.
+
+
+### Rollout PASSWORDMFA selesai — akun menunggu pemilik
+
+- Source utama `006d766`, disusul `1d81c31` (audit login paralel tidak saling menimpa), sudah di main sebelum upload.
+- Backend `61c7b94a-3acb-4ea1-8a9e-090e30d93594` dan panel `aab0142f-0939-46d0-b3a4-368962d0b38b` aktif 100%. Semua binding lama dipertahankan; hanya menambahkan secret ADMIN_AUTH_KEY. Tidak merotasi key global atau mengubah client web/APK.
+- Tes akhir: Worker 145/145, panel 18/18, runtime SQLite dan browser lokal lengkap lolos. Screenshot bootstrap produksi `admin/screenshots/bootstrap-password-mfa-live-2026-09-17.png` tidak memuat password/seed/recovery milik pemilik.
+- Smoke pertama tepat setelah aktivasi gagal assertion tanpa merekam isi respons; penyebabnya tidak dibuktikan. Pemeriksaan ulang: config/healthz 200, session/setup anonim 401, captcha palsu/Origin asing 403; browser live Google+Turnstile iframe 200, tanpa pageerror/error login. Bundle SHA256 cocok `33107e169e9f77f1d99fcf466aae787e6884b65faa38a6f0e225bec630747361`.
+- Snapshot sebelum pemilik menyelesaikan aktivasi: `passwordEnabled:false`, `setupAvailable:true`. **Google BELUM ditutup**, karena pemilik belum membuat akun dan mengonfirmasi authenticator. Ini sengaja mempertahankan akses sesuai izin: Google ditutup setelah pengganti siap.
+- Langkah pemilik: buka admin → Google untuk verifikasi awal → username/password → tambah kunci ke authenticator → konfirmasi 6 digit → simpan 10 kode recovery → dashboard. Sesudah konfirmasi, Google/JWT lama ditolak dan sesi password memakai cookie HttpOnly.
+- Operasional lanjutan: belum ada UI ganti password/regenerasi recovery/reset mandiri; jangan membuka kembali bootstrap sebagai jalan pintas. Ikuti admin/AUTHENTICATION.md dan minta izin khusus untuk pemulihan atau rotasi key yang dapat memutus akun.
+
+
+## Aktivasi pemilik dan inti remote — 2026-09-17
+
+### Akun admin sudah aktif
+
+- Setelah pemilik menyelesaikan setup, pemeriksaan publik mengembalikan
+  `passwordEnabled:true, setupAvailable:true`; `POST /admin/login` mengembalikan
+  410 `google-login-disabled`. Snapshot pending-owner di atas adalah sejarah,
+  bukan keadaan terakhir. `setupAvailable` berarti key server tersedia, bukan
+  bootstrap boleh dibuka kembali.
+- Pemilik melaporkan memakai generator OTP pihak ketiga. Penanganan seed oleh
+  situs itu tidak diverifikasi; jangan menyatakan terbukti bocor. Rekomendasi:
+  reenrollment lewat aplikasi authenticator lokal tepercaya, setelah alur aman
+  tersedia. Tidak ada reset akun/seed atau pemutusan sesi otomatis.
+
+### REMOTECORE tahap pertama
+
+- Role Operator, permintaan langsung: semua pekerjaan, terutama remote desktop
+  nyata. Hasil dan cara reproduksi: `docs/REMOTE_CORE_QA.md` + `docs/qa/`.
+- Lulus lokal: Rust 122+5+1; Worker 151; web 19 + build; Worker/SQLite → binary
+  Rust → decode H264 Chromium, input mengubah bitrate, kick host, reconnect,
+  kick client yang mengabaikan close, lalu putus manual. **Bukan tes Windows.**
+- Perubahan mencakup cleanup host saat signaling putus; hubungan media Hub
+  memakai nonce attachment; lifecycle/antrean SDP-ICE dan diagnosis web.
+  Tidak deploy/restart produksi/dispatch rilis/bump versi. Lockfile hanya
+  menyusul versi 6.8.5 yang sebelumnya sudah ditetapkan.
+- [ ] Host/Operator: uji Windows DXGI/NVENC dan SendInput aktual; 30 menit,
+  audio, multi-monitor, dan galat SDP/ICE yang masih merambat keluar engine.
+- [ ] Backend/Host: TURN host masih belum diberikan dari main; endpoint
+  kredensial hanya menerima token client. Uji relay dan jaringan UDP diblokir.
+- [ ] Flutter: selaraskan cleanup error dan antrean ICE, lalu uji SDK/HP nyata.
+- [ ] Backend: audit enforcement ban/revoke untuk token yang sudah diterbitkan;
+  server-agent terautentikasi belum diimplementasikan pada tahap ini.
+- [ ] Admin: ganti password, ganti authenticator, recovery regeneration,
+  reauthentication, serta invalidasi sesi terkait masih antre.
+- [ ] CI/Release: rollout terpisah setelah persetujuan dan lab; link media Hub
+  baru ada setelah answer baru, tidak otomatis pada sesi sebelum upgrade.
+  Jangan menganggap push kode sebagai rilis atau bukti Windows sudah bekerja.
+
+
+## Paket Windows untuk RDP milik pemilik — 2026-09-17
+
+- Pemilik memakai VM/RDP GitHub Actions yang sudah tersedia dan menolak lab baru.
+  Pemasangan/pengujian dilakukan sendiri; tugas sesi menyiapkan dan memvalidasi paket.
+- `Prepare Host Windows` adalah build-only terpisah dari `Build`, sehingga tidak
+  memicu workflow_run Release/Deploy Web. Tidak memakai secret RDP/Tailscale, tidak
+  membuka RDP, tidak merestart host lama, dan tidak menaikkan versi.
+- Paket berisi engine MSVC x64, manifest source SHA/checksum, launcher manual,
+  dan panduan capture/input di RDP. Identitas launcher terpisah dari instalasi lama.
+- Status saat persiapan: YAML dan guard workflow diperiksa lokal; kompilasi/link
+  Windows, smoke executable, dan validasi PowerShell menunggu hasil build-only.
+  Tidak boleh menyebut paket executable valid sebelum hasil tersebut tersedia.
+
+
+### WINDOWSPACK — artefak final tervalidasi
+
+- Build awal `35251924013` (source `ce415f5`) sukses. Paket final menambahkan
+  EULA/inventaris dan file notice/lisensi dependency yang tersedia; build ulang
+  **35253045929** dari **c5feae3839bae1c90e142d49c697bda018ee7ede** sukses:
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35253045929
+- Gerbang Rust Linux lulus; executable **Windows x64 MSVC benar-benar
+  dikompilasi dan di-link**, `--help` dijalankan pada Windows. Parser PowerShell,
+  pemeriksaan PE x64/checksum, serta penolakan checksum rusak lulus pada Windows.
+- Paket `XyDesk-Host-Test-x64-c5feae3.zip`, 7.521.926 byte; executable
+  16.731.648 byte. ZIP diunduh dari artefak run final, SHA-256 ZIP dan engine
+  dicocokkan, source SHA/target/versi 6.8.5 diperiksa; CRC seluruh ZIP lulus.
+  Bukti terstruktur: `docs/qa/windows-host-manual-2026-09-17.json`.
+- SHA-256 ZIP: `613cef395bd862cdf823857d02ac5a7057505413de863f7dd7ebad97f6f2238e`.
+- Diserahkan melalui workspace `deliverables/` bersama checksum dan panduan.
+  Ini paket engine uji unsigned, bukan installer/rilis baru; tidak mengganti UI
+  desktop Tauri atau instalasi lama. Launcher memakai identitas terpisah.
+- **Tidak ada Test Lab/RDP baru, restart RDP/host lama, deploy produksi, rilis,
+  atau bump versi.** Dua run tersebut hanya menyiapkan paket uji.
+- `hardwareTested:false`: capture/input/audio/stabilitas pada RDP pemilik
+  tetap menunggu uji manual; keberhasilan compiler tidak menggantikan itu.
+
+
+## Installer NSIS — 2026-09-17
+
+- Permintaan pemilik: jadikan paket sebelumnya installer NSIS. Role Operator.
+- Engine tetap payload MSVC c5feae3; builder mengunci SHA-256 ZIP dan executable.
+  `Prepare Host NSIS` hanya pengemasan dan tes install/uninstall, bukan Test Lab
+  atau workflow Build/Release. Tidak mengubah versi atau host/RDP produksi.
+- Instalasi per-user terpisah, shortcut manual, uninstaller hanya daftar berkas
+  yang dibundel. Identitas dan file tambahan dipertahankan; folder lain ditolak.
+- Persiapan lokal: empat tes Python dan kompilasi makensis berhasil. Validasi
+  Windows install/shortcut/reinstall/uninstall menunggu run pengemasan.
+
+
+### NSIS — hasil akhir dan file yang diserahkan
+
+- Source installer **93c267fdaf09ed366115a4c1272bcba241ae6ce0**; run final
+  **35263867951** sukses:
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35263867951
+- Lima tes builder Python, kompilasi NSIS 3.12 di Windows, install silent pada
+  path berspasi, checksum/--help engine terpasang, registrasi Apps, shortcut
+  Desktop/Start Menu dan perintahnya di Windows PowerShell, reinstall, penolakan
+  folder lain, uninstall dengan preservasi identitas/file tambahan, serta jalur
+  default per-user semuanya lulus. Wizard interaktif tidak diklaim diuji visual.
+- Artefak **XyDesk-Host-Test-Setup-x64.exe**, **4.304.237 byte**, diunduh dari
+  artefak run sukses dan SHA-256 dicocokkan dengan laporan serta sidecar:
+  `5f51e49bf8c4dcbcece46b900e7b89004f9f4897b8e6c9f42cd0fa7c10dd4a97`.
+  Bukti: `docs/qa/nsis-installer-2026-09-17.json`; file pengguna di `deliverables/`.
+- Engine tetap MSVC x64 dari c5feae3, SHA-256 tidak berubah. Stub installer
+  NSIS x86-unicode normal untuk pemasangan payload x64; guard menolak OS x86.
+  Versi produk tetap 6.8.5. Installer unsigned, bukan rilis publik baru.
+- Kegagalan yang diperbaiki, bukan disembunyikan: run 35262965721 gagal pada
+  shortcut; diagnosis 35263269909 menunjukkan Windows PowerShell tidak menemukan
+  Get-FileHash. Launcher kini memakai SHA-256 .NET tanpa autoload cmdlet itu.
+  Run 35263474949 melewati shortcut tetapi mendeteksi /D eksplisit tidak dihormati;
+  pemilihan direktori bawaan/eksplisit diperbaiki dengan sentinel. Pemeriksaan
+  default/custom/reinstall/uninstall berikutnya semuanya lulus di run final.
+- Tidak ada lab/RDP baru, restart host lama, deploy backend/web, rilis/tag, atau
+  bump versi. Host hanya dimulai lewat shortcut atas tindakan pengguna. Remote
+  desktop/capture/input di RDP pemilik masih menunggu pengujian manual.
+- Reproduksi memerlukan payload ZIP ber-SHA yang dipin. Artefak GitHub lama
+  memiliki masa retensi; gunakan salinan ZIP tervalidasi jika artefak kedaluwarsa,
+  jangan diam-diam mengganti dengan rilis terbaru yang berbeda hash.
+
+
+## VIDEOGATE — regresi layar hitam, 2026-09-17
+
+- Pengguna mengonfirmasi Chrome Android tersambung tetapi hitam pada RDP yang
+  sudah dimiliki. Pairing/DC open tidak membuktikan adanya frame. Kredensial
+  yang ditempel pengguna tidak digunakan/disimpan; tidak mereset identitas.
+- Reproduksi baru menahan frame sampai capture armed, seperti gerbang Windows.
+  Kode baseline 1ca169b gagal karena pump menunggu frame sebelum memeriksa
+  Connected lagi. Setelah bounded wait 50ms, tes yang sama menerima RTP H264
+  dan pump berhenti saat peer ditutup walau channel frame masih terbuka/diam.
+- Lokal: fmt PASS; Rust 122 lib + 5 bin + 1 loopback + 1 gated capture PASS.
+  Bukti `docs/qa/video-gate-2026-09-17.json`. Tes ini Linux/sumber sintetis
+  bergated, bukan bukti DXGI/GDI/SendInput atau decode Android di RDP pengguna.
+- Installer yang sebelumnya diserahkan tetap c5feae3, belum berisi patch ini.
+  Persiapan engine/kemasan baru tidak boleh dianggap sudah dikirim atau diuji
+  sebelum hasil Windows tersedia. Tidak mengoperasikan RDP/driver/tscon.
+- Web fullscreen terpisah: pemanggilan setelah negosiasi tidak punya gesture
+  dan layout video tetap 16:9 dalam halaman. Belum diperbaiki/deploy; perlu
+  viewport session fallback dan tombol Fullscreen langsung dari gesture.
+- Audio WASAPI 0x80070057 masih terpisah dan belum diperbaiki.
+
+
+### VIDEOGATE — installer perbaikan tervalidasi
+
+- Engine source **9887131867ce614239aa0f6fae8214634c9b84fb**, Windows build-only
+  **35268184807** sukses (gerbang Linux + MSVC compile/link/help/parser/checksum).
+  ZIP payload 548 member/CRC, source/PE/hash diperiksa; salinan lokal tersimpan
+  di `/home/user/artifacts/XyDesk-Host-Test-x64-9887131.zip`.
+- NSIS source **54c8ff9c44762e056e4977b6523e932bcce733a6**, run
+  **35268695633** sukses; instalasi custom/default, shortcut PowerShell aktual,
+  reinstall/uninstall dan preservasi data lulus.
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35268695633
+- Installer diunduh dan diverifikasi: **4.294.751 byte**, SHA-256
+  `ba8be12cc44a73e2259c31d2bef9e6cc9558771bf57f86d04763348c1033ce6c`.
+  Nama penyerahan dibedakan dari paket lama:
+  `XyDesk-Host-Test-VideoFix-9887131-Setup-x64.exe`, folder workspace
+  `deliverables/video-fix-9887131/` dengan checksum, panduan, dan laporan.
+- Bukti `docs/qa/windows-video-gate-2026-09-17.json` dan
+  `docs/qa/nsis-video-gate-2026-09-17.json`. Engine SHA-256
+  `2a579abf970f153b6e1a8c198325be3a1cc6c9ea8f7e1d5f14fe2f2e1265a19b`.
+- Pemilik perlu menghentikan **host uji saja** lewat Ctrl+C sebelum reinstall
+  ke folder sama; RDP tetap terbuka. Identitas tidak direset. Tidak ada
+  deploy web/backend, restart host pengguna, lab baru, driver/tscon, atau
+  bump versi. Fullscreen dan WASAPI belum diperbaiki; hasil RDP→Android
+  dengan installer baru tetap menunggu pengujian manual pengguna.
+- Dampak pengguna: menghilangkan satu penyebab startup video macet. Tidak
+  ada screenshot remote baru karena perangkat pengguna tidak dioperasikan.
+
+
+## RDPBACKEND — laporan ulang hitam, 2026-09-17
+
+- User menguji engine 9887131: Connected dan capture berjalan, tetapi Android
+  tetap hitam. Tidak menyalin kredensial/log identitas pengguna.
+- Bug konkret: cabang RDP hanya mencetak GDI aktif; BACKEND tetap DXGI.
+  Kini policy awal RDP=GDI, console=DXGI; RDP melewati ensure_display dan
+  pemilihan virtual display agar tidak mengubah driver/display pengguna.
+- Label hitam total lama hanya mengukur 100/400 byte pojok, bukan seluruh
+  frame. Label diperbaiki; --capture-test menghitung seluruh RGB frame
+  terakhir (alpha diabaikan), tanpa screenshot/file/network/signaling.
+  Error DXGI di tengah probe tidak lagi melewati tes GDI.
+- Tes policy dengan perilaku default lama gagal (DXGI bukan GDI); policy baru
+  lulus. Tes RGB memeriksa alpha opaque, pojok nol/piksel terakhir berwarna,
+  dua piksel berwarna, dan buffer kosong. Linux fmt + 125 lib + 5 bin +
+  1 gated capture + 1 loopback lulus. Windows build/installer menunggu.
+- Batas: seleksi backend bukan bukti capture GDI benar pada RDP pengguna;
+  frame capture bukan bukti RTP/decode. Sumber desktop dan statistik decode
+  Android belum terukur. Fullscreen/audio tetap terpisah dan belum diperbaiki.
+
+
+### RDPBACKEND — hasil kemasan dan koreksi lingkungan pengguna
+
+- Pengguna memilih **RDP di HP yang sama** dengan Chrome; berpindah aplikasi
+  membuat RDP background. Ini variabel diagnosis, bukan bukti pasti penyebab.
+  Pembanding manual: split-screen jika didukung, atau probe capture saat RDP
+  foreground. Tidak meminta perangkat baru atau menganggap foreground RDP
+  sebagai solusi akhir unattended remote desktop.
+- Engine **eea2aca1f0dbbdf65f585afaf610bb0cc83d2502**, build-only Windows
+  **35270293201** PASS; ZIP 548 anggota/CRC/source/hash/PE diverifikasi.
+  Payload disimpan di `/home/user/artifacts/XyDesk-Host-Test-x64-eea2aca.zip`.
+- NSIS **12e6d4463b2d2b17af8f95263cdd2b353091fcc1**, run **35270898713**
+  PASS: default/custom install, shortcut aktual, reinstall, uninstall/data.
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35270898713
+- Artefak penyerahan `XyDesk-Host-Test-RDP-GDI-eea2aca-Setup-x64.exe`,
+  **4.298.729 byte**, SHA-256
+  `ced0c669a3a52e73cfe9371863dd935525cd428beaee22d9bfe7c69c17c85446`.
+  Folder `deliverables/rdp-gdi-eea2aca/` beserta checksum/README/laporan.
+  Bukti `docs/qa/{windows,nsis}-rdp-backend-2026-09-17.json`.
+- Engine SHA-256
+  `3c290f559e6fa29f4a3a43a7d48c731fb1f13aec23781034b8a99ce46657b8a9`.
+  Tidak deploy, bump, restart pengguna, lab, driver, atau tscon. Uji capture
+  GDI sebenarnya/RDP background/decode Android masih manual dan belum terbukti.
+- Dampak: policy RDP kini benar memilih GDI dan diagnostik tidak menyatakan
+  piksel sampai ke client hanya berdasarkan counter capture. Tidak ada
+  screenshot baru: isi layar pengguna tidak dibaca/disimpan oleh operator.
+- Audit lanjutan GDI: jalur lama GetDIBits masih memakai bitmap terpilih ke DC
+  dan pelepasan handle perlu audit ownership/deselection; belum diubah pada
+  patch seleksi ini dan belum dibuktikan sebagai penyebab laporan pengguna.
+
+
+## MEDIARX — pemulihan video dan statistik penerimaan
+
+- User mengonfirmasi probe DXGI/GDI menghasilkan piksel RGB bukan nol, tetapi
+  Chrome ukuran/fps/codec kosong, data 0,0 Mbps, RTT 230ms/loss 11,4%.
+  Tidak membaca/merekam kredensial sesi; fokus bukan driver/capture lagi.
+- add_video_track membuang handle sender tanpa read RTCP. Pada webrtc-rs
+  0.11, NACK responder dipanggil di RTCP reader; sebelumnya tidak diproses.
+  Reader kini berjalan sampai sender close, PLI/FIR meminta keyframe dengan
+  batas 500ms. NACK tetap milik interceptor bawaan, bukan retransmisi buatan.
+- Tes real WebRTC baru: minta pengiriman ulang sequence tertentu, verifikasi
+  sequence sama diterima lagi, lalu PLI sampai ke flag encoder. Receiver tes
+  saja menonaktifkan filter replay SRTP untuk mengamati duplikat sengaja;
+  konfigurasi produksi tidak diubah. Fixture awal salah karena filter replay
+  membuang duplikat; setelah dikoreksi, baseline tetap FAIL dan patch PASS.
+  Ini tes NACK/PLI, bukan emulasi loss 11,4% atau decode Android.
+- Web: byte/paket/frame/keyframe/PLI/NACK mentah dan status video; primary
+  dipilih bukan RTX/FEC/track kosong terakhir. Level-id H264 lengkap 6 digit.
+  Connected tanpa inbound video tetap memberi diagnosis, bukan null kosong.
+- Lokal: fmt + Rust 125 lib, 5 bin, 3 integration PASS; web 21 PASS + tsc/Vite
+  build PASS. Tes label lama perlu ekspektasi 6 digit, bukan 4 terpotong.
+  Build ini bukan bundle produksi OAuth; web belum di-deploy. Windows/NSIS
+  untuk engine baru menunggu build-only. Tidak membuat lab atau mengubah RDP.
+
+
+### MEDIARX — hasil akhir paket dan deploy web yang disetujui
+
+- User secara eksplisit memilih **Ya, terapkan ke web** untuk statistik media;
+  tanpa backend/driver/RDP restart. Web source **fb6d635c4c382b9e985d4f53f4a1ebd2b796ea79**
+  deployed sebagai versi **22a28371-f623-4fc2-b471-a3f399d5cad3**.
+  Asset `/assets/index-CWeoN7fA.js`, SHA-256
+  `52cd2accbdfab29c1a3e7b1080bce61256045f42b5b966043039d7134e1a9fb5`.
+  Client OAuth diekstrak dari bundle live lama, dipakai build produksi, dan
+  dicocokkan sebelum deploy. Backend/OAuth APK tidak diubah.
+- Verifikasi: bundle live byte-identik + text/javascript; browser Chromium
+  membuka /connect HTTP 200, form terlihat, tanpa pageerror; tidak pairing
+  ke perangkat user. Verifikasi langsung pertama gagal, pengambilan ulang
+  cocok; tidak ada deploy kedua. Bukti web-media-rx-production di docs/qa.
+- Harness Worker lokal → Rust → Chromium kembali PASS: H264 320x180, 5 frame
+  decoded, 155 warna sampel; bitrate/kick/reconnect/manual disconnect PASS.
+  Bukti media-rx-chromium di docs/qa. Bukan RDP/Android/TURN/loss internet.
+- Engine build Windows **35273970970** PASS; watcher lokal sempat timeout API,
+  bukan kegagalan build. Status sukses diperiksa ulang. MSVC/--help/PE/hash
+  dan ZIP 548 anggota diverifikasi; payload di /home/user/artifacts/.
+- NSIS source **571b3c19005f42526839e74f38cac8528a6a3835**, run
+  **35274547571** PASS: install custom/default, shortcut PowerShell aktual,
+  reinstall, uninstall/preservasi data. Installer **4.310.333 byte**, SHA-256
+  `76a177cda17ff3f713f2c0b2717108e07844ff789dd896afb35b8de2167b0cb5`.
+  Penyerahan: `deliverables/media-fix-fb6d635/XyDesk-Host-Test-MediaFix-fb6d635-Setup-x64.exe`
+  bersama checksum/README/laporan. Engine hash
+  `bca213dd7a01fa56ae52293c217d8356a96acf98c2abf26ac4780d5acea9de89`.
+- Tidak restart host/RDP user, tidak memasang driver, tidak lab baru, tidak
+  deploy backend atau bump versi. User perlu Ctrl+C host uji saja, reinstall
+  lokasi sama, lalu reload web sebelum pairing agar memakai statistik baru.
+- **Belum selesai:** hasil RDP→Chrome Android pada jaringan user, decode
+  di resolusi 2336x1080, loss 11,4%, audio/fullscreen, serta audit GDI lama.
+  Klaim hanya pemulihan RTCP yang direproduksi dan statistik live, bukan
+  janji layar user pasti tampil. Screenshot baru hanya pola uji lokal.
+
+
+## PLAYBACK — byte/frame tiba, tetapi video belum tampil
+
+- Laporan user: 1.425.749 byte/1.841 paket/720 frame diterima, framesDecoded
+  ditampilkan 0 tetapi keyFramesDecoded 6. Ini bukan bukti video tidak masuk.
+- readStats memakai framesDecoded ?? 0; field yang tidak diekspos browser
+  dipalsukan menjadi nol. Kini missing tetap undefined dan inkonsistensi
+  keyframe > total ditandai, bukan disimpulkan decoder gagal.
+- Video DOM sebelumnya menerima stream audio+video dengan MSID sama, tanpa
+  play eksplisit. Kini video-only stream, play setelah connected/visible,
+  tombol Putar video dari gesture dan laporan paused/readyState/error,
+  videoWidth/Height, total frame pemutar. Audio tetap elemen terpisah.
+- Banner tidak lagi menyalahkan layar host/driver untuk semua kasus. Track
+  terlambat dari sesi lama diabaikan; disconnect melepas srcObject tanpa
+  menghentikan track peer secara sembarang.
+- Web 26 tes + tsc/Vite PASS. Test playback memakai elemen/MediaStream mock,
+  bukan bukti Android; tidak mengklaim autoplay/audio sebagai penyebab pasti.
+  Host fb6d635 tetap dipakai; tidak perlu NSIS/capture probe lagi.
+- Workspace awal menunjuk fb6d635 dengan hasil tahap sebelumnya sebagai
+  dirty/untracked. Fetch main: 12 berkas perubahan remote sudah byte-identik
+  dengan worktree. Reset mixed ke main menjaga isi berkas dan perubahan
+  mode tool/check_backend_live.py; tidak membuang kerja pengguna.
+
+
+### PLAYBACK — sudah live, host tetap
+
+- Web final source **effc912**, versi **1c6587f1-34f4-44b0-826e-7dc1d99988a2**.
+  `/assets/index-DLboefwX.js`, SHA-256
+  `41de9d92ac60df8354904a69e133029e12ccee098a103355aacccf0b2b502ec4`.
+  OAuth web dipertahankan dari bundle sebelumnya; backend/host tidak disentuh.
+- Deploy pertama 610984e/53afa4d5; final menambahkan stopPropagation pada
+  pointer tombol pemutar agar tidak sekaligus mengklik desktop remote. Kedua
+  deploy diverifikasi byte-identik; final browser /connect HTTP200/form
+  terlihat/tanpa pageerror, tanpa login atau pairing ke host user.
+- Tes Chromium helper produksi: stream canvas 640x360 + audio diam dipisah
+  menjadi video-only; play berhasil, readyState4, paused=false, 2 frame
+  pemutar. Bukan tes H264/RDP/Android atau bukti audio sebagai akar masalah.
+  26 tes web + build ulang final PASS. Bukti `docs/qa/web-playback-2026-09-17.json`.
+- User cukup putus sesi XyDesk, reload web, connect memakai host MediaFix
+  yang sama. Bila perlu ketuk Putar video; laporkan Pemutar video, Ukuran
+  pemutar, Frame pemutar(total), dan frame decode (missing kini bukan 0).
+- Masih belum terbukti: decode/render H264 2336x1080 di Chrome Android user,
+  dukungan level/resolusi dan penerapan label kualitas720p pada encoder.
+  Jangan membangun installer capture lagi tanpa bukti dari pemutar.
+
+
+## SESSIONFULL — fullscreen sesi web
+
+- Permintaan user: layar sesi fullscreen di web. Host/installer tidak diubah.
+- Connected memakai fixed viewport 100dvh, header/footer berada di belakang
+  sesi, video contain (tidak dipotong/ditarik). Native Fullscreen API hanya
+  dari tombol pada surface yang memuat video+kontrol; bukan dokumen/elemen
+  video sendirian atau callback negosiasi tanpa gesture. Penolakan dilaporkan,
+  layout viewport tetap berlaku. Tidak memaksa native video iOS yang
+  menghilangkan kontrol input. Landscape lock best-effort setelah fullscreen.
+- Toolbar memakai dua/tiga kolom pada tinggi pendek, panel minimum width
+  tidak keluar viewport, safe-area tepi dipertimbangkan. Pointer-up rail
+  tidak diteruskan menjadi klik remote. Body scroll dikunci selama Connected
+  dan nilai sebelumnya dipulihkan lewat cleanup effect.
+- 29 unit tes + tsc/Vite PASS. Chromium layout fixture memakai CSS produksi,
+  SSR SessionRail asli dan helper fullscreen: 390x844, 844x390, 568x320,
+  1366x768 memenuhi viewport + seluruh tombol terlihat; native entry/exit,
+  penolakan native + fallback, dan layout disconnect PASS. Bukan sesi
+  RDP/Android fisik, bukan bukti bug decode user sudah selesai.
+- Bukti docs/qa/session-fullscreen-2026-09-17.json dan screenshot fixture
+  landscape. Tidak ada screenshot desktop user atau kredensial sesi.
+
+
+### SESSIONFULL — deploy final
+
+- Source **1fecff4d7fc40ee5f724b611d83c21d29cb70052**, worker web versi **fe8a8cd7-959e-4341-8b24-02baf34e3430**.
+- JS `/assets/index-ClKrOKWS.js`, SHA256 `aa461f7cc410af68dbad3a27f1d976cf5fece88d477f835245d3c36516b02776`.
+- CSS `/assets/index-DbUqPjs1.css`, SHA256 `716653010862e3ba3421e9c25cbb873c01791a1d8595dd44494e5c9278122e35`.
+- JS/CSS live byte-identik dan content-type benar; konfigurasi OAuth web
+  dipertahankan dari bundle live sebelumnya. Browser viewport390x844
+  /connect HTTP200/form terlihat/tanpa pageerror; tidak pairing host user.
+- Bukti `docs/qa/session-fullscreen-production-2026-09-17.json`.
+  Sesi viewport otomatis setelah connect, native fullscreen via tombol;
+  browser yang menolak tetap viewport, bukan janji bilah browser hilang
+  tanpa gesture. Host/driver/RDP/backend/audio/versi tidak diubah.
+- Pengguna perlu reload web sebelum koneksi berikutnya. Perbaikan
+  fullscreen terpisah dari status decode video di Android yang belum terbukti.
+
+
+## H264COMPAT — paket tiba, renderer Android tanpa metadata
+
+- Statistik user: RTP bytes/frame bertambah, renderer playing tetapi
+  readyState0/0x0/0 frame; log salinan terminal rusak tidak diinterpretasi.
+- Probe dengan konfigurasi software produksi lama: 2336x1080 -> SPS
+  **42c033** (Level5.1), 9928 macroblock. 1280x592/720 dengan 60fps ->
+  **42c020** (Level3.2). Track mengiklankan **42e01f** (Level3.1). Ini
+  reproduksi konfigurasi lokal, bukan bitstream yang disadap dari user.
+- SoftwareEncoder baru memperkecil RGBA proporsional ke batas1280x720,
+  dimensi genap; user2336x1080 menjadi1280x592. Config Level3.1/30fps/
+  <=14Mbps, pacing GDI30/DXGI software30/WGC software30, durasi RTP target
+  software33,333ms. Source desktop/driver/resolusi RDP tidak diubah.
+- Tes encode RGBA2336x1080 nyata lewat kelas produksi menghasilkan SPS
+  **42c01f** dan OpenH264 decoder mengeluarkan1280x592. Tes ukuran/aspek,
+  batas3600macroblock/108000macroblock-per-sec dan buffer rusak PASS.
+  fmt + Rust128lib/5bin/3integration PASS. Belum bukti Android.
+- Hardware NVENC tidak diubah; negosiasi kemampuan/resolusi hardware yang
+  lebih tinggi masih perlu audit terpisah. Pilihan kualitas web lama masih
+  terutama mengubah bitrate, bukan janji software selalu mencapai720p60.
+  Bitrate target >14Mbps dibatasi software dan nilai efektif dicetak di log.
+- Resize nearest-neighbor memakai buffer ulang; teks kecil dapat teralias.
+  Input absolut sudah dinormalisasi; desktop asli tidak di-resize.
+
+
+### H264COMPAT — hasil akhir dan penyerahan
+
+- Engine **91ef7043879320b797297b8438c177bee9a975ee**, build-only Windows
+  **35278330146** PASS (gerbang Rust + MSVC compile/link/help/parser/hash).
+  ZIP 548 anggota/CRC/source/hash/PE diverifikasi; salinan di
+  `/home/user/artifacts/XyDesk-Host-Test-x64-91ef704.zip`.
+- Chromium WebCodecs dikonfigurasi avc1.42e01f dan menerima **12/12 frame**
+  bitstream kelas SoftwareEncoder produksi dari RGBA sintetis2336x1080,
+  semuanya1280x592, tanpa error; pixel render bukan nol. Bukan RTP network
+  test atau Android. Bukti chromium-h264-compat di docs/qa.
+- NSIS source **afd601025d7c741f89cad53a968cf5e0dd8755ac**, run
+  **35278907733** PASS; install custom/default, shortcut PowerShell aktual,
+  reinstall, uninstall/preservasi data.
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35278907733
+- Installer **4.305.195 byte**, SHA256
+  `e94880fce971bf4c471dca6d2c1ba4ae88121e1d19656a0a7ceed8e08e9b91d4`,
+  di `deliverables/h264-compat-91ef704/XyDesk-Host-Test-H264Compat-91ef704-Setup-x64.exe`,
+  bersama checksum/README/laporan. Engine hash
+  `0c2b5db90570def6f1b3f213d94ae6af802720522a06c598456d8b684436bf9b`.
+- User perlu berhenti host uji lewat Ctrl+C sebelum reinstall lokasi sama.
+  Identitas dipertahankan, RDP tetap terbuka. Log baru harus membedakan
+  capture2336x1080 dan kirim1280x592/maks30fps/SPS42c01f. Log capture tetap
+  ukuran asli bukan bukti bahwa scaling gagal.
+- Tidak deploy web/backend, tidak ganti driver/resolusi RDP, tidak restart
+  host user, tidak lab baru, tidak bump versi. Fullscreen web sebelumnya
+  tetap live. Hasil Android, audio, NVENC capabilities dan gambar nyata
+  masih menunggu bukti; jangan menyatakan akar lapangan eksklusif atau
+  memberi jaminan bahwa installer ini pasti menampilkan gambar.
+
+### CONTROL — kontrol HP dan bukti video lapangan (2026-09-17)
+
+- User mengonfirmasi gambar Windows akhirnya tampil dengan engine91ef704:
+  player1280x592/readyState4,1030 frame pemutar dan decode. Kualitas masih
+  bergerigi dan16fps; ini bukti manual user, bukan pengukuran agent.
+- Web: trackpad default pointer coarse, panah lokal posisi absolut, hit-test
+  object-fit contain, tap/cancel terpisah, gesture multi-touch tidak klik,
+  pointer capture tombol kiri+geser dan release blur/visibility/mode/putus.
+  Panah adalah perintah lokal, bukan telemetry posisi/bentuk kursor Windows;
+  WGC yang sudah menggambar kursor dapat memperlihatkan dua panah sementara.
+- Tes web36 PASS + tsc/Vite PASS. Chromium actual React handlers + CDP touch
+  portrait390x844/landscape844x390 PASS (swipe/tap/cancel/drag/scroll/direct
+  position/fullscreen). Stream canvas dan transport stub: BUKAN pembuktian
+  SendInput Windows atau Chrome Android nyata. Harness web/e2e/control_smoke.mjs.
+- Label preset tidak menjanjikan720p60/1080p60 lagi; target dan batas software
+  dibedakan. Statistik bitrate kecil memakai tiga desimal; tidak menganggap
+  total byte bertambah sebagai bukti laju saat ini selalu tinggi.
+- Host dalam pekerjaan terpisah: bilinear fixed-point reusable dan batas
+  coalescing input agar posisi sebelum klik tidak dibuang. Belum dikemas pada
+  checkpoint web ini. Tidak ada driver/RDP/backend/auth changes/version bump.
+
+### CONTROL — host lolos regresi
+
+-130lib +5bin +3integration/fmt PASS; percobaan4job debug kehabisan RAM
+  sandbox2GB, diulang1job/debug0 berhasil. Bilinear blend/identity/buffer
+  reuse + actual encode/decode1280x592/SPS3.1 PASS. Helper resize optimized
+  60frame rata-rata7.768ms di sandbox, bukan FPS Windows; filter punya
+  biaya CPU dan tidak memulihkan detail desktop yang hilang karena downscale.
+- Coalescing hanya gerak ABS berurutan; event tombol/rel/key/scroll menjadi
+  batas agar klik dan awal drag tidak terjadi pada posisi lama.
+- Web checkpoint9912f07 live65f8ef0f, exact JS/CSS+OAuth dan anonymous form
+  PASS setelah fetch awal belum cocok. CSS lanjutan menyembunyikan kursor
+  browser pada lapisan input supaya pointer mouse fisik tidak dobel lokal.
+- Windows build/NSIS berikutnya diperlukan; belum mengubah host user.
+
+### CONTROL — penyerahan akhir
+
+- Host **1f8948f3f5ab4970d29cd03a70cd94ece9a33f39**, Windows build-only **35283806642** PASS.
+  Manifest source/hash, ZIP548/CRC dan x64PE diverifikasi.
+  Engine SHA256 `fef550b39d4a6ad8d556334bf2fa34d6cb5d8528ca944845d4bcae825dbd46d0`.
+- NSIS source **ddfd36ffa22c9c7b923774bfb6ceb2ca485278db**, run **35284257815** PASS:
+  https://github.com/xykalnotkel/XyDesk/actions/runs/35284257815
+  Installer **4306626bytes**, SHA256 `a2211ee6c18b4ab75aaf96eac62523a03a60458d31f97e97c88f198f4f8be29b`.
+  SHA sidecar/validation sama, engine dalam hasil install sama dengan Windows.
+- Deliverable `/home/user/deliverables/control-1f8948f/XyDesk-Host-Test-Control-Bilinear-1f8948f-Setup-x64.exe` bersama README/checksum/NSIS-VALIDATION.json.
+- Web final source1f8948f, worker8d88b081-c4ba-4cad-b499-8f3658b1d79f;
+  JS/assets/index-BKgmZPbY.js + CSS/assets/index-DMLqdJzN.css exact build/live.
+  Google client WEB tetap sama; anonymous390x844/connect200/form/noerror PASS.
+  Perbaikan CSS lapisan input cursor:none memerlukan deploy kedua setelah
+  checkpoint65f8ef0f; bukan retry deploy karena verifikasi awal.
+- Cara uji manual: putuskan sesi web, Ctrl+C hanya host uji sendiri, reinstall
+  folder sama dan start sekali. Reload web. Geser1jari/ketuk/scroll2jari/
+  tombol kiri tahan + geser. Identitas tidak dihapus. Tidak restart RDP,
+  ubah driver/backend/auth/versi/lab. Tidak perlu RDP selalu foreground HP.
+- Field video pada engine sebelumnya91ef704 sudah dikonfirmasi user.
+  Kontrol/ketajaman/fps paket baru masih perlu konfirmasi Windows/Android;
+  jangan menyebut Chromium mock transport sebagai bukti SendInput Windows.
+  Panah lokal bukan telemetry dari RDP lain, WGC dapat memiliki kursor ganda,
+  batas input absolut mengikuti layar primer yang sudah ada (multi-monitor
+  belum diaudit). Audio tidak diperbaiki di sesi ini.
+
+### SESSION — tahap web, sisa refresh/120fps/audio Windows
+
+- User memperjelas: panah hilang normal/fullscreen; "cuma itu keknya" untuk
+  kontrol gagal lain; suara belum diuji. Jangan menyatakan semua kontrol/audio
+  sudah gagal atau overlay baru pasti menyelesaikan Android tanpa field test.
+- Tahap web: pointer-v2 HTML wrapper/36x48/edge flip/RAF+layout recovery1Hz/
+  center button; explicit audio.play+retry dan mute receiver/element tanpa
+  renegosiasi mic; audio counters; saved preferences sent once after meta;
+  URL 256bit display-only. Auto bitrate sebelumnya bukan adaptive, label
+  diperbaiki Bawaan host. Host/backend/driver/versi tidak diubah.
+-42 unit tests + tsc/Vite dan Chromium React/CDP portrait/landscape PASS.
+  Harness session_runtime_smoke: gestures/fullscreen, metadata fallback,
+  center, simulated autoplay denial/retry, audio element mute, saved prefs
+  once, random URL. Transport stub dan audio sintetis: bukan Windows/Android.
+- Sisa besar **BELUM DIKERJAKAN**: refresh resume aman,120fps hardware-
+  negotiated, ACK effective settings/adaptive bitrate, audio Windows actual.
+  Rancangan/risiko dan batas bukti: docs/qa/session-followup-audit-2026-09-17.md.
+
+### SESSION — hasil deploy tahap web
+
+- Source5f189d6; worker **d929ff32-2fe4-4aab-b469-af2733f6a873**.
+  Live JS/assets/index-CBDCTv7c.js dan CSS/assets/index-DZHNBbpz.css sama
+  byte/SHA dengan build produksi; OAuth WEB sama. Anonymous390x844/connect
+  status200/form/noerrors PASS. Bukti session-runtime-production JSON.
+- Tidak ada installer baru, perubahan host/Hub/backend/RDP/driver/versi.
+  Untuk verifikasi HP: muat ulang web sebelum konek kembali; tombol⌖
+  Temukan panah; tab Gambar menampilkan Penunjuk kontrol pointer-v2.
+  Jika tetap hilang butuh screenshot sesi + baris tersebut, tanpa kredensial.
+- Tahap web ditutup; request menyeluruh user **masih parsial**. Prioritas
+  berikutnya resume token contract end-to-end, capability/120fps + settings
+  ACK, Windows audio field test. Tidak ada proses implementasi lanjutan
+  yang berjalan sendiri setelah penyerahan ini.
+
+### SESSIONUX — implementasi dan verifikasi sebelum deploy
+
+- Permintaan user: resolusi selectable720/1080/Asli; guest history lokal,
+  akun server; mapping desktop+gaming bebas posisi/ukuran/landscape. Preview
+  ditetapkan opt-in aman (belum ada izin automatic screenshot).
+- Web: loading dalam session+cancel-safe; cursor24–96px/sens0,2–4x/opsi
+  panah yang sudah ada dalam video; mapping bebas dengan penyimpanan per
+  orientasi; /history dengan nama/spec dari hardware meta, status sesi,
+  preview opt-in dan delete. Native cursor bukan capture GDI baru.
+- Backend: AuthStore /auth/session-history private (JWT+record user), quota/
+  validation/allowlist,20record,JPEG32KiB/body48KiB,40write/min, transactions,
+  atomic account deletion cleanup. Guest data tidak auto-upload saat login;
+  account save gagal tidak ditulis diam-diam sebagai guest.
+- Web51/Worker155 PASS. Workerd auth regression + SQLite history concurrency
+ 21writes/retention20/account-delete-race zero orphan PASS. Chromium portrait/
+  landscape actual React + stub transport guest preview/history/mapping/loading/
+  cursor-size PASS. Batas bukti di docs/qa/session-ux-scope-2026-09-17.md.
+- **Sisa penting:** HD selection belum tersedia karena H264Level3.1 frame-size
+  limit; bukan persoalan menurunkan FPS saja.120fps/resume tetap belum.
+  Audit tambahan: receive_mic host menunggu track hanya~30s, sehingga enable
+  mic terlambat perlu perbaikan host+installer dan tes. Tidak boleh mengklaim
+  semua audio/mic Windows berfungsi hanya dari tes frontend.
+
+### COREGUARD — pemeriksaan akun pada gerbang backend (2026-09-18)
+
+- Izin khusus operator: pilihan **Uji, lalu push dan deploy**; backend saja,
+  tanpa rotasi secret, perubahan OAuth, restart host/RDP atau bump versi.
+- `member_session.js`: audience, sub/email, banned, versi token; JWT lama
+  tanpa versi diterima hanya pada akun generasi nol. /auth/me memakai
+  pemeriksaan yang sama dengan mutasi akun dan riwayat. /signal-token
+  meminta principal ke AuthStore; gangguan storage gagal tertutup 503.
+- OTP/Google menerbitkan claim aud+ver. Konsumsi OTP dan perubahan akun
+  transaksional; profil, history write dan delete mengecek versi kembali
+  dalam transaksi agar tidak menimpa revocation yang baru terjadi.
+- Verifikasi: 171 unit test PASS, runtime admin auth PASS, runtime SQLite
+  member (5 concurrent revoke, concurrent OTP single-use, old JWT rejection,
+  fresh login, ban) PASS; history retention/delete-race PASS. Tidak ada CI
+  GitHub didispatch. Google diuji dengan RSA lokal/JWKS tiruan, bukan login
+  produksi memakai akun operator. Bukti: docs/qa/coreguard-2026-09-18.md.
+- Dampak pengguna: hanya token invalid/dicabut/akun diblokir yang ditolak;
+  token akun aktif generasi nol tetap diterima. Tidak ada perubahan visual,
+  screenshot tidak relevan. Tidak menerbitkan artikel berita.
+- **Batas penting:** ticket signaling yang SUDAH terbit masih diterima sesuai
+  masa berlaku 5 menit; /ws dan /turn-ice belum mengikat principal akun.
+  Sesi P2P yang sudah aktif tidak otomatis diputus oleh ban/revoke akun.
+  Perlu owner-bound ticket + revocation aktif dengan rollout kompatibel.
+- **Antrian host/web:** capability dan ACK pengaturan efektif; resolusi
+  720/1080/native dengan negosiasi nyata; mic late-enable (~30s timeout);
+  reconnect/resume berotorisasi; pengukuran Windows/Chrome Android. Belum
+  ada patch host, installer baru, atau klaim semua fungsi selesai.
+
+- **Pascadeploy COREGUARD:** source `697b14d`, backend Worker
+  `8b4f5429-fb8f-4778-8226-83ae094b496d`; health200, anonymous auth401,
+  internal authorization403, guest signin/client-ticket200, guest host403,
+  admin password enabled. Seluruh bindings sama, hash ketiga aset web sama.
+  Bukti `docs/qa/coreguard-production-2026-09-18.json`; tidak ada akun
+  produksi diblokir/dicabut untuk pengujian, tidak ada pairing host nyata.
+  Paket gerbang akun ditutup; backlog host/active revocation tetap terbuka.
+
+### BOUNDSESSION — ticket dan sesi client terikat akun (2026-09-18)
+
+- Operator meminta lanjut ("gas") setelah arah pengikatan identitas sesi
+  dijelaskan. Role Operator - XyDesk Team; sesi BOUNDSESSION.
+- Ticket client baru `v2.<JWT>` mengikat audience signaling, role client,
+  deviceId dan principal (UUID, guest, versi, expiry akun). Tidak membawa
+  email; index `subject:<UUID>` dibuat saat penerbitan dan dihapus bersama
+  akun. Tidak ada migrasi massal/secret rotation/OAuth/config/version change.
+- Worker memeriksa status principal untuk /ws dan /turn-ice. Header principal
+  kiriman caller selalu dibuang/ditimpa; hanya principal tervalidasi diteruskan.
+- Hub attachment bertahan hibernasi. Pemeriksaan tiap pesan dan alarm ~15s;
+  lookup per principal dideduplikasi hanya dalam satu alarm, concurrency16.
+  Akun yang gagal otorisasi/storage outage ditutup1008 dan host menerima bye
+  berdasarkan nonce, bukan ID saja. Host tidak direstart. Guest bertumpu pada
+  signed expiry karena tidak punya record akun yang dapat diblokir.
+- Bukti:181 unit PASS; runtime admin auth PASS; runtime member dan history
+  PASS; Worker+SQLite+WebSockets nyata: idle revoke mengirim host bye dan
+  client close1008 sekitar15s, guest expired ditutup, host dan guest sehat
+  tetap tersambung. Artefak docs/qa/bound-session-runtime-2026-09-18.json.
+- **Batas:** host dalam runtime adalah simulator protokol. Kode host saat ini
+  menangani bye dengan Session.close dan PairGuard.revoke, tetapi pemutusan
+  video/input Windows nyata belum diuji dalam sesi ini. Alarm adalah interval
+  target, bukan deadline keras (RPC/timeouts/scheduler/beban memengaruhi).
+- Ticket legacy diterima sampai masa berlaku habis; koneksi yang sudah ada
+  tanpa principal TIDAK diputus massal dan belum bisa di-account-revoke.
+  Operator /issue tetap bisa menerbitkan ticket legacy istimewa. Perlindungan
+  baru aktif setelah client mengambil ticket baru/menyambung ulang. Tidak
+  ada pencabutan kredensial TURN yang sudah diterbitkan; hanya issuance baru.
+- Tidak mengubah host/web/APK/installer atau menjalankan CI GitHub. Windows
+  field proof, lease enforcement host saat Hub tak terjangkau, capability/
+  ACK efektif, HD dan mic late-enable tetap antrian. Perubahan nonvisual,
+  tidak ada screenshot atau artikel berita yang diterbitkan.
+
+- **Produksi BOUNDSESSION:** source `db1c0a4`, Worker
+  `a446be11-ba3f-4dae-a4fb-33a31a9648cf`. Health/auth/CORS/guest v2 ticket,
+  penolakan salah role/id, admin password dan konfigurasi PASS. Guest v2
+  membuka WebSocket produksi sungguhan dan menerima welcome+pong tanpa
+  pairing host. Semua bindings dan hash aset web tetap sama.
+- Pemeriksaan pertama segera setelah deploy sempat melihat route baru404;
+  pemeriksaan berikutnya403 sesuai harapan, seluruh verifikasi lulus.
+  Catatan tersimpan di docs/qa/bound-session-production-2026-09-18.json.
+  Tidak ada pencabutan/ban akun produksi demi tes. Tahap backend ditutup;
+  bukti pemutusan media Windows dan pekerjaan kemampuan/ACK host belum.
+
+### CONTROLREPAIR — preview manual dan kontrol web (2026-09-18)
+
+- User melaporkan pointer kedua mode meleset, stream kurang HD, preview
+  berulang, meminta tutup keyboard di atas dan mapping lengkap. Pilihan
+  eksplisit: preview desktop MANUAL per ID; mapping desktop+game.
+- Penyebab preview: interval5s dan capture saat finish. Keduanya dihapus.
+  Checkbox kini izin ambil/ganti; tombol menu Sesi mengambil seluruh frame
+  video sekali saat user sudah menampilkan desktop utama. Tidak menutup atau
+  meminimalkan aplikasi otomatis. Snapshot disimpan segera; final sesi tidak
+  mengambil snapshot baru. Preview tersimpan dipakai ulang per ID/account.
+- Riwayat tetap menyimpan20 sesi; tampilan mengelompokkan satu kartu per ID,
+  bukan menghapus log lama/migrasi massal. Delete perangkat memakai endpoint
+  action delete-device berotorisasi dan transaksional; late preview write
+  tidak boleh menimpa status akhir sesi yang lebih baru.
+- Keyboard: tombol panah bawah+Tutup keyboard di baris atas, modifier dilepas
+  saat tutup/unmount/blur/hidden; overlay suara tidak lagi menghalangi keyboard.
+- Mapping: kombinasi hingga6 tombol (modifier dahulu, release terbalik),
+  pilihan navigasi/numpad/punctuation/F1–F24,5 tombol mouse, scroll dua sumbu,
+  preset WASD digital. Ownership key fisik/virtual/mapping disatukan termasuk
+  alias Ctrl17/LeftCtrl162 agar satu sumber tidak melepas milik sumber lain.
+  Tetap24 tombol/layout,36–120px,per-orientasi. Belum joystick analog/gamepad.
+- Pointer memakai kotak elemen video aktual sebagai acuan contain. Ini
+  perapian koordinat browser, BUKAN bukti perbaikan ketidakpresisian Windows.
+- Bukti: web55,backend183,TypeScript/Vite PASS; runtime admin/member/history/
+  bound alarm PASS. Chromium390x844 dan844x390: manual preview (tidak ada
+  auto-save setelah5.5s), keyboard close melepasCtrl, shortcut Ctrl+C sambil
+  Ctrl fisik ditahan, mapping move/size/save, group kartu perID, fullscreen,
+  pointer synthetic, audio dan cancel PASS. Artefak control-repair-2026-09-18
+  dan keyboard-close-2026-09-18. Transport stub, bukan Windows/Android nyata.
+- **Sisa host penting:** software masihmax720p proporsional/30fps/H2643.1,
+  sehingga desktop RDP HD bukan bukti stream HD. SendInput absolute memakai
+  layar primer, capture bisa memilih layar berbeda. Perlu transform koordinat
+  ke monitor aktif+telemetry, pengukuran VM aktual, dan installer baru.
+  Injeksi keyboard memakai SCANCODE tetapi belum menambahkan EXTENDEDKEY;
+  perlu uji navigasi/right-modifier/Win. Input release saat peer mati juga
+  perlu bukti host; web release saja tidak menjamin saat channel sudah putus.
+- Tidak mengubah host/APK/installer/secret/OAuth/versi. Bahan dampak pengguna:
+  thumbnail tidak berganti diam-diam, keyboard dapat ditutup tanpa modifier
+  tersangkut, shortcut multi-sumber tidak saling melepas. Screenshot nyata
+  Chromium fixture tersedia; bukan desktop Windows atau berita terbit.
+- Implementasi telah diuji lokal; rollout web+backend paket ini menunggu
+  persetujuan. Build lokal generik bukan build OAuth produksi; sebelum deploy
+  WAJIB ambil/preservasi public Google client ID dari bundle live, rebuild,
+  push source lalu deploy dan cocokkan bytes aset. Jangan deploy build kosong.
+
+- **Rollout CONTROLREPAIR disetujui:** user memilih "Ya, terapkan sekarang".
+  Source `7779b55`; backend `ff4d95d4-746c-4183-ab17-629cd2dd2893`, web
+  `d2328824-9ee3-407d-a255-b5e92b1d9a3d`. Production build mempertahankan
+  public OAuth client dari bundle live. Bindings backend/web identik.
+- Pascadeploy: kelima aset JS/CSS dan HTML /connect+/history byte-identical;
+  health200, private history401/no-store/CORS, anonymous delete-device401,
+  admin password tetap enabled. Pemeriksaan aset pertama segera sesudah
+  deploy belum cocok; pemeriksaan berikutnya seluruhnya cocok. Tidak ada
+  write riwayat akun produksi atau pairing VM untuk tes ini.
+  Bukti docs/qa/control-repair-production-2026-09-18.json. Tahap web ditutup;
+  presisi input Windows dan HD masih membutuhkan paket host serta bukti nyata.
+
+## HOSTGEOMETRY — paket selesai 2026-09-18 (Operator)
+
+- Engine source **4a3e75a78ec0ac75883a734686ad80327347c20a**, Windows run **35379414158** lulus (137 library tests, compile/link/help/integrity). NSIS run **35380172479** lulus install/shortcut/reinstall/uninstall. Installer SHA256 **ec8db622f6339af2d1788535476cba945d02a99369ab137ef0e52bcc4c5418aa**, 4539749bytes, unsigned test package6.8.5 tanpa bump.
+- Host148tes Linux, release139library; web64; Worker184+runtime SQLite HDchunk; NSIS builder7. Chromium nyata mendecode1080p/native2336×1080/720p dari Session/SoftwareEncoder host viaRTP sintetis.
+- Bukti `docs/qa/hostgeometry-package-2026-09-18.json`, batas di `hostgeometry-checkpoint-2026-09-18.md`. Run Windows pertama gagal tes platform/profile lalu diperbaiki dan diulang; NSIS tidak memakai run gagal. Output target checker yang sempat ter-stage sudah dihapus dari indeks dan di-ignore, tanpa rewrite history.
+- Web/backend **belum di-deploy untuk paket ini**. Untuk membuat HD/wallpaper/landscape tersedia di situs live, perlu persetujuan rollout tersendiri, backend dahulu lalu web dengan OAuth/bindings produksi dipertahankan. Installer saja tidak memperbarui situs. Produksi terakhir yang diverifikasi adalah CONTROLREPAIR.
+- RDP/Chrome Android pengguna belum diuji. Tidak mengubah VM, DPI Windows/scaling/resolusi, driver, identitas host, OAuth atau secret. Tidak boleh mengklaim presisi runtime dari tes sintetik. Resize/pindah monitor belum punya epoch decoded-frame ACK; lihatbatas polling/transport pada QA.
+
+## VDD3010 — Operator, 2026-09-19
+
+- [x] Perbaikan provisioner source31380fc: accepted0/3010 tidak rollback; verified opt-in resume dan same-boot pending guard. Windows35412599966 SUCCESS: PS5/PS7 masing-masing35 assertions, native helper WhatIf, pinned catalog trust. Bukti `docs/qa/vdd3010-2026-09-19.json`. Workflow awal35412555463 gagal parsing dynamic shell; diganti shell literal lalu tes benar-benar dijalankan.
+- [ ] Field follow-up: pengguna perlu menjalankan patch Repair-VirtualDisplay3010.ps1 -Install -Resume dan read-only display-probe. Installer691dd09 yang telah dikirim masih membundel provisioner lama; jangan menganggap installer tersebut sudah diperbaiki. Patch hanya script, bukan rebuild engine/NSIS atau rilis versi aplikasi. Jangan reboot runner tanpa rencana recovery. Empty visibleVirtual setelah cleanup lama tidak membuktikan RDP isolation.
+- Bahan berita (belum dipublikasikan): penyiapan layar virtual kini membedakan permintaan restart Windows dari kegagalan pemasangan, mempertahankan perangkat yang diterima, dan memeriksa kepemilikan sebelum melanjutkan setup terputus. Belum klaim desktop720p pengguna berhasil.
+
+## Console / guest repair — Operator, 2026-09-19
+
+- User confirmed console1280×720 streaming; cursor probe flags2/null shape. Treat suppression separately from deliberately hidden application cursor.
+- Explicit scope: no guest duration cap, browser remembered access with owner revocation; technical tokens refreshed, not permanent privileged tokens. No auth database migration or global rotation. New host needed to issue remembered grants.
+- [x] Closed sourcece95f51: Windows35421194650 SUCCESS Linux176/Windows165 + PS5/PS7 owned-child termination; NSIS35421544833 SUCCESS. Web84/backend188, browser remembered access fixture + live guest admission PASS. Web470d26c2 / backend5d1d6b94 deployed; OAuth/bindings preserved. Installer SHA37575b12a59ff851b49f6e1e0eb74a7ef5d4a753f3fcddac3021017c237bc199. `docs/qa/console-guest-{package,production}-2026-09-19.json`.
+- [ ] User follow-up: stop legacy console with new scoped helper, install NSIS to same path, start managed console; pair once with remember enabled. No RDP/driver reinstall. Native suppressed-cursor fallback and physical reconnect remain unverified on user machine; do not claim zero disconnect/lag.
+- Bahan berita (belum dipublikasikan): desktop virtual yang sudah aktif kini mendapat perbaikan penunjuk Windows; host memperbarui koneksi tanpa mengganti identitas; tamu tidak dibatasi durasi dan dapat menyimpan izin browser yang bisa dicabut pemilik PC. Tetap perlu jaringan dan host online. Tidak ada bump versi/tag resmi atau perubahan APK.
+
+## UXFINISH — Operator, 2026-09-19
+
+Implementation complete and packaged. Final gates: Windows35426926255 and NSIS35427200341 both SUCCESS on source02b5212; installer SHA256 b2e142fdd44b6e933794c69e4e72f9299a776fb808d5fdd225bc8001567da070 (4859481 bytes), engine bafd25359b87f922b8d62d4dca9323c61145c3ea5b76fd8aeb57132fae3ddd00, deliverables/uxfinish-02b5212. NSIS validation includes pinned driver bytes/license present and silent install not provisioning. Board closed SELESAI. Web89 tests, real browser history member/guest reconnect, keyboard/editor, automatic wallpaper and FPS protocol at390×844/844×390 PASS. Public web live build3cb7742, version1112cb9e-021c-462b-bdb5-421598a73af8; OAuth/bindings/CSP retained, asset hash verified. First deployment briefly omitted static headers, immediately corrected and verified; final deployment includes them. No backend redeploy or host/user-session changes.
+Host fc16aa9 tests Linux/Windows, pinned VDD trust and existing-device WhatIf, PS5/PS7 process-tree guards SUCCESS35426521745; follow-up installer64-bit elevation guard and bundled-byte installation assertions require final same-revision packaging. Source main is new; old root worktree deliberately untouched after snapshot rollback. All new implementation pushed to GitHub to avoid relying on transient local snapshot.
+Not Windows user-machine performance proof: FPS60 follows negotiated limits and available encoder/network; native4K remains15. Driver setup preserves existing config/device, requires visible admin permission, no reboot/RDP change. Account browsers that never received a grant must pair once; no plaintext password saved.
+
+Field note for next session: installed ce95f51 host remains valid; new web alone fixes remembered history because resume-token host support already exists there. FPS/quality/bundled driver require installing package02b5212; never reinstall over a working host without user choice. User-machine streaming/FPS quality remains unproven by CI.
+
+## Perbaikan lapangan UXHD-2 — Operator, 2026-09-19
+
+- Keluhan user: video+input tidak halus, rail atas tidak disukai, mapping terasa hilang, jendela aplikasi hanya muncul di taskbar stream, checkbox preview di connect tidak diinginkan.
+- Web 8fcbd46 live (index-CdcDnWJ7): rail kanan kembali, checkbox dihapus (izin otomatis + tombol lupakan), tombol pointer mapping dipindah dari zona rail/keyboard dan diberi tint, migrasi satu kali menambah mouse/scroll yang hilang, editor di atas panel. 90 tes unit + fixture browser PASS sebelum deploy.
+- Host cf9bb7b: Console-Primary.ps1 (monitor virtual 720p jadi primary sesi console, idempoten, tanpa reboot) dipanggil otomatis launcher; openh264 num_threads 4 untuk latensi encode. Windows 35431190277 + NSIS 35431520756 SUCCESS; installer b14784b5…f845 di deliverables/uxhd2-cf9bb7b. Jendela yang sudah terbuka sebelum primary tetap harus ditutup-buka ulang.
+- Belum terbukti di mesin user: kehalusan 60 FPS (butuh angka statistik panel: FPS terima, loss, jitter, rtt) dan presisi game. Reboot pending 3010 dari install driver tadi tetap pilihan user; device sudah Status OK tidak wajib reboot.
+
+## Kandidat tes VM GPU (uxhd3) — Operator, 2026-09-19
+
+- Paket 471c438: Windows 35436838712 + NSIS 35437155953 SUCCESS; installer 47e26c24…e48b (4867245 byte) di deliverables/uxhd3-471c438. Bundled: Console-Fit/Console-Launch/Console-Primary/manager + driver pinned MIT; log status kini mencatat NVENC/video software/respawn/quality/bitrate dan hasil primary.
+- Status jujur: UI/UX modern live di web (8fcbd46 deploy index-CdcDnWJ7); host fungsional lengkap; yang tersisa hanya bukti lapangan VM GPU (NVENC aktif?, rasa 60 FPS, presisi game) dan keputusan rilis/versi. VM RDP saat ini valid untuk tes fungsi, bukan tolok ukur kehalusan.
+- Checklist tes GPU VM: install uxhd3 → Start → Statistik panel (FPS terima/loss/jitter/rtt) → coba 60 FPS + Sangat tinggi → tail console-status.log untuk baris NVENC → buka aplikasi dari dalam stream → Console-Fit bila ada jendela nyasar → uji game/input fisik.
+
+## Paket tunggal uxhd4 — Operator, 2026-09-19
+
+- 7ccebef: Windows 35439050512 + NSIS 35439383518 SUCCESS; installer di deliverables/uxhd4-7ccebef menggantikan uxhd3 (dihapus). Memperbaiki Console-Primary di PowerShell 5.1 (SizeOf dipindah ke C#) sehingga penataan layar primary benar-benar jalan dari manager Start; semua skrip console + log diagnostik + driver pinned tetap terbundel.
+- Status lapangan: host VM RDP user sempat STOP setelah percobaan shortcut Virtual720 di RDP (penolakan by design); pemulihan = install uxhd4 atau overwrite Console-Primary lalu manager Start. Bukti kehalusan/NVENC menunggu tes user (RDP untuk fungsi, VM GPU untuk performa).
+## Paket uji uxhd5 — Operator, 2026-09-20
+
+- 9387095: Windows 35517238606 + NSIS 35519015096 SUCCESS; installer dipublikasikan sebagai GitHub PRERELEASE tag uxhd5-9387095 (release 392473706) — releases/latest tetap v6.8.5 sehingga updater APK aman. SHA256 dfff9891…32240e, 4.857.441 byte. Menggantikan uxhd4-7ccebef.
+- Isi: keputusan mutlak operator — tanpa driver virtual, stream 16:9 tanpa pita (crop center-horizontal; desktop tinggi di-crop dari atas agar taskbar terlihat; tanpa upscale, desktop kecil memakai crop natif); input dipetakan ke crop; telemetri menambah cropRect; meta host menambah encoder (nvenc/openh264) yang tampil di panel Statistik web; manager console mendapat -Action Fit.
+- BUKAN rilis: versi tetap 6.8.5, tanpa berita, tanpa release non-prerelease (larangan operator "gas aja kecuali rilis").
+- Status lapangan: belum diuji di Windows user; host VM user masih STOP sejak uxhd3. Langkah user: install uxhd5 → Console-Virtual720.ps1 -Action Start → Status harus Running tanpa WARNING.
+- a4ec6fd (2026-09-20): gate Build penuh dihijaukan — clippy host bersih di Linux (allow tergate cfg untuk kode khusus-Windows, as_chunks, is_multiple_of, mod tests dipindah) dan inventaris lisensi diregenerasi dengan Flutter 3.44.9 (Dart closure runtime 115, total 518; catatan Virtual Display Driver dipindah ke MANUAL generator). Build run 35521043781 SUCCESS → deploy-web 35521983697 SUCCESS; app.xydesk.my.id menyajikan index-T4AXvB6I.js (panel encoder + teks crop tanpa pita). Tidak mengubah isi installer uxhd5 (9387095) yang sudah dipublikasikan.
+
+## Paket uji uxhd6 (panel klik-klik) — Operator, 2026-09-20
+
+- d72a18f: Windows 35523856018 + NSIS 35524200373 SUCCESS; prerelease uxhd6-d72a18f (release 392504666), installer 4.861.845 byte SHA256 d76e10a3…79c386. Menggantikan uxhd5-9387095. releases/latest tetap v6.8.5.
+- Baru: Console-Panel.ps1 (WinForms, PS 5.1, self-elevate sekali lewat UAC) + shortcut desktop "XyDesk Control Panel". Panel hanya membungkus Console-Virtual720.ps1 (Start/Stop/Status/Fit/Credentials + tail log) — tidak ada jalur eksekusi baru; kebijakan admin-tanpa-elevasi-otomatis di manajer tetap, panel minta izin lewat UAC standar.
+- Referensi stardesk.net ditinjau atas permintaan operator: kelas arsitektur sama (WebRTC SRTP/DTLS + WSS signaling + relay); tidak ada kode/aset yang disalin. Ide yang dicatat untuk backlog: privacy mode (blackout lokal saat sesi), persetujuan fitur sensitif default-off.
+- Status lapangan: belum diuji di Windows user. Alur user: install uxhd6 → double-click "XyDesk Control Panel" di desktop →izinkan UAC → klik Start Host → indikator hijau + Status.
+
+## Paket uji uxhd7 (tanpa pita + tanpa crop) — Operator, 2026-09-20
+
+- a873c1e: Windows 35527837671 + NSIS 35528409981 SUCCESS; prerelease uxhd7-a873c1e (release 392528393), installer 4.858.425 byte SHA256 d0261143…53f3ba. Menggantikan uxhd6-d72a18f. releases/latest tetap v6.8.5.
+- REVISI KEPUTUSAN OPERATOR: "jangan di crop" + "harus jangan ada pita hitam tetapi tanpa crop, sisi host harus bisa ngubah otomatis". Kebijakan crop uxhd5 dicabut. Sekarang: (1) host otomatis minta mode desktop 16:9 yang didukung — desktop sudah 16:9 dibiarkan, target persis tak ada → mode 16:9 lain yang didukung dipilih (terdekat di bawah target diprioritaskan); (2) frame SELALU memuat seluruh desktop pada rasio asli, diperkecil proporsional, tanpa upscale; (3) Virtual720 tetap wajib persis 1280×720 via desktop_mode::request_exact.
+- Perbaikan lapangan dari laporan uxhd6: layar console runneradmin kosong (tanpa taskbar/cursor) karena Console-Primary memilih monitor virtual berdasarkan resolusi 1280x720 saat ini — padahal skrip berjalan sebelum engine menyetel mode, jadi tidak ketemu dan baris [primary] di log kosong tanpa pesan. Fix: pilih berdasarkan identitas driver (MTTVDD/Virtual Display Driver), warning tercatat di log ([primary] DILEWATI: …). console-fit.log kosong → redirect *>&1. Start duplikat tidak lagi throw error merah, tampilkan status. Mojibake → di log quality diganti '->'.
+- Tes: host 185 pass + clippy -D warnings + fmt bersih; web 90 pass + tsc; 10 skrip manual-host parse OK & ASCII. Build (web deploy) di-dispatch setelah publish.
+- Status lapangan: BELUM diuji user. Alur: install uxhd7 → panel "XyDesk Control Panel" → Start Host → cek log [primary] harus berisi pesan monitor virtual jadi primary → stream dari HP: desktop utuh, tanpa pita, tanpa terpotong.
+
+## Paket uji uxhd8 (fix kursor + UX) — Operator, 2026-09-20 malam
+
+- e8d9551: Windows 35532220203 + NSIS 35532908193 + Build 35532221134 + Deploy Web SUCCESS; prerelease uxhd8-e8d9551 (release 392551223), installer 4.863.378 byte SHA256 c75dd6a9…52b8a. Menggantikan uxhd7-a873c1e. releases/latest tetap v6.8.5. Live web index-DP9EoeZn.js.
+- FIX KRITIS: laporan user "cursor diem ke pojok kiri atas" = bug nyata regresi uxhd7 — desktop_point (piksel) diberi ke CaptureRect::point (fraksi 0..65535) di input.rs MouseMoveAbs, semua target kolaps ke origin. Solusi: CaptureRect::pixel translasi 1:1 + tes regresi. INI WAJIB DICEK ULANG DI LAPANGAN.
+- Keluhan "banyak app": desktop kini hanya "XyDesk Control Panel"; launcher manual + Virtual720 → Start Menu; installer hapus shortcut desktop lama saat upgrade.
+- Web UX: HUD mouse + mapping default bulat penuh (panel & keyboard tetap kotak); keyboard virtual putih ala HP nempel dasar layar tanpa transisi; riwayat → halaman detail (wallpaper besar + spesifikasi + durasi) + tombol Hubungkan eksplisit.
+- Permintaan user belum dikerjakan (dicatat sebagai backlog): "driver screen bukan display" (bedah teknik capture stardesk / driver kelas lain) dan "harus ada file .dll" — perlu riset & keputusan arsitektur, jangan asal tempel DLL. Lihat bagian backlog.
+- Pengaturan Gambar (kualitas/FPS/bitrate/resolusi) semuanya tersambung end-to-end di kode + CI, tapi klaim "berfungsi" di mesin user tetap butuh uji lapangan.
+
+## uxhd9 — host mengikuti user `kall`, 2026-09-20
+
+- Perbaikan inti setelah operator melaporkan host memakai `runneradmin`: `Console-Panel.ps1`, `Console-Virtual720.ps1`, dan `Console-Launch.ps1` sekarang mengambil akun Windows aktif (`$env:USERNAME`), bukan akun lab hardcode.
+- Start dari Control Panel memakai desktop user interaktif (`-KeepDesktopResolution`) dan scheduled task `XyDesk-UserHost`. Mode `Start-Virtual720.ps1` tetap jalur teknis opt-in strict yang membutuhkan virtual display terlihat di active console; tidak ada fallback diam-diam ke RDP atau user lain.
+- Saat upgrade, task legacy `XyDesk-Virtual720-Console` hanya dibersihkan jika action-nya menunjuk ke `Console-Worker.ps1` pada instalasi yang sama. Tidak ada global taskkill.
+- Commit source final: `c0ede5b8a2a01ee0295c584ad90e422221aa896c`. CI Windows `35535618245` dan NSIS `35536000419` SUCCESS; NSIS validation PASS.
+- Prerelease final: `uxhd9-4f6230e` (release 392566338), installer SHA256 `a24e3f88723065c09011522c85317e3016db5d82e92b1425aef5f2ece6172162`, 4.862.834 byte. Direct link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd9-4f6230e/XyDesk-Host-Test-Setup-x64.exe
+- `releases/latest` tetap `v6.8.5`; production release/deploy tidak dilakukan. Hardware/session validation masih harus dilakukan user: pastikan desktop yang tampil adalah desktop `kall`.
+
+## uxhd10 — Stop Host tidak muncul lagi, 2026-09-21
+
+- Akar masalah: `Console-Worker.ps1` menjalankan `Start-TestHost.ps1 -Supervise`, sedangkan tombol Stop sebelumnya hanya mematikan `xydesk-host.exe`; supervisor/task restart policy melahirkannya lagi. End Task dari Task Manager juga bukan kontrol permanen karena Scheduled Task masih enabled.
+- Fix `ab9d77c`: Stop men-disable task dulu, menghentikan scheduled action, mencari worker PowerShell exact path+user+install, lalu menghentikan worker dan engine. Worker memiliki kill-on-close Job Object sehingga child ikut selesai; sweep kedua exact-path menangani race restart. Tidak ada global taskkill.
+- Prerelease: `uxhd10-ab9d77c`, release 392622744, installer 4.864.403 byte SHA256 `ec7b183751e2b500a446e3bbf5674af4aff612026673309a43ae491167d3e9ab`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd10-ab9d77c/XyDesk-Host-Test-Setup-x64.exe
+- CI Windows `35546782004` + NSIS `35547229121` SUCCESS; NSIS validation PASS; latest tetap v6.8.5; hardware user belum tervalidasi.
+
+## uxhd11 — syntax PowerShell 5.1, 2026-09-21
+
+- Laporan lapangan menunjukkan `The term 'if' is not recognized` dari `Console-Virtual720.ps1`. Akar masalah: PowerShell 5.1 tidak menerima ` $name=if (...)` atau `-Description (if (...))` sebagai expression assignment.
+- `9869711` mengganti seluruh pola itu dengan blok `if` biasa, termasuk pemilihan SID task. Parser PS1 + Windows CI + NSIS PASS.
+- Prerelease final: `uxhd11-9869711`, release 392654807, installer 4.868.173 byte SHA256 `1dbd815338f251969b60ac5df4ac9d255bc93d2fc2034021893bae35df0e6d34`. Link: https://github.com/xykalnotkel/XyDesk/releases/download/uxhd11-9869711/XyDesk-Host-Test-Setup-x64.exe
+- `releases/latest` tetap v6.8.5; hardware/session user belum tervalidasi.
+
+## Audit statis — 27 September 2026
+
+- [ ] Client Flutter: konfirmasi lanjutan item pra-welcome 25 September; `id sudah online` belum ditangani khusus di `rtc_service.dart`, dan connect belum menunggu welcome. Lihat A1 pada `../archive/AUDIT-2026-09-27.md`; belum diuji runtime.
+- [ ] CI/Release: tambahkan cakupan admin + lockfile; evaluasi test/clippy Windows dan penghentian lab saat pengujian selesai. Lihat A2/A3/A6; perubahan dan dispatch memerlukan sesi/izin terpisah.
+- [ ] Docs & Audit: selaraskan pembuka ROADMAP, diagram ARCHITECTURE, serta komentar trigger CI dengan keadaan source (A4).
+- Backend/Edge: A5 mengonfirmasi catatan hardening Hub 25 September; bukan temuan bypass publik. Tidak menambahkan item duplikat.
+- Host Engine: acceptance Windows/RDP/audio/input tetap terbuka; angka CI historis tidak diverifikasi ulang pada sesi ini.
+
+## Fokus web + host — audit 27 September 2026
+
+Arahan pemilik: matangkan web + host dahulu; integrasi platform lain ditunda.
+Sumber: `../archive/AUDIT-WEB-HOST-2026-09-27.md`. Semua temuan berikut statis,
+belum direproduksi di browser/Windows pada sesi ini. Jangan klaim sudah fix.
+
+- [ ] Host Engine: WH-01 frame kosong pada fallback GDI; WH-02 desain koordinasi lintas sesi/user; WH-03 mutex diambil oleh standby yang belum eligible. P1, dahulukan capture dan ownership. Perubahan ACL/auth lintas user perlu persetujuan desain keamanan khusus.
+- [ ] Web: WH-04 SDP aktual vs signaling; WH-05 deadline/cancel token; WH-06 timer retry ganda; WH-15 first-frame warning. Tambahkan regresi sebelum perubahan visual lain.
+- [ ] Host + Web: WH-09 batas clipboard dan WH-10 ordering posisi/klik lintas kanal. Pertahankan kompatibilitas protokol atau negosiasikan capability secara eksplisit.
+- [ ] Host Engine: WH-07 cancellation audio forward, WH-08 COM guard. Verifikasi teardown dan thread/handle di Windows asli, termasuk sumber audio diam.
+- [ ] Desktop Shell: WH-11 deadline baca identitas, WH-12 readiness/freshness telemetry, WH-17 sensor bearer pada log dukungan bersama Host Engine.
+- [ ] Web / review auth terpisah: WH-13 race `/auth/me` dan logout akibat gangguan jaringan; WH-14 nonce OAuth + sisa token Google pada logout utama. Tidak mengubah auth produksi dalam sesi audit.
+- [ ] CI/Release: WH-16 gerbang kandidat tanpa efek deploy/rilis, cakupan Windows. Workflow lab RDP/Tailscale sudah dihapus LOKAL; belum push. Jangan menghapus unit test atau workflow policy VDD.
+- [ ] Pemilik: acceptance melalui `docs/WEB-HOST-MANUAL-QA.md` pada artefak dengan SHA tercatat. Periksa run lab remote aktif dan kredensial/node khusus lab jika diperlukan; belum disentuh sesi ini.
+
+Bahan artikel: tidak ada perubahan visual produk atau rilis. Perubahan operasional
+menghilangkan kebutuhan menahan runner untuk tes interaktif; validasi perangkat
+berpindah ke mesin pemilik. Screenshot produk tidak dibuat karena tidak ada UI
+yang diubah/dijalankan. Audit bukan bahan klaim peningkatan performa yang sudah terbukti.
+
+## Implementasi kandidat host batch 1 — 27 September 2026
+
+Sesi `SESI-20260927-OPERATOR-HOSTFIX1`, role Operator. Laporan:
+`docs/qa/host-batch-1-2026-09-27.md`.
+
+- [ ] Host Engine / CI: WH-01 dan WH-03 sudah dipatch LOKAL, **menunggu verifikasi**, bukan ditutup. Jalankan workflow build-only yang sudah ada `prepare-host-windows.yml` pada SHA patch setelah izin; ia memuat test Linux dan Windows library. Jangan dispatch Build umum karena rantai deploy/rilis.
+- [ ] Pemilik: setelah artefak lolos CI, lakukan tes manual capture/fallback RDP, geometri, standby → aktif, dan resource soak. Tidak ada klaim layar hitam lapangan sudah selesai.
+- [ ] Operator / keamanan: WH-02 tetap terbuka. Tidak mengganti Local menjadi Global, tidak membuka ACL bersama, tidak menyatukan identitas lintas user. Butuh model ownership yang disetujui.
+- [ ] Web: batch berikutnya tetap WH-04/05/06; source web belum disentuh dalam patch host.
+- [ ] Host Engine (temuan review terpisah): `gdi.rs::Handle::drop` masih memanggil DeleteObject bitmap sebelum menghapus memory DC yang menyeleksinya. Tinjau pelepasan bitmap terpilih dan ukur handle GDI pada soak test; tidak mengklaim kebocoran sudah diukur atau diperbaiki dalam batch ini.
+
+Bukti sesi: rustfmt --check untuk lima source dan git diff --check lolos;
+13 fungsi regresi baru ditulis (1 test lama diganti), belum dieksekusi.
+Tidak compile/test lokal, tidak commit/push/dispatch/deploy/bump.
+Dampak pengguna yang dituju: transisi fallback tidak memasukkan frame kosong,
+dan standby tidak menyandera slotnya sendiri. Belum ada screenshot build baru;
+jangan diterbitkan sebagai keberhasilan Windows nyata sebelum acceptance.
+
+
+## Kandidat 27 September — Operator HARDEN, push ditahan
+
+- Seluruh WH-01–17 memiliki kandidat source lokal; bukan hasil CI/Windows PASS.
+  Matriks lengkap, risiko dan bahan artikel ada di
+  `docs/qa/web-host-hardening-2026-09-27.md`; laporan batch 1 adalah sejarah.
+- Keputusan pemilik: per akun Windows. Tidak ada Global mutex, broker lintas
+  user, shared ACL atau takeover layar akun lain.
+- CI/Release: setelah izin push/dispatch terpisah, gunakan `Validate Web Host`
+  (bukan Build umum) pada SHA kandidat. Perbaiki hasil type-check/clippy/test
+  sebelum menganggap pekerjaan terverifikasi. Gerbang lokal hanya
+  formatting/sintaks/review, tidak compile atau unit test.
+- Pemilik: M01–M22 masih BELUM DIUJI; catat SHA/run/hash dan bukti tersensor.
+  Tidak ada RDP/Tailscale runner, credential dipakai, bump versi atau deploy.
+- Batasan tambahan terbuka di laporan: first-run identitas konkuren, parser
+  password kustom native, kompatibilitas konsumen lama token control stdout,
+  driver WASAPI blocking, dan pengukuran performa. Jangan disembunyikan
+  sebagai "semua runtime sudah selesai".
+
+
+### Lanjutan HARDEN — tiga celah tambahan mendapat kandidat
+
+Pemilik menyetujui lanjut lokal. First-run identitas kini diserialisasi dengan
+lock bounded + penulisan atomic/fail-closed; parser panel mendukung escape dan
+Unicode valid; bearer control memakai pipe privat opsional (lihat
+`docs/CONTROL-IPC.md`). Catatan keterbatasan tiga butir sebelumnya adalah
+sejarah review, bukan status source terbaru. Test multiprocess, parser dan
+IPC disiapkan pada workflow validasi; belum dijalankan. Tidak ada push,
+compile/test lokal, dispatch, versi atau deploy. Jangan menutup acceptance
+sampai hasil CI dan perangkat tersedia.
+
+
+### Kandidat UX/domain — pemilik memilih remote, restore otomatis, kedua panel diperbesar
+
+- Source lokal: www untuk publik; remote untuk perangkat/riwayat/detail/sesi;
+  legacy app redirect. Sesi punya route yang bisa direfresh, auto-reconnect
+  hanya dengan grant sah; credential tidak ditaruh pada URL/metadata tujuan.
+- Dock mouse kini dipakai, berlabel dan dapat diatur; editor custom/panel sesi
+  diperbesar. Host default 1100×720 dengan fit work area/DPI dan sidebar lebih jelas.
+- Belum build/test Actions, visual browser/Windows, DNS, OAuth Console atau deploy.
+  OAuth callback baru per-origin perlu didaftarkan; storage origin app tidak
+  otomatis pindah ke remote. CI validation-only kini mencakup API/news dan
+  artefak snapshot fixture panel; bukan bukti runtime live.
+- Laporan lengkap + UX01–UX12: `docs/qa/ui-navigation-domains-2026-09-27.md`.
+  Push/dispatch tetap ditahan. Versi tidak diubah.
+
+## Otorisasi push source — 2026-09-27
+
+Operator mengizinkan commit/push kandidat source setelah implementasi disiapkan.
+Otorisasi ini menggantikan hold push sebelumnya; bukan persetujuan deploy, rilis,
+bump versi, atau dispatch workflow. Build/type-check/unit/integration/browser dan
+acceptance Windows tetap BELUM DIUJI. Push tidak memicu workflow pada konfigurasi
+saat ini; validasi Actions dan aktivasi DNS/OAuth/domain tetap tahap terpisah.
+Pemeriksaan pra-push: diff whitespace bersih, tidak ditemukan kecocokan secret
+yang disuplai atau pola umum GitHub token/private key pada file yang berubah,
+dan origin/main masih sama dengan baseline lokal saat fetch. Pemeriksaan ini
+bukan jaminan keamanan menyeluruh atau bukti kelulusan runtime.
+
+## Validasi dan rollout kandidat uji — 2026-09-27
+
+Operator mengizinkan validasi/build/deploy dan meminta link unduh untuk tes.
+OAuth www/remote dikonfirmasi sudah ditambahkan oleh operator (login browser
+nyata belum diverifikasi). Kandidat executable bersumber pada `00ae1b8`:
+
+- Validate Web Host **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293323607
+- Build penuh **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293875678
+- Installer MSI/NSIS **PASS**: https://github.com/xykal/XyDesk/actions/runs/36294273373
+- Deploy signaling/CORS **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293816856
+- Deploy news **PASS**: https://github.com/xykal/XyDesk/actions/runs/36293822342
+- Deploy web awal **PASS**: https://github.com/xykal/XyDesk/actions/runs/36294227889
+
+Tiga kegagalan awal ditindaklanjuti, bukan dilewati: strict Clippy, fixture
+backpressure pipe yang keliru, dan argumen CLI probe panel. Validasi Windows
+termasuk 202 unit test, startup identitas multiprocess, otorisasi control IPC,
+compile panel, probe 1100x720 serta snapshot shape. Bukan uji remote desktop
+Windows/RDP interaktif, audio end-to-end atau browser restore.
+
+HTTP produksi menemukan default Cloudflare asset-first melewati Worker untuk
+root/robots. Hotfix `assets.run_worker_first=true` dan regresi routing disiapkan;
+build/deploy hotfix masih menunggu pada saat catatan ini ditulis. www/remote
+sudah tercatat sebagai custom domain xydesk-web; CORS masing-masing origin
+mengembalikan 204 dengan allow-origin yang tepat.
+
+Distribusi untuk tes operator via artefak Actions, **bukan promosi stabil**.
+Tidak ada bump versi atau overwrite aset v6.8.5; jangan memakai releases/latest
+sebagai bukti kandidat ini. Acceptance browser/Windows nyata tetap terbuka.
+
+## Hasil akhir rollout kandidat — 2026-09-27
+
+Hotfix routing web `bece719` lolos Build penuh 36294341595 dan deploy final
+36294668021. Pemeriksaan HTTP ulang: 18 URL sesuai, app root redirect 308,
+remote root no-store/noindex, remote robots Disallow, JS/CSS 200.
+Installer EXE/MSI dari source `00ae1b8` sudah dicocokkan SHA-256 dengan CI.
+Tidak ada perubahan source executable antara `00ae1b8` dan `bece719`;
+manifest tetap 6.8.5+59 dan rilis stabil/latest tidak diubah.
+
+Semua link unduh, checksum, run CI dan checklist perangkat nyata ada di
+`docs/qa/test-links-2026-09-27.md`. CI/deploy selesai, bukan klaim acceptance
+Windows/RDP/browser/audio end-to-end. Catatan hold/belum diuji sebelumnya
+adalah riwayat sebelum otorisasi rollout; lihat hasil akhir ini untuk status.
+
+## Web Control Studio + video bind live — 2026-09-27
+
+Permintaan operator: editor fullscreen perangkat, kategori kontrol/inspector
+samping, menu hamburger selayar browser, dan investigasi video hitam. Web
+`61e490e` live lewat run 36297653583 setelah unit/type-check/build/Chromium
+smoke. Root cause pemutar: guard srcObject menolak first attachment; controller
+baru dan revisi pointer-v3-video-bind sudah berada dalam bundle produksi.
+
+Laporan/bukti/acceptance: `docs/qa/control-studio-video-2026-09-27.md`.
+Stick WASD/panah dan mouse aktif; **gamepad analog asli belum diimplementasikan**
+karena belum ada protokol/virtual gamepad host. Tidak memasang driver, tidak
+mengganti installer atau bump versi. Sesi RDP operator masih perlu retest.
+
+## Latest UI/account/QR candidate — 2026-09-27
+
+User says responsiveness is already good: keep engine/RTC/input/adaptation and
+per-Windows-user coordination frozen. Confirmed empty diff for host and protected
+web/native control files against 2e8ab26.
+
+Web 0eee624 deployed, run 36304233124 success; live JS/CSS bytes matched artifact.
+Touch keyboard clipping caught by visual review, fixed and screenshot rechecked.
+Separate compact stats, larger rail/mouse icons and custom app dialogs are live.
+Native 8ead5ce adds browser OAuth PKCE/state/CredMan (UI account only), local ID-only
+QR, profile/help/settings/password visibility and sidebar refinement.
+Baseline 36304441008, portable 36304643208, installer 36305057832 all SUCCESS.
+Installer SHA256 7f4995b415865b7b2afc0311fd8df834a912248ce548a38464b74356794ec3c9.
+Unsigned 6.8.5 test candidate; no stable promotion. Screenshot profile is an offline
+fixture. Real Google consent/restore/logout/cancel, physical QR scan and live-device
+UI acceptance remain manual, not claimed complete. Native analog still unsupported.
+Details: docs/qa/native-panel-settings-2026-09-27.md. Delivered new folder
+`deliverables/XyDesk-native-8ead5ce/`; old 1b873c3 installer retained as rollback.
+
+## Latest host workspace response — 2026-09-27
+
+User rejected sparse native layout and modal account/settings/help. Source
+95033148bdfd4316f4abf973414a0b1b54490e8f now has seven routes, actual embedded
+native screens, consistent sidebar icons, home quick actions and local status
+projection for active-client name/platform/ID/duration. Original Xiaomi photo
+only for exact Redmi Note 12 / 23021RAAEG matches; no universal device catalogue.
+Optional browser model hint does not delay pairing or change RTC protocol.
+Web desktop hamburger hidden on wide layouts; native WS_THICKFRAME sizing and
+work-area maximize/restore replace zoom-only behaviour. All protected engine,
+RTC/input/adaptive/coordination files remain unchanged from previous candidate.
+
+Baseline 36307028958, portable 36307312703, web deploy 36307313642, NSIS
+36307719511 all SUCCESS. Live JS/CSS bytes matched deployment artifact.
+Deliverables: `deliverables/XyDesk-workspace-9503314/`, includes installer, ZIP,
+checksums, native-render preview HTML, manual guide, NSIS validation record.
+Still unsigned/test, version unchanged 6.8.5, no stable/latest promotion.
+
+Important remaining work: see docs/qa/native-workspace-2026-09-27.md. Physical
+HP/OAuth/dragging and multi-DPI acceptance are not claimed. The small-monitor
+high-DPI fit path needs follow-up: WM_SIZE re-derives OS DPI after applyDpi caps
+the effective layout DPI, and resource controls use OS font metrics. Avoid
+claiming runtime 96-DPI checks prove every scale. Product-photo catalogue is
+explicitly limited; fixtures are not proof of a real connected phone.
