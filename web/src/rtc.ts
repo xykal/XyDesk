@@ -278,6 +278,9 @@ export interface SessionStats {
   relayServers?: number;
   relayReason?: string;
   relayHint?: string;
+  /** Probe latensi rVFC (lihat latency_probe.ts). Diisi App, bukan getStats. */
+  latency?: import('./latency_probe').LatencySummary;
+  latencyEstimate?: import('./latency_probe').GlassToGlassEstimate;
 }
 
 /// Hasil pengambilan kredensial relay untuk satu percobaan sesi.

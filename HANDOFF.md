@@ -1,5 +1,25 @@
 # HANDOFF — Catatan Lintas Role
 
+## 28 Sep 2026 — latency harness client (web + Flutter) + rapikan root repo
+
+Web `latency_probe.ts`: per frame lewat `requestVideoFrameCallback`,
+receive→display p50/p95/max, capture→display bila host suatu saat mengirim
+abs-capture-time, estimasi glass-to-glass = RTT/2 + receive→display dengan
+label **lower-bound** (belum termasuk capture/encode host — tidak disamarkan
+jadi "latency"). Panel Statistik → bagian "Latensi" + tombol unduh laporan
+JSON (`xydesk-latency-report/1`). Flutter: `SessionStats.jitterBufferMs` /
+`decodeMs` dari delta `jitterBufferDelay` / `totalDecodeTime`, tampil di
+panel sesi; helper `averageDeltaMs` diuji (`test/webrtc/session_stats_timing_test.dart`).
+Web: `tsc -b` bersih, `latency_probe.test.js` 7/7; 4 test lama gagal di Node 20
+karena import `.ts` langsung (butuh Node ≥ 22.6 seperti CI) — bukan regresi.
+Dart **belum dikompilasi** di sesi ini (tanpa toolchain) — verifikasi lewat
+`build-apk-only.yml`. Root repo: 7 dokumen dipindah ke `docs/articles/`,
+`docs/reports/`, `docs/`; rujukan di HANDOFF/AGENT_BOARD diperbarui.
+Host/Rust tidak disentuh. Langkah berikut untuk angka sejati: host
+menyertakan RTP header extension `abs-capture-time` — lihat `docs/LATENCY.md`
+bagian 2b.
+
+
 ## 27 Sep 2026 — rounded host workspace SELESAI, 655ef35
 
 Operator reference adapted for shape/layout only: detached narrow sidebar, rounded workspace/cards, consistent headings, responsive embedded forms. Colours/icons retained; header-only utilities and compact pairing maintained. Prepare Windows **36320913038 SUCCESS**, NSIS **36321438591 SUCCESS/PASS**. Seven real native pages checked at 1100×720 and 900×640; installer/ZIP/hashes/interactive screenshot preview in `deliverables/XyDesk-rounded-655ef35/`. QA: `docs/qa/rounded-host-2026-09-27.md`. Source engine/reconnect/input/bitrate/coordination and web unchanged; live web remains b589421. Unsigned candidate; physical high-DPI/HP/OAuth acceptance remains open.
@@ -81,7 +101,12 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
   error pra-welcome = pendaftaran gagal → tutup dan sambung ulang, bukan diam.
 
 
-- [ ] (dari Operator - XyDesk Team, 2026-09-06) — **Pendeteksi "sudah connected tapi belum ada frame
+- [x] (dari Operator - XyDesk Team, 2026-09-06; **ditutup 2026-09-28 oleh sesi
+  latency-harness** — sudah ada di kode: `_noFrameWatchdog` 10 detik setelah
+  `Connected` di `lib/webrtc/rtc_service.dart` mengirim `noFrameWarning: true`
+  bila `hasVideo` masih false; sesi tidak diruntuhkan. Item ini tercatat
+  terbuka padahal sudah selesai — contoh doc rot yang bikin agent kerja
+  dua kali.) — **Pendeteksi "sudah connected tapi belum ada frame
   video"** di `lib/webrtc/rtc_service.dart` — watchdog yang ada sekarang
   dimatikan begitu `RTCPeerConnectionStateConnected` tiba
   (`_emit` membatalkan `_watchdog` untuk semua fase selain pairing/negotiating),
@@ -202,7 +227,7 @@ Format item: `- [ ] (dari <Identitas>, <tanggal>) — <apa> — <kenapa/konteks>
 
 - [x] (dari Laras - XySpace Team, 2026-09-03) — **Bahan artikel rilis Client**:
   Bahan artikel untuk semua fitur yang sudah dikerjakan di sesi ini (8 fitur)
-  sudah ditulis dengan gaya NEWS_STYLE.md. File: `BAHAN_ARTIKEL_CLIENT.md`.
+  sudah ditulis dengan gaya NEWS_STYLE.md. File: `docs/articles/BAHAN_ARTIKEL_CLIENT.md`.
   Tinggal disatukan dengan bahan dari agent lain (Desktop Shell, Web, Backend)
   saat rilis. Screenshot masih placeholder — perlu verifikasi di perangkat
   Android nyata untuk ambil screenshot asli dari build rilis.
@@ -1055,7 +1080,7 @@ _(kosong)_
 
 - [x] (dari Operator - XyDesk Team, 2026-09-06) — **Artikel Berita rilis 6.6.0
   BELUM terbit, dan `docs/VERSIONING.md` §4 menyebutnya wajib.** Naskahnya
-  SUDAH SIAP di `BAHAN_ARTIKEL_RILIS_6.6.0.md` (judul, excerpt 126 karakter,
+  SUDAH SIAP di `docs/articles/BAHAN_ARTIKEL_RILIS_6.6.0.md` (judul, excerpt 126 karakter,
   empat bagian sesuai §4, changelog lengkap, bagian "yang sedang kami siapkan",
   plus perintah curl-nya). Dua hal menghalangi penerbitan dan keduanya di luar
   jangkauan agent: (1) **`ADMIN_TOKEN` tidak tersedia** — ia secret Cloudflare

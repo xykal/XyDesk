@@ -8,6 +8,8 @@ import { useEffect, useState, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { InputCodec } from './rtc';
 import { relayReasonText } from './session_guidance';
+import { buildLatencyReport, supportsLatencyProbe } from './latency_probe';
+import { APP_VERSION } from './version';
 import type { SessionStats, HostMeta } from './rtc';
 
 type Send = (bytes: Uint8Array) => void;
@@ -508,12 +510,37 @@ export function transportLabel(stats:Pick<SessionStats,'transportPath'|'transpor
  const protocol=stats.transportProtocol?` · ${stats.transportProtocol}`:'';
  return stats.transportPath==='turn-relay'?`TURN relay${protocol}`:stats.transportPath==='direct-p2p'?`Langsung (P2P)${protocol}`:'Jalur belum terukur';
 }
+const ms=(v:number|undefined)=>v===undefined?'—':`${Math.round(v)} ms`;
+
+/// Latensi yang terukur di client. Jujur soal batasnya: tanpa capture/encode
+/// host angkanya adalah batas bawah, dan dilabeli begitu.
+export function LatencySection({stats}:{stats:SessionStats}){
+ const l=stats.latency,e=stats.latencyEstimate;
+ const download=()=>{
+  const report=buildLatencyReport({summary:l!,estimate:e,stats:stats as unknown as Record<string,unknown>,userAgent:navigator.userAgent,version:APP_VERSION});
+  const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`xydesk-latency-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ if(!l)return null;
+ if(!supportsLatencyProbe())return <details><summary>Latensi</summary><p>Browser ini tidak mendukung requestVideoFrameCallback; pakai Chrome/Edge untuk mengukur.</p></details>;
+ if(!l.receiveToDisplay)return <details><summary>Latensi</summary><p>{l.samples?'Browser tidak melaporkan waktu terima frame.':'Mengumpulkan frame…'}</p></details>;
+ const label=e?.confidence==='measured'?'Layar ke layar':'Perkiraan (tanpa encode PC)';
+ return <details open><summary>Latensi</summary>
+  <div className="statistics-grid"><StatRow label={label} value={ms(e?.totalMs)}/><StatRow label="Terima → tampil p50" value={ms(l.receiveToDisplay.p50)}/><StatRow label="Terima → tampil p95" value={ms(l.receiveToDisplay.p95)}/><StatRow label="Jarak frame p95" value={ms(l.frameInterval?.p95)}/></div>
+  {e?.confidence==='lower-bound'&&<p>Angka ini = RTT/2 + waktu frame dari diterima sampai tampil. Belum termasuk capture dan encode di PC; tambahkan <code>encode_ms</code> dari log xydesk-host untuk total sebenarnya.</p>}
+  <button type="button" onClick={download}>Unduh laporan latensi</button>
+ </details>;
+}
+
 export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose?:()=>void}){
  return <aside className={`statistics-panel${onClose?'':' statistics-inline'}`} aria-label="Statistik koneksi" onPointerDown={e=>e.stopPropagation()} onWheel={e=>e.stopPropagation()}>
   <header><strong>Statistik koneksi</strong>{onClose&&<button type="button" aria-label="Tutup statistik" onClick={onClose}>×</button>}</header>
   {stats?<><div className="statistics-grid"><StatRow label="FPS" value={stats.fps?String(Math.round(stats.fps)):'—'}/><StatRow label="RTT" value={stats.rttMs?`${Math.round(stats.rttMs)} ms`:'—'}/><StatRow label="Video" value={`${stats.mbps.toFixed(1)} Mbps`}/><StatRow label="Resolusi" value={stats.width?`${stats.width}×${stats.height}`:'—'}/></div>
    <p className="statistics-path">{transportLabel(stats)}</p>
    {stats.noFrameWarning&&<p role="status">Frame video sedang tersendat.</p>}
+   <LatencySection stats={stats}/>
    <details><summary>Detail jaringan</summary><StatRow label="Loss interval" value={stats.recentLossPct===undefined?'—':`${stats.recentLossPct.toFixed(1)}%`}/><StatRow label="Buffer video" value={stats.jitterBufferMs===undefined?'—':`${Math.round(stats.jitterBufferMs)} ms`}/><p>Langsung berarti ICE memilih koneksi P2P. TURN relay hanya tampil saat salah satu kandidat terpilih bertipe relay. Beda jaringan tetap bisa langsung. RTT bukan latensi layar-ke-layar.</p></details>
   </>:<p>Menunggu statistik koneksi.</p>}
  </aside>;

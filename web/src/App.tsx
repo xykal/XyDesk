@@ -69,6 +69,7 @@ const LicenseInventory = lazy(() => import('./LicenseInventory'));
 import { HostMeta, InputCodec, RtcPhase, RtcSession } from './rtc';
 import { frameGuidance } from './session_guidance';
 import type { SessionStats } from './rtc';
+import { LatencyProbe, attachLatencyProbe, estimateGlassToGlass } from './latency_probe';
 import {
   APP_VERSION,
   CHANGELOG_SLUG,
@@ -2169,6 +2170,15 @@ function ConnectScreen({
   const [remoteVideoStream, setRemoteVideoStream] = useState<MediaStream | null>(null);
   const videoPlaybackStop = useRef<(() => void) | null>(null);
   const [videoPlaybackBlocked, setVideoPlaybackBlocked] = useState(false);
+  // Probe latensi rVFC: hidup selama video sesi terpasang; reset tiap sesi
+  // baru supaya p95 tidak tercemar sesi sebelumnya.
+  const latencyProbe = useRef(new LatencyProbe());
+  useEffect(() => {
+    const video = videoRef.current;
+    if (phase !== 'connected' || !remoteVideoStream || !video) return;
+    latencyProbe.current.reset();
+    return attachLatencyProbe(video, latencyProbe.current);
+  }, [phase, remoteVideoStream]);
   const resumeVideo = useCallback(() => {
     videoPlaybackStop.current?.();
     videoPlaybackStop.current = null;
@@ -2581,6 +2591,8 @@ function ConnectScreen({
           s.playerFrames = video.getVideoPlaybackQuality?.().totalVideoFrames;
           if ((s.playerFrames ?? 0) > 0) s.noFrameWarning = false;
         }
+        s.latency = latencyProbe.current.summary();
+        s.latencyEstimate = estimateGlassToGlass({ rttMs: s.rttMs, summary: s.latency });
         const cursor = cursorRef.current;
         const audio = audioRef.current;
         s.cursorState = `${SESSION_UI_REVISION}; ${cursor?.dataset.ready ?? 'not-mounted'}; ${Math.round(pointerRef.current!.cursor.x * 100)}%,${Math.round(pointerRef.current!.cursor.y * 100)}%`;
