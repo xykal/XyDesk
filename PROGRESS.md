@@ -15,6 +15,10 @@ Done:
 - Refactor selesai lebih awal hari ini: App.tsx, main.rs, session_page,
   session_panels dipecah; jalur tempel ADMIN_TOKEN dihapus dari web publik
   (commit 291822c, 193c0a4, 6060f9e, 2e2a6cf; semua Build hijau).
+- Rebrand XySpace Tech -> XyVerse Technology Global di 26 berkas (web,
+  klien, host, installer NSIS/Inno/WiX, legal, docs); nama tim baru ikut
+  masuk daftar nama terlindungi worker berita (commit f346ca0, de56db3;
+  Build 36494761138 hijau, deploy-web + deploy-news hijau).
 Blocked:
 - HIGH-2 pin SHA action: menunggu resolusi SHA per action lewat API.
 Next:
