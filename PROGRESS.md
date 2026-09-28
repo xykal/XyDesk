@@ -24,8 +24,13 @@ Done:
   (tagline lama terpotong) (360b78c).
 - i18n: kStrings -> 12 ARB + flutter gen-l10n, API context.tr tetap
   (af9724e, c2df261; Build 36498369872 hijau).
+- Encoder MFT (Media Foundation, AMD/Intel/NVIDIA) di host: `mft.rs` +
+  `mft_setup.rs`, pemilih tunggal NVENC > MFT > openh264 untuk WGC/GDI/DXGI,
+  label `video.encoder` = nvenc|mft|openh264. Workflow manual
+  `host-check.yml` (fmt + clippy Linux, clippy target Windows) untuk iterasi
+  cepat. Belum diuji di GPU nyata — butuh PC AMD/Intel kall.
 Blocked:
 - tidak ada.
 Next:
-- MFT encoder host (NVENC > MFT > openh264); ekstraksi string hardcode
-  Indonesia ke ARB; harness latency lanjutan.
+- Uji MFT di PC AMD/Intel (log `MFT aktif`); zero-copy DXGI -> MFT;
+  ekstraksi string hardcode Indonesia ke ARB; harness latency lanjutan.
