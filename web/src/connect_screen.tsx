@@ -388,7 +388,7 @@ export function ConnectScreen({
     if (!sessionOpen) return;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const background=Array.from(document.querySelectorAll<HTMLElement>('.remote-header,.connect-account-bar')).map(el=>({el,inert:el.inert}));
+    const background=Array.from(document.querySelectorAll<HTMLElement>('.site-header,.connect-account-bar')).map(el=>({el,inert:el.inert}));
     background.forEach(({el})=>{el.inert=true;});
     return () => { document.body.style.overflow = overflow;background.forEach(({el,inert})=>{el.inert=inert;}); };
   }, [sessionOpen]);
