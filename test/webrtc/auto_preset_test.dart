@@ -18,6 +18,7 @@ AutoInput calm(
   double? glass,
   double? fps,
   double? rtt,
+  double? decode,
 }) => AutoInput(
   clientLongEdgePx: base.clientLongEdgePx,
   hostLevel: base.hostLevel,
@@ -26,6 +27,7 @@ AutoInput calm(
   rttMs: rtt ?? 20,
   recentLossPct: loss ?? 0,
   jitterBufferMs: 30,
+  decodeMs: decode ?? 8,
   deliveredFps: fps ?? 30,
   glassMs: glass ?? 60,
 );
@@ -97,6 +99,14 @@ void main() {
     final d = a.update(calm(phone1080, 'openh264', glass: 140), 20000)!;
     expect(d.tier, 0);
     expect(d.reason, contains('latensi'));
+  });
+
+  test('decode client lambat = turun walau jaringan bersih', () {
+    final a = AutoPreset()..initial(phone1080.copyWith(encoder: 'nvenc'), 0);
+    expect(a.current.tier, 1);
+    final d = a.update(calm(phone1080, 'nvenc', decode: 28), 20000)!;
+    expect(d.tier, 0);
+    expect(d.reason, contains('decode'));
   });
 
   test('protokol: 0x0C dan 0x0F persis 2 byte, 0x0A/0x0B 8 byte', () {

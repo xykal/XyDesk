@@ -86,6 +86,12 @@ test('encoder software: 1080p diturunkan bila latensi pemrosesan tinggi', () => 
   assert.match(d.reason, /latensi/);
 });
 
+test('decode client lambat = turun, walau jaringan bersih', () => {
+  const cur = { tier: 1, resolution: '1080p', fps: 30, reason: '' };
+  assert.match(overloaded({ clientLongEdgePx: 2400, rttMs: 40, recentLossPct: 0, jitterBufferMs: 30, decodeMs: 28, deliveredFps: 30 }, cur, 40), /decode/);
+  assert.equal(overloaded({ clientLongEdgePx: 2400, rttMs: 40, recentLossPct: 0, jitterBufferMs: 30, decodeMs: 12, deliveredFps: 30 }, cur, 40), null);
+});
+
 test('RTT geografis tinggi tapi stabil bukan alasan turun', () => {
   const cur = { resolution: '1080p', fps: 30, tier: 1, reason: '' };
   assert.equal(overloaded({ clientLongEdgePx: 2400, rttMs: 220, recentLossPct: 0, jitterBufferMs: 40, deliveredFps: 30, glassMs: 180 }, cur, 220), null);

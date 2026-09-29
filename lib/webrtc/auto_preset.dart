@@ -37,6 +37,7 @@ class AutoInput {
     this.rttMs,
     this.recentLossPct,
     this.jitterBufferMs,
+    this.decodeMs,
     this.deliveredFps,
     this.glassMs,
   });
@@ -48,6 +49,7 @@ class AutoInput {
   final double? rttMs;
   final double? recentLossPct;
   final double? jitterBufferMs;
+  final double? decodeMs;
   final double? deliveredFps;
   final double? glassMs;
 
@@ -55,6 +57,7 @@ class AutoInput {
     double? rttMs,
     double? recentLossPct,
     double? jitterBufferMs,
+    double? decodeMs,
     double? deliveredFps,
     double? glassMs,
     String? encoder,
@@ -66,6 +69,7 @@ class AutoInput {
     rttMs: rttMs ?? this.rttMs,
     recentLossPct: recentLossPct ?? this.recentLossPct,
     jitterBufferMs: jitterBufferMs ?? this.jitterBufferMs,
+    decodeMs: decodeMs ?? this.decodeMs,
     deliveredFps: deliveredFps ?? this.deliveredFps,
     glassMs: glassMs ?? this.glassMs,
   );
@@ -100,6 +104,8 @@ bool isHardwareEncoder(String? encoder) =>
 String? overloaded(AutoInput input, AutoDecision current, double baselineRtt) {
   if ((input.recentLossPct ?? 0) > 2) return 'kehilangan paket';
   if ((input.jitterBufferMs ?? 0) > 90) return 'antrean jitter tinggi';
+  // Decoder client yang butuh >20 ms/frame menumpuk antrean sendiri.
+  if ((input.decodeMs ?? 0) > 20) return 'decode client lambat';
   final rtt = input.rttMs ?? 0;
   if (rtt > 0 &&
       baselineRtt.isFinite &&

@@ -723,7 +723,7 @@ export function ConnectScreen({
         const next=p.bitrateMbps===0?adaptive.current.update(s,ceiling,performance.now()):null;
         if(next!==null)sessionRef.current?.setBitrate(next);
         if(p.preset!=='manual'){
-          const d=autoPreset.current.update({...autoInputFromMeta(hostMetaRef.current),rttMs:s.rttMs,recentLossPct:s.recentLossPct,jitterBufferMs:s.jitterBufferMs,deliveredFps:s.fps,glassMs:s.latencyEstimate?.totalMs},performance.now());
+          const d=autoPreset.current.update({...autoInputFromMeta(hostMetaRef.current),rttMs:s.rttMs,recentLossPct:s.recentLossPct,jitterBufferMs:s.jitterBufferMs,decodeMs:s.decodeMs,deliveredFps:s.fps,glassMs:s.latencyEstimate?.totalMs},performance.now());
           if(d)applyAutoDecision(d);
         }
         setStats(s);

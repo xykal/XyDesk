@@ -397,6 +397,7 @@ class _SessionPageState extends ConsumerState<SessionPage>
         rttMs: st.rttMs,
         recentLossPct: st.packetLossPercent,
         jitterBufferMs: st.jitterBufferMs,
+        decodeMs: st.decodeMs,
         deliveredFps: st.fps,
       ),
       DateTime.now().millisecondsSinceEpoch,
