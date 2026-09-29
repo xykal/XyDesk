@@ -3,8 +3,10 @@ import 'dart:collection';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../features/notifications/notification_service.dart';
 
 /// Tingkat kepentingan catatan.
 enum LogLevel {
@@ -266,8 +268,13 @@ class DevLogPanel extends StatefulWidget {
   const DevLogPanel({super.key});
 
   static Future<void> show(BuildContext context) {
+    // FAB hidup di `MaterialApp.builder` (di atas Navigator), jadi pakai
+    // konteks navigator aplikasi bila konteks pemanggil tidak punya Navigator.
+    final ctx = Navigator.maybeOf(context) != null
+        ? context
+        : (appNavigatorKey.currentContext ?? context);
     return showModalBottomSheet(
-      context: context,
+      context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => const DevLogPanel(),

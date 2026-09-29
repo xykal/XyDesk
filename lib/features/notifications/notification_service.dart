@@ -109,13 +109,15 @@ class NotificationService extends ChangeNotifier {
       return;
     }
 
-    _attachListeners();
     try {
       OneSignal.Debug.setLogLevel(
         kDebugMode ? OSLogLevel.warn : OSLogLevel.none,
       );
       await OneSignal.initialize(NotificationConfig.oneSignalAppId);
       _initialized = true;
+      // Listener baru boleh dipasang setelah initialize; sebelumnya plugin
+      // melempar "Must call 'initWithContext' before use".
+      _attachListeners();
       _lastError = null;
       _syncState();
       await _syncCanRequest();

@@ -12,7 +12,7 @@ final updateAvailabilityProvider = FutureProvider<UpdateCheckResult?>((
   try {
     return await const OfficialUpdateRepository().check();
   } catch (error, stack) {
-    DevLog.e('update', 'Pemeriksaan update topbar ditunda', error, stack);
+    DevLog.w('update', 'Pemeriksaan update topbar ditunda', '$error');
     return null;
   }
 });

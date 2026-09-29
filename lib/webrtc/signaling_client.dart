@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 
+import '../core/devlog.dart';
+
 /// Pesan signaling — struktur identik dengan `signaling/protocol.go`.
 class SignalMessage {
   SignalMessage({
@@ -149,6 +151,16 @@ class SignalingClient {
         final m = SignalMessage.fromJson(
           jsonDecode(data as String) as Map<String, dynamic>,
         );
+        DevLog.i(
+          'signal',
+          'Terima ${m.type}',
+          [
+            if (m.from != null) 'dari=${m.from}',
+            if (m.error != null) 'error=${m.error}',
+            if (m.reason != null) 'reason=${m.reason}',
+            if (m.accepted != null) 'accepted=${m.accepted}',
+          ].join(' '),
+        );
         switch (m.type) {
           case 'pair-response':
             onPairResponse?.call(m.accepted ?? false, m.from);
@@ -159,10 +171,12 @@ class SignalingClient {
       },
       onDone: () {
         _open = false;
+        DevLog.w('signal', 'Soket ditutup', 'kode=${ch.closeCode} ${ch.closeReason ?? ''}');
         onDisconnected?.call();
       },
-      onError: (_) {
+      onError: (Object e) {
         _open = false;
+        DevLog.w('signal', 'Soket galat', '$e');
         onDisconnected?.call();
       },
     );
@@ -193,6 +207,7 @@ class SignalingClient {
     }
 
     _open = true;
+    DevLog.ok('signal', 'Tersambung', 'id=$deviceId');
 
     // daftar sebagai client
     _send(SignalMessage(type: 'hello', to: deviceId, reason: 'client'));
@@ -232,6 +247,7 @@ class SignalingClient {
   void _send(SignalMessage m) {
     final sink = _ch?.sink;
     if (sink == null) return;
+    if (m.type != 'ice') DevLog.i('signal', 'Kirim ${m.type}', 'ke=${m.to}');
     try {
       sink.add(jsonEncode(m.toJson()));
     } catch (_) {

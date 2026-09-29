@@ -217,7 +217,7 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
 
     try {
       await completer.future.timeout(
-        const Duration(seconds: 15),
+        const Duration(seconds: 25),
         onTimeout: () {
           if (!completer.isCompleted) {
             finalStatus = TransportStatus.error;
@@ -272,7 +272,8 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         TransportStatus.hostBusy =>
           'PC sedang dipakai sesi lain. Tunggu sesi selesai, lalu coba lagi.',
         TransportStatus.error =>
-          transport.state.message ?? 'Tidak dapat terhubung ke PC.',
+          transport.state.message ??
+              'Host menerima permintaan tetapi tidak menjawab. Pastikan XyDesk Host di PC versi terbaru dan tidak menampilkan dialog yang menunggu.',
         _ => 'Tidak dapat terhubung ke PC.',
       };
       DevLog.w('connect', 'Pairing gagal', '$status: $msg');
