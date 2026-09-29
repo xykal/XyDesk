@@ -12,6 +12,7 @@ import '../../core/store.dart';
 import '../../core/tokens.dart';
 import '../../widgets/seamless.dart';
 import '../auth/auth_service.dart';
+import '../../core/l10n_bridge.dart';
 
 @immutable
 class HostModeState {
@@ -262,24 +263,24 @@ class _HostModePageState extends ConsumerState<HostModePage> {
             ),
             const SizedBox(width: Gap.sm),
             Text(
-              state.running ? 'PC siap menerima koneksi' : 'Mode Host berhenti',
+              state.running ? context.tr('host_ready') : context.tr('host_stopped'),
               style: TextStyle(fontSize: 12, color: c.textMid),
             ),
           ],
         ),
         const SizedBox(height: Gap.xl),
         Text(
-          'Bagikan PC ini',
+          context.tr('host_share'),
           style: Theme.of(context).textTheme.headlineLarge,
         ),
         const SizedBox(height: Gap.sm),
         Text(
-          'Gunakan ID dan password ini dari Android, Windows lain, atau Connect Web.',
+          context.tr('host_share_sub'),
           style: TextStyle(fontSize: 13, height: 1.55, color: c.textMid),
         ),
         const SizedBox(height: Gap.xxl),
         _CredentialCard(
-          label: 'ID perangkat',
+          label: context.tr('host_device_id'),
           value: _formatId(state.deviceId),
           onCopy: state.deviceId == null
               ? null
@@ -287,14 +288,14 @@ class _HostModePageState extends ConsumerState<HostModePage> {
         ),
         const SizedBox(height: Gap.md),
         _CredentialCard(
-          label: 'Password pairing',
+          label: context.tr('host_pairing_password'),
           value: state.password == null
-              ? 'Belum tersedia'
+              ? context.tr('host_unavailable')
               : _showPassword
               ? state.password!
               : List.filled(state.password!.length, '•').join(),
           trailing: IconButton(
-            tooltip: _showPassword ? 'Sembunyikan password' : 'Lihat password',
+            tooltip: _showPassword ? context.tr('host_hide_password') : context.tr('host_show_password'),
             onPressed: state.password == null
                 ? null
                 : () => setState(() => _showPassword = !_showPassword),
@@ -318,13 +319,13 @@ class _HostModePageState extends ConsumerState<HostModePage> {
                     ? controller.stop
                     : controller.start,
                 icon: state.running ? LucideIcons.square : LucideIcons.play,
-                label: state.running ? 'Hentikan Host' : 'Aktifkan Host',
+                label: state.running ? context.tr('host_stop') : context.tr('host_start'),
                 isLoading: state.busy,
               ),
             ),
             const SizedBox(width: Gap.sm),
             IconButton(
-              tooltip: 'Ganti password',
+              tooltip: context.tr('host_change_password'),
               onPressed: state.busy || state.running
                   ? null
                   : () => _changePassword(controller),
@@ -360,14 +361,14 @@ class _HostModePageState extends ConsumerState<HostModePage> {
         ],
         const SizedBox(height: Gap.h32),
         Text(
-          'Akses cepat',
+          context.tr('host_quick_access'),
           style: TextStyle(color: c.textHi, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: Gap.sm),
         _QuickLink(
           icon: LucideIcons.globe,
-          title: 'Connect Web',
-          subtitle: 'Kendalikan PC ini dari browser atau iPhone',
+          title: context.tr('host_connect_web'),
+          subtitle: context.tr('host_connect_web_sub'),
           onTap: () => launchUrl(
             Uri.parse('https://app.xydesk.my.id/connect'),
             mode: LaunchMode.externalApplication,
@@ -376,8 +377,8 @@ class _HostModePageState extends ConsumerState<HostModePage> {
         const SizedBox(height: Gap.sm),
         _QuickLink(
           icon: LucideIcons.heart,
-          title: 'Dukung kami di saluran WhatsApp',
-          subtitle: 'Info rilis, panduan, dan perkembangan XyDesk',
+          title: context.tr('host_whatsapp'),
+          subtitle: context.tr('host_whatsapp_sub'),
           onTap: () => launchUrl(
             Uri.parse('https://whatsapp.com/channel/0029VbB7nwuJZg3ym6UQ4Z1L'),
             mode: LaunchMode.externalApplication,
@@ -392,22 +393,22 @@ class _HostModePageState extends ConsumerState<HostModePage> {
     final value = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ganti password Host'),
+        title: Text(context.tr('host_change_password_title')),
         content: TextField(
           controller: field,
           autofocus: true,
           obscureText: true,
           maxLength: 64,
-          decoration: const InputDecoration(hintText: 'Minimal 6 karakter'),
+          decoration: InputDecoration(hintText: context.tr('host_min_chars')),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+            child: Text(context.tr('cancel')),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, field.text),
-            child: const Text('Simpan'),
+            child: Text(context.tr('save')),
           ),
         ],
       ),
@@ -462,7 +463,7 @@ class _CredentialCard extends StatelessWidget {
           ),
           if (trailing != null) trailing!,
           IconButton(
-            tooltip: 'Salin',
+            tooltip: context.tr('copy'),
             onPressed: onCopy,
             icon: const Icon(LucideIcons.copy, size: 18),
           ),
@@ -530,6 +531,6 @@ class _QuickLink extends StatelessWidget {
 }
 
 String _formatId(String? value) {
-  if (value == null || value.length != 9) return 'Menyiapkan…';
+  if (value == null || value.length != 9) return context.tr('host_preparing');
   return '${value.substring(0, 3)} ${value.substring(3, 6)} ${value.substring(6)}';
 }

@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/tokens.dart';
 import '../../widgets/seamless.dart';
 import 'notification_service.dart';
+import '../../core/l10n_bridge.dart';
 
 class NotificationPreferencesPage extends StatefulWidget {
   const NotificationPreferencesPage({super.key});
@@ -54,8 +55,7 @@ class _NotificationPreferencesPageState
     if (!mounted || enabled) return;
     final message =
         _service.lastError ??
-        'Notifikasi belum aktif. Jika izin pernah ditolak, aktifkan melalui '
-            'pengaturan notifikasi Android.';
+        context.tr('notif_not_enabled');
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -68,7 +68,7 @@ class _NotificationPreferencesPageState
     return Scaffold(
       backgroundColor: c.bg,
       appBar: AppBar(
-        title: const Text('Notifikasi pembaruan'),
+        title: Text(context.tr('notif_update_title')),
         leading: IconButton(
           icon: Icon(LucideIcons.arrowLeft, size: 20, color: c.textMid),
           onPressed: () => Navigator.pop(context),
@@ -103,7 +103,7 @@ class _NotificationPreferencesPageState
           ),
           const SizedBox(height: Gap.xl),
           Text(
-            'Tahu saat XyDesk diperbarui',
+            context.tr('notif_know_when'),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 21,
@@ -113,12 +113,11 @@ class _NotificationPreferencesPageState
           ),
           const SizedBox(height: Gap.sm),
           Text(
-            'XyDesk hanya mengirim pengumuman versi baru sesekali. '
-            'Tidak ada promosi rutin dan izin ini selalu opsional.',
+            context.tr('notif_rare'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.5, height: 1.6, color: c.textMid),
           ),
-          const SectionLabel('Status'),
+          SectionLabel(context.tr('notif_status')),
           SurfaceCard(
             child: Row(
               children: [
@@ -159,27 +158,24 @@ class _NotificationPreferencesPageState
               ],
             ),
           ),
-          const SectionLabel('Cara kerjanya'),
-          const _InfoRow(
+          SectionLabel(context.tr('notif_how')),
+          _InfoRow(
             icon: LucideIcons.smartphone,
-            title: 'Kamu yang memutuskan',
+            title: context.tr('notif_you_decide'),
             body:
-                'Dialog izin Android baru muncul setelah tombol Aktifkan '
-                'ditekan, bukan saat aplikasi pertama dibuka.',
+                context.tr('notif_you_decide_sub'),
           ),
-          const _InfoRow(
+          _InfoRow(
             icon: LucideIcons.packageOpen,
-            title: 'Masuk ke halaman internal',
+            title: context.tr('notif_internal'),
             body:
-                'Mengetuk notifikasi membuka detail update di XyDesk lebih '
-                'dahulu, bukan langsung memasang APK.',
+                context.tr('notif_internal_sub'),
           ),
-          const _InfoRow(
+          _InfoRow(
             icon: LucideIcons.shieldCheck,
-            title: 'Unduhan resmi',
+            title: context.tr('notif_official'),
             body:
-                'Aksi unduh pada halaman update hanya menuju GitHub Releases '
-                'resmi XyDesk.',
+                context.tr('notif_official_sub'),
           ),
           const SizedBox(height: Gap.xl),
           FilledButton.icon(
@@ -195,14 +191,14 @@ class _NotificationPreferencesPageState
                   ),
             label: Text(
               _service.busy
-                  ? 'Menyiapkan…'
+                  ? context.tr('notif_preparing')
                   : _service.active
-                  ? 'Jeda notifikasi update'
+                  ? context.tr('notif_pause')
                   : !_service.permissionGranted &&
                         !_service.canRequestPermission &&
                         _service.initialized
-                  ? 'Buka pengaturan notifikasi'
-                  : 'Aktifkan notifikasi update',
+                  ? context.tr('notif_open_settings')
+                  : context.tr('notif_enable'),
             ),
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(50),
@@ -214,8 +210,7 @@ class _NotificationPreferencesPageState
           if (_service.active) ...[
             const SizedBox(height: Gap.sm),
             Text(
-              'Menjeda di sini tidak mengubah izin sistem; kamu bisa '
-              'mengaktifkannya kembali kapan saja.',
+              context.tr('notif_pause_note'),
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 10.5, height: 1.5, color: c.textLow),
             ),
@@ -229,39 +224,39 @@ class _NotificationPreferencesPageState
     final c = context.c;
     if (!_service.supported) {
       return _NotificationStatus(
-        title: 'Tidak tersedia di platform ini',
-        description: 'Push update saat ini disiapkan untuk aplikasi Android.',
+        title: context.tr('notif_unsupported'),
+        description: context.tr('notif_unsupported_sub'),
         icon: LucideIcons.info,
         color: c.textLow,
       );
     }
     if (_service.lastError != null && !_service.initialized) {
       return _NotificationStatus(
-        title: 'Belum terhubung',
+        title: context.tr('notif_not_connected'),
         description: _service.lastError!,
         icon: LucideIcons.info,
         color: AppColors.warning,
       );
     }
     if (_service.active) {
-      return const _NotificationStatus(
-        title: 'Aktif',
-        description: 'Perangkat ini dapat menerima pengumuman versi baru.',
+      return _NotificationStatus(
+        title: context.tr('notif_active'),
+        description: context.tr('notif_active_sub'),
         icon: LucideIcons.check,
         color: AppColors.success,
       );
     }
     if (_service.permissionGranted && !_service.optedIn) {
       return _NotificationStatus(
-        title: 'Dijeda',
-        description: 'Izin Android ada, tetapi langganan XyDesk sedang dijeda.',
+        title: context.tr('notif_paused'),
+        description: context.tr('notif_paused_sub'),
         icon: LucideIcons.bellOff,
         color: c.textLow,
       );
     }
     return _NotificationStatus(
-      title: 'Belum diaktifkan',
-      description: 'Tekan Aktifkan bila kamu ingin menerima info update.',
+      title: context.tr('notif_off'),
+      description: context.tr('notif_off_sub'),
       icon: LucideIcons.bellOff,
       color: c.textLow,
     );

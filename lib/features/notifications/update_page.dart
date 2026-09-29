@@ -10,6 +10,7 @@ import '../../widgets/seamless.dart';
 import 'app_update_details.dart';
 import 'update_download_service.dart';
 import 'update_repository.dart';
+import '../../core/l10n_bridge.dart';
 
 class UpdatePage extends StatefulWidget {
   const UpdatePage({super.key, required this.details});
@@ -173,20 +174,18 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
     final openSettings = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Izinkan pemasangan update'),
-        content: const Text(
-          'Android memerlukan izin “Instal aplikasi yang tidak dikenal” untuk '
-          'XyDesk. Anda tetap harus meninjau dan mengonfirmasi pemasangan di '
-          'installer Android.',
+        title: Text(context.tr('upd_allow_title')),
+        content: Text(
+          context.tr('upd_allow_body'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Nanti'),
+            child: Text(context.tr('upd_later')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Buka pengaturan'),
+            child: Text(context.tr('upd_open_settings')),
           ),
         ],
       ),
@@ -222,13 +221,13 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
         backgroundColor: context.c.bg,
         surfaceTintColor: Colors.transparent,
         titleSpacing: 4,
-        title: const Row(
+        title: Row(
           children: [
             BrandLogo(size: 31),
             SizedBox(width: 10),
             Text(
-              'Pusat Update',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              context.tr('upd_title'),
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -243,7 +242,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
               child: Image.asset(
                 'assets/img/xydesk_update_banner.jpg',
                 fit: BoxFit.cover,
-                semanticLabel: 'Banner update resmi XyDesk',
+                semanticLabel: context.tr('upd_banner_alt'),
               ),
             ),
             const SizedBox(height: 18),
@@ -253,19 +252,19 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
               children: [
                 _StatusChip(
                   icon: latest ? LucideIcons.circleCheck : LucideIcons.sparkles,
-                  label: latest ? 'Versi terbaru' : details.version,
+                  label: latest ? context.tr('upd_latest') : details.version,
                   color: latest ? context.c.successText : colors.primary,
                 ),
                 _StatusChip(
                   icon: LucideIcons.shieldCheck,
-                  label: 'Release resmi',
+                  label: context.tr('upd_official_release'),
                   color: context.c.textMid,
                 ),
               ],
             ),
             const SizedBox(height: 14),
             Text(
-              latest ? 'XyDesk sudah terbaru' : details.title,
+              latest ? context.tr('upd_up_to_date') : details.title,
               style: TextStyle(
                 color: context.c.textHi,
                 fontSize: 24,
@@ -277,8 +276,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
             const SizedBox(height: 8),
             Text(
               latest
-                  ? 'Build yang terpasang sudah sama atau lebih baru dari '
-                        'Release resmi saat ini.'
+                  ? context.tr('upd_up_to_date_body')
                   : details.message,
               style: TextStyle(
                 color: context.c.textMid,
@@ -299,7 +297,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
             if (_fullNotes.isNotEmpty || details.releaseNotes.isNotEmpty) ...[
               const SizedBox(height: 18),
               Text(
-                _fullNotes.isEmpty ? 'Yang disiapkan' : 'Catatan rilis',
+                _fullNotes.isEmpty ? context.tr('upd_prepared') : context.tr('upd_release_notes'),
                 style: TextStyle(
                   color: context.c.textHi,
                   fontSize: 15,
@@ -339,7 +337,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
             OutlinedButton.icon(
               onPressed: _openOfficialRelease,
               icon: const Icon(LucideIcons.externalLink, size: 18),
-              label: const Text('Lihat GitHub Release resmi'),
+              label: Text(context.tr('upd_view_github')),
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
@@ -357,7 +355,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
 
   Widget _buildPrimaryAction(UpdateCheckResult? result) {
     if (_checking) {
-      return const FilledButton(
+      return FilledButton(
         onPressed: null,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -368,7 +366,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
             SizedBox(width: 10),
-            Text('Memeriksa Release resmi…'),
+            Text(context.tr('upd_checking_release')),
           ],
         ),
       );
@@ -377,7 +375,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       return FilledButton.icon(
         onPressed: _checkForUpdates,
         icon: const Icon(LucideIcons.refreshCw, size: 18),
-        label: const Text('Coba cek lagi'),
+        label: Text(context.tr('upd_check_again')),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
       );
     }
@@ -385,7 +383,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       return FilledButton.icon(
         onPressed: _checkForUpdates,
         icon: const Icon(LucideIcons.circleCheck, size: 18),
-        label: const Text('Anda memakai versi terbaru'),
+        label: Text(context.tr('upd_you_latest')),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
       );
     }
@@ -393,7 +391,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       return FilledButton.icon(
         onPressed: _openOfficialRelease,
         icon: const Icon(LucideIcons.externalLink, size: 18),
-        label: const Text('Buka download resmi'),
+        label: Text(context.tr('upd_open_download')),
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
       );
     }
@@ -402,7 +400,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       UpdateDownloadPhase.ready => PrimaryButton(
         onPressed: _acting ? null : _installUpdate,
         icon: LucideIcons.packageCheck,
-        label: _acting ? 'Menyiapkan installer…' : 'Pasang Update Sekarang',
+        label: _acting ? context.tr('upd_preparing_installer') : context.tr('upd_install_now'),
         isLoading: _acting,
       ),
       UpdateDownloadPhase.queued ||
@@ -413,17 +411,17 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
         icon: LucideIcons.download,
         label: _downloadStatus.progress != null
             ? 'Mengunduh (${(_downloadStatus.progress! * 100).toInt()}%)…'
-            : 'Download berjalan di latar belakang…',
+            : context.tr('upd_downloading_bg'),
         isLoading: true,
       ),
       _ => PrimaryButton(
         onPressed: _acting ? null : _startDownload,
         icon: LucideIcons.download,
         label: _acting
-            ? 'Menyiapkan download…'
+            ? context.tr('upd_preparing_download')
             : _downloadStatus.phase == UpdateDownloadPhase.failed
-            ? 'Coba unduh lagi'
-            : 'Unduh Update Resmi',
+            ? context.tr('upd_retry_download')
+            : context.tr('upd_download_official'),
         isLoading: _acting,
       ),
     };
@@ -440,13 +438,13 @@ class _VersionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final installed = result == null
         ? checking
-              ? 'Memuat…'
-              : 'Belum diketahui'
+              ? context.tr('upd_loading')
+              : context.tr('upd_unknown')
         : '${result!.installedVersion}+${result!.installedBuildNumber}';
     final release = result == null
         ? checking
-              ? 'Memeriksa…'
-              : 'Belum diketahui'
+              ? context.tr('upd_checking')
+              : context.tr('upd_unknown')
         : '${result!.manifest.version}+${result!.manifest.buildNumber}';
 
     return Container(
@@ -458,11 +456,11 @@ class _VersionCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _VersionValue(label: 'Terpasang', value: installed),
+            child: _VersionValue(label: context.tr('upd_installed'), value: installed),
           ),
           const SizedBox(width: 1, height: 40),
           Expanded(
-            child: _VersionValue(label: 'Release resmi', value: release),
+            child: _VersionValue(label: context.tr('upd_official_release'), value: release),
           ),
         ],
       ),
@@ -543,7 +541,7 @@ class _DownloadCard extends StatelessWidget {
               const SizedBox(width: 9),
               Expanded(
                 child: Text(
-                  status.message ?? 'Memproses update…',
+                  status.message ?? context.tr('upd_processing'),
                   style: TextStyle(
                     color: color,
                     fontSize: 13,
@@ -577,7 +575,7 @@ class _DownloadCard extends StatelessWidget {
 
   String _progressLabel(UpdateDownloadStatus status) {
     if (status.totalBytes <= 0) {
-      return 'Progress juga terlihat di notifikasi sistem Android.';
+      return context.tr('upd_progress_notif');
     }
     final percent = ((status.progress ?? 0) * 100).round();
     return '$percent%  •  ${_formatBytes(status.downloadedBytes)} dari '
@@ -729,10 +727,7 @@ class _SafetyNotice extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'APK diunduh oleh Android di latar belakang. Sebelum tombol '
-              '“Pasang update” aktif, XyDesk memeriksa checksum SHA-256, '
-              'arsitektur CPU, package ID, nomor build, dan sertifikat signing. Pemasangan '
-              'tetap memerlukan konfirmasi Anda di installer Android.',
+              context.tr('upd_verify_body'),
               style: TextStyle(
                 color: context.c.textMid,
                 fontSize: 11.5,
