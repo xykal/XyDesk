@@ -165,6 +165,11 @@ Kebijakan rilis:
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
 
+## [6.8.8] - 2026-09-29
+
+- **Encoder hardware AMD/Intel lewat Media Foundation.** Host mencoba NVENC, lalu MFT (`host/src/mft.rs`), baru openh264; satu pemilih untuk jalur WGC/GDI/DXGI. `meta.encoder` bernilai `nvenc` / `mft` / `openh264`. Belum diuji di GPU nyata; fallback aman.
+- Engine Rust dilink CRT statis (tanpa `vcruntime140.dll`); workflow manual `host-check.yml`; `release.yml` mendapat input `draft`. Rincian: `changelogs/6.8.8.md`.
+
 ## [6.8.7] - 2026-09-28
 
 - **Resolusi dan FPS otomatis — pengguna tidak perlu mengatur apa pun.** Preset **Otomatis** di web dan APK kini memilih resolusi (720p/1080p) dan FPS (30/60) sendiri dari tiga fakta: sisi terpanjang layar perangkat (HP 720p tidak pernah diminta 1080p), encoder host dari `meta.encoder` (openh264 software tidak pernah diminta 60 FPS; 1080p hanya selama latensi pemrosesan tetap di bawah 90 ms), dan statistik berjalan (loss, antrean jitter, RTT membengkak, FPS yang benar-benar tiba, estimasi glass-to-glass dari probe 6.8.6). Mulai ringan, naik satu tingkat tiap 12 detik stabil, turun begitu keteteran, berhenti mencoba setelah dua kali gagal — tiap perubahan adalah restart encoder di host, jadi dibuat jarang. Logika identik di `web/src/auto_preset.ts` dan `lib/webrtc/auto_preset.dart` dengan skenario tes yang sama (9 + 8). Panel Video web memperoleh sakelar **Otomatis / Manual** yang menampilkan keputusan dan alasannya; setelan manual lama tetap ada di balik "Manual".

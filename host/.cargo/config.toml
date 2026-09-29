@@ -1,0 +1,5 @@
+# CRT statis untuk target MSVC: xydesk-host.exe tidak bergantung pada
+# vcruntime140.dll di mesin pengguna (Windows 10/11 bersih tanpa VC Redist).
+# Panel C++ sudah /MT; ini menyamakan engine Rust + libopus/openh264 vendor.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

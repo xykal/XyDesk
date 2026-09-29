@@ -10,6 +10,11 @@ on:
     types: [completed]
   workflow_dispatch:
     inputs:
+      draft:
+        description: 'Draft: rilis dibuat tetapi tidak dipublikasikan (hanya kolaborator yang melihat; tidak ada notifikasi; klien lama tidak melihat update).'
+        required: false
+        type: boolean
+        default: false
       release_sha:
         description: 'SHA commit yang akan dirilis (kosongkan = HEAD main saat dispatch). Wajib diisi SHA yang sudah punya Build penuh sukses — kalau diisi HEAD yang maju setelah Build, release gagal "Build sukses tidak ditemukan".'
         required: false
@@ -606,6 +611,7 @@ jobs:
           # 'update_release' (memicu warning "Unexpected input"), cukup
           # ditimpa lewat penghapusan + upload ulang.
           generate_release_notes: true
+          draft: ${{ inputs.draft == true }}
           body: |
             ## XyDesk ${{ needs.prepare.outputs.tag }}
 
@@ -631,6 +637,7 @@ jobs:
             > code-signed sehingga SmartScreen dapat menampilkan peringatan.
 
       - name: Kirim OneSignal hanya ke build Android lama
+        if: ${{ inputs.draft != true }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
