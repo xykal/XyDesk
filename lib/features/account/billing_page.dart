@@ -15,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/tokens.dart';
 import '../../widgets/seamless.dart';
+import '../../core/l10n_bridge.dart';
 
 /// Nomor WhatsApp pemesanan (format internasional tanpa +).
 const _orderWa = '6283116632566';
@@ -154,7 +155,7 @@ class _BillingPageState extends State<BillingPage> {
     return Scaffold(
       backgroundColor: c.bg,
       appBar: AppBar(
-        title: const Text('Sewa PC'),
+        title: Text(context.tr('bl_title')),
         leading: IconButton(
           icon: Icon(LucideIcons.arrowLeft, color: c.textMid),
           onPressed: () => Navigator.pop(context),
@@ -165,7 +166,7 @@ class _BillingPageState extends State<BillingPage> {
         children: [
           // Header
           Text(
-            'SEWA PC',
+            context.tr('bl_eyebrow'),
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -175,7 +176,7 @@ class _BillingPageState extends State<BillingPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Main di PC kencang, bayar per jam.',
+            context.tr('bl_headline'),
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -185,9 +186,7 @@ class _BillingPageState extends State<BillingPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Tidak punya PC gaming? Sewa punya kami. Kamu terima ID + '
-            'password, konek lewat XyDesk dari HP, dan PC-nya jadi '
-            'milikmu selama durasi berjalan.',
+            context.tr('bl_intro'),
             style: TextStyle(fontSize: 12.5, color: c.textMid, height: 1.5),
           ),
           const SizedBox(height: Gap.xxl),
@@ -211,7 +210,7 @@ class _BillingPageState extends State<BillingPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'PILIH DURASI',
+                  context.tr('bl_pick_duration'),
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
@@ -242,7 +241,7 @@ class _BillingPageState extends State<BillingPage> {
                     onChanged: _isiDurasiCustom,
                     style: TextStyle(fontSize: 14, color: c.textHi),
                     decoration: InputDecoration(
-                      hintText: 'Custom',
+                      hintText: context.tr('bl_custom'),
                       isDense: true,
                       suffixText: 'jam',
                       suffixStyle: TextStyle(fontSize: 11, color: c.textLow),
@@ -300,15 +299,13 @@ class _BillingPageState extends State<BillingPage> {
 
                 // Tombol pesan.
                 PrimaryButton(
-                  label: stokPaket > 0 ? 'Pesan via WhatsApp' : 'Stok habis',
+                  label: stokPaket > 0 ? context.tr('bl_order_wa') : context.tr('bl_out_of_stock'),
                   icon: LucideIcons.messageCircle,
                   onPressed: stokPaket > 0 ? _pesan : null,
                 ),
                 const SizedBox(height: Gap.md),
                 Text(
-                  'Pembayaran otomatis (QRIS) sedang disiapkan — untuk '
-                  'sekarang pesanan dikonfirmasi manual oleh tim, biasanya '
-                  'dalam hitungan menit pada jam operasional.',
+                  context.tr('bl_manual_note'),
                   style: TextStyle(
                     fontSize: 11,
                     color: c.textLow,
@@ -323,7 +320,7 @@ class _BillingPageState extends State<BillingPage> {
 
           // ── Cara kerjanya ──
           Text(
-            'CARA KERJANYA',
+            context.tr('bl_how'),
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
@@ -349,7 +346,7 @@ class _BillingPageState extends State<BillingPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Mau sekalian beli PC?',
+                  context.tr('bl_buy_pc'),
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -358,9 +355,7 @@ class _BillingPageState extends State<BillingPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Kami juga merakit PC sesuai budget — konsultasi spek '
-                  'gratis, garansi toko, dan XyDesk Host terpasang siap '
-                  'remote dari hari pertama.',
+                  context.tr('bl_buy_pc_body'),
                   style: TextStyle(fontSize: 12, color: c.textMid, height: 1.5),
                 ),
                 const SizedBox(height: Gap.md),
@@ -370,7 +365,7 @@ class _BillingPageState extends State<BillingPage> {
                   child: OutlinedButton.icon(
                     onPressed: _pesan,
                     icon: const Icon(LucideIcons.messageCircle, size: 16),
-                    label: const Text('Konsultasi via WhatsApp'),
+                    label: Text(context.tr('bl_consult_wa')),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: c.accent.withValues(alpha: 0.5)),
                       foregroundColor: c.accent,
@@ -498,7 +493,7 @@ class _PaketCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                habis ? 'Stok habis' : '$stok unit tersedia',
+                habis ? context.tr('bl_out_of_stock') : '$stok unit tersedia',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w500,

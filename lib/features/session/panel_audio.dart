@@ -7,6 +7,7 @@ import 'panel_session.dart';
 import 'panel_widgets.dart';
 import 'session_panels.dart';
 import 'session_settings.dart';
+import '../../core/l10n_bridge.dart';
 
 class AudioPanel extends StatelessWidget {
   const AudioPanel({super.key, required this.state, required this.onChanged});
@@ -49,7 +50,7 @@ class AudioPanel extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Mengerti'),
+            child: Text(context.tr('au_got_it')),
           ),
         ],
       ),
@@ -63,20 +64,19 @@ class AudioPanel extends StatelessWidget {
       children: [
         const CapabilityCard(capabilities: _capabilities),
         const SizedBox(height: 18),
-        const SectionTitle(
-          title: 'Suara PC ke perangkat',
-          subtitle: 'Preferensi output untuk audio sistem Windows.',
+        SectionTitle(
+          title: context.tr('au_pc_to_device'),
+          subtitle: context.tr('au_pc_to_device_sub'),
         ),
         PanelCard(
           child: Column(
             children: [
               ToggleRow(
                 icon: LucideIcons.volume2,
-                title: 'Minta audio PC',
+                title: context.tr('au_request_pc'),
                 subtitle: state.pcAudioRequested
-                    ? 'Aktif — audio PC (WASAPI loopback) diputar di '
-                          'perangkat ini'
-                    : 'Tidak diminta',
+                    ? context.tr('au_request_pc_on')
+                    : context.tr('au_not_requested'),
                 value: state.pcAudioRequested,
                 onChanged: (value) =>
                     onChanged(state.copyWith(pcAudioRequested: value)),
@@ -84,31 +84,31 @@ class AudioPanel extends StatelessWidget {
               const CardGap(),
               DeviceRow(
                 icon: LucideIcons.monitor,
-                title: 'Sumber host',
-                value: 'Output default Windows',
+                title: context.tr('au_host_source'),
+                value: context.tr('au_win_default'),
                 onTap: () => _showDeviceStatus(
                   context,
-                  title: 'Pilih sumber audio PC',
-                  current: 'Output default Windows',
+                  title: context.tr('au_pick_pc_source'),
+                  current: context.tr('au_win_default'),
                   requirement:
-                      'WASAPI loopback dan daftar render endpoint host',
+                      context.tr('au_pick_pc_source_req'),
                 ),
               ),
               const CardGap(),
               DeviceRow(
                 icon: LucideIcons.volume2,
-                title: 'Output perangkat',
-                value: 'Otomatis',
+                title: context.tr('au_device_output'),
+                value: context.tr('au_auto'),
                 onTap: () => _showDeviceStatus(
                   context,
-                  title: 'Pilih output perangkat',
-                  current: 'Otomatis',
-                  requirement: 'Track audio remote yang aktif',
+                  title: context.tr('au_pick_device_output'),
+                  current: context.tr('au_auto'),
+                  requirement: context.tr('au_pick_device_output_req'),
                 ),
               ),
               const CardGap(),
               SliderRow(
-                label: 'Volume remote',
+                label: context.tr('au_remote_volume'),
                 valueLabel: '${(state.remoteVolume * 100).round()}%',
                 value: state.remoteVolume,
                 onChanged: (value) =>
@@ -117,8 +117,8 @@ class AudioPanel extends StatelessWidget {
               const CardGap(),
               ToggleRow(
                 icon: LucideIcons.activity,
-                title: 'Audio stereo',
-                subtitle: 'Mono menghemat bandwidth',
+                title: context.tr('au_stereo'),
+                subtitle: context.tr('au_stereo_sub'),
                 value: state.stereoAudio,
                 onChanged: (value) =>
                     onChanged(state.copyWith(stereoAudio: value)),
@@ -128,7 +128,7 @@ class AudioPanel extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         Text(
-          'MODE LATENSI',
+          context.tr('au_latency_mode'),
           style: TextStyle(
             fontSize: 10.5,
             letterSpacing: 0.7,
@@ -139,28 +139,28 @@ class AudioPanel extends StatelessWidget {
         const SizedBox(height: 8),
         Segmented<AudioLatencyMode>(
           value: state.audioLatencyMode,
-          entries: const [
-            SegmentEntry(value: AudioLatencyMode.lowLatency, label: 'Gaming'),
-            SegmentEntry(value: AudioLatencyMode.balanced, label: 'Seimbang'),
-            SegmentEntry(value: AudioLatencyMode.quality, label: 'Kualitas'),
+          entries: [
+            SegmentEntry(value: AudioLatencyMode.lowLatency, label: context.tr('au_mode_gaming')),
+            SegmentEntry(value: AudioLatencyMode.balanced, label: context.tr('au_mode_balanced')),
+            SegmentEntry(value: AudioLatencyMode.quality, label: context.tr('au_mode_quality')),
           ],
           onChanged: (value) =>
               onChanged(state.copyWith(audioLatencyMode: value)),
         ),
         const SizedBox(height: 22),
-        const SectionTitle(
-          title: 'Mikrofon HP ke Windows',
-          subtitle: 'Target akhir: endpoint XyDesk Virtual Microphone.',
+        SectionTitle(
+          title: context.tr('au_mic_to_win'),
+          subtitle: context.tr('au_mic_to_win_sub'),
         ),
         PanelCard(
           child: Column(
             children: [
               ToggleRow(
                 icon: LucideIcons.mic,
-                title: 'Minta passthrough mikrofon',
+                title: context.tr('au_request_mic'),
                 subtitle: state.microphoneRequested
-                    ? 'Aktif — mic dikirim dan diputar di speaker PC host'
-                    : 'Mikrofon tidak diminta',
+                    ? context.tr('au_request_mic_on')
+                    : context.tr('au_mic_not_requested'),
                 value: state.microphoneRequested,
                 onChanged: (value) =>
                     onChanged(state.copyWith(microphoneRequested: value)),
@@ -168,32 +168,32 @@ class AudioPanel extends StatelessWidget {
               const CardGap(),
               DeviceRow(
                 icon: LucideIcons.smartphone,
-                title: 'Input',
-                value: 'Mikrofon default HP',
+                title: context.tr('au_input'),
+                value: context.tr('au_phone_default_mic'),
                 onTap: () => _showDeviceStatus(
                   context,
-                  title: 'Pilih input mikrofon',
-                  current: 'Mikrofon default HP',
-                  requirement: 'Izin mikrofon dan enumerasi input perangkat',
+                  title: context.tr('au_pick_mic'),
+                  current: context.tr('au_phone_default_mic'),
+                  requirement: context.tr('au_pick_mic_req'),
                 ),
               ),
               const CardGap(),
               DeviceRow(
                 icon: LucideIcons.monitor,
-                title: 'Output Windows',
-                value: 'XyDesk Virtual Mic',
+                title: context.tr('au_win_output'),
+                value: context.tr('au_virtual_mic_short'),
                 onTap: () => _showDeviceStatus(
                   context,
-                  title: 'Target Windows',
-                  current: 'XyDesk Virtual Microphone',
-                  requirement: 'Komponen virtual microphone terpasang di host',
+                  title: context.tr('au_win_target'),
+                  current: context.tr('au_virtual_mic'),
+                  requirement: context.tr('au_virtual_mic_req'),
                 ),
               ),
               const CardGap(),
               const InactiveLevelMeter(),
               const CardGap(),
               SliderRow(
-                label: 'Gain input',
+                label: context.tr('au_input_gain'),
                 valueLabel: '${((state.microphoneGain - 0.5) * 24).round()} dB',
                 value: state.microphoneGain,
                 onChanged: (value) =>
@@ -201,7 +201,7 @@ class AudioPanel extends StatelessWidget {
               ),
               const CardGap(),
               SliderRow(
-                label: 'Level kirim',
+                label: context.tr('au_send_level'),
                 valueLabel: '${(state.microphoneSendLevel * 100).round()}%',
                 value: state.microphoneSendLevel,
                 onChanged: (value) =>
@@ -211,17 +211,17 @@ class AudioPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        const SectionTitle(
-          title: 'Pemrosesan suara',
-          subtitle: 'Diterapkan pada capture sebelum Opus ketika engine siap.',
+        SectionTitle(
+          title: context.tr('au_processing'),
+          subtitle: context.tr('au_processing_sub'),
         ),
         PanelCard(
           child: Column(
             children: [
               ToggleRow(
                 icon: LucideIcons.activity,
-                title: 'Peredam bising',
-                subtitle: 'Noise suppression',
+                title: context.tr('au_ns'),
+                subtitle: context.tr('au_ns_sub'),
                 value: state.noiseSuppression,
                 onChanged: (value) =>
                     onChanged(state.copyWith(noiseSuppression: value)),
@@ -229,8 +229,8 @@ class AudioPanel extends StatelessWidget {
               const CardGap(),
               ToggleRow(
                 icon: LucideIcons.volume2,
-                title: 'Peredam gema',
-                subtitle: 'AEC untuk suara speaker perangkat',
+                title: context.tr('au_aec'),
+                subtitle: context.tr('au_aec_sub'),
                 value: state.echoCancellation,
                 onChanged: (value) =>
                     onChanged(state.copyWith(echoCancellation: value)),
@@ -238,8 +238,8 @@ class AudioPanel extends StatelessWidget {
               const CardGap(),
               ToggleRow(
                 icon: LucideIcons.gauge,
-                title: 'Gain otomatis',
-                subtitle: 'AGC menstabilkan volume suara',
+                title: context.tr('au_agc'),
+                subtitle: context.tr('au_agc_sub'),
                 value: state.autoGainControl,
                 onChanged: (value) =>
                     onChanged(state.copyWith(autoGainControl: value)),
@@ -250,15 +250,15 @@ class AudioPanel extends StatelessWidget {
         const SizedBox(height: 14),
         Segmented<MicrophoneMode>(
           value: state.microphoneMode,
-          entries: const [
+          entries: [
             SegmentEntry(
               value: MicrophoneMode.alwaysOn,
-              label: 'Selalu aktif',
+              label: context.tr('au_always_on'),
               icon: LucideIcons.mic,
             ),
             SegmentEntry(
               value: MicrophoneMode.pushToTalk,
-              label: 'Push to talk',
+              label: context.tr('au_ptt'),
               icon: LucideIcons.gamepad2,
             ),
           ],

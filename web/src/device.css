@@ -1,0 +1,121 @@
+/* Lapisan lintas perangkat: dimuat setelah style.css.
+   Tujuan: Android/iPhone (notch, zoom input, sticky hover), tablet/foldable,
+   desktop lebar, dan mode lanskap pendek. Hanya aturan umum; layout spesifik
+   tetap di style.css. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+  overflow-x: clip;
+}
+
+/* iOS: input <16px memicu auto-zoom saat fokus. */
+@media (pointer: coarse) {
+  input:not([type='range']):not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+
+  .btn,
+  .connect-form button,
+  .auth-panel button,
+  .site-header button,
+  .remote-header button,
+  .remote-header a.btn {
+    min-height: 44px;
+  }
+
+  .feature-card:hover,
+  .news-card:hover {
+    transform: none;
+  }
+}
+
+/* Hover hanya untuk perangkat yang benar-benar punya pointer halus. */
+@media (hover: none) {
+  a:hover { text-decoration: none; }
+  .btn:hover { filter: none; }
+}
+
+/* Ponsel sempit (iPhone SE/mini, Android kecil). */
+@media (max-width: 380px) {
+  body { font-size: 14px; }
+  .hero h1 { font-size: clamp(26px, 8vw, 34px); }
+  .stats-strip { grid-template-columns: 1fr; }
+  .connect-form input.host-id { letter-spacing: 1px; }
+}
+
+/* Tablet potret & foldable terbuka: jangan jatuh ke satu kolom terlalu cepat. */
+@media (min-width: 600px) and (max-width: 900px) {
+  .feature-grid { grid-template-columns: repeat(2, 1fr); }
+  .news-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Desktop lebar / monitor 2K+: kontainer ikut melebar sedikit, teks tidak melar. */
+@media (min-width: 1600px) {
+  :root { --maxw: 1240px; }
+  body { font-size: 16px; }
+}
+
+/* Lanskap pendek (ponsel dimiringkan di luar sesi): padatkan vertikal. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .hero { padding-top: 24px; gap: 20px; }
+  .hero-art { min-height: 220px; }
+  .site-header { padding-top: 6px; padding-bottom: 6px; }
+  .auth-panel { margin: 16px auto; padding: 20px !important; }
+}
+
+/* Area aman iPhone (notch / home indicator) untuk elemen tepi layar. */
+@supports (padding: env(safe-area-inset-left)) {
+  .remote-header {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  @media (max-width: 900px) {
+    .site-header {
+      padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+    }
+  }
+  .connect-page {
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+  .workspace-page {
+    padding-left: max(28px, env(safe-area-inset-left));
+    padding-right: max(28px, env(safe-area-inset-right));
+  }
+  .navigation-overlay,
+  .session-connecting {
+    padding-top: max(16px, env(safe-area-inset-top));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Konten yang tidak boleh meluber horizontal di layar sempit. */
+pre, code, table, .history-content {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Fokus keyboard jelas di desktop tanpa mengganggu sentuhan. */
+:focus-visible {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

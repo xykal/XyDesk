@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import {AppDialogs} from './app_dialog';
 import './style.css';
+import './device.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
