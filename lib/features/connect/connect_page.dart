@@ -180,7 +180,7 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
     // pesan yang jelas tanpa masuk ke layar sesi.
     if (jwt == null || jwt.isEmpty) {
       setState(() {
-        _error = 'Masuk dengan akun untuk menyambung ke PC.';
+        _error = context.tr('connect_need_login');
         _connecting = false;
       });
       return;
@@ -292,7 +292,7 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
     _id.text = id;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('QR berhasil dipindai.')));
+    ).showSnackBar(SnackBar(content: Text(context.tr('connect_qr_scanned'))));
   }
 
   @override
@@ -309,13 +309,13 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         Text(context.tr('connect_title'), style: t.headlineMedium),
         const SizedBox(height: 7),
         Text(
-          'Masukkan ID dan kata sandi dari aplikasi host di PC kamu.',
+          context.tr('connect_intro'),
           style: TextStyle(fontSize: 12.5, color: c.textMid, height: 1.5),
         ),
         const SizedBox(height: Gap.xxl),
         Row(
           children: [
-            Expanded(child: _label('ID Perangkat')),
+            Expanded(child: _label(context.tr('connect_device_id'))),
             if (_recents.isNotEmpty)
               InkWell(
                 onTap: () => setState(() => _recentsOpen = !_recentsOpen),
@@ -337,7 +337,7 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
                       Icon(LucideIcons.history, size: 13, color: c.accent),
                       const SizedBox(width: 5),
                       Text(
-                        'Riwayat',
+                        context.tr('connect_history'),
                         style: TextStyle(
                           fontSize: 11.5,
                           fontWeight: FontWeight.w600,
@@ -395,7 +395,7 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
           ),
         ),
         const SizedBox(height: Gap.lg),
-        _label('Kata sandi'),
+        _label(context.tr('connect_password')),
         ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 56),
           child: TextField(
@@ -472,12 +472,12 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _pill(context, LucideIcons.scanLine, 'Pindai QR', () => _scanQr()),
+            _pill(context, LucideIcons.scanLine, context.tr('connect_scan_qr'), () => _scanQr()),
             const SizedBox(width: Gap.h32),
             _pill(
               context,
               LucideIcons.history,
-              'Riwayat',
+              context.tr('connect_history'),
               () => Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => const HistoryPage())),
@@ -491,14 +491,14 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                'Belum tahu caranya?',
+                context.tr('connect_dont_know'),
                 style: TextStyle(fontSize: 11.5, color: c.textLow),
               ),
               TextButton(
                 onPressed: () => Navigator.of(
                   context,
                 ).push(MaterialPageRoute(builder: (_) => const GuidePage())),
-                child: const Text('Ke sini'),
+                child: Text(context.tr('connect_go_here')),
               ),
             ],
           ),
@@ -584,7 +584,7 @@ class _RecentsList extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
             child: Text(
-              'Perangkat terakhir',
+              context.tr('connect_last_device'),
               style: TextStyle(
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
@@ -644,8 +644,8 @@ class _RecentsList extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               (e['pw'] as String? ?? '').isEmpty
-                                  ? 'sandi tidak disimpan'
-                                  : 'sandi tersimpan',
+                                  ? context.tr('connect_pw_not_saved')
+                                  : context.tr('connect_pw_saved'),
                               style: TextStyle(
                                 fontSize: 10.5,
                                 color: c.textLow,
@@ -669,7 +669,7 @@ class _RecentsList extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: onClear,
-              child: const Text('Hapus riwayat'),
+              child: Text(context.tr('connect_clear_history')),
             ),
           ),
         ],
@@ -747,14 +747,14 @@ class _QrScanPageState extends State<QrScanPage> {
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Pindai QR'),
+        title: Text(context.tr('connect_scan_qr')),
         leading: IconButton(
           icon: const Icon(LucideIcons.arrowLeft, color: Colors.white70),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            tooltip: 'Senter',
+            tooltip: context.tr('connect_torch'),
             icon: const Icon(LucideIcons.flashlight, size: 19),
             onPressed: () => _controller.toggleTorch(),
           ),
@@ -772,9 +772,7 @@ class _QrScanPageState extends State<QrScanPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'XyDesk butuh izin kamera untuk memindai QR pairing. '
-                      'Bila izin sudah ditolak permanen, buka pengaturan '
-                      'aplikasi atau masukkan ID secara manual.',
+                      context.tr('connect_camera_rationale'),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 13,
@@ -785,7 +783,7 @@ class _QrScanPageState extends State<QrScanPage> {
                     const SizedBox(height: 14),
                     ElevatedButton(
                       onPressed: _mintaKamera,
-                      child: const Text('Beri izin kamera'),
+                      child: Text(context.tr('connect_grant_camera')),
                     ),
                   ],
                 ),
@@ -799,8 +797,7 @@ class _QrScanPageState extends State<QrScanPage> {
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    'Kamera tidak tersedia. Beri izin kamera untuk XyDesk, '
-                    'atau masukkan ID secara manual.',
+                    context.tr('connect_camera_unavailable'),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,
@@ -830,7 +827,7 @@ class _QrScanPageState extends State<QrScanPage> {
             right: 24,
             bottom: 36,
             child: Text(
-              'Arahkan kamera ke QR pada aplikasi XyDesk Host di PC.',
+              context.tr('connect_point_camera'),
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12.5,
@@ -855,7 +852,7 @@ class _SupportBlock extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Dukung kami di',
+          context.tr('connect_support_us'),
           style: TextStyle(fontSize: 11.5, color: c.textLow),
         ),
         const SizedBox(height: 12),

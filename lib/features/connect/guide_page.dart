@@ -29,7 +29,7 @@ class _GuidePageState extends State<GuidePage> {
     return Scaffold(
       backgroundColor: c.bg,
       appBar: AppBar(
-        title: const Text('Panduan XyDesk'),
+        title: Text(context.tr('guide_title')),
         leading: IconButton(
           icon: Icon(LucideIcons.arrowLeft, color: c.textMid),
           onPressed: () => Navigator.pop(context),
@@ -41,7 +41,7 @@ class _GuidePageState extends State<GuidePage> {
           const Center(child: Illus(Img.guideOverview, size: 220)),
           const SizedBox(height: Gap.sm),
           Text(
-            'Hubungkan perangkat tanpa bingung',
+            context.tr('guide_headline'),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: c.textHi,
@@ -51,7 +51,7 @@ class _GuidePageState extends State<GuidePage> {
           ),
           const SizedBox(height: Gap.sm),
           Text(
-            'Ikuti langkah sesuai sisi yang sedang kamu siapkan.',
+            context.tr('guide_sub'),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 12.5, color: c.textMid, height: 1.45),
           ),
@@ -81,8 +81,8 @@ class _GuidePageState extends State<GuidePage> {
                 Expanded(
                   child: Text(
                     client
-                        ? 'Client adalah HP yang dipakai untuk mengendalikan PC.'
-                        : 'Host adalah PC yang layarnya akan dikendalikan dari HP.',
+                        ? context.tr('guide_client_is')
+                        : context.tr('guide_host_is'),
                     style: TextStyle(
                       color: c.textMid,
                       fontSize: 11.5,
@@ -98,55 +98,55 @@ class _GuidePageState extends State<GuidePage> {
     );
   }
 
-  List<_GuideData> get _clientSteps => const [
+  List<_GuideData> get _clientSteps => [
     _GuideData(
-      title: 'Pasang aplikasi client',
-      description: 'Buka XyDesk di HP yang akan kamu gunakan sebagai remote.',
+      title: context.tr('guide_c1'),
+      description: context.tr('guide_c1_sub'),
       icon: LucideIcons.smartphone,
       illustration: Img.guideClient,
     ),
     _GuideData(
-      title: 'Dapatkan ID dari host',
+      title: context.tr('guide_c2'),
       description:
-          'Minta ID perangkat dan kata sandi dari aplikasi XyDesk Host.',
+          context.tr('guide_c2_sub'),
       icon: LucideIcons.keyRound,
     ),
     _GuideData(
-      title: 'Masukkan ID atau scan QR',
+      title: context.tr('guide_c3'),
       description:
-          'Buka menu Connect, masukkan data host, atau gunakan Pindai QR.',
+          context.tr('guide_c3_sub'),
       icon: LucideIcons.scanLine,
     ),
     _GuideData(
-      title: 'Mulai sesi',
+      title: context.tr('guide_c4'),
       description:
-          'Tekan Hubungkan, tunggu pairing selesai, lalu tekan Mulai sesi.',
+          context.tr('guide_c4_sub'),
       icon: LucideIcons.play,
     ),
   ];
 
-  List<_GuideData> get _hostSteps => const [
+  List<_GuideData> get _hostSteps => [
     _GuideData(
-      title: 'Pasang aplikasi host',
-      description: 'Jalankan XyDesk Host di PC yang ingin kamu akses dari HP.',
+      title: context.tr('guide_h1'),
+      description: context.tr('guide_h1_sub'),
       icon: LucideIcons.monitor,
       illustration: Img.guideHost,
     ),
     _GuideData(
-      title: 'Aktifkan akses remote',
-      description: 'Pastikan aplikasi host aktif dan PC tidak masuk sleep.',
+      title: context.tr('guide_h2'),
+      description: context.tr('guide_h2_sub'),
       icon: LucideIcons.power,
     ),
     _GuideData(
-      title: 'Bagikan ID atau QR',
+      title: context.tr('guide_h3'),
       description:
-          'Tampilkan ID dan QR pairing dari halaman host untuk client.',
+          context.tr('guide_h3_sub'),
       icon: LucideIcons.qrCode,
     ),
     _GuideData(
-      title: 'Terima koneksi',
+      title: context.tr('guide_h4'),
       description:
-          'Saat client masuk, periksa permintaan lalu izinkan sesi remote.',
+          context.tr('guide_h4_sub'),
       icon: LucideIcons.shieldCheck,
     ),
   ];
@@ -172,10 +172,10 @@ class _AudienceToggle extends StatelessWidget {
           _item(
             context,
             GuideAudience.client,
-            'Saya di HP',
+            context.tr('guide_im_phone'),
             LucideIcons.smartphone,
           ),
-          _item(context, GuideAudience.host, 'Saya di PC', LucideIcons.monitor),
+          _item(context, GuideAudience.host, context.tr('guide_im_pc'), LucideIcons.monitor),
         ],
       ),
     );
