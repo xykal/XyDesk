@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/tokens.dart';
 import 'control_mapping.dart';
+import '../../core/l10n_bridge.dart';
 
 /// Halaman pengaturan control mapping.
 class ControlMappingPage extends ConsumerStatefulWidget {
@@ -44,7 +45,7 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Control Mapping',
+          context.tr('cm_title'),
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
@@ -55,12 +56,12 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
           IconButton(
             icon: Icon(LucideIcons.plus, color: c.accent),
             onPressed: () => _showAddProfileDialog(),
-            tooltip: 'Profil baru',
+            tooltip: context.tr('cm_new_profile'),
           ),
           IconButton(
             icon: Icon(LucideIcons.rotateCcw, color: c.textMid),
             onPressed: () => _showResetDialog(),
-            tooltip: 'Reset ke default',
+            tooltip: context.tr('cm_reset_default'),
           ),
         ],
         bottom: TabBar(
@@ -68,9 +69,9 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
           indicatorColor: c.accent,
           labelColor: c.accent,
           unselectedLabelColor: c.textMid,
-          tabs: const [
-            Tab(text: 'Daftar Mapping'),
-            Tab(text: 'Preview'),
+          tabs: [
+            Tab(text: context.tr('cm_tab_list')),
+            Tab(text: context.tr('cm_tab_preview')),
           ],
         ),
       ),
@@ -99,15 +100,15 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text('Hapus profil?', style: TextStyle(color: c.textHi)),
+        title: Text(context.tr('cm_delete_q'), style: TextStyle(color: c.textHi)),
         content: Text(
-          'Profil ini akan dihapus permanen.',
+          context.tr('cm_delete_body'),
           style: TextStyle(color: c.textMid),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: TextStyle(color: c.textMid)),
+            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
           ),
           FilledButton(
             onPressed: () {
@@ -117,7 +118,7 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
               Navigator.pop(ctx);
             },
             style: FilledButton.styleFrom(backgroundColor: c.danger),
-            child: const Text('Hapus'),
+            child: Text(context.tr('delete')),
           ),
         ],
       ),
@@ -127,9 +128,9 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
   void _setDefault(String profileId) {
     ref.read(controlMappingManagerProvider.notifier).setDefault(profileId);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profil default diperbarui'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(context.tr('cm_default_updated')),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -141,13 +142,13 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text('Profil baru', style: TextStyle(color: c.textHi)),
+        title: Text(context.tr('cm_new_profile'), style: TextStyle(color: c.textHi)),
         content: TextField(
           controller: controller,
           autofocus: true,
           style: TextStyle(color: c.textHi),
           decoration: InputDecoration(
-            hintText: 'Nama profil',
+            hintText: context.tr('cm_profile_name'),
             hintStyle: TextStyle(color: c.textLow),
             filled: true,
             fillColor: c.input,
@@ -160,7 +161,7 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: TextStyle(color: c.textMid)),
+            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
           ),
           FilledButton(
             onPressed: () {
@@ -178,7 +179,7 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
                 Navigator.pop(ctx);
               }
             },
-            child: const Text('Buat'),
+            child: Text(context.tr('cm_create')),
           ),
         ],
       ),
@@ -191,16 +192,15 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text('Reset mapping?', style: TextStyle(color: c.textHi)),
+        title: Text(context.tr('cm_reset_q'), style: TextStyle(color: c.textHi)),
         content: Text(
-          'Semua profil custom akan dihapus dan diganti dengan profil '
-          'default (Gaming & Desktop).',
+          context.tr('cm_reset_body'),
           style: TextStyle(color: c.textMid),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: TextStyle(color: c.textMid)),
+            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
           ),
           FilledButton(
             onPressed: () {
@@ -241,12 +241,12 @@ class _MappingListView extends StatelessWidget {
             Icon(LucideIcons.gamepad2, size: 48, color: c.textLow),
             const SizedBox(height: 12),
             Text(
-              'Belum ada profil',
+              context.tr('cm_empty'),
               style: TextStyle(fontSize: 15, color: c.textMid),
             ),
             const SizedBox(height: 4),
             Text(
-              'Ketuk + untuk membuat profil baru',
+              context.tr('cm_empty_hint'),
               style: TextStyle(fontSize: 12, color: c.textLow),
             ),
           ],
@@ -354,7 +354,7 @@ class _ProfileCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 '${profile.mappings.length} mapping'
-                '${profile.createdAt != null ? " • ${_fmtDate(profile.createdAt!)}" : ""}',
+                '${profile.createdAt != null ? " • ${_fmtDate(context, profile.createdAt!)}" : ""}',
                 style: TextStyle(fontSize: 12, color: c.textLow),
               ),
             ),
@@ -365,18 +365,18 @@ class _ProfileCard extends StatelessWidget {
                   IconButton(
                     icon: Icon(LucideIcons.star, size: 18, color: c.textLow),
                     onPressed: onSetDefault,
-                    tooltip: 'Jadikan default',
+                    tooltip: context.tr('cm_make_default'),
                   ),
                 IconButton(
                   icon: Icon(LucideIcons.pencil, size: 18, color: c.accent),
                   onPressed: onEdit,
-                  tooltip: 'Edit mapping',
+                  tooltip: context.tr('cm_edit'),
                 ),
                 if (!profile.isDefault)
                   IconButton(
                     icon: Icon(LucideIcons.trash2, size: 18, color: c.danger),
                     onPressed: onDelete,
-                    tooltip: 'Hapus profil',
+                    tooltip: context.tr('cm_delete_profile'),
                   ),
               ],
             ),
@@ -408,13 +408,13 @@ class _ProfileCard extends StatelessWidget {
     return LucideIcons.layoutGrid;
   }
 
-  String _fmtDate(DateTime dt) {
+  String _fmtDate(BuildContext context, DateTime dt) {
     final now = DateTime.now();
     final diff = now.difference(dt);
     if (diff.inDays > 0) return '${diff.inDays}h lalu';
     if (diff.inHours > 0) return '${diff.inHours}j lalu';
     if (diff.inMinutes > 0) return '${diff.inMinutes}m lalu';
-    return 'Baru saja';
+    return context.tr('cm_just_now');
   }
 }
 
@@ -497,7 +497,7 @@ class _MappingPreviewTabState extends ConsumerState<_MappingPreviewTab> {
 
     if (profile == null) {
       return Center(
-        child: Text('Tidak ada profil', style: TextStyle(color: c.textMid)),
+        child: Text(context.tr('cm_none'), style: TextStyle(color: c.textMid)),
       );
     }
 
@@ -508,7 +508,7 @@ class _MappingPreviewTabState extends ConsumerState<_MappingPreviewTab> {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Text('Profil:', style: TextStyle(fontSize: 13, color: c.textMid)),
+              Text(context.tr('cm_profile_label'), style: TextStyle(fontSize: 13, color: c.textMid)),
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButton<String>(
