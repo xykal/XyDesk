@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.XyDesk" parent="Theme.Material3.Light.NoActionBar">
+        <item name="colorPrimary">#7C3AED</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:windowBackground">#F4F3F9</item>
+    </style>
+</resources>

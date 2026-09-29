@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="XyDesk"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="#111827" />
+
+        <TextView
+            android:id="@+id/account"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:textColor="#6B7280" />
+
+        <LinearLayout
+            android:id="@+id/loginBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <EditText android:id="@+id/email" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Email" android:inputType="textEmailAddress" />
+            <EditText android:id="@+id/otp" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Kode OTP" android:inputType="number" android:visibility="gone" />
+            <Button android:id="@+id/loginBtn" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Kirim kode" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/connectBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <EditText android:id="@+id/hostId" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="ID perangkat" android:inputType="number" />
+            <EditText android:id="@+id/pin" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Password pairing" android:inputType="textPassword" />
+            <Button android:id="@+id/connectBtn" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Konek sekarang" />
+            <Button android:id="@+id/logoutBtn" style="?attr/borderlessButtonStyle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Keluar" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#A52A36" />
+    </LinearLayout>
+</ScrollView>

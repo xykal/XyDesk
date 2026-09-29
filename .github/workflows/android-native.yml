@@ -1,0 +1,44 @@
+name: Android Native
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['android-native/**', '.github/workflows/android-native.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: APK Kotlin (debug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: android-native
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
+        with:
+          gradle-version: '8.11.1'
+      - name: Build APK debug
+        run: gradle --no-daemon assembleDebug
+      - name: Ringkasan
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          ls -la "$apk"
+          echo "APK debug: $(du -h "$apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: XyDesk-Native-APK
+          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
