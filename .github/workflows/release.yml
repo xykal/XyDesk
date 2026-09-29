@@ -611,7 +611,9 @@ jobs:
           # 'update_release' (memicu warning "Unexpected input"), cukup
           # ditimpa lewat penghapusan + upload ulang.
           generate_release_notes: true
-          draft: ${{ inputs.draft == true }}
+          # Draft juga bisa dipaksa lewat repo variable RELEASE_DRAFT=true
+          # (berlaku untuk rilis otomatis pasca-Build, bukan hanya dispatch).
+          draft: ${{ inputs.draft == true || vars.RELEASE_DRAFT == 'true' }}
           body: |
             ## XyDesk ${{ needs.prepare.outputs.tag }}
 
@@ -637,7 +639,7 @@ jobs:
             > code-signed sehingga SmartScreen dapat menampilkan peringatan.
 
       - name: Kirim OneSignal hanya ke build Android lama
-        if: ${{ inputs.draft != true }}
+        if: ${{ inputs.draft != true && vars.RELEASE_DRAFT != 'true' }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
