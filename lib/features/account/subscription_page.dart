@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/tokens.dart';
 import '../../widgets/seamless.dart';
 import 'billing_page.dart';
+import '../../core/l10n_bridge.dart';
 
 /// Halaman Langganan — menampilkan status keanggotaan dan riwayat billing.
 ///

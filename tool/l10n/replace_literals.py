@@ -64,6 +64,18 @@ def fix_multiline_const(src: str) -> str:
     return "\n".join(lines)
 
 
+def ensure_import(path: Path, src: str) -> str:
+    """Tambahkan import l10n_bridge (penyedia `context.tr`) bila belum ada."""
+    if "l10n_bridge.dart" in src or "context.tr(" not in src:
+        return src
+    depth = len(path.relative_to(ROOT / "lib").parts) - 1
+    line = f"import '{'../' * depth}core/l10n_bridge.dart';"
+    imports = [i for i, l in enumerate(src.split("\n")) if l.startswith("import ")]
+    lines = src.split("\n")
+    lines.insert(imports[-1] + 1 if imports else 0, line)
+    return "\n".join(lines)
+
+
 def apply(entry: dict, sources: dict[Path, str]) -> int:
     pat = literal_pattern(entry["id"])
     repl = f"context.tr('{entry['key']}')"
@@ -100,7 +112,7 @@ def main() -> None:
         en[entry["key"]] = entry["en"]
         idn[entry["key"]] = entry["id"].replace("\\n", "\n")
     for path, src in sources.items():
-        path.write_text(fix_multiline_const(src), encoding="utf-8")
+        path.write_text(ensure_import(path, fix_multiline_const(src)), encoding="utf-8")
     save_arb("en", en)
     save_arb("id", idn)
     print(f"{len(batch)} kunci; {len(sources)} berkas diubah")

@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/tokens.dart';
 import '../../widgets/brand.dart';
 import '../../widgets/seamless.dart';
+import '../../core/l10n_bridge.dart';
 
 enum GuideAudience { client, host }
 
