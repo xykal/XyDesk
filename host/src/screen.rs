@@ -1284,7 +1284,9 @@ pub fn wanted_display() -> usize {
 /// desktop. Ditulis oleh modul `windows` saat encoder dipilih.
 static HW_ENCODER: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(HW_NONE);
 const HW_NONE: u8 = 0;
+#[cfg(target_os = "windows")]
 const HW_NVENC: u8 = 1;
+#[cfg(target_os = "windows")]
 const HW_MFT: u8 = 2;
 
 /// Benar bila encoder hardware mana pun (NVENC atau MFT) yang aktif; nama
