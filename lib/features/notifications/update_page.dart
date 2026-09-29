@@ -221,8 +221,8 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
         titleSpacing: 4,
         title: Row(
           children: [
-            BrandLogo(size: 31),
-            SizedBox(width: 10),
+            const BrandLogo(size: 31),
+            const SizedBox(width: 10),
             Text(
               context.tr('upd_title'),
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
@@ -358,12 +358,12 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 18,
               height: 18,
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
-            SizedBox(width: 10),
+            const SizedBox(width: 10),
             Text(context.tr('upd_checking_release')),
           ],
         ),
@@ -566,7 +566,7 @@ class _DownloadCard extends StatelessWidget {
             ),
             const SizedBox(height: 7),
             Text(
-              _progressLabel(status),
+              _progressLabel(context, status),
               style: TextStyle(
                 color: context.c.textMid,
                 fontSize: 11,
@@ -579,7 +579,7 @@ class _DownloadCard extends StatelessWidget {
     );
   }
 
-  String _progressLabel(UpdateDownloadStatus status) {
+  String _progressLabel(BuildContext context, UpdateDownloadStatus status) {
     if (status.totalBytes <= 0) {
       return context.tr('upd_progress_notif');
     }

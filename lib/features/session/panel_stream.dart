@@ -7,6 +7,7 @@ import '../../core/tokens.dart';
 import '../../webrtc/rtc_service.dart';
 import '../../webrtc/session_transport.dart';
 import 'panel_widgets.dart';
+import '../../core/l10n_bridge.dart';
 
 class StreamPanel extends ConsumerWidget {
   const StreamPanel({
@@ -25,15 +26,15 @@ class StreamPanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionTitle(
-          title: 'Live Stats',
-          subtitle: 'Realtime from connection — ms, fps, bitrate',
+        SectionTitle(
+          title: context.tr('st_live_stats'),
+          subtitle: context.tr('st_live_sub'),
         ),
         if (service == null)
-          const PanelCard(
+          PanelCard(
             child: Text(
-              'Belum ada sesi. Angka kualitas muncul begitu PC tersambung.',
-              style: TextStyle(fontSize: 13, height: 1.6),
+              context.tr('st_no_session'),
+              style: const TextStyle(fontSize: 13, height: 1.6),
             ),
           )
         else
@@ -47,7 +48,7 @@ class StreamPanel extends ConsumerWidget {
                   children: [
                     InfoRow(
                       icon: LucideIcons.monitor,
-                      title: 'Resolution',
+                      title: context.tr('st_resolution'),
                       value: st.resolutionLabel,
                     ),
                     const CardGapLarge(),
@@ -59,13 +60,13 @@ class StreamPanel extends ConsumerWidget {
                     const CardGapLarge(),
                     InfoRow(
                       icon: LucideIcons.gauge,
-                      title: 'Bitrate',
+                      title: context.tr('st_bitrate'),
                       value: st.bitrateLabel,
                     ),
                     const CardGapLarge(),
                     InfoRow(
                       icon: LucideIcons.wifi,
-                      title: 'Ping (realtime)',
+                      title: context.tr('st_ping'),
                       value: st.rttLabel,
                     ),
                     const CardGapLarge(),
@@ -75,19 +76,19 @@ class StreamPanel extends ConsumerWidget {
                     // decoder daripada di jaringan.
                     InfoRow(
                       icon: LucideIcons.timer,
-                      title: 'Buffer video',
+                      title: context.tr('st_buffer'),
                       value: st.jitterBufferLabel,
                     ),
                     const CardGapLarge(),
                     InfoRow(
                       icon: LucideIcons.cpu,
-                      title: 'Decode / frame',
+                      title: context.tr('st_decode'),
                       value: st.decodeLabel,
                     ),
                     const CardGapLarge(),
                     InfoRow(
                       icon: LucideIcons.triangleAlert,
-                      title: 'Packet loss',
+                      title: context.tr('st_loss'),
                       value: st.lossLabel,
                     ),
                     const CardGapLarge(),
@@ -96,13 +97,13 @@ class StreamPanel extends ConsumerWidget {
                     // sekarang angkanya/sebabnya ikut di baris ini.
                     InfoRow(
                       icon: LucideIcons.info,
-                      title: 'Relay TURN',
+                      title: context.tr('st_turn'),
                       value: st.relayLabel,
                     ),
                     const CardGapLarge(),
                     InfoRow(
                       icon: LucideIcons.cpu,
-                      title: 'Codec',
+                      title: context.tr('st_codec'),
                       value: st.codec ?? '-',
                     ),
                   ],
@@ -113,9 +114,9 @@ class StreamPanel extends ConsumerWidget {
         const SizedBox(height: 20),
         if (service != null) _DisplayPicker(rtc: service),
 
-        const SectionTitle(
-          title: 'Quality',
-          subtitle: 'Auto adapts to network — or pick fixed',
+        SectionTitle(
+          title: context.tr('st_quality'),
+          subtitle: context.tr('st_quality_sub'),
         ),
         PanelCard(
           child: Column(
@@ -123,11 +124,11 @@ class StreamPanel extends ConsumerWidget {
             children: [
               Segmented<StreamQuality>(
                 value: settings.quality,
-                entries: const [
-                  SegmentEntry(value: StreamQuality.auto, label: 'Auto'),
-                  SegmentEntry(value: StreamQuality.medium, label: 'Medium'),
-                  SegmentEntry(value: StreamQuality.high, label: 'High'),
-                  SegmentEntry(value: StreamQuality.ultra, label: 'Ultra'),
+                entries: [
+                  SegmentEntry(value: StreamQuality.auto, label: context.tr('st_auto')),
+                  SegmentEntry(value: StreamQuality.medium, label: context.tr('st_medium')),
+                  SegmentEntry(value: StreamQuality.high, label: context.tr('st_high')),
+                  SegmentEntry(value: StreamQuality.ultra, label: context.tr('st_ultra')),
                 ],
                 onChanged: (q) =>
                     ref.read(settingsProvider.notifier).setQuality(q),
@@ -160,17 +161,17 @@ class StreamPanel extends ConsumerWidget {
         const SizedBox(height: 16),
 
         // Bitrate selector — Auto + fixed values
-        const SectionTitle(
-          title: 'Bitrate',
-          subtitle: 'Auto = host decides, or manual limit',
+        SectionTitle(
+          title: context.tr('st_bitrate'),
+          subtitle: context.tr('st_bitrate_sub'),
         ),
         PanelCard(
           child: Column(
             children: [
               Segmented<int>(
                 value: settings.bitrateMbps,
-                entries: const [
-                  SegmentEntry(value: 0, label: 'Auto'),
+                entries: [
+                  SegmentEntry(value: 0, label: context.tr('st_auto')),
                   SegmentEntry(value: 8, label: '8'),
                   SegmentEntry(value: 15, label: '15'),
                   SegmentEntry(value: 25, label: '25'),
@@ -182,20 +183,20 @@ class StreamPanel extends ConsumerWidget {
               const SizedBox(height: 12),
               InfoRow(
                 icon: LucideIcons.maximize,
-                title: 'Resolution',
+                title: context.tr('st_resolution'),
                 value: settings.resolution,
               ),
               const CardGapLarge(),
               InfoRow(
                 icon: LucideIcons.fileVideo,
-                title: 'Codec',
+                title: context.tr('st_codec'),
                 value: settings.codec.split(' ')[0],
               ),
               const CardGapLarge(),
               SliderRow(
-                label: 'Custom bitrate limit',
+                label: context.tr('st_custom_bitrate'),
                 valueLabel: settings.bitrateMbps == 0
-                    ? 'Auto'
+                    ? context.tr('st_auto')
                     : '${settings.bitrateMbps} Mbps',
                 value: settings.bitrateMbps == 0
                     ? 0.5
@@ -214,19 +215,19 @@ class StreamPanel extends ConsumerWidget {
                 ? LucideIcons.wifiOff
                 : LucideIcons.info,
             title: switch (transport.status) {
-              TransportStatus.pairing => 'Sedang menghubungi PC',
-              TransportStatus.negotiating => 'Sedang menyiapkan koneksi',
-              TransportStatus.rejected => 'PC menolak sambungan',
-              TransportStatus.peerOffline => 'PC tidak online',
-              TransportStatus.hostBusy => 'PC sedang dipakai sesi lain',
-              TransportStatus.ended => 'Sesi sudah ditutup',
-              TransportStatus.error => 'Koneksi gagal',
-              TransportStatus.connected => 'Tersambung',
-              TransportStatus.preview => 'Belum tersambung',
+              TransportStatus.pairing => context.tr('st_pairing'),
+              TransportStatus.negotiating => context.tr('st_negotiating'),
+              TransportStatus.rejected => context.tr('st_rejected'),
+              TransportStatus.peerOffline => context.tr('st_offline'),
+              TransportStatus.hostBusy => context.tr('st_busy'),
+              TransportStatus.ended => context.tr('st_ended'),
+              TransportStatus.error => context.tr('st_failed'),
+              TransportStatus.connected => context.tr('st_connected'),
+              TransportStatus.preview => context.tr('st_not_connected'),
             },
             body:
                 transport.message ??
-                'Belum ada sesi berjalan. Mulai dari daftar perangkat.',
+                context.tr('st_start_from_list'),
           ),
         ],
       ],
@@ -254,9 +255,9 @@ class _DisplayPicker extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SectionTitle(
-              title: 'Layar PC',
-              subtitle: 'PC ini punya lebih dari satu monitor.',
+            SectionTitle(
+              title: context.tr('st_pc_screen'),
+              subtitle: context.tr('st_multi_monitor'),
             ),
             PanelCard(
               child: Column(

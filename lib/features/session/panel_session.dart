@@ -6,6 +6,7 @@ import '../../webrtc/rtc_service.dart';
 import '../../webrtc/session_transport.dart';
 import 'media_capabilities.dart';
 import 'panel_widgets.dart';
+import '../../core/l10n_bridge.dart';
 
 class SessionPanel extends StatelessWidget {
   const SessionPanel({
@@ -93,10 +94,10 @@ class SessionPanel extends StatelessWidget {
                     const SizedBox(width: 8),
                     Text(
                       isExpired
-                          ? 'Sesi tamu berakhir'
+                          ? context.tr('ss_guest_ended')
                           : isCritical
-                          ? 'Sesaat lagi berakhir!'
-                          : 'Sesi tamu',
+                          ? context.tr('ss_guest_soon')
+                          : context.tr('ss_guest'),
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w600,
@@ -179,8 +180,7 @@ class SessionPanel extends StatelessWidget {
                 if (isExpired) ...[
                   const SizedBox(height: 10),
                   Text(
-                    'Sesi tamu telah berakhir. Silakan login untuk '
-                    'melanjutkan.',
+                    context.tr('ss_guest_ended_body'),
                     style: TextStyle(
                       fontSize: 11,
                       color: c.danger,
@@ -190,8 +190,7 @@ class SessionPanel extends StatelessWidget {
                 ] else if (isCritical) ...[
                   const SizedBox(height: 10),
                   Text(
-                    'Sesi akan berakhir dalam kurang dari 5 menit. '
-                    'Segera simpan pekerjaanmu.',
+                    context.tr('ss_guest_soon_body'),
                     style: TextStyle(
                       fontSize: 11,
                       color: c.warning,
@@ -204,7 +203,7 @@ class SessionPanel extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        const SectionTitle(title: 'Sesi ini'),
+        SectionTitle(title: context.tr('ss_this_session')),
         StreamBuilder<SessionStats>(
           initialData: service?.stats,
           stream: service?.statsStream,
@@ -215,50 +214,50 @@ class SessionPanel extends StatelessWidget {
                 children: [
                   InfoRow(
                     icon: LucideIcons.monitor,
-                    title: 'Perangkat',
+                    title: context.tr('ss_device'),
                     value: deviceName,
                   ),
                   const CardGap(),
                   InfoRow(
                     icon: LucideIcons.clock,
-                    title: 'Durasi',
+                    title: context.tr('ss_duration'),
                     value: transport.live ? _fmtDurasi(elapsedSec) : '—',
                   ),
                   const CardGap(),
                   InfoRow(
                     icon: LucideIcons.wifi,
-                    title: 'Sambungan',
+                    title: context.tr('ss_link'),
                     value: switch (transport.status) {
-                      TransportStatus.connected => 'Langsung ke PC',
-                      TransportStatus.pairing => 'Menghubungi PC',
-                      TransportStatus.negotiating => 'Menyiapkan koneksi',
-                      TransportStatus.hostBusy => 'PC dipakai sesi lain',
-                      TransportStatus.peerOffline => 'PC tidak online',
-                      TransportStatus.rejected => 'Ditolak PC',
-                      TransportStatus.error => 'Gagal',
-                      TransportStatus.ended => 'Sudah ditutup',
-                      TransportStatus.preview => 'Belum tersambung',
+                      TransportStatus.connected => context.tr('ss_direct'),
+                      TransportStatus.pairing => context.tr('ss_pairing'),
+                      TransportStatus.negotiating => context.tr('ss_negotiating'),
+                      TransportStatus.hostBusy => context.tr('ss_busy'),
+                      TransportStatus.peerOffline => context.tr('ss_offline'),
+                      TransportStatus.rejected => context.tr('ss_rejected'),
+                      TransportStatus.error => context.tr('ss_failed'),
+                      TransportStatus.ended => context.tr('ss_closed'),
+                      TransportStatus.preview => context.tr('ss_not_connected'),
                     },
                   ),
                   const CardGap(),
                   InfoRow(
                     icon: LucideIcons.video,
-                    title: 'Gambar',
+                    title: context.tr('ss_video'),
                     value: st?.hasVideo == true
                         ? '${st!.resolutionLabel} - ${st.fpsLabel}'
-                        : 'Belum ada gambar',
+                        : context.tr('ss_no_video'),
                   ),
                   const CardGap(),
                   InfoRow(
                     icon: LucideIcons.volume2,
-                    title: 'Suara dari PC',
-                    value: st?.audioLabel ?? 'Tidak ada suara masuk',
+                    title: context.tr('ss_audio_from_pc'),
+                    value: st?.audioLabel ?? context.tr('ss_no_audio'),
                   ),
                   const CardGap(),
                   InfoRow(
                     icon: LucideIcons.mic,
-                    title: 'Mik ke PC',
-                    value: service?.micEnabled == true ? 'Aktif' : 'Mati',
+                    title: context.tr('ss_mic_to_pc'),
+                    value: service?.micEnabled == true ? context.tr('ss_on') : context.tr('ss_off'),
                   ),
                 ],
               ),
@@ -272,7 +271,7 @@ class SessionPanel extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: onDisconnect,
             icon: const Icon(LucideIcons.power, size: 18),
-            label: const Text('Putuskan sesi'),
+            label: Text(context.tr('ss_disconnect')),
             style: OutlinedButton.styleFrom(
               foregroundColor: context.c.danger,
               side: BorderSide(color: context.c.danger.withValues(alpha: 0.55)),
@@ -315,7 +314,7 @@ class CapabilityCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        'Engine audio belum terhubung',
+                        context.tr('ss_audio_engine'),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -334,7 +333,7 @@ class CapabilityCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(R.sm),
                         ),
                         child: Text(
-                          'GRATIS BETA',
+                          context.tr('ss_free_beta'),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
@@ -347,9 +346,7 @@ class CapabilityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  'Kontrol di bawah menyiapkan preferensi sesi; pilihan audio dan '
-                  'mikrofon utama disimpan. Tidak ada audio yang dikirim atau '
-                  'diputar pada build ini.',
+                  context.tr('ss_audio_note'),
                   style: TextStyle(
                     fontSize: 11.5,
                     height: 1.45,

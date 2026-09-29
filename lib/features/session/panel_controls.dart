@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/tokens.dart';
 import 'panel_widgets.dart';
 import 'session_panels.dart';
+import '../../core/l10n_bridge.dart';
 
 class ControlsPanel extends StatelessWidget {
   const ControlsPanel({
@@ -23,15 +24,15 @@ class ControlsPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(
-          title: gaming ? 'Gaming Controls' : 'Desktop Controls',
+          title: gaming ? context.tr('ct_gaming') : context.tr('ct_desktop'),
           subtitle: gaming
-              ? 'Touch HUD, joystick, keypad, keyboard — spacious & complete'
-              : 'Pointer, click, keyboard, clipboard — all adjustable',
+              ? context.tr('ct_gaming_sub')
+              : context.tr('ct_desktop_sub'),
         ),
         // Pemilihan keyboard
-        const SectionTitle(
-          title: 'Keyboard Selection',
-          subtitle: 'Pick input source — XyDesk full or system IME',
+        SectionTitle(
+          title: context.tr('ct_kb_select'),
+          subtitle: context.tr('ct_kb_select_sub'),
         ),
         PanelCard(
           child: Column(
@@ -40,15 +41,15 @@ class ControlsPanel extends StatelessWidget {
                 value: state.keyboardSource,
                 onChanged: (value) =>
                     onChanged(state.copyWith(keyboardSource: value)),
-                entries: const [
+                entries: [
                   SegmentEntry<KeyboardSource>(
                     value: KeyboardSource.xydesk,
-                    label: 'XyDesk Full',
+                    label: context.tr('ct_kb_full'),
                     icon: LucideIcons.keyboard,
                   ),
                   SegmentEntry<KeyboardSource>(
                     value: KeyboardSource.system,
-                    label: 'System IME',
+                    label: context.tr('ct_kb_ime'),
                     icon: LucideIcons.smartphone,
                   ),
                 ],
@@ -58,8 +59,8 @@ class ControlsPanel extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 4, bottom: 8),
                 child: Text(
                   state.keyboardSource == KeyboardSource.system
-                      ? 'System keyboard (IME) — for forms, search, fast typing. Supports physical keyboard via Bluetooth/USB.'
-                      : 'XyDesk virtual keyboard (F1-F12, modifiers, split/full/compact) — for games & precise control. Supports physical keyboard mapping.',
+                      ? context.tr('ct_kb_ime_desc')
+                      : context.tr('ct_kb_full_desc'),
                   style: TextStyle(
                     fontSize: 11.5,
                     color: c.textLow,
@@ -70,14 +71,14 @@ class ControlsPanel extends StatelessWidget {
               const CardGapLarge(),
               DeviceRow(
                 icon: LucideIcons.keyboard,
-                title: 'Keyboard layout',
-                value: 'Split / Full / Compact',
+                title: context.tr('ct_kb_layout'),
+                value: context.tr('ct_kb_layout_sub'),
                 onTap: () {
                   // Layout handled in VirtualKeyboard — show info
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'Keyboard layout: Split (two thumbs), Full, Compact — change in virtual keyboard header',
+                        context.tr('ct_kb_layout_desc'),
                       ),
                     ),
                   );
@@ -86,13 +87,13 @@ class ControlsPanel extends StatelessWidget {
               const CardGapLarge(),
               DeviceRow(
                 icon: LucideIcons.type,
-                title: 'Physical keyboard',
-                value: 'Auto-detected',
+                title: context.tr('ct_phys_kb'),
+                value: context.tr('ct_auto_detected'),
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
+                    SnackBar(
                       content: Text(
-                        'Physical keyboard: QWERTY auto-detected, Bluetooth/USB supported',
+                        context.tr('ct_phys_kb_desc'),
                       ),
                     ),
                   );
@@ -104,9 +105,9 @@ class ControlsPanel extends StatelessWidget {
         const SizedBox(height: 20),
 
         // Joystick, gamepad, keypad
-        const SectionTitle(
-          title: 'Joystick & Gamepad & Keypad',
-          subtitle: 'Complete mapping — not yet perfect, now more spacious',
+        SectionTitle(
+          title: context.tr('ct_joy_title'),
+          subtitle: context.tr('ct_joy_sub'),
         ),
         PanelCard(
           child: Column(
@@ -114,8 +115,8 @@ class ControlsPanel extends StatelessWidget {
               if (gaming) ...[
                 ToggleRow(
                   icon: LucideIcons.gamepad2,
-                  title: 'Show touch controls',
-                  subtitle: 'D-pad, joystick, action buttons — spacious',
+                  title: context.tr('ct_show_touch'),
+                  subtitle: context.tr('ct_show_touch_sub'),
                   value: state.showGamingControls,
                   onChanged: (value) =>
                       onChanged(state.copyWith(showGamingControls: value)),
@@ -124,32 +125,32 @@ class ControlsPanel extends StatelessWidget {
               ],
               ToggleRow(
                 icon: LucideIcons.joystick,
-                title: 'Joystick enabled',
-                subtitle: 'Left stick for movement, right for camera',
+                title: context.tr('ct_joystick'),
+                subtitle: context.tr('ct_joystick_sub'),
                 value: true,
                 onChanged: (_) {},
               ),
               const CardGapLarge(),
               ToggleRow(
                 icon: LucideIcons.gamepad,
-                title: 'Gamepad support',
-                subtitle: 'Bluetooth/USB gamepad → WASD + mouse',
+                title: context.tr('ct_gamepad'),
+                subtitle: context.tr('ct_gamepad_sub'),
                 value: true,
                 onChanged: (_) {},
               ),
               const CardGapLarge(),
               ToggleRow(
                 icon: LucideIcons.keyboard,
-                title: 'Keypad / Numpad',
-                subtitle: 'Numpad 0-9, arrows, for games & desktop',
+                title: context.tr('ct_keypad'),
+                subtitle: context.tr('ct_keypad_sub'),
                 value: true,
                 onChanged: (_) {},
               ),
               const CardGapLarge(),
               DeviceRow(
                 icon: LucideIcons.settings2,
-                title: 'Control mapping',
-                value: 'Gaming & Desktop profiles',
+                title: context.tr('ct_mapping'),
+                value: context.tr('ct_mapping_sub'),
                 onTap: () {
                   // Navigate to control mapping page
                   Navigator.of(context).push(
@@ -164,22 +165,22 @@ class ControlsPanel extends StatelessWidget {
         ),
         const SizedBox(height: 20),
 
-        const SectionTitle(
-          title: 'Pointer & Haptics',
-          subtitle: 'Sensitivity, tap-to-click, scroll, haptics',
+        SectionTitle(
+          title: context.tr('ct_pointer'),
+          subtitle: context.tr('ct_pointer_sub'),
         ),
         PanelCard(
           child: Column(
             children: [
               ToggleRow(
                 icon: LucideIcons.vibrate,
-                title: 'Haptic feedback',
+                title: context.tr('ct_haptic'),
                 value: state.haptics,
                 onChanged: (value) => onChanged(state.copyWith(haptics: value)),
               ),
               const CardGapLarge(),
               SliderRow(
-                label: gaming ? 'Aim sensitivity' : 'Pointer speed',
+                label: gaming ? context.tr('ct_aim') : context.tr('ct_pointer_speed'),
                 valueLabel:
                     '${(0.5 + state.pointerSensitivity * 2.5).toStringAsFixed(1)}×',
                 value: state.pointerSensitivity,
@@ -190,7 +191,7 @@ class ControlsPanel extends StatelessWidget {
                 const CardGapLarge(),
                 ToggleRow(
                   icon: LucideIcons.mouse,
-                  title: 'Tap to click',
+                  title: context.tr('ct_tap_click'),
                   value: state.tapToClick,
                   onChanged: (value) =>
                       onChanged(state.copyWith(tapToClick: value)),
@@ -198,7 +199,7 @@ class ControlsPanel extends StatelessWidget {
                 const CardGapLarge(),
                 ToggleRow(
                   icon: LucideIcons.activity,
-                  title: 'Reverse scroll',
+                  title: context.tr('ct_reverse_scroll'),
                   value: state.reverseScroll,
                   onChanged: (value) =>
                       onChanged(state.copyWith(reverseScroll: value)),
@@ -206,8 +207,8 @@ class ControlsPanel extends StatelessWidget {
                 const CardGapLarge(),
                 ToggleRow(
                   icon: LucideIcons.crosshair,
-                  title: 'Relative pointer',
-                  subtitle: 'For 3D & FPS games',
+                  title: context.tr('ct_relative'),
+                  subtitle: context.tr('ct_relative_sub'),
                   value: state.pointerLock,
                   onChanged: (value) =>
                       onChanged(state.copyWith(pointerLock: value)),
@@ -217,11 +218,11 @@ class ControlsPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        const StatusCard(
+        StatusCard(
           icon: LucideIcons.info,
-          title: 'Controls ready',
+          title: context.tr('ct_ready'),
           body:
-              'All controls (keyboard, joystick, gamepad, keypad, mouse) can be remapped in Control Mapping page.',
+              context.tr('ct_ready_body'),
         ),
       ],
     );

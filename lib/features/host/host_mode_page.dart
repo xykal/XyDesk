@@ -283,7 +283,7 @@ class _HostModePageState extends ConsumerState<HostModePage> {
         const SizedBox(height: Gap.xxl),
         _CredentialCard(
           label: context.tr('host_device_id'),
-          value: _formatId(state.deviceId),
+          value: _formatId(context, state.deviceId),
           onCopy: state.deviceId == null
               ? null
               : () => Clipboard.setData(ClipboardData(text: state.deviceId!)),
@@ -536,7 +536,7 @@ class _QuickLink extends StatelessWidget {
   }
 }
 
-String _formatId(String? value) {
+String _formatId(BuildContext context, String? value) {
   if (value == null || value.length != 9) return context.tr('host_preparing');
   return '${value.substring(0, 3)} ${value.substring(3, 6)} ${value.substring(6)}';
 }

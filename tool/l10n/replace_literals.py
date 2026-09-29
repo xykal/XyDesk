@@ -77,7 +77,7 @@ def ensure_import(path: Path, src: str) -> str:
 
 
 def apply(entry: dict, sources: dict[Path, str]) -> int:
-    pat = literal_pattern(entry["id"])
+    pat = literal_pattern(entry.get("literal", entry["id"]))
     repl = f"context.tr('{entry['key']}')"
     hits = 0
     for rel in entry["files"]:
