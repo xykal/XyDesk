@@ -119,3 +119,41 @@ pre, code, table, .history-content {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── Gerak halus (dimatikan oleh prefers-reduced-motion di atas) ── */
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes drop-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.connect-card { animation: rise-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.connect-intro { animation: rise-in 0.5s 0.06s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.connect-form > :not(.connect-intro) { animation: rise-in 0.45s 0.14s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.recents-list { animation: drop-in 0.2s ease-out both; }
+.status-text { animation: drop-in 0.25s ease-out both; }
+
+.connect-form input {
+  transition: box-shadow var(--speed) ease, background var(--speed) ease,
+    transform var(--speed) ease;
+}
+.connect-form input:focus { transform: translateY(-1px); }
+
+.connect-cta,
+.recents-toggle,
+.btn {
+  transition: transform 0.12s ease, box-shadow var(--speed) ease,
+    background var(--speed) ease, filter var(--speed) ease;
+}
+.connect-cta:not(:disabled):active,
+.recents-toggle:active,
+.btn:active { transform: scale(0.97); }
+
+/* Chip alat di atas field: ikon saja di layar sempit. */
+@media (max-width: 640px) {
+  .recents-toggle { padding: 7px 10px; }
+  .recents-toggle .chip-text { display: none; }
+}

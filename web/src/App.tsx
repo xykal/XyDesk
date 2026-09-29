@@ -228,7 +228,7 @@ function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{devi
             </button>
           </div>
         ) : (
-          <span>Mode tamu siap digunakan</span>
+          <span className="muted">Mode tamu</span>
         )}
         {profile ? (
           <span className="account-actions">

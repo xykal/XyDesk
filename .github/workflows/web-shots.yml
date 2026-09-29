@@ -1,0 +1,46 @@
+# Bukti visual tata letak web di beberapa viewport (manual).
+# Hasil: artifact `web-layout-shots` berisi PNG per halaman × perangkat.
+name: Web Layout Shots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-shots-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Build web
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+      - name: Playwright
+        working-directory: web/e2e
+        run: |
+          npm install --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: Screenshot
+        working-directory: web
+        run: |
+          npx vite preview --host 127.0.0.1 --port 4173 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          node e2e/layout_shots.mjs http://127.0.0.1:4173 ../shots
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-layout-shots
+          path: shots
+          retention-days: 7

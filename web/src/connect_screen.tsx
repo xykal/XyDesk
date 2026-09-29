@@ -865,9 +865,10 @@ export function ConnectScreen({
               className="recents-toggle"
               onClick={() => setQrOpen(true)}
               title="Pindai QR dari XyDesk Host"
+              aria-label="Pindai QR"
             >
               <QrIcon />
-              Pindai QR
+              <span className="chip-text">Pindai QR</span>
             </button>
             )}
             {recents.length > 0 && (
@@ -876,9 +877,10 @@ export function ConnectScreen({
                 className={recentsOpen ? 'recents-toggle open' : 'recents-toggle'}
                 onClick={() => setRecentsOpen((v) => !v)}
                 aria-expanded={recentsOpen}
+                aria-label="Riwayat"
               >
                 <HistoryIcon />
-                Riwayat
+                <span className="chip-text">Riwayat</span>
               </button>
             )}
             </span>
@@ -983,7 +985,7 @@ export function ConnectScreen({
             <button className="btn primary" disabled={!canConnect} onClick={()=>void connect()}>Sambungkan ulang</button>
             {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun</button>}
           </div>}
-          <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
+          <button className="btn ghost" onClick={disconnect}>Batalkan</button>
         </div>}
         <div className="remote-input-area" aria-hidden="true" hidden={!connected} />
         <div ref={cursorRef} className="remote-control-cursor" hidden={true} style={{display:"none",width:prefs.cursorSize,height:prefs.cursorSize*4/3}} aria-hidden="true" data-revision={SESSION_UI_REVISION}>
