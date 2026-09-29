@@ -228,9 +228,7 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
                 // Kamera di-trigger saat QR scanner dibuka.
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      context.tr('perm_camera_note'),
-                    ),
+                    content: Text(context.tr('perm_camera_note')),
                     duration: const Duration(seconds: 2),
                   ),
                 );
@@ -243,8 +241,7 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
               icon: LucideIcons.bell,
               name: context.tr('perm_notif'),
               status: _notifEnabled ? _PermStatus.granted : _PermStatus.denied,
-              description:
-                  context.tr('perm_notif_desc'),
+              description: context.tr('perm_notif_desc'),
               onAction: () async {
                 if (_notifEnabled) {
                   // Sudah aktif, buka preferences.
@@ -257,7 +254,9 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
                   if (mounted) setState(() => _notifEnabled = service.active);
                 }
               },
-              actionLabel: _notifEnabled ? context.tr('perm_settings') : context.tr('perm_enable'),
+              actionLabel: _notifEnabled
+                  ? context.tr('perm_settings')
+                  : context.tr('perm_enable'),
             ),
 
             // ── Jaringan ──
@@ -349,7 +348,10 @@ class _PermissionTile extends StatelessWidget {
     final (statusLabel, statusColor) = switch (status) {
       _PermStatus.granted => (context.tr('perm_status_granted'), c.successText),
       _PermStatus.denied => (context.tr('perm_status_denied'), c.dangerText),
-      _PermStatus.unavailable => (context.tr('perm_status_unavailable'), c.textLow),
+      _PermStatus.unavailable => (
+        context.tr('perm_status_unavailable'),
+        c.textLow,
+      ),
     };
 
     return Container(
@@ -456,7 +458,9 @@ class _PermissionTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          result!.success ? context.tr('perm_mic_ok') : context.tr('perm_failed'),
+                          result!.success
+                              ? context.tr('perm_mic_ok')
+                              : context.tr('perm_failed'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
