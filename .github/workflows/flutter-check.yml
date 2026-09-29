@@ -1,0 +1,50 @@
+name: Flutter Check
+
+# Iterasi cepat untuk perubahan client: format otomatis (di-commit balik
+# sebagai xykal), analyze, dan unit test — tanpa build APK. Dipicu manual.
+# Kenapa commit balik: lingkungan kerja agent tidak punya Dart, sehingga
+# `dart format` hanya bisa dijalankan di sini; tanpa itu Build merah hanya
+# karena tata letak.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flutter-check-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.44.9'
+
+jobs:
+  check:
+    name: Format + Analyze + Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format dan commit balik bila berubah
+        run: |
+          dart format lib tool test
+          if [ -n "$(git status --porcelain lib tool test)" ]; then
+            git config user.name xykal
+            git config user.email xykal@users.noreply.github.com
+            git add lib tool test
+            git commit -m "style: dart format (Flutter Check)"
+            git push
+          fi
+      - name: Analyze
+        run: flutter analyze --fatal-infos --fatal-warnings
+      - name: Test
+        run: flutter test

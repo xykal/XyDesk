@@ -52,59 +52,59 @@ class AccountPage extends ConsumerWidget {
                 : (user.name ?? context.tr('account_user')),
             email: user.email ?? context.tr('account_local_data'),
             badge: user.isGuest
-                ? 'MODE TAMU'
-                : 'AKUN AKTIF · ketuk untuk ganti nama & foto',
+                ? context.tr('account_badge_guest')
+                : context.tr('account_badge_active'),
             pictureUrl: user.picture,
           ),
         ),
-        const SectionLabel('Preferensi'),
+        SectionLabel(context.tr('settings_preferences')),
         _CategoryRow(
-          title: 'Tampilan & bahasa',
-          subtitle: 'Bahasa tampilan aplikasi',
+          title: context.tr('settings_appearance_lang'),
+          subtitle: context.tr('settings_appearance_sub'),
           icon: LucideIcons.palette,
           onTap: () => _open(context, const AppearanceSettingsPage()),
         ),
         _CategoryRow(
-          title: 'Perilaku & aksesibilitas',
-          subtitle: 'Getaran, kehalusan layar, dan animasi',
+          title: context.tr('settings_behavior_a11y'),
+          subtitle: context.tr('settings_behavior_sub'),
           icon: LucideIcons.slidersHorizontal,
           onTap: () => _open(context, const BehaviorSettingsPage()),
         ),
         _CategoryRow(
-          title: 'Streaming & kontrol',
-          subtitle: 'Kualitas gambar, suara, dan cara mengontrol',
+          title: context.tr('settings_streaming'),
+          subtitle: context.tr('settings_streaming_sub'),
           icon: LucideIcons.monitorCog,
           onTap: () => _open(context, const StreamingSettingsPage()),
         ),
         _CategoryRow(
-          title: 'Notifikasi',
-          subtitle: 'Atur pemberitahuan dari XyDesk',
+          title: context.tr('settings_notifications'),
+          subtitle: context.tr('settings_notifications_sub'),
           icon: LucideIcons.bell,
           onTap: () => _open(context, const NotificationPreferencesPage()),
         ),
         _CategoryRow(
-          title: 'Sistem & privasi',
-          subtitle: 'Izin aplikasi, pembaruan, dan catatan teknis',
+          title: context.tr('settings_system_privacy'),
+          subtitle: context.tr('settings_system_sub'),
           icon: LucideIcons.shieldCheck,
           onTap: () => _open(context, const SystemSettingsPage()),
         ),
-        const SectionLabel('Akun & informasi'),
+        SectionLabel(context.tr('settings_account_info')),
         _CategoryRow(
-          title: 'Langganan',
-          subtitle: 'Status keanggotaan & riwayat sewa',
+          title: context.tr('settings_subscription'),
+          subtitle: context.tr('settings_subscription_sub'),
           icon: LucideIcons.crown,
           value: 'Free',
           onTap: () => _open(context, const SubscriptionPage()),
         ),
         _CategoryRow(
-          title: 'Control Mapping',
-          subtitle: 'Keyboard, joystick, mouse — mapping & profil kontrol',
+          title: context.tr('settings_control_mapping'),
+          subtitle: context.tr('settings_control_mapping_sub'),
           icon: LucideIcons.gamepad2,
           onTap: () => _open(context, const ControlMappingPage()),
         ),
         _CategoryRow(
-          title: 'Legal & tentang XyDesk',
-          subtitle: 'Ketentuan, privasi, dan lisensi',
+          title: context.tr('settings_legal_about'),
+          subtitle: context.tr('settings_legal_about_sub'),
           icon: LucideIcons.info,
           onTap: () => _open(context, const LegalSettingsPage()),
         ),
@@ -120,8 +120,8 @@ class AccountPage extends ConsumerWidget {
         ),
         if (!user.isGuest && user.token != null)
           ListRow(
-            title: 'Hapus akun',
-            subtitle: 'Akun dan semua datanya hilang, tidak bisa dibalikkan',
+            title: context.tr('account_delete'),
+            subtitle: context.tr('account_delete_sub'),
             icon: LucideIcons.trash2,
             danger: true,
             onTap: () => _deleteAccount(context, ref),
@@ -145,15 +145,14 @@ class AppearanceSettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final lang = ref.watch(langProvider);
     return _SettingsScaffold(
-      title: 'Tampilan & bahasa',
+      title: context.tr('settings_appearance_lang'),
       description:
-          'XyDesk cuma punya satu tampilan terang. Mode gelap memang tidak '
-          'disediakan — bukan belum jadi.',
+          context.tr('appearance_desc'),
       children: [
-        const SectionLabel('Bahasa', top: 0),
+        SectionLabel(context.tr('settings_language_section'), top: 0),
         ListRow(
           title: context.tr('settings_language'),
-          subtitle: 'Ganti bahasa tampilan',
+          subtitle: context.tr('settings_language_sub'),
           icon: LucideIcons.languages,
           value: lang.nativeName,
           trailing: _chevron(context),
@@ -182,12 +181,12 @@ class BehaviorSettingsPage extends ConsumerWidget {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     return _SettingsScaffold(
-      title: 'Perilaku & aksesibilitas',
-      description: 'Atur getaran, animasi, dan catatan teknis.',
+      title: context.tr('settings_behavior_a11y'),
+      description: context.tr('behavior_desc'),
       children: [
         _SwitchRow(
           title: context.tr('behavior_vibration'),
-          subtitle: 'HP bergetar tiap kali kamu menekan tombol',
+          subtitle: context.tr('behavior_vibration_sub'),
           icon: LucideIcons.vibrate,
           value: s.haptics,
           onChanged: notifier.setHaptics,
@@ -207,10 +206,9 @@ class BehaviorSettingsPage extends ConsumerWidget {
                     'jadi tidak ada yang bisa diubah',
         ),
         _SwitchRow(
-          title: 'Layar tetap menyala saat sesi',
+          title: context.tr('behavior_keep_on'),
           subtitle:
-              'Layar tidak akan mati selama kamu tersambung ke PC. '
-              'Matikan kalau mau hemat baterai.',
+              context.tr('behavior_keep_on_sub'),
           icon: LucideIcons.sun,
           value: s.keepScreenOn,
           onChanged: notifier.setKeepScreenOn,
@@ -222,7 +220,7 @@ class BehaviorSettingsPage extends ConsumerWidget {
           value: s.reduceMotion,
           onChanged: notifier.setReduceMotion,
         ),
-        const SectionLabel('Pengembang'),
+        SectionLabel(context.tr('settings_developer')),
         _SwitchRow(
           title: context.tr('behavior_devlog'),
           subtitle: context.tr('behavior_devlog_sub'),
@@ -243,44 +241,44 @@ class StreamingSettingsPage extends ConsumerWidget {
     final s = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
     return _SettingsScaffold(
-      title: 'Streaming & kontrol',
-      description: 'Kualitas sesi dapat disesuaikan dengan GPU dan jaringan.',
+      title: context.tr('settings_streaming'),
+      description: context.tr('streaming_desc'),
       children: [
-        const SectionLabel('Video', top: 0),
+        SectionLabel(context.tr('streaming_video'), top: 0),
         ListRow(
-          title: 'Codec video',
-          subtitle: 'Cara PC memproses gambar sebelum dikirim',
+          title: context.tr('streaming_codec'),
+          subtitle: context.tr('streaming_codec_sub'),
           icon: LucideIcons.cpu,
           value: _shortCodec(s.codec),
           trailing: _chevron(context),
           onTap: () => _pickCodec(context, ref),
         ),
         ListRow(
-          title: 'Resolusi & target FPS',
-          subtitle: 'Makin tinggi makin jernih, tapi makin berat',
+          title: context.tr('streaming_resolution'),
+          subtitle: context.tr('streaming_resolution_sub'),
           icon: LucideIcons.monitor,
           value: s.resolution,
           trailing: _chevron(context),
           onTap: () => _pickResolution(context, ref),
         ),
         ListRow(
-          title: 'Bitrate maksimal',
-          subtitle: 'Batas pemakaian internet selama sesi',
+          title: context.tr('streaming_bitrate'),
+          subtitle: context.tr('streaming_bitrate_sub'),
           icon: LucideIcons.gauge,
           value: '${s.bitrateMbps} Mbps',
           trailing: _chevron(context),
           onTap: () => _pickBitrate(context, ref),
         ),
-        const SectionLabel('Input & media'),
+        SectionLabel(context.tr('streaming_input_media')),
         _SwitchRow(
-          title: 'Mode FPS / trackpad relatif',
-          subtitle: 'Buat main game FPS — kursor dikunci di tengah layar',
+          title: context.tr('streaming_fps_mode'),
+          subtitle: context.tr('streaming_fps_mode_sub'),
           icon: LucideIcons.crosshair,
           value: s.relativeMouseMode,
           onChanged: notifier.setRelativeMouseMode,
         ),
         _SwitchRow(
-          title: 'Audio PC',
+          title: context.tr('streaming_pc_audio'),
           subtitle:
               'Preferensi tersimpan • '
               '${SessionMediaCapabilities.currentBuild.pcSystemAudio.summary}',
@@ -289,7 +287,7 @@ class StreamingSettingsPage extends ConsumerWidget {
           onChanged: notifier.setAudioEnabled,
         ),
         _SwitchRow(
-          title: 'Mikrofon HP',
+          title: context.tr('streaming_phone_mic'),
           subtitle:
               'Preferensi tersimpan • '
               '${SessionMediaCapabilities.currentBuild.phoneMicrophone.summary}',
@@ -298,10 +296,9 @@ class StreamingSettingsPage extends ConsumerWidget {
           onChanged: notifier.setMicPassthrough,
         ),
         _SwitchRow(
-          title: 'Sinkronisasi papan klip',
+          title: context.tr('streaming_clipboard'),
           subtitle:
-              'Salin di HP, lalu tekan Ctrl+V di PC. Arah sebaliknya lewat '
-              'tombol ambil di layar sesi.',
+              context.tr('streaming_clipboard_sub'),
           icon: LucideIcons.clipboard,
           value: s.clipboardSync,
           onChanged: notifier.setClipboardSync,
@@ -309,8 +306,7 @@ class StreamingSettingsPage extends ConsumerWidget {
           // "belum diuji", memang belum ada kodenya. Sakelar ini sebelumnya
           // menyala secara bawaan dan tidak pernah mengirim apa pun.
           unavailable:
-              'Belum bisa dipakai. Aplikasi XyDesk di PC belum '
-              'mendukung fitur ini.',
+              context.tr('streaming_clipboard_unavailable'),
         ),
       ],
     );
@@ -323,21 +319,21 @@ class SystemSettingsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return _SettingsScaffold(
-      title: 'Sistem & privasi',
-      description: 'Izin aplikasi, pembaruan, dan catatan teknis.',
+      title: context.tr('settings_system_privacy'),
+      description: context.tr('system_desc'),
       children: [
-        const SectionLabel('Akses perangkat', top: 0),
+        SectionLabel(context.tr('system_device_access'), top: 0),
         ListRow(
           title: context.tr('settings_permissions'),
-          subtitle: 'Lihat izin yang dipakai XyDesk dan alasannya',
+          subtitle: context.tr('system_permissions_sub'),
           icon: LucideIcons.shield,
           trailing: _chevron(context),
           onTap: () => _open(context, const PermissionsPage()),
         ),
-        const SectionLabel('Aplikasi'),
+        SectionLabel(context.tr('system_app')),
         ListRow(
-          title: 'Pusat pembaruan',
-          subtitle: 'Cek dan pasang versi terbaru',
+          title: context.tr('system_update_center'),
+          subtitle: context.tr('system_update_center_sub'),
           icon: LucideIcons.refreshCw,
           trailing: _chevron(context),
           onTap: () => _open(
@@ -347,17 +343,16 @@ class SystemSettingsPage extends ConsumerWidget {
         ),
         ListRow(
           title: context.tr('settings_devlog'),
-          subtitle: 'Catatan teknis untuk melaporkan masalah',
+          subtitle: context.tr('system_devlog_sub'),
           icon: LucideIcons.fileText,
           trailing: _chevron(context),
           onTap: () => DevLog.openPage(context),
         ),
-        const SectionLabel('Pemulihan'),
+        SectionLabel(context.tr('system_recovery')),
         ListRow(
-          title: 'Reset pengaturan ke bawaan',
+          title: context.tr('system_reset'),
           subtitle:
-              'Semua pengaturan kembali seperti baru dipasang. Akun, bahasa, '
-              'dan daftar PC tidak ikut hilang.',
+              context.tr('system_reset_sub'),
           icon: LucideIcons.rotateCcw,
           trailing: _chevron(context),
           onTap: () => _confirmReset(context, ref),
@@ -373,21 +368,19 @@ Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: const Text('Reset pengaturan?', style: TextStyle(fontSize: 16)),
-      content: const Text(
-        'Kualitas gambar, suara, dan cara mengontrol kembali ke setelan '
-        'awal.\n\n'
-        'Akun, bahasa, dan daftar PC kamu tidak berubah.',
-        style: TextStyle(fontSize: 13, height: 1.5),
+      title: Text(context.tr('system_reset_title'), style: const TextStyle(fontSize: 16)),
+      content: Text(
+        context.tr('system_reset_body'),
+        style: const TextStyle(fontSize: 13, height: 1.5),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, false),
-          child: const Text('Batal'),
+          child: Text(context.tr('cancel')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(dialogContext, true),
-          child: const Text('Reset'),
+          child: Text(context.tr('system_reset_action')),
         ),
       ],
     ),
@@ -396,7 +389,7 @@ Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
   await ref.read(settingsProvider.notifier).resetToDefaults();
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Pengaturan dikembalikan ke bawaan')),
+    SnackBar(content: Text(context.tr('system_reset_done'))),
   );
 }
 
@@ -406,10 +399,10 @@ class LegalSettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SettingsScaffold(
-      title: 'Legal & tentang',
-      description: 'Ketentuan pakai, privasi, dan lisensi.',
+      title: context.tr('legal_title'),
+      description: context.tr('legal_desc'),
       children: [
-        const SectionLabel('Legal', top: 0),
+        SectionLabel(context.tr('legal_section'), top: 0),
         ListRow(
           title: context.tr('legal_terms'),
           icon: LucideIcons.scale,
@@ -428,10 +421,10 @@ class LegalSettingsPage extends StatelessWidget {
           trailing: _chevron(context),
           onTap: () => LegalPage.open(context, LegalDoc.licenses),
         ),
-        const SectionLabel('Aplikasi'),
+        SectionLabel(context.tr('system_app')),
         ListRow(
           title: context.tr('settings_about'),
-          subtitle: 'Versi aplikasi dan apa saja yang berubah',
+          subtitle: context.tr('about_sub'),
           icon: LucideIcons.info,
           value: AppVersion.short,
           trailing: _chevron(context),
@@ -478,7 +471,7 @@ class AboutPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Gap.xl),
-          const SectionLabel('Diagnostik'),
+          SectionLabel(context.tr('about_diagnostics')),
           ListRow(
             title: context.tr('settings_devlog'),
             icon: LucideIcons.bug,
@@ -537,21 +530,21 @@ Future<void> _editName(
   final name = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Ganti nama tampilan', style: TextStyle(fontSize: 16)),
+      title: Text(context.tr('profile_rename_title'), style: const TextStyle(fontSize: 16)),
       content: TextField(
         controller: controller,
         autofocus: true,
         maxLength: 60,
-        decoration: const InputDecoration(hintText: 'Nama baru'),
+        decoration: InputDecoration(hintText: context.tr('profile_new_name')),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Batal'),
+          child: Text(context.tr('cancel')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-          child: const Text('Simpan'),
+          child: Text(context.tr('save')),
         ),
       ],
     ),
@@ -599,14 +592,14 @@ Future<void> _editProfile(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _EditorHeader(
-              title: 'Edit profil',
+              title: context.tr('profile_edit'),
               onClose: () => Navigator.pop(ctx),
             ),
             const SizedBox(height: Gap.md),
             ListTile(
               leading: Icon(LucideIcons.user, size: 18, color: ctx.c.textMid),
               title: Text(
-                'Ganti nama',
+                context.tr('profile_rename'),
                 style: TextStyle(fontSize: 14, color: ctx.c.textHi),
               ),
               trailing: const Icon(LucideIcons.chevronRight, size: 16),
@@ -618,7 +611,7 @@ Future<void> _editProfile(
             ListTile(
               leading: Icon(LucideIcons.camera, size: 18, color: ctx.c.textMid),
               title: Text(
-                'Ganti foto profil',
+                context.tr('profile_change_photo'),
                 style: TextStyle(fontSize: 14, color: ctx.c.textHi),
               ),
               trailing: const Icon(LucideIcons.chevronRight, size: 16),
@@ -655,12 +648,12 @@ Future<void> _editAvatar(BuildContext context, WidgetRef ref) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _EditorHeader(
-              title: 'Ganti foto profil',
+              title: context.tr('profile_change_photo'),
               onClose: () => Navigator.pop(ctx),
             ),
             const SizedBox(height: Gap.md),
             Text(
-              'Pilih dari preset',
+              context.tr('profile_pick_preset'),
               style: TextStyle(fontSize: 12.5, color: ctx.c.textMid),
             ),
             const SizedBox(height: Gap.sm),
@@ -707,7 +700,7 @@ Future<void> _editAvatar(BuildContext context, WidgetRef ref) async {
                 color: ctx.c.textMid,
               ),
               title: Text(
-                'Unggah dari galeri',
+                context.tr('profile_upload_gallery'),
                 style: TextStyle(fontSize: 14, color: ctx.c.textHi),
               ),
               trailing: const Icon(LucideIcons.chevronRight, size: 16),
@@ -719,7 +712,7 @@ Future<void> _editAvatar(BuildContext context, WidgetRef ref) async {
             ListTile(
               leading: Icon(LucideIcons.link, size: 18, color: ctx.c.textMid),
               title: Text(
-                'Pakai URL gambar sendiri',
+                context.tr('profile_custom_url'),
                 style: TextStyle(fontSize: 14, color: ctx.c.textHi),
               ),
               trailing: const Icon(LucideIcons.chevronRight, size: 16),
@@ -741,9 +734,9 @@ Future<void> _editAvatar(BuildContext context, WidgetRef ref) async {
                   await saveAvatar(store, '');
                   if (ctx.mounted) Navigator.pop(ctx);
                 },
-                child: const Text(
-                  'Kembalikan ke inisial',
-                  style: TextStyle(fontSize: 12.5),
+                child: Text(
+                  context.tr('profile_reset_initial'),
+                  style: const TextStyle(fontSize: 12.5),
                 ),
               ),
           ],
@@ -758,7 +751,7 @@ Future<String?> _askUrl(BuildContext context) async {
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('URL gambar', style: TextStyle(fontSize: 16)),
+      title: Text(context.tr('profile_image_url'), style: const TextStyle(fontSize: 16)),
       content: TextField(
         controller: ctrl,
         autofocus: true,
@@ -768,11 +761,11 @@ Future<String?> _askUrl(BuildContext context) async {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx),
-          child: const Text('Batal'),
+          child: Text(context.tr('cancel')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-          child: const Text('Simpan'),
+          child: Text(context.tr('save')),
         ),
       ],
     ),
@@ -856,22 +849,21 @@ Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: const Text('Hapus akun?', style: TextStyle(fontSize: 16)),
-      content: const Text(
-        'Akun dan data profil di server dihapus permanen. Tindakan ini '
-        'tidak dapat dibatalkan.',
-        style: TextStyle(fontSize: 13, height: 1.5),
+      title: Text(context.tr('account_delete_title'), style: const TextStyle(fontSize: 16)),
+      content: Text(
+        context.tr('account_delete_body'),
+        style: const TextStyle(fontSize: 13, height: 1.5),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Batal'),
+          child: Text(context.tr('cancel')),
         ),
         TextButton(
           onPressed: () => Navigator.pop(ctx, true),
-          child: const Text(
-            'Hapus permanen',
-            style: TextStyle(color: AppColors.danger),
+          child: Text(
+            context.tr('account_delete_forever'),
+            style: const TextStyle(color: AppColors.danger),
           ),
         ),
       ],
@@ -1171,23 +1163,23 @@ Future<void> _pickCodec(BuildContext context, WidgetRef ref) {
   final current = ref.read(settingsProvider).codec;
   return _showChoice<String>(
     context,
-    title: 'Codec video',
+    title: context.tr('streaming_codec'),
     current: current,
-    choices: const [
+    choices: [
       _Choice(
         'AV1 (NVENC / AMF GPU)',
         'AV1 (NVENC / AMF GPU)',
-        'Latensi rendah dan bandwidth efisien',
+        context.tr('codec_av1_sub'),
       ),
       _Choice(
         'HEVC / H.265 (10-bit)',
         'HEVC / H.265 (10-bit)',
-        'Warna visual dan dukungan HDR',
+        context.tr('codec_hevc_sub'),
       ),
       _Choice(
         'H.264 (AVC Universal)',
         'H.264 (AVC Universal)',
-        'Kompatibilitas GPU paling luas',
+        context.tr('codec_h264_sub'),
       ),
     ],
     onSelected: ref.read(settingsProvider.notifier).setCodec,
@@ -1198,17 +1190,17 @@ Future<void> _pickResolution(BuildContext context, WidgetRef ref) {
   final current = ref.read(settingsProvider).resolution;
   return _showChoice<String>(
     context,
-    title: 'Resolusi & target FPS',
+    title: context.tr('streaming_resolution'),
     current: current,
-    choices: const [
-      _Choice('720p60 (HD)', '720p60 (HD)', 'Hemat data'),
-      _Choice('1080p60 (FHD)', '1080p60 (FHD)', 'Seimbang untuk gaming'),
+    choices: [
+      _Choice('720p60 (HD)', '720p60 (HD)', context.tr('res_720_sub')),
+      _Choice('1080p60 (FHD)', '1080p60 (FHD)', context.tr('res_1080_sub')),
       _Choice(
         '1440p120 (QHD 2K)',
         '1440p120 (QHD 2K)',
-        'Esport latensi rendah',
+        context.tr('res_1440_sub'),
       ),
-      _Choice('4K60 (UHD)', '4K60 (UHD)', 'Kualitas visual tertinggi'),
+      _Choice('4K60 (UHD)', '4K60 (UHD)', context.tr('res_4k_sub')),
     ],
     onSelected: ref.read(settingsProvider.notifier).setResolution,
   );
@@ -1218,12 +1210,12 @@ Future<void> _pickBitrate(BuildContext context, WidgetRef ref) {
   final current = ref.read(settingsProvider).bitrateMbps;
   return _showChoice<int>(
     context,
-    title: 'Bitrate maksimal',
+    title: context.tr('streaming_bitrate'),
     current: current,
-    choices: const [
-      _Choice(10, '10 Mbps', 'Hemat bandwidth'),
-      _Choice(25, '25 Mbps', 'Kualitas seimbang'),
-      _Choice(50, '50 Mbps', 'LAN gigabit'),
+    choices: [
+      _Choice(10, '10 Mbps', context.tr('bitrate_10_sub')),
+      _Choice(25, '25 Mbps', context.tr('bitrate_25_sub')),
+      _Choice(50, '50 Mbps', context.tr('bitrate_50_sub')),
     ],
     onSelected: ref.read(settingsProvider.notifier).setBitrateMbps,
   );
