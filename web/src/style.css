@@ -1098,6 +1098,8 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
   margin: 8px auto 80px;
   padding: 30px 28px;
   border-radius: var(--radius-lg);
+  background: var(--raised);
+  border: 1px solid var(--line);
   box-shadow: var(--shadow-md);
 }
 .connect-form h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
