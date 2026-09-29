@@ -5,6 +5,22 @@ Start: 2026-09-28
 Riwayat sebelum tanggal ini: tidak ada log harian (lihat `CHANGELOG.md`
 dan `docs/archive/` untuk jejak rilis dan audit lama).
 
+## 2026-09-29 — hari kerja ke-2
+Done:
+- Encoder MFT (Media Foundation, AMD/Intel/NVIDIA): `host/src/mft.rs` +
+  `mft_setup.rs`, pemilih tunggal NVENC > MFT > openh264 (WGC/GDI/DXGI),
+  label `video.encoder` nvenc|mft|openh264. Host Check 36501126463 dan
+  Build 36501298475 hijau. Belum diuji di GPU nyata.
+- `host-check.yml` manual (fmt + clippy Linux, clippy target Windows).
+- 6.8.8+62: CRT statis engine Rust, `release.yml` input `draft` + repo var
+  `RELEASE_DRAFT=true`; Build 36503307846 hijau, Release 36504191667 hijau
+  sebagai DRAFT (tidak publik). Rilis publik tetap v6.8.7.
+Blocked:
+- Verifikasi fungsi MFT butuh mesin AMD/Intel; tim hanya punya RDP.
+Next:
+- Hapus `RELEASE_DRAFT` saat siap publik; ekstraksi string hardcode ke ARB;
+  zero-copy DXGI -> MFT; VERSIONINFO main.rc.
+
 ## 2026-09-28 — hari kerja ke-1
 Done:
 - Audit `docs/AUDIT-2026-09-28.md`; HIGH-1 (HSTS, frame-ancestors,
