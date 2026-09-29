@@ -4,6 +4,7 @@ import App from './App';
 import {AppDialogs} from './app_dialog';
 import './style.css';
 import './device.css';
+import './session.css';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
