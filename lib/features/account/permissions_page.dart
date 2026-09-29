@@ -198,8 +198,7 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
             ),
             const SizedBox(height: Gap.lg),
             Text(
-              'Status izin dibaca langsung dari sistem. Tarik ke bawah '
-              'untuk memuat ulang.',
+              context.tr('perm_intro'),
               style: TextStyle(fontSize: 12.5, height: 1.6, color: c.textMid),
             ),
             const SizedBox(height: Gap.xl),
@@ -207,45 +206,45 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
             // ── Mikrofon ──
             _PermissionTile(
               icon: LucideIcons.mic,
-              name: 'Mikrofon',
+              name: context.tr('perm_mic'),
               status: _micStatus,
-              description: 'Untuk mengirim suara HP ke PC saat sesi remote.',
+              description: context.tr('perm_mic_desc'),
               onAction: _testingMic ? null : () => _testMicrophone(),
               actionLabel: _testingMic
-                  ? 'Menguji…'
+                  ? context.tr('perm_testing')
                   : (_micStatus == _PermStatus.granted
-                        ? 'Tes ulang'
-                        : 'Beri izin & tes'),
+                        ? context.tr('perm_retest')
+                        : context.tr('perm_grant_test')),
               result: _micTestResult,
             ),
 
             // ── Kamera ──
             _PermissionTile(
               icon: LucideIcons.camera,
-              name: 'Kamera',
+              name: context.tr('perm_camera'),
               status: _cameraStatus,
-              description: 'Untuk memindai QR kode koneksi dari host.',
+              description: context.tr('perm_camera_desc'),
               onAction: () {
                 // Kamera di-trigger saat QR scanner dibuka.
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
+                  SnackBar(
                     content: Text(
-                      'Izin kamera akan diminta saat membuka pemindai QR.',
+                      context.tr('perm_camera_note'),
                     ),
-                    duration: Duration(seconds: 2),
+                    duration: const Duration(seconds: 2),
                   ),
                 );
               },
-              actionLabel: 'Buka pemindai QR',
+              actionLabel: context.tr('perm_open_qr'),
             ),
 
             // ── Notifikasi ──
             _PermissionTile(
               icon: LucideIcons.bell,
-              name: 'Notifikasi',
+              name: context.tr('perm_notif'),
               status: _notifEnabled ? _PermStatus.granted : _PermStatus.denied,
               description:
-                  'Untuk menerima pengumuman rilis dan artikel berita.',
+                  context.tr('perm_notif_desc'),
               onAction: () async {
                 if (_notifEnabled) {
                   // Sudah aktif, buka preferences.
@@ -258,21 +257,21 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
                   if (mounted) setState(() => _notifEnabled = service.active);
                 }
               },
-              actionLabel: _notifEnabled ? 'Pengaturan' : 'Aktifkan',
+              actionLabel: _notifEnabled ? context.tr('perm_settings') : context.tr('perm_enable'),
             ),
 
             // ── Jaringan ──
-            const _PermissionTile(
+            _PermissionTile(
               icon: LucideIcons.wifi,
-              name: 'Jaringan',
+              name: context.tr('perm_network'),
               status: _PermStatus.granted,
-              description: 'Untuk menghubungkan ke PC kamu via signaling.',
+              description: context.tr('perm_network_desc'),
             ),
 
             const SizedBox(height: Gap.xxl),
 
             // ── Info lokasi berkas ──
-            const SectionLabel('Penyimpanan berkas'),
+            SectionLabel(context.tr('perm_storage')),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
@@ -287,7 +286,7 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
                       Icon(LucideIcons.folderOpen, size: 16, color: c.accent),
                       const SizedBox(width: Gap.sm),
                       Text(
-                        'Lokasi berkas',
+                        context.tr('perm_file_location'),
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -308,9 +307,7 @@ class _PermissionsPageState extends ConsumerState<PermissionsPage> {
                   ),
                   const SizedBox(height: Gap.sm),
                   Text(
-                    'Berkas hasil transfer, tangkapan layar, dan ekspor profil '
-                    'disimpan di sini. Folder ini ikut terhapus saat aplikasi '
-                    'dicopot.',
+                    context.tr('perm_storage_desc'),
                     style: TextStyle(
                       fontSize: 11.5,
                       height: 1.55,
@@ -350,9 +347,9 @@ class _PermissionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.c;
     final (statusLabel, statusColor) = switch (status) {
-      _PermStatus.granted => ('Aktif', c.successText),
-      _PermStatus.denied => ('Belum diizinkan', c.dangerText),
-      _PermStatus.unavailable => ('Tidak tersedia', c.textLow),
+      _PermStatus.granted => (context.tr('perm_status_granted'), c.successText),
+      _PermStatus.denied => (context.tr('perm_status_denied'), c.dangerText),
+      _PermStatus.unavailable => (context.tr('perm_status_unavailable'), c.textLow),
     };
 
     return Container(
@@ -459,7 +456,7 @@ class _PermissionTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          result!.success ? 'Mikrofon aktif' : 'Gagal',
+                          result!.success ? context.tr('perm_mic_ok') : context.tr('perm_failed'),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,

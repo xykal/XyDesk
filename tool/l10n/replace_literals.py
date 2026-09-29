@@ -23,8 +23,8 @@ ARB = ROOT / "lib" / "l10n" / "arb"
 
 
 def literal_pattern(text: str) -> re.Pattern[str]:
-    words = [re.escape(w) for w in text.split(" ")]
-    body = r" (?:'\s*')?".join(words)
+    # Pecahan literal `'a ' 'b'` boleh terjadi di posisi mana pun.
+    body = r"(?:'\s*')?".join(re.escape(ch) for ch in text)
     return re.compile(r"(?<![\w$])'" + body + r"'")
 
 

@@ -22,7 +22,7 @@ class SubscriptionPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: c.bg,
       appBar: AppBar(
-        title: const Text('Langganan'),
+        title: Text(context.tr('sub_title')),
         leading: IconButton(
           icon: Icon(LucideIcons.arrowLeft, color: c.textMid),
           onPressed: () => Navigator.pop(context),
@@ -53,7 +53,7 @@ class SubscriptionPage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Free Plan',
+                            context.tr('sub_free_plan'),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -87,7 +87,7 @@ class SubscriptionPage extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Akses penuh ke fitur inti',
+                              context.tr('sub_full_access'),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -96,7 +96,7 @@ class SubscriptionPage extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Remote desktop, streaming, kontrol penuh',
+                              context.tr('sub_full_access_sub'),
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: c.textMid,
@@ -116,7 +116,7 @@ class SubscriptionPage extends StatelessWidget {
 
           // Riwayat Sewa PC
           Text(
-            'RIWAYAT SEWA PC',
+            context.tr('sub_rental_history'),
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
@@ -142,7 +142,7 @@ class SubscriptionPage extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.md),
                 Text(
-                  'Belum ada riwayat sewa',
+                  context.tr('sub_no_history'),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -151,14 +151,13 @@ class SubscriptionPage extends StatelessWidget {
                 ),
                 const SizedBox(height: Gap.sm),
                 Text(
-                  'Sewa PC untuk pertama kali dan nikmati akses remote\n'
-                  'ke PC gaming berkualitas tinggi.',
+                  context.tr('sub_no_history_body'),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 12, color: c.textLow, height: 1.5),
                 ),
                 const SizedBox(height: Gap.lg),
                 PrimaryButton(
-                  label: 'Sewa PC Sekarang',
+                  label: context.tr('sub_rent_now'),
                   icon: LucideIcons.monitor,
                   expand: false,
                   height: 44,
@@ -176,7 +175,7 @@ class SubscriptionPage extends StatelessWidget {
 
           // Benefit member
           Text(
-            'BENEFIT MEMBER',
+            context.tr('sub_benefits'),
             style: TextStyle(
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
@@ -186,34 +185,34 @@ class SubscriptionPage extends StatelessWidget {
           ),
           const SizedBox(height: Gap.md),
 
-          const _BenefitItem(
+          _BenefitItem(
             icon: LucideIcons.monitor,
-            title: 'Remote Desktop',
-            description: 'Akses PC dari mana saja lewat XyDesk',
+            title: context.tr('sub_b_remote'),
+            description: context.tr('sub_b_remote_sub'),
             active: true,
           ),
-          const _BenefitItem(
+          _BenefitItem(
             icon: LucideIcons.gamepad2,
-            title: 'Gaming Mode',
-            description: 'Kontrol gaming dengan D-pad & button mapping',
+            title: context.tr('sub_b_gaming'),
+            description: context.tr('sub_b_gaming_sub'),
             active: true,
           ),
-          const _BenefitItem(
+          _BenefitItem(
             icon: LucideIcons.volume2,
-            title: 'Audio Streaming',
-            description: 'Dengar audio dari PC secara real-time',
+            title: context.tr('sub_b_audio'),
+            description: context.tr('sub_b_audio_sub'),
             active: true,
           ),
-          const _BenefitItem(
+          _BenefitItem(
             icon: LucideIcons.mic,
-            title: 'Microphone Passthrough',
-            description: 'Gunakan mic HP untuk chat di PC',
+            title: context.tr('sub_b_mic'),
+            description: context.tr('sub_b_mic_sub'),
             active: true,
           ),
-          const _BenefitItem(
+          _BenefitItem(
             icon: LucideIcons.zap,
-            title: 'Low Latency',
-            description: 'Streaming <40ms untuk gaming kompetitif',
+            title: context.tr('sub_b_latency'),
+            description: context.tr('sub_b_latency_sub'),
             active: true,
           ),
         ],

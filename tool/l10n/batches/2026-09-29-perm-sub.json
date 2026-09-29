@@ -1,0 +1,346 @@
+[
+ {
+  "key": "perm_intro",
+  "id": "Status izin dibaca langsung dari sistem. Tarik ke bawah untuk memuat ulang.",
+  "en": "Permission status is read straight from the system. Pull down to refresh.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_mic",
+  "id": "Mikrofon",
+  "en": "Microphone",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_mic_desc",
+  "id": "Untuk mengirim suara HP ke PC saat sesi remote.",
+  "en": "To send phone audio to the PC during a remote session.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_testing",
+  "id": "Menguji…",
+  "en": "Testing…",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_retest",
+  "id": "Tes ulang",
+  "en": "Test again",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_grant_test",
+  "id": "Beri izin & tes",
+  "en": "Grant & test",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_camera",
+  "id": "Kamera",
+  "en": "Camera",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_camera_desc",
+  "id": "Untuk memindai QR kode koneksi dari host.",
+  "en": "To scan the connection QR code from the host.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_camera_note",
+  "id": "Izin kamera akan diminta saat membuka pemindai QR.",
+  "en": "Camera permission is requested when you open the QR scanner.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_open_qr",
+  "id": "Buka pemindai QR",
+  "en": "Open QR scanner",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_notif",
+  "id": "Notifikasi",
+  "en": "Notifications",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_notif_desc",
+  "id": "Untuk menerima pengumuman rilis dan artikel berita.",
+  "en": "To receive release announcements and news articles.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_settings",
+  "id": "Pengaturan",
+  "en": "Settings",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_enable",
+  "id": "Aktifkan",
+  "en": "Enable",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_network",
+  "id": "Jaringan",
+  "en": "Network",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_network_desc",
+  "id": "Untuk menghubungkan ke PC kamu via signaling.",
+  "en": "To connect to your PC through signaling.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_storage",
+  "id": "Penyimpanan berkas",
+  "en": "File storage",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_file_location",
+  "id": "Lokasi berkas",
+  "en": "File location",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_storage_desc",
+  "id": "Berkas hasil transfer, tangkapan layar, dan ekspor profil disimpan di sini. Folder ini ikut terhapus saat aplikasi dicopot.",
+  "en": "Transferred files, screenshots, and profile exports are stored here. The folder is removed when the app is uninstalled.",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_status_granted",
+  "id": "Aktif",
+  "en": "Granted",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_status_denied",
+  "id": "Belum diizinkan",
+  "en": "Not granted",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_status_unavailable",
+  "id": "Tidak tersedia",
+  "en": "Unavailable",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_mic_ok",
+  "id": "Mikrofon aktif",
+  "en": "Microphone working",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "perm_failed",
+  "id": "Gagal",
+  "en": "Failed",
+  "files": [
+   "lib/features/account/permissions_page.dart"
+  ]
+ },
+ {
+  "key": "sub_title",
+  "id": "Langganan",
+  "en": "Subscription",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_free_plan",
+  "id": "Free Plan",
+  "en": "Free Plan",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_full_access",
+  "id": "Akses penuh ke fitur inti",
+  "en": "Full access to core features",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_full_access_sub",
+  "id": "Remote desktop, streaming, kontrol penuh",
+  "en": "Remote desktop, streaming, full control",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_rental_history",
+  "id": "RIWAYAT SEWA PC",
+  "en": "PC RENTAL HISTORY",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_no_history",
+  "id": "Belum ada riwayat sewa",
+  "en": "No rental history yet",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_no_history_body",
+  "id": "Sewa PC untuk pertama kali dan nikmati akses remote\\nke PC gaming berkualitas tinggi.",
+  "en": "Rent a PC for the first time and enjoy remote access\nto a high-end gaming PC.",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_rent_now",
+  "id": "Sewa PC Sekarang",
+  "en": "Rent a PC now",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_benefits",
+  "id": "BENEFIT MEMBER",
+  "en": "MEMBER BENEFITS",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_remote",
+  "id": "Remote Desktop",
+  "en": "Remote Desktop",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_remote_sub",
+  "id": "Akses PC dari mana saja lewat XyDesk",
+  "en": "Access your PC from anywhere through XyDesk",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_gaming",
+  "id": "Gaming Mode",
+  "en": "Gaming Mode",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_gaming_sub",
+  "id": "Kontrol gaming dengan D-pad & button mapping",
+  "en": "Gaming control with D-pad & button mapping",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_audio",
+  "id": "Audio Streaming",
+  "en": "Audio Streaming",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_audio_sub",
+  "id": "Dengar audio dari PC secara real-time",
+  "en": "Hear PC audio in real time",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_mic",
+  "id": "Microphone Passthrough",
+  "en": "Microphone Passthrough",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_mic_sub",
+  "id": "Gunakan mic HP untuk chat di PC",
+  "en": "Use the phone mic to chat on the PC",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_latency",
+  "id": "Low Latency",
+  "en": "Low Latency",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ },
+ {
+  "key": "sub_b_latency_sub",
+  "id": "Streaming <40ms untuk gaming kompetitif",
+  "en": "Sub-40 ms streaming for competitive gaming",
+  "files": [
+   "lib/features/account/subscription_page.dart"
+  ]
+ }
+]
