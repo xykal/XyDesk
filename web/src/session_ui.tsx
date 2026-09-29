@@ -521,21 +521,26 @@ const ms=(v:number|undefined)=>v===undefined?'—':`${Math.round(v)} ms`;
 /// host angkanya adalah batas bawah, dan dilabeli begitu.
 export function LatencySection({stats}:{stats:SessionStats}){
  const l=stats.latency,e=stats.latencyEstimate;
+ const [copied,setCopied]=useState('');
+ const reportText=()=>JSON.stringify(buildLatencyReport({summary:l!,estimate:e,stats:stats as unknown as Record<string,unknown>,userAgent:navigator.userAgent,version:APP_VERSION}),null,2);
  const download=()=>{
-  const report=buildLatencyReport({summary:l!,estimate:e,stats:stats as unknown as Record<string,unknown>,userAgent:navigator.userAgent,version:APP_VERSION});
-  const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
+  const blob=new Blob([reportText()],{type:'application/json'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;a.download=`xydesk-latency-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();
+  const a=document.createElement('a');a.href=url;a.download=`xydesk-latency-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
  };
+ // Android/PWA sering menelan unduhan blob tanpa pesan; salin dan bagikan
+ // adalah jalur yang selalu terlihat hasilnya oleh pengguna.
+ const copy=async()=>{try{await navigator.clipboard.writeText(reportText());setCopied('Laporan disalin');}catch{setCopied('Gagal menyalin');}};
+ const share=async()=>{try{await navigator.share({title:'Laporan latensi XyDesk',text:reportText()});}catch{/* dibatalkan pengguna */}};
  if(!l)return null;
  if(!supportsLatencyProbe())return <details><summary>Latensi</summary><p>Browser ini tidak mendukung requestVideoFrameCallback; pakai Chrome/Edge untuk mengukur.</p></details>;
  if(!l.receiveToDisplay)return <details><summary>Latensi</summary><p>{l.samples?'Browser tidak melaporkan waktu terima frame.':'Mengumpulkan frame…'}</p></details>;
  const label=e?.confidence==='measured'?'Layar ke layar':'Perkiraan (tanpa encode PC)';
  return <details open><summary>Latensi</summary>
-  <div className="statistics-grid"><StatRow label={label} value={ms(e?.totalMs)}/><StatRow label="Terima → tampil p50" value={ms(l.receiveToDisplay.p50)}/><StatRow label="Terima → tampil p95" value={ms(l.receiveToDisplay.p95)}/><StatRow label="Jarak frame p95" value={ms(l.frameInterval?.p95)}/></div>
+  <div className="statistics-grid"><StatRow label={label} value={ms(e?.totalMs)}/><StatRow label="Terima → tampil p50" value={ms(l.receiveToDisplay.p50)}/><StatRow label="Terima → tampil p95" value={ms(l.receiveToDisplay.p95)}/><StatRow label="Jarak frame p95" value={ms(l.frameInterval?.p95)}/><StatRow label="Jitter buffer" value={ms(stats.jitterBufferMs)}/><StatRow label="Decode / frame" value={ms(stats.decodeMs)}/></div>
   {e?.confidence==='lower-bound'&&<p>Angka ini = RTT/2 + waktu frame dari diterima sampai tampil. Belum termasuk capture dan encode di PC; tambahkan <code>encode_ms</code> dari log xydesk-host untuk total sebenarnya.</p>}
-  <button type="button" onClick={download}>Unduh laporan latensi</button>
+  <div className="latency-actions"><button type="button" onClick={copy}>Salin laporan</button>{typeof navigator.share==='function'&&<button type="button" onClick={share}>Bagikan</button>}<button type="button" onClick={download}>Unduh</button>{copied&&<span>{copied}</span>}</div>
  </details>;
 }
 
