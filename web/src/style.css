@@ -1175,6 +1175,10 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
 .remote-session { max-width: none; }
 
 .connect-form { display: grid; gap: 12px; width: 100%; max-width: 400px; margin: 0 auto; }
+/* Item grid tidak boleh ikut lebar intrinsik <input> (size=20 + letter-spacing)
+   — di layar 320px itu yang bikin halaman bisa digeser ke samping. */
+.connect-form > * { min-width: 0; }
+.connect-form input { width: 100%; min-width: 0; }
 .field-label {
   display: block;
   font-size: 13px;
