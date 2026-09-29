@@ -137,8 +137,9 @@ void main() {
       );
       expect(kotlin.existsSync(), isTrue, reason: 'MainActivity.kt harus ada');
 
-      final declared = RegExp(r'PIP_CHANNEL\s*=\s*"([^"]+)"')
-          .firstMatch(kotlin.readAsStringSync());
+      final declared = RegExp(
+        r'PIP_CHANNEL\s*=\s*"([^"]+)"',
+      ).firstMatch(kotlin.readAsStringSync());
       expect(
         declared,
         isNotNull,

@@ -146,8 +146,7 @@ class AppearanceSettingsPage extends ConsumerWidget {
     final lang = ref.watch(langProvider);
     return _SettingsScaffold(
       title: context.tr('settings_appearance_lang'),
-      description:
-          context.tr('appearance_desc'),
+      description: context.tr('appearance_desc'),
       children: [
         SectionLabel(context.tr('settings_language_section'), top: 0),
         ListRow(
@@ -207,8 +206,7 @@ class BehaviorSettingsPage extends ConsumerWidget {
         ),
         _SwitchRow(
           title: context.tr('behavior_keep_on'),
-          subtitle:
-              context.tr('behavior_keep_on_sub'),
+          subtitle: context.tr('behavior_keep_on_sub'),
           icon: LucideIcons.sun,
           value: s.keepScreenOn,
           onChanged: notifier.setKeepScreenOn,
@@ -297,16 +295,14 @@ class StreamingSettingsPage extends ConsumerWidget {
         ),
         _SwitchRow(
           title: context.tr('streaming_clipboard'),
-          subtitle:
-              context.tr('streaming_clipboard_sub'),
+          subtitle: context.tr('streaming_clipboard_sub'),
           icon: LucideIcons.clipboard,
           value: s.clipboardSync,
           onChanged: notifier.setClipboardSync,
           // Protokol host belum punya kanal papan klip sama sekali — bukan
           // "belum diuji", memang belum ada kodenya. Sakelar ini sebelumnya
           // menyala secara bawaan dan tidak pernah mengirim apa pun.
-          unavailable:
-              context.tr('streaming_clipboard_unavailable'),
+          unavailable: context.tr('streaming_clipboard_unavailable'),
         ),
       ],
     );
@@ -351,8 +347,7 @@ class SystemSettingsPage extends ConsumerWidget {
         SectionLabel(context.tr('system_recovery')),
         ListRow(
           title: context.tr('system_reset'),
-          subtitle:
-              context.tr('system_reset_sub'),
+          subtitle: context.tr('system_reset_sub'),
           icon: LucideIcons.rotateCcw,
           trailing: _chevron(context),
           onTap: () => _confirmReset(context, ref),
@@ -368,7 +363,10 @@ Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
-      title: Text(context.tr('system_reset_title'), style: const TextStyle(fontSize: 16)),
+      title: Text(
+        context.tr('system_reset_title'),
+        style: const TextStyle(fontSize: 16),
+      ),
       content: Text(
         context.tr('system_reset_body'),
         style: const TextStyle(fontSize: 13, height: 1.5),
@@ -388,9 +386,9 @@ Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
   if (ok != true) return;
   await ref.read(settingsProvider.notifier).resetToDefaults();
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(context.tr('system_reset_done'))),
-  );
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(context.tr('system_reset_done'))));
 }
 
 class LegalSettingsPage extends StatelessWidget {
@@ -530,7 +528,10 @@ Future<void> _editName(
   final name = await showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(context.tr('profile_rename_title'), style: const TextStyle(fontSize: 16)),
+      title: Text(
+        context.tr('profile_rename_title'),
+        style: const TextStyle(fontSize: 16),
+      ),
       content: TextField(
         controller: controller,
         autofocus: true,
@@ -751,7 +752,10 @@ Future<String?> _askUrl(BuildContext context) async {
   return showDialog<String>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(context.tr('profile_image_url'), style: const TextStyle(fontSize: 16)),
+      title: Text(
+        context.tr('profile_image_url'),
+        style: const TextStyle(fontSize: 16),
+      ),
       content: TextField(
         controller: ctrl,
         autofocus: true,
@@ -849,7 +853,10 @@ Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      title: Text(context.tr('account_delete_title'), style: const TextStyle(fontSize: 16)),
+      title: Text(
+        context.tr('account_delete_title'),
+        style: const TextStyle(fontSize: 16),
+      ),
       content: Text(
         context.tr('account_delete_body'),
         style: const TextStyle(fontSize: 13, height: 1.5),
