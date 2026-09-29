@@ -125,10 +125,22 @@ class StreamPanel extends ConsumerWidget {
               Segmented<StreamQuality>(
                 value: settings.quality,
                 entries: [
-                  SegmentEntry(value: StreamQuality.auto, label: context.tr('st_auto')),
-                  SegmentEntry(value: StreamQuality.medium, label: context.tr('st_medium')),
-                  SegmentEntry(value: StreamQuality.high, label: context.tr('st_high')),
-                  SegmentEntry(value: StreamQuality.ultra, label: context.tr('st_ultra')),
+                  SegmentEntry(
+                    value: StreamQuality.auto,
+                    label: context.tr('st_auto'),
+                  ),
+                  SegmentEntry(
+                    value: StreamQuality.medium,
+                    label: context.tr('st_medium'),
+                  ),
+                  SegmentEntry(
+                    value: StreamQuality.high,
+                    label: context.tr('st_high'),
+                  ),
+                  SegmentEntry(
+                    value: StreamQuality.ultra,
+                    label: context.tr('st_ultra'),
+                  ),
                 ],
                 onChanged: (q) =>
                     ref.read(settingsProvider.notifier).setQuality(q),
@@ -225,9 +237,7 @@ class StreamPanel extends ConsumerWidget {
               TransportStatus.connected => context.tr('st_connected'),
               TransportStatus.preview => context.tr('st_not_connected'),
             },
-            body:
-                transport.message ??
-                context.tr('st_start_from_list'),
+            body: transport.message ?? context.tr('st_start_from_list'),
           ),
         ],
       ],

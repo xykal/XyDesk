@@ -76,11 +76,7 @@ class ControlsPanel extends StatelessWidget {
                 onTap: () {
                   // Layout handled in VirtualKeyboard — show info
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        context.tr('ct_kb_layout_desc'),
-                      ),
-                    ),
+                    SnackBar(content: Text(context.tr('ct_kb_layout_desc'))),
                   );
                 },
               ),
@@ -91,11 +87,7 @@ class ControlsPanel extends StatelessWidget {
                 value: context.tr('ct_auto_detected'),
                 onTap: () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        context.tr('ct_phys_kb_desc'),
-                      ),
-                    ),
+                    SnackBar(content: Text(context.tr('ct_phys_kb_desc'))),
                   );
                 },
               ),
@@ -180,7 +172,9 @@ class ControlsPanel extends StatelessWidget {
               ),
               const CardGapLarge(),
               SliderRow(
-                label: gaming ? context.tr('ct_aim') : context.tr('ct_pointer_speed'),
+                label: gaming
+                    ? context.tr('ct_aim')
+                    : context.tr('ct_pointer_speed'),
                 valueLabel:
                     '${(0.5 + state.pointerSensitivity * 2.5).toStringAsFixed(1)}×',
                 value: state.pointerSensitivity,
@@ -221,8 +215,7 @@ class ControlsPanel extends StatelessWidget {
         StatusCard(
           icon: LucideIcons.info,
           title: context.tr('ct_ready'),
-          body:
-              context.tr('ct_ready_body'),
+          body: context.tr('ct_ready_body'),
         ),
       ],
     );

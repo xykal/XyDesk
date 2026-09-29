@@ -230,7 +230,9 @@ class SessionPanel extends StatelessWidget {
                     value: switch (transport.status) {
                       TransportStatus.connected => context.tr('ss_direct'),
                       TransportStatus.pairing => context.tr('ss_pairing'),
-                      TransportStatus.negotiating => context.tr('ss_negotiating'),
+                      TransportStatus.negotiating => context.tr(
+                        'ss_negotiating',
+                      ),
                       TransportStatus.hostBusy => context.tr('ss_busy'),
                       TransportStatus.peerOffline => context.tr('ss_offline'),
                       TransportStatus.rejected => context.tr('ss_rejected'),
@@ -257,7 +259,9 @@ class SessionPanel extends StatelessWidget {
                   InfoRow(
                     icon: LucideIcons.mic,
                     title: context.tr('ss_mic_to_pc'),
-                    value: service?.micEnabled == true ? context.tr('ss_on') : context.tr('ss_off'),
+                    value: service?.micEnabled == true
+                        ? context.tr('ss_on')
+                        : context.tr('ss_off'),
                   ),
                 ],
               ),
