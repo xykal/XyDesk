@@ -100,7 +100,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text(context.tr('cm_delete_q'), style: TextStyle(color: c.textHi)),
+        title: Text(
+          context.tr('cm_delete_q'),
+          style: TextStyle(color: c.textHi),
+        ),
         content: Text(
           context.tr('cm_delete_body'),
           style: TextStyle(color: c.textMid),
@@ -108,7 +111,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
+            child: Text(
+              context.tr('cancel'),
+              style: TextStyle(color: c.textMid),
+            ),
           ),
           FilledButton(
             onPressed: () {
@@ -142,7 +148,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text(context.tr('cm_new_profile'), style: TextStyle(color: c.textHi)),
+        title: Text(
+          context.tr('cm_new_profile'),
+          style: TextStyle(color: c.textHi),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -161,7 +170,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
+            child: Text(
+              context.tr('cancel'),
+              style: TextStyle(color: c.textMid),
+            ),
           ),
           FilledButton(
             onPressed: () {
@@ -192,7 +204,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: c.overlay,
-        title: Text(context.tr('cm_reset_q'), style: TextStyle(color: c.textHi)),
+        title: Text(
+          context.tr('cm_reset_q'),
+          style: TextStyle(color: c.textHi),
+        ),
         content: Text(
           context.tr('cm_reset_body'),
           style: TextStyle(color: c.textMid),
@@ -200,7 +215,10 @@ class _ControlMappingPageState extends ConsumerState<ControlMappingPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(context.tr('cancel'), style: TextStyle(color: c.textMid)),
+            child: Text(
+              context.tr('cancel'),
+              style: TextStyle(color: c.textMid),
+            ),
           ),
           FilledButton(
             onPressed: () {
@@ -508,7 +526,10 @@ class _MappingPreviewTabState extends ConsumerState<_MappingPreviewTab> {
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              Text(context.tr('cm_profile_label'), style: TextStyle(fontSize: 13, color: c.textMid)),
+              Text(
+                context.tr('cm_profile_label'),
+                style: TextStyle(fontSize: 13, color: c.textMid),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButton<String>(
