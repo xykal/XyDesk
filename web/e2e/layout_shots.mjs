@@ -20,6 +20,7 @@ const pages = [
   ['connect', '/connect'],
 ];
 
+const failures = [];
 const browser = await chromium.launch();
 for (const [name, device] of targets) {
   const ctx = await browser.newContext({ ...device, reducedMotion: 'reduce' });
@@ -27,13 +28,30 @@ for (const [name, device] of targets) {
   for (const [label, path] of pages) {
     await page.goto(base + path, { waitUntil: 'networkidle' });
     await page.waitForTimeout(300);
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    if (overflow > 1) throw new Error(`${name} ${path}: overflow horizontal ${overflow}px`);
+    const report = await page.evaluate(() => {
+      const w = document.documentElement.clientWidth;
+      const bad = [];
+      for (const el of document.querySelectorAll('body *')) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.right > w + 1) {
+          const tag = el.tagName.toLowerCase();
+          const cls = el.className && typeof el.className === 'string' ? '.' + el.className.split(' ').join('.') : '';
+          bad.push(`${tag}${cls} right=${Math.round(r.right)}`);
+        }
+      }
+      return { overflow: document.documentElement.scrollWidth - w, bad: bad.slice(0, 8) };
+    });
+    if (report.overflow > 1) {
+      console.error(`${name} ${path}: overflow ${report.overflow}px`, report.bad);
+      failures.push(`${name} ${path}`);
+    }
     await page.screenshot({ path: `${out}/${label}-${name}.png`, fullPage: label === 'landing' });
   }
   await ctx.close();
 }
 await browser.close();
+if (failures.length) {
+  console.error('overflow horizontal:', failures.join(', '));
+  process.exit(1);
+}
 console.log(`ok: ${targets.length * pages.length} screenshot di ${out}/`);
