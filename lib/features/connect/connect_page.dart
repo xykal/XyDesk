@@ -472,7 +472,12 @@ class _ConnectPageState extends ConsumerState<ConnectPage> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _pill(context, LucideIcons.scanLine, context.tr('connect_scan_qr'), () => _scanQr()),
+            _pill(
+              context,
+              LucideIcons.scanLine,
+              context.tr('connect_scan_qr'),
+              () => _scanQr(),
+            ),
             const SizedBox(width: Gap.h32),
             _pill(
               context,

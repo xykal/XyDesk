@@ -107,20 +107,17 @@ class _GuidePageState extends State<GuidePage> {
     ),
     _GuideData(
       title: context.tr('guide_c2'),
-      description:
-          context.tr('guide_c2_sub'),
+      description: context.tr('guide_c2_sub'),
       icon: LucideIcons.keyRound,
     ),
     _GuideData(
       title: context.tr('guide_c3'),
-      description:
-          context.tr('guide_c3_sub'),
+      description: context.tr('guide_c3_sub'),
       icon: LucideIcons.scanLine,
     ),
     _GuideData(
       title: context.tr('guide_c4'),
-      description:
-          context.tr('guide_c4_sub'),
+      description: context.tr('guide_c4_sub'),
       icon: LucideIcons.play,
     ),
   ];
@@ -139,14 +136,12 @@ class _GuidePageState extends State<GuidePage> {
     ),
     _GuideData(
       title: context.tr('guide_h3'),
-      description:
-          context.tr('guide_h3_sub'),
+      description: context.tr('guide_h3_sub'),
       icon: LucideIcons.qrCode,
     ),
     _GuideData(
       title: context.tr('guide_h4'),
-      description:
-          context.tr('guide_h4_sub'),
+      description: context.tr('guide_h4_sub'),
       icon: LucideIcons.shieldCheck,
     ),
   ];
@@ -175,7 +170,12 @@ class _AudienceToggle extends StatelessWidget {
             context.tr('guide_im_phone'),
             LucideIcons.smartphone,
           ),
-          _item(context, GuideAudience.host, context.tr('guide_im_pc'), LucideIcons.monitor),
+          _item(
+            context,
+            GuideAudience.host,
+            context.tr('guide_im_pc'),
+            LucideIcons.monitor,
+          ),
         ],
       ),
     );
