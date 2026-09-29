@@ -90,8 +90,7 @@ class AudioPanel extends StatelessWidget {
                   context,
                   title: context.tr('au_pick_pc_source'),
                   current: context.tr('au_win_default'),
-                  requirement:
-                      context.tr('au_pick_pc_source_req'),
+                  requirement: context.tr('au_pick_pc_source_req'),
                 ),
               ),
               const CardGap(),
@@ -140,9 +139,18 @@ class AudioPanel extends StatelessWidget {
         Segmented<AudioLatencyMode>(
           value: state.audioLatencyMode,
           entries: [
-            SegmentEntry(value: AudioLatencyMode.lowLatency, label: context.tr('au_mode_gaming')),
-            SegmentEntry(value: AudioLatencyMode.balanced, label: context.tr('au_mode_balanced')),
-            SegmentEntry(value: AudioLatencyMode.quality, label: context.tr('au_mode_quality')),
+            SegmentEntry(
+              value: AudioLatencyMode.lowLatency,
+              label: context.tr('au_mode_gaming'),
+            ),
+            SegmentEntry(
+              value: AudioLatencyMode.balanced,
+              label: context.tr('au_mode_balanced'),
+            ),
+            SegmentEntry(
+              value: AudioLatencyMode.quality,
+              label: context.tr('au_mode_quality'),
+            ),
           ],
           onChanged: (value) =>
               onChanged(state.copyWith(audioLatencyMode: value)),

@@ -299,7 +299,9 @@ class _BillingPageState extends State<BillingPage> {
 
                 // Tombol pesan.
                 PrimaryButton(
-                  label: stokPaket > 0 ? context.tr('bl_order_wa') : context.tr('bl_out_of_stock'),
+                  label: stokPaket > 0
+                      ? context.tr('bl_order_wa')
+                      : context.tr('bl_out_of_stock'),
                   icon: LucideIcons.messageCircle,
                   onPressed: stokPaket > 0 ? _pesan : null,
                 ),
