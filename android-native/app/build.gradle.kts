@@ -15,6 +15,14 @@ android {
         versionName = "0.1.0"
         buildConfigField("String", "API_URL", "\"https://signal.xydesk.my.id\"")
         buildConfigField("String", "SIGNALING_URL", "\"wss://signal.xydesk.my.id/ws\"")
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        externalNativeBuild { cmake { arguments += "-DANDROID_STL=c++_static" } }
+    }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
     buildFeatures { viewBinding = true; buildConfig = true }
     buildTypes {

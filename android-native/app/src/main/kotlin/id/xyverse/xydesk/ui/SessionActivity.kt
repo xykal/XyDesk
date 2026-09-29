@@ -9,7 +9,8 @@ import android.view.WindowInsets
 import android.view.WindowInsetsController
 import androidx.appcompat.app.AppCompatActivity
 import id.xyverse.xydesk.databinding.ActivitySessionBinding
-import id.xyverse.xydesk.rtc.InputCodec
+import id.xyverse.xydesk.core.LatencyRing
+import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.rtc.Phase
 import id.xyverse.xydesk.rtc.RtcListener
 import id.xyverse.xydesk.rtc.RtcSession
@@ -27,6 +28,26 @@ class SessionActivity : AppCompatActivity(), RtcListener {
     private var moved = false
     private var downAt = 0L
     private var twoFinger = false
+    private val decodeRing = LatencyRing()
+    private val rttRing = LatencyRing()
+    private var lastFrames = 0L
+    private var lastDecodeSec = 0.0
+    private val statsTick = object : Runnable {
+        override fun run() {
+            session.stats { fps, frames, decodeSec, rttMs, relay ->
+                val d = frames - lastFrames
+                if (d > 0) decodeRing.push(((decodeSec - lastDecodeSec) / d * 1000).toFloat())
+                lastFrames = frames; lastDecodeSec = decodeSec
+                if (rttMs > 0) rttRing.push(rttMs.toFloat())
+                val text = "%.0f fps · dekode %.1f ms (p95 %.1f) · RTT %.0f ms · %s".format(
+                    fps, decodeRing.p(50f), decodeRing.p(95f), rttRing.p(50f), if (relay) "relay" else "langsung",
+                )
+                runOnUiThread { if (connected) { b.status.text = text; b.status.visibility = View.VISIBLE } }
+            }
+            b.video.postDelayed(this, 1000)
+        }
+    }
+    private var connected = false
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,8 +80,8 @@ class SessionActivity : AppCompatActivity(), RtcListener {
                 val dx = (e.x - lastX) * SPEED
                 val dy = (e.y - lastY) * SPEED
                 if (dx * dx + dy * dy > 1f) moved = true
-                if (twoFinger) session.send(InputCodec.scroll(0, (-dy * 2).toInt()))
-                else session.send(InputCodec.moveRel(dx.toInt(), dy.toInt()))
+                if (twoFinger) session.send(StreamXy.scroll(0, (-dy * 2).toInt()))
+                else session.send(StreamXy.moveRel(dx.toInt(), dy.toInt()))
                 lastX = e.x; lastY = e.y
             }
             MotionEvent.ACTION_UP -> {
@@ -72,8 +93,8 @@ class SessionActivity : AppCompatActivity(), RtcListener {
     }
 
     private fun click(button: Int) {
-        session.send(InputCodec.button(button, true))
-        b.video.postDelayed({ session.send(InputCodec.button(button, false)) }, 40)
+        session.send(StreamXy.button(button, true))
+        b.video.postDelayed({ session.send(StreamXy.button(button, false)) }, 40)
     }
 
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
@@ -83,6 +104,8 @@ class SessionActivity : AppCompatActivity(), RtcListener {
             Phase.CONNECTED -> ""
             else -> message ?: phase.name
         }
+        connected = phase == Phase.CONNECTED
+        if (connected) b.video.postDelayed(statsTick, 1000) else b.video.removeCallbacks(statsTick)
         b.status.text = text
         b.status.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED)) {
@@ -104,6 +127,9 @@ class SessionActivity : AppCompatActivity(), RtcListener {
     }
 
     override fun onDestroy() {
+        b.video.removeCallbacks(statsTick)
+        decodeRing.close()
+        rttRing.close()
         session.stop()
         session.release()
         super.onDestroy()

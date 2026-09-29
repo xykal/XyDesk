@@ -6,6 +6,7 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import id.xyverse.xydesk.databinding.ActivityConnectBinding
+import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.net.Api
 import kotlinx.coroutines.launch
 
@@ -31,7 +32,7 @@ class ConnectActivity : AppCompatActivity() {
         val email = prefs.getString("email", null)
         b.loginBox.visibility = if (jwt == null) View.VISIBLE else View.GONE
         b.connectBox.visibility = if (jwt == null) View.GONE else View.VISIBLE
-        b.account.text = if (jwt == null) "Masuk dulu untuk pairing" else "Masuk sebagai $email"
+        b.account.text = (if (jwt == null) "Masuk dulu untuk pairing" else "Masuk sebagai $email") + " · " + StreamXy.version()
         b.hostId.setText(prefs.getString("lastHost", ""))
         b.status.text = ""
     }

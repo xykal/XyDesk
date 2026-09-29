@@ -152,6 +152,32 @@ class RtcSession(
         }, MediaConstraints())
     }
 
+    /** Statistik ringkas dari getStats: fps, frame terdekode, total waktu dekode (s), RTT ms, relay? */
+    fun stats(cb: (fps: Double, frames: Long, decodeSec: Double, rttMs: Double, relay: Boolean) -> Unit) {
+        val conn = pc ?: return
+        conn.getStats { report ->
+            var fps = 0.0; var frames = 0L; var decode = 0.0; var rtt = 0.0; var relay = false
+            val locals = HashMap<String, String>()
+            report.statsMap.values.forEach { s ->
+                if (s.type == "local-candidate") locals[s.id] = s.members["candidateType"]?.toString().orEmpty()
+            }
+            report.statsMap.values.forEach { s ->
+                when (s.type) {
+                    "inbound-rtp" -> if (s.members["kind"] == "video") {
+                        fps = (s.members["framesPerSecond"] as? Number)?.toDouble() ?: fps
+                        frames = (s.members["framesDecoded"] as? Number)?.toLong() ?: frames
+                        decode = (s.members["totalDecodeTime"] as? Number)?.toDouble() ?: decode
+                    }
+                    "candidate-pair" -> if (s.members["nominated"] == true || s.members["state"] == "succeeded") {
+                        rtt = (s.members["currentRoundTripTime"] as? Number)?.toDouble()?.times(1000) ?: rtt
+                        relay = locals[s.members["localCandidateId"]?.toString()] == "relay"
+                    }
+                }
+            }
+            cb(fps, frames, decode, rtt, relay)
+        }
+    }
+
     fun send(bytes: ByteArray) {
         val ch = input ?: return
         if (ch.state() == DataChannel.State.OPEN) ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true))
