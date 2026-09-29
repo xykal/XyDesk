@@ -171,7 +171,11 @@ class SignalingClient {
       },
       onDone: () {
         _open = false;
-        DevLog.w('signal', 'Soket ditutup', 'kode=${ch.closeCode} ${ch.closeReason ?? ''}');
+        DevLog.w(
+          'signal',
+          'Soket ditutup',
+          'kode=${ch.closeCode} ${ch.closeReason ?? ''}',
+        );
         onDisconnected?.call();
       },
       onError: (Object e) {
@@ -247,7 +251,9 @@ class SignalingClient {
   void _send(SignalMessage m) {
     final sink = _ch?.sink;
     if (sink == null) return;
-    if (m.type != 'ice') DevLog.i('signal', 'Kirim ${m.type}', 'ke=${m.to}');
+    if (m.type != 'ice') {
+      DevLog.i('signal', 'Kirim ${m.type}', 'ke=${m.to}');
+    }
     try {
       sink.add(jsonEncode(m.toJson()));
     } catch (_) {
