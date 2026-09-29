@@ -15,11 +15,21 @@ Done:
 - 6.8.8+62: CRT statis engine Rust, `release.yml` input `draft` + repo var
   `RELEASE_DRAFT=true`; Build 36503307846 hijau, Release 36504191667 hijau
   sebagai DRAFT (tidak publik). Rilis publik tetap v6.8.7.
+- i18n klien: `tool/l10n/replace_literals.py` + `flutter-check.yml`;
+  8 batch (account, permissions, subscription, connect, guide, update,
+  notifikasi, host mode, panel sesi/stream/kontrol/audio, billing,
+  control mapping) = 553 kunci ARB id+en. Flutter Check 36566301479 hijau.
+- Web: `web/src/device.css` (zoom input iOS, safe-area, target sentuh 44px,
+  tablet 2 kolom, desktop lebar, lanskap pendek, reduced-motion).
 Blocked:
 - Verifikasi fungsi MFT butuh mesin AMD/Intel; tim hanya punya RDP.
+Skipped (sengaja):
+- legal_page (teks hukum DRAFT, bahasa acuan ID), guest_identity (nama),
+  control_mapping default (data profil tersimpan), string setelah `await`
+  tanpa `mounted`, factory error_state tanpa BuildContext.
 Next:
-- Hapus `RELEASE_DRAFT` saat siap publik; ekstraksi string hardcode ke ARB;
-  zero-copy DXGI -> MFT; VERSIONINFO main.rc.
+- Hapus `RELEASE_DRAFT` saat siap publik; zero-copy DXGI -> MFT;
+  VERSIONINFO main.rc; sisa literal session_page/rtc_service.
 
 ## 2026-09-28 — hari kerja ke-1
 Done:
