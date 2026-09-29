@@ -1,0 +1,37 @@
+name: Bersihkan Actions
+
+# Menjaga riwayat Actions tetap ramping sebelum rilis: hanya 3 run terakhir
+# per workflow yang disimpan, sisanya (beserta artefak & log) dihapus.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_run:
+    workflows: ['Build']
+    types: [completed]
+
+permissions:
+  actions: write
+
+concurrency:
+  group: cleanup
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Hapus run lama
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: '3'
+        run: |
+          set -eu
+          repo="$GITHUB_REPOSITORY"
+          gh api --paginate "repos/$repo/actions/workflows" -q '.workflows[].id' | while read -r wf; do
+            gh api --paginate "repos/$repo/actions/workflows/$wf/runs?status=completed&per_page=100" \
+              -q '.workflow_runs[].id' | tail -n +"$((KEEP + 1))" | while read -r run; do
+              gh api -X DELETE "repos/$repo/actions/runs/$run" >/dev/null && echo "hapus run $run"
+            done
+          done

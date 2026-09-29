@@ -3028,3 +3028,18 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .session-frame-actions button{padding:6px 12px;border:1px solid #ffffff2e;border-radius:999px;background:#ffffff14;color:#f8f5ff;font-size:12px;font-weight:600;cursor:pointer}
 .session-frame-actions button:hover{background:#ffffff24}
 .connect-cta:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+
+/* ── Halaman "belum rilis" (kunci akses sementara) ── */
+.coming-soon {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-hi);
+}
+.coming-soon h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+.coming-soon p { color: var(--text-mid); max-width: 320px; }
+.coming-soon small { margin-top: 18px; color: var(--text-low); font-size: 12px; }
