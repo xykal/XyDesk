@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -209,8 +208,8 @@ class RtcSession(
     private open class NoopSdpObserver : SdpObserver {
         override fun onCreateSuccess(p0: SessionDescription) = Unit
         override fun onSetSuccess() = Unit
-        override fun onCreateFailure(p0: String) = Log.w(TAG, "sdp create: $p0")
-        override fun onSetFailure(p0: String) = Log.w(TAG, "sdp set: $p0")
+        override fun onCreateFailure(p0: String) { Log.w(TAG, "sdp create: $p0") }
+        override fun onSetFailure(p0: String) { Log.w(TAG, "sdp set: $p0") }
     }
 
     private object NoopSdp : NoopSdpObserver()
