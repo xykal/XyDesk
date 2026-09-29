@@ -184,10 +184,10 @@ class StreamPanel extends ConsumerWidget {
                 value: settings.bitrateMbps,
                 entries: [
                   SegmentEntry(value: 0, label: context.tr('st_auto')),
-                  SegmentEntry(value: 8, label: '8'),
-                  SegmentEntry(value: 15, label: '15'),
-                  SegmentEntry(value: 25, label: '25'),
-                  SegmentEntry(value: 50, label: '50'),
+                  const SegmentEntry(value: 8, label: '8'),
+                  const SegmentEntry(value: 15, label: '15'),
+                  const SegmentEntry(value: 25, label: '25'),
+                  const SegmentEntry(value: 50, label: '50'),
                 ],
                 onChanged: (b) =>
                     ref.read(settingsProvider.notifier).setBitrateMbps(b),
