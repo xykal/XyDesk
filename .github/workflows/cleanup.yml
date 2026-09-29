@@ -29,9 +29,9 @@ jobs:
         run: |
           set -eu
           repo="$GITHUB_REPOSITORY"
-          gh api --paginate "repos/$repo/actions/workflows" -q '.workflows[].id' | while read -r wf; do
-            gh api --paginate "repos/$repo/actions/workflows/$wf/runs?status=completed&per_page=100" \
-              -q '.workflow_runs[].id' | tail -n +"$((KEEP + 1))" | while read -r run; do
-              gh api -X DELETE "repos/$repo/actions/runs/$run" >/dev/null && echo "hapus run $run"
+          for wf in $(gh api --paginate "repos/$repo/actions/workflows" -q '.workflows[].id'); do
+            for run in $(gh api --paginate "repos/$repo/actions/workflows/$wf/runs?status=completed&per_page=100" \
+              -q '.workflow_runs[].id' | tail -n +"$((KEEP + 1))"); do
+              gh api -X DELETE "repos/$repo/actions/runs/$run" </dev/null >/dev/null && echo "hapus run $run"
             done
           done
