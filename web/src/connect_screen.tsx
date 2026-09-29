@@ -852,8 +852,10 @@ export function ConnectScreen({
     <section className={sessionOpen ? 'remote-session' : 'connect-card surface-card'}>
       {!sessionOpen && (
         <div className="connect-form">
-          <h1>Kendalikan PC dari browser.</h1>
-          <p className="muted">Tidak perlu akun. Ambil ID dan password dari XyDesk Host di PC.</p>
+          <div className="connect-intro">
+            <h1>Kendalikan PC dari browser</h1>
+            <p className="muted">Masukkan ID dan password dari XyDesk Host.</p>
+          </div>
           <div className="field-head">
             <span className="field-label">ID perangkat</span>
             <span className="field-tools">
@@ -896,7 +898,7 @@ export function ConnectScreen({
                   }}
                 >
                   <span className="recent-id">{formatHostId(r.id)}</span>
-                  <span className="recent-pw">ketik password</span>
+                  <span className="recent-pw">password</span>
                 </button>
               ))}
               <button
@@ -917,7 +919,7 @@ export function ConnectScreen({
             setHostId(value);
             if (value.replace(/\s/g, '').length === 9) pinRef.current?.focus();
           }} />
-          {savedAccess&&<p>Izin PC ini tersimpan. <button type="button" className="text-action" onClick={()=>{forgetHostAccess(hostId.replace(/[\s-]/g,''));updateAccess(x=>x+1);}}>Lupakan akses browser</button></p>}
+          {savedAccess&&<p className="saved-access">Akses tersimpan. <button type="button" className="text-action" onClick={()=>{forgetHostAccess(hostId.replace(/[\s-]/g,''));updateAccess(x=>x+1);}}>Lupakan</button></p>}
           {!savedAccess&&<><span className="field-label">Password pairing</span>
           <div className="pw-field">
             {/* autoCapitalize "none", bukan "characters" seperti dulu: host
@@ -927,7 +929,7 @@ export function ConnectScreen({
             <input
               ref={pinRef}
               type={showPw ? 'text' : 'password'}
-              placeholder={savedAccess?"Izin browser tersimpan — password tidak diperlukan":"Password pairing"}
+              placeholder="Password pairing"
               value={pin}
               autoCapitalize="none"
               autoCorrect="off"
@@ -953,9 +955,7 @@ export function ConnectScreen({
             </p>
           )}
           {retryInfo && <p className="status-text">{retryInfo}</p>}
-          <a className="text-action" href="/history">Buka halaman riwayat</a>
           <button className="connect-cta" disabled={!canConnect} onClick={() => void connect()}>{['pairing', 'negotiating'].includes(phase) ? labels[phase] : 'Konek sekarang'}</button>
-          <p className="microcopy">Sesi tamu tanpa batas durasi. Izin dan riwayat tersimpan di browser ini; pemilik PC tetap dapat mencabut akses.</p>
         </div>
       )}
       <div
@@ -976,12 +976,12 @@ export function ConnectScreen({
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<ConnectionMorph/>}
           <h2 aria-live="polite">{['pairing','negotiating'].includes(phase)?'Menghubungkan perangkat…':fasePesan||labels[phase]||'Lanjutkan sesi perangkat'}</h2>
-          <p>{['pairing','negotiating'].includes(phase)?'Menyiapkan layar jarak jauh.':'Siap melanjutkan koneksi lu.'}</p>
+          <p>{['pairing','negotiating'].includes(phase)?'Menyiapkan layar jarak jauh.':'Siap melanjutkan koneksi.'}</p>
           {!['pairing','negotiating'].includes(phase)&&<div className="session-resume-form">
             {!/^\d{9}$/.test(hostId.replace(/[\s-]/g,''))&&<label>ID perangkat<input inputMode="numeric" value={hostId} onChange={e=>setHostId(e.target.value)} autoComplete="off"/></label>}
             {!savedAccess&&<label>Password pairing<input ref={pinRef} type="password" value={pin} onChange={e=>setPin(e.target.value)} autoComplete="off" onKeyDown={e=>{if(e.key==='Enter'&&canConnect)void connect();}}/><small>Akses tersimpan tidak tersedia atau sudah dicabut. Password tidak disimpan.</small></label>}
             <button className="btn primary" disabled={!canConnect} onClick={()=>void connect()}>Sambungkan ulang</button>
-            {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun untuk memakai akses tersimpan</button>}
+            {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun</button>}
           </div>}
           <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
         </div>}
