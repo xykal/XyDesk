@@ -263,7 +263,9 @@ class _HostModePageState extends ConsumerState<HostModePage> {
             ),
             const SizedBox(width: Gap.sm),
             Text(
-              state.running ? context.tr('host_ready') : context.tr('host_stopped'),
+              state.running
+                  ? context.tr('host_ready')
+                  : context.tr('host_stopped'),
               style: TextStyle(fontSize: 12, color: c.textMid),
             ),
           ],
@@ -295,7 +297,9 @@ class _HostModePageState extends ConsumerState<HostModePage> {
               ? state.password!
               : List.filled(state.password!.length, '•').join(),
           trailing: IconButton(
-            tooltip: _showPassword ? context.tr('host_hide_password') : context.tr('host_show_password'),
+            tooltip: _showPassword
+                ? context.tr('host_hide_password')
+                : context.tr('host_show_password'),
             onPressed: state.password == null
                 ? null
                 : () => setState(() => _showPassword = !_showPassword),
@@ -319,7 +323,9 @@ class _HostModePageState extends ConsumerState<HostModePage> {
                     ? controller.stop
                     : controller.start,
                 icon: state.running ? LucideIcons.square : LucideIcons.play,
-                label: state.running ? context.tr('host_stop') : context.tr('host_start'),
+                label: state.running
+                    ? context.tr('host_stop')
+                    : context.tr('host_start'),
                 isLoading: state.busy,
               ),
             ),

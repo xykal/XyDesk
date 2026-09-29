@@ -53,9 +53,7 @@ class _NotificationPreferencesPageState
 
     final enabled = await _service.enableUpdates();
     if (!mounted || enabled) return;
-    final message =
-        _service.lastError ??
-        context.tr('notif_not_enabled');
+    final message = _service.lastError ?? context.tr('notif_not_enabled');
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
@@ -162,20 +160,17 @@ class _NotificationPreferencesPageState
           _InfoRow(
             icon: LucideIcons.smartphone,
             title: context.tr('notif_you_decide'),
-            body:
-                context.tr('notif_you_decide_sub'),
+            body: context.tr('notif_you_decide_sub'),
           ),
           _InfoRow(
             icon: LucideIcons.packageOpen,
             title: context.tr('notif_internal'),
-            body:
-                context.tr('notif_internal_sub'),
+            body: context.tr('notif_internal_sub'),
           ),
           _InfoRow(
             icon: LucideIcons.shieldCheck,
             title: context.tr('notif_official'),
-            body:
-                context.tr('notif_official_sub'),
+            body: context.tr('notif_official_sub'),
           ),
           const SizedBox(height: Gap.xl),
           FilledButton.icon(

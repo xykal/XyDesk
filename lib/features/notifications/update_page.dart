@@ -175,9 +175,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr('upd_allow_title')),
-        content: Text(
-          context.tr('upd_allow_body'),
-        ),
+        content: Text(context.tr('upd_allow_body')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -275,9 +273,7 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
             ),
             const SizedBox(height: 8),
             Text(
-              latest
-                  ? context.tr('upd_up_to_date_body')
-                  : details.message,
+              latest ? context.tr('upd_up_to_date_body') : details.message,
               style: TextStyle(
                 color: context.c.textMid,
                 fontSize: 14,
@@ -297,7 +293,9 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
             if (_fullNotes.isNotEmpty || details.releaseNotes.isNotEmpty) ...[
               const SizedBox(height: 18),
               Text(
-                _fullNotes.isEmpty ? context.tr('upd_prepared') : context.tr('upd_release_notes'),
+                _fullNotes.isEmpty
+                    ? context.tr('upd_prepared')
+                    : context.tr('upd_release_notes'),
                 style: TextStyle(
                   color: context.c.textHi,
                   fontSize: 15,
@@ -400,7 +398,9 @@ class _UpdatePageState extends State<UpdatePage> with WidgetsBindingObserver {
       UpdateDownloadPhase.ready => PrimaryButton(
         onPressed: _acting ? null : _installUpdate,
         icon: LucideIcons.packageCheck,
-        label: _acting ? context.tr('upd_preparing_installer') : context.tr('upd_install_now'),
+        label: _acting
+            ? context.tr('upd_preparing_installer')
+            : context.tr('upd_install_now'),
         isLoading: _acting,
       ),
       UpdateDownloadPhase.queued ||
@@ -456,11 +456,17 @@ class _VersionCard extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _VersionValue(label: context.tr('upd_installed'), value: installed),
+            child: _VersionValue(
+              label: context.tr('upd_installed'),
+              value: installed,
+            ),
           ),
           const SizedBox(width: 1, height: 40),
           Expanded(
-            child: _VersionValue(label: context.tr('upd_official_release'), value: release),
+            child: _VersionValue(
+              label: context.tr('upd_official_release'),
+              value: release,
+            ),
           ),
         ],
       ),
