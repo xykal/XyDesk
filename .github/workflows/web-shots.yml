@@ -4,6 +4,9 @@ name: Web Layout Shots
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['web/**', '.github/workflows/web-shots.yml']
 
 permissions:
   contents: read

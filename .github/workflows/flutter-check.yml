@@ -44,6 +44,8 @@ jobs:
             git commit -m "style: dart format (Flutter Check)"
             git push
           fi
+      - name: Penjaga ARB
+        run: python3 tool/l10n/check_arb.py
       - name: Analyze
         run: flutter analyze --fatal-infos --fatal-warnings
       - name: Test
