@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui.kit
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -24,11 +25,15 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -54,7 +59,7 @@ fun XyButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = tru
             .height(52.dp)
             .scale(scale)
             .clip(shape)
-            .then(if (ghost) Modifier.border(1.dp, Xy.line, shape).background(Xy.raised) else Modifier.background(Xy.accentBrush))
+            .then(if (ghost) Modifier.background(Xy.overlay) else Modifier.shadow(10.dp, shape, ambientColor = Xy.shadow, spotColor = Xy.shadow).background(Xy.accentBrush))
             .clickable(source, indication = null, enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
@@ -77,8 +82,10 @@ fun XyField(
     Column(modifier.fillMaxWidth()) {
         XyText(label.uppercase(), Xy.label)
         Spacer(Modifier.height(6.dp))
+        var focused by remember { mutableStateOf(false) }
+        val ring by animateColorAsState(if (focused) Xy.accent else Xy.line, label = "ring")
         Box(
-            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.dp, Xy.line, shape).padding(horizontal = 14.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.5.dp, ring, shape).padding(horizontal = 14.dp, vertical = 14.dp),
         ) {
             if (value.isEmpty()) XyText(hint, if (mono) Xy.mono else Xy.body, color = Xy.textLow)
             BasicTextField(
@@ -89,7 +96,7 @@ fun XyField(
                 cursorBrush = SolidColor(Xy.lavender),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboard),
                 visualTransformation = transformation,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             )
         }
     }
@@ -98,7 +105,7 @@ fun XyField(
 @Composable
 fun XyCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(Xy.radiusL)
-    Box(modifier.fillMaxWidth().clip(shape).background(Xy.raised).border(1.dp, Xy.line, shape).padding(Xy.pad)) {
+    Box(modifier.fillMaxWidth().shadow(18.dp, shape, ambientColor = Xy.shadow, spotColor = Xy.shadow).clip(shape).background(Xy.raised).padding(Xy.pad)) {
         Column { content() }
     }
 }
@@ -115,7 +122,8 @@ fun XyToggle(text: String, caption: String, checked: Boolean, onChange: (Boolean
             XyText(caption, Xy.caption)
         }
         Spacer(Modifier.width(12.dp))
-        Box(Modifier.width(44.dp).height(26.dp).clip(CircleShape).background(if (checked) Xy.accent else Xy.overlay).padding(3.dp)) {
+        val track by animateColorAsState(if (checked) Xy.accent else Xy.line, label = "track")
+        Box(Modifier.width(44.dp).height(26.dp).clip(CircleShape).background(track).padding(3.dp)) {
             Box(Modifier.padding(start = (18 * knob).dp).size(20.dp).clip(CircleShape).background(Color.White))
         }
     }

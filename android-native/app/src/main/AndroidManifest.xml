@@ -16,6 +16,7 @@
         <activity
             android:name=".ui.SessionActivity"
             android:exported="false"
+            android:theme="@style/Theme.XyDesk.Session"
             android:screenOrientation="sensorLandscape"
             android:configChanges="orientation|screenSize|keyboardHidden" />
     </application>

@@ -64,14 +64,18 @@ fun ConnectScreen(
         XyCard {
             XyField(digits.chunked(3).joinToString(" "), { host = it }, "ID perangkat", keyboard = KeyboardType.Number, mono = true, hint = "000 000 000")
             Spacer(Modifier.height(Xy.gap))
-            XyField(pin, { pin = it.take(12) }, "PIN (opsional)", keyboard = KeyboardType.NumberPassword, transformation = PasswordVisualTransformation())
+            XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = "sesuai di aplikasi host", transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
             XyToggle("Decoder low-latency", "H.264 langsung ke MediaCodec, tanpa antrian render.", lowLatency) { lowLatency = it }
             Spacer(Modifier.height(Xy.gap))
             XyNotice(notice, Xy.warning)
             Spacer(Modifier.height(Xy.gap))
-            XyButton("Hubungkan", enabled = digits.length >= 6) {
-                if (digits.length < 6) notice = "ID perangkat belum lengkap." else onConnect(digits, pin, lowLatency)
+            XyButton("Hubungkan", enabled = digits.length >= 6 && pin.isNotEmpty()) {
+                when {
+                    digits.length < 6 -> notice = "ID perangkat belum lengkap."
+                    pin.isEmpty() -> notice = "Password host wajib diisi."
+                    else -> onConnect(digits, pin, lowLatency)
+                }
             }
         }
         Spacer(Modifier.height(24.dp))

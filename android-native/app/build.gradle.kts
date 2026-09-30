@@ -54,7 +54,6 @@ android {
 }
 
 dependencies {
-    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.core:core-ktx:1.15.0")
     val compose = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(compose)
