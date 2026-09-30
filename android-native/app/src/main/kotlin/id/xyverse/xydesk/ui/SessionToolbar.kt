@@ -6,10 +6,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -39,9 +39,21 @@ class SessionActions(
     val quality: (preset: Int) -> Unit,
     val resolution: (mode: Int) -> Unit,
     val display: (index: Int) -> Unit,
+    val touchMode: (direct: Boolean) -> Unit = {},
+    val audioMute: (muted: Boolean) -> Unit = {},
+    val sendQuickKey: (combo: QuickKey) -> Unit = {},
     val toggleStats: () -> Unit,
     val disconnect: () -> Unit,
 )
+
+enum class QuickKey(val label: String) {
+    ESC("Esc"),
+    TAB("Tab"),
+    WIN("Win"),
+    COPY("Ctrl+C"),
+    PASTE("Ctrl+V"),
+    CAD("CAD"),
+}
 
 /**
  * Pil mengambang di bawah layar: satu titik kecil saat tersembunyi, ketuk untuk
@@ -50,12 +62,35 @@ class SessionActions(
 @Composable
 fun SessionToolbar(actions: SessionActions) {
     var open by remember { mutableStateOf(false) }
+    var keysOpen by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(0) }
     var res by remember { mutableStateOf(0) }
     var monitor by remember { mutableStateOf(0) }
+    var directTouch by remember { mutableStateOf(false) }
+    var muted by remember { mutableStateOf(false) }
     val labels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
     val resLabels = listOf("720p", "1080p")
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 10.dp)) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.padding(bottom = 10.dp),
+    ) {
+        AnimatedVisibility(open && keysOpen, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+            Row(
+                Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .clip(RoundedCornerShape(Xy.radiusL))
+                    .background(Color(0xF2FFFFFF))
+                    .border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                QuickKey.entries.forEach { k ->
+                    Pill(k.label) { actions.sendQuickKey(k) }
+                }
+            }
+        }
         AnimatedVisibility(open, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
             Row(
                 Modifier
@@ -68,6 +103,15 @@ fun SessionToolbar(actions: SessionActions) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Pill("Keyboard") { actions.keyboard() }
+                Pill("Tombol", accent = keysOpen) { keysOpen = !keysOpen }
+                Pill(if (directTouch) "Sentuh" else "Trackpad", accent = directTouch) {
+                    directTouch = !directTouch
+                    actions.touchMode(directTouch)
+                }
+                Pill(if (muted) "Bisu" else "Audio", accent = !muted) {
+                    muted = !muted
+                    actions.audioMute(muted)
+                }
                 Pill(labels[quality], accent = true) {
                     quality = (quality + 1) % labels.size
                     actions.quality(quality)

@@ -13,9 +13,14 @@ object StreamXy {
     external fun scroll(dx: Int, dy: Int): ByteArray
     external fun key(vk: Int, down: Boolean): ByteArray
     external fun text(s: String): ByteArray
+    external fun clipboardSet(s: String): ByteArray
+    external fun clipboardReq(): ByteArray
+    external fun decodeClipboard(packet: ByteArray): String?
     external fun quality(preset: Int): ByteArray
+    external fun bitrate(mbps: Int): ByteArray
     external fun display(index: Int): ByteArray
     external fun resolution(mode: Int): ByteArray
+    external fun fps(targetFps: Int): ByteArray
 
     external fun statsNew(capacity: Int): Long
     external fun statsFree(handle: Long)

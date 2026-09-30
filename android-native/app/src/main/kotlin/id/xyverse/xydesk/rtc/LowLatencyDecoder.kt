@@ -87,7 +87,10 @@ class LowLatencyH264Decoder(
             codec = MediaCodec.createByCodecName(name).apply {
                 setCallback(object : MediaCodec.Callback() {
                     override fun onInputBufferAvailable(c: MediaCodec, index: Int) {
-                        synchronized(freeInputs) { freeInputs.addLast(index) }
+                        synchronized(inputLock) {
+                            freeInputs.addLast(index)
+                            inputLock.notifyAll()
+                        }
                     }
 
                     override fun onOutputBufferAvailable(c: MediaCodec, index: Int, info: MediaCodec.BufferInfo) {
@@ -115,11 +118,17 @@ class LowLatencyH264Decoder(
         }
     }
 
+    private val inputLock = Object()
     private val freeInputs = ArrayDeque<Int>()
 
     override fun decode(image: EncodedImage, info: VideoDecoder.DecodeInfo?): VideoCodecStatus {
         val c = codec ?: return VideoCodecStatus.UNINITIALIZED
-        val index = synchronized(freeInputs) { freeInputs.removeFirstOrNull() } ?: return VideoCodecStatus.NO_OUTPUT
+        val index = synchronized(inputLock) {
+            if (freeInputs.isEmpty()) {
+                runCatching { inputLock.wait(8) }
+            }
+            freeInputs.removeFirstOrNull()
+        } ?: return VideoCodecStatus.NO_OUTPUT
         val buf: ByteBuffer = c.getInputBuffer(index) ?: return VideoCodecStatus.ERROR
         buf.clear()
         val src = image.buffer.duplicate()
@@ -133,6 +142,11 @@ class LowLatencyH264Decoder(
     }
 
     override fun release(): VideoCodecStatus {
+        synchronized(inputLock) {
+            freeInputs.clear()
+            inputLock.notifyAll()
+        }
+        inflight.clear()
         runCatching { codec?.stop(); codec?.release() }
         codec = null
         return VideoCodecStatus.OK

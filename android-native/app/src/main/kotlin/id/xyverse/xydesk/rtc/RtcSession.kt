@@ -1,7 +1,9 @@
 package id.xyverse.xydesk.rtc
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.util.Log
+import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.net.Api
 import id.xyverse.xydesk.net.SignalMessage
 import id.xyverse.xydesk.net.Signaling
@@ -10,7 +12,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.webrtc.AudioTrack
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -26,19 +30,23 @@ import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceViewRenderer
 import org.webrtc.VideoTrack
+import org.webrtc.audio.AudioDeviceModule
+import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
+import kotlin.random.Random
 
 enum class Phase { PAIRING, NEGOTIATING, CONNECTED, REJECTED, PEER_OFFLINE, BUSY, ENDED, ERROR }
 
 interface RtcListener {
     fun onPhase(phase: Phase, message: String?)
     fun onHostName(name: String) {}
+    fun onRemoteClipboard(text: String) {}
 }
 
 /**
- * Sesi client native: signaling + PeerConnection + kanal `input`.
- * Decode video dipakai lewat MediaCodec (DefaultVideoDecoderFactory) langsung
- * ke SurfaceViewRenderer — tanpa lapisan texture Flutter.
+ * Sesi client native: signaling + PeerConnection + kanal `input` + AudioDeviceModule.
+ * Decode video dipakai lewat MediaCodec (DefaultVideoDecoderFactory / LowLatencyDecoder)
+ * langsung ke SurfaceView — tanpa lapisan texture Flutter.
  */
 class RtcSession(
     context: Context,
@@ -54,11 +62,16 @@ class RtcSession(
 ) : SignalingListener {
     val egl: EglBase = EglBase.create()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    private val deviceId = "app-${System.currentTimeMillis() % 1_000_000}"
-    private val signaling = Signaling(deviceId, this)
+    private var deviceId = newClientId()
+    private var signaling = Signaling(deviceId, this)
+    private val adm: AudioDeviceModule
     private var factory: PeerConnectionFactory
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
+    private var remoteAudioTrack: AudioTrack? = null
+    @Volatile private var audioMuted = false
+    @Volatile private var welcomed = false
+    @Volatile private var retriedPreWelcome = false
     private var signalToken = ""
     private var renderer: SurfaceViewRenderer? = null
     @Volatile private var stopped = false
@@ -67,12 +80,23 @@ class RtcSession(
         PeerConnectionFactory.initialize(
             PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions(),
         )
+        adm = JavaAudioDeviceModule.builder(context)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                    .build(),
+            )
+            .setUseHardwareAcousticEchoCanceler(true)
+            .setUseHardwareNoiseSuppressor(true)
+            .createAudioDeviceModule()
         val decoderFactory = if (lowLatencySurface != null) {
             LowLatencyDecoderFactory(egl.eglBaseContext, lowLatencySurface, onNativeDecode, onNativeSize, onDecodeMode)
         } else {
             DefaultVideoDecoderFactory(egl.eglBaseContext)
         }
         factory = PeerConnectionFactory.builder()
+            .setAudioDeviceModule(adm)
             .setVideoDecoderFactory(decoderFactory)
             .setVideoEncoderFactory(DefaultVideoEncoderFactory(egl.eglBaseContext, true, true))
             .createPeerConnectionFactory()
@@ -86,8 +110,13 @@ class RtcSession(
 
     fun start() {
         listener.onPhase(Phase.PAIRING, null)
+        connectSignaling()
+    }
+
+    private fun connectSignaling() {
         scope.launch {
             try {
+                welcomed = false
                 signalToken = Api.signalToken(jwt, deviceId)
                 signaling.connect(signalToken)
             } catch (e: Exception) {
@@ -103,12 +132,16 @@ class RtcSession(
     override fun onMessage(m: SignalMessage) {
         Log.d(TAG, "terima ${m.type} ${m.error ?: ""}")
         when (m.type) {
-            "pair-response" -> if (m.accepted) {
-                m.json.optString("name").takeIf { it.isNotBlank() }?.let(listener::onHostName)
-                listener.onPhase(Phase.NEGOTIATING, null)
-                scope.launch { negotiate() }
-            } else {
-                listener.onPhase(Phase.REJECTED, "Password ditolak host. Periksa huruf besar/kecil.")
+            "welcome" -> welcomed = true
+            "pair-response" -> {
+                welcomed = true
+                if (m.accepted) {
+                    m.json.optString("name").takeIf { it.isNotBlank() }?.let(listener::onHostName)
+                    listener.onPhase(Phase.NEGOTIATING, null)
+                    scope.launch { negotiate() }
+                } else {
+                    listener.onPhase(Phase.REJECTED, "Password ditolak host. Periksa huruf besar/kecil.")
+                }
             }
             "answer" -> m.sdp?.let {
                 pc?.setRemoteDescription(NoopSdp, SessionDescription(SessionDescription.Type.ANSWER, it.getString("sdp")))
@@ -120,13 +153,39 @@ class RtcSession(
             "error" -> when (m.error) {
                 "peer-offline" -> stop(Phase.PEER_OFFLINE, "PC tidak online. Pastikan XyDesk Host berjalan.")
                 "pair-terkunci", "host-sibuk" -> stop(Phase.BUSY, "PC sedang dipakai sesi lain.")
-                else -> fail("Signaling: ${m.error}")
+                else -> {
+                    // Celah HANDOFF.md: error pra-welcome (mis. soket zombie id-sudah-online)
+                    // wajib memicu rotasi ID dan coba ulang otomatis sekali.
+                    if (!welcomed && !retriedPreWelcome && !stopped) {
+                        retriedPreWelcome = true
+                        signaling.close()
+                        deviceId = newClientId()
+                        signaling = Signaling(deviceId, this)
+                        scope.launch {
+                            delay(600)
+                            if (!stopped) connectSignaling()
+                        }
+                    } else {
+                        fail("Signaling: ${m.error}")
+                    }
+                }
             }
         }
     }
 
     override fun onClosed(reason: String) {
-        if (!stopped) fail("Koneksi signaling terputus ($reason).")
+        if (stopped) return
+        if (!welcomed && !retriedPreWelcome) {
+            retriedPreWelcome = true
+            deviceId = newClientId()
+            signaling = Signaling(deviceId, this)
+            scope.launch {
+                delay(600)
+                if (!stopped) connectSignaling()
+            }
+            return
+        }
+        fail("Koneksi signaling terputus ($reason).")
     }
 
     private suspend fun negotiate() {
@@ -154,13 +213,35 @@ class RtcSession(
             org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,
             RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY),
         )
-        input = conn.createDataChannel("input", DataChannel.Init().apply { ordered = false; maxRetransmits = 0 })
+        val ch = conn.createDataChannel("input", DataChannel.Init().apply { ordered = false; maxRetransmits = 0 })
+        ch?.registerObserver(object : DataChannel.Observer {
+            override fun onBufferedAmountChange(previousAmount: Long) = Unit
+            override fun onStateChange() {
+                if (ch.state() == DataChannel.State.OPEN) {
+                    send(StreamXy.clipboardReq())
+                }
+            }
+            override fun onMessage(buffer: DataChannel.Buffer) {
+                val data = ByteArray(buffer.data.remaining())
+                buffer.data.get(data)
+                StreamXy.decodeClipboard(data)?.takeIf { it.isNotEmpty() }?.let(listener::onRemoteClipboard)
+            }
+        })
+        input = ch
         conn.createOffer(object : NoopSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
                 conn.setLocalDescription(NoopSdp, desc)
                 signaling.offer(Signaling.normalizeId(hostId), desc.description)
             }
         }, MediaConstraints())
+    }
+
+    fun setAudioMuted(muted: Boolean) {
+        audioMuted = muted
+        remoteAudioTrack?.let { track ->
+            track.setEnabled(!muted)
+            track.setVolume(if (muted) 0.0 else 1.0)
+        }
     }
 
     /** Statistik ringkas dari getStats: fps, frame terdekode, total waktu dekode (s), RTT ms, relay? */
@@ -190,6 +271,7 @@ class RtcSession(
     }
 
     fun send(bytes: ByteArray) {
+        if (bytes.isEmpty()) return
         val ch = input ?: return
         if (ch.state() == DataChannel.State.OPEN) ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true))
     }
@@ -201,9 +283,11 @@ class RtcSession(
         stopped = true
         runCatching { signaling.bye(Signaling.normalizeId(hostId)) }
         signaling.close()
+        input?.unregisterObserver()
         input?.close()
         pc?.close()
         pc = null
+        remoteAudioTrack = null
         scope.cancel()
         listener.onPhase(phase, message)
     }
@@ -211,6 +295,7 @@ class RtcSession(
     fun release() {
         renderer?.release()
         factory.dispose()
+        adm.release()
         egl.release()
     }
 
@@ -228,7 +313,14 @@ class RtcSession(
         }
 
         override fun onAddTrack(receiver: RtpReceiver, streams: Array<out MediaStream>) {
-            (receiver.track() as? VideoTrack)?.let { track -> renderer?.let(track::addSink) }
+            when (val track = receiver.track()) {
+                is VideoTrack -> renderer?.let(track::addSink)
+                is AudioTrack -> {
+                    remoteAudioTrack = track
+                    track.setEnabled(!audioMuted)
+                    track.setVolume(if (audioMuted) 0.0 else 1.0)
+                }
+            }
         }
 
         override fun onSignalingChange(p0: PeerConnection.SignalingState) = Unit
@@ -253,5 +345,7 @@ class RtcSession(
 
     companion object {
         private const val TAG = "XyDeskRtc"
+        private fun newClientId(): String =
+            "app-${System.currentTimeMillis() % 1_000_000}-${Random.nextInt(100, 999)}"
     }
 }

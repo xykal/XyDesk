@@ -1,40 +1,55 @@
 package id.xyverse.xydesk.ui
 
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
-import android.view.inputmethod.InputMethodManager
-import id.xyverse.xydesk.core.KeyMap
-import id.xyverse.xydesk.core.SessionRecord
-import id.xyverse.xydesk.core.Store
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
+import android.view.inputmethod.InputMethodManager
 import androidx.activity.ComponentActivity
-import id.xyverse.xydesk.databinding.ActivitySessionBinding
+import id.xyverse.xydesk.core.KeyMap
 import id.xyverse.xydesk.core.LatencyRing
+import id.xyverse.xydesk.core.SessionRecord
+import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.core.StreamXy
+import id.xyverse.xydesk.databinding.ActivitySessionBinding
 import id.xyverse.xydesk.rtc.Phase
 import id.xyverse.xydesk.rtc.RtcListener
 import id.xyverse.xydesk.rtc.RtcSession
 
 /**
- * Layar sesi: video penuh + mode trackpad.
- * Satu jari geser = gerak kursor relatif, ketuk = klik kiri,
+ * Layar sesi: video penuh + mode trackpad / sentuh langsung + sinkronisasi clipboard dua arah.
+ * Mode trackpad: satu jari geser = gerak kursor relatif, ketuk = klik kiri,
  * ketuk dua jari = klik kanan, geser dua jari = scroll.
+ * Mode sentuh langsung: ketuk/geser langsung memetakan koordinat 0..1 ke host (`moveAbs`).
  */
 class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var b: ActivitySessionBinding
     private lateinit var session: RtcSession
+    private var clipboard: ClipboardManager? = null
+    private var lastSyncedClipboard = ""
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
+        if (!connected) return@OnPrimaryClipChangedListener
+        val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty()
+        if (text.isNotEmpty() && text != lastSyncedClipboard) {
+            lastSyncedClipboard = text
+            session.send(StreamXy.clipboardSet(text))
+        }
+    }
     private var lastX = 0f
     private var lastY = 0f
     private var moved = false
     private var downAt = 0L
     private var twoFinger = false
+    private var directTouch = false
     private val decodeRing = LatencyRing()
     private val rttRing = LatencyRing()
     private var lastFrames = 0L
@@ -70,6 +85,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = AudioManager.STREAM_MUSIC
+        getSystemService(AudioManager::class.java)?.mode = AudioManager.MODE_NORMAL
+        clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard?.addPrimaryClipChangedListener(clipListener)
+
         b = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(b.root)
         hideSystemBars()
@@ -88,8 +108,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
         )
         session.attach(b.video)
         applyDecodeMode(true)
-        b.raw.setOnTouchListener { _, e -> onTouch(e) }
-        b.video.setOnTouchListener { _, e -> onTouch(e) }
+        b.raw.setOnTouchListener { v, e -> onTouch(v, e) }
+        b.video.setOnTouchListener { v, e -> onTouch(v, e) }
         setupToolbar()
         setupKeyboard()
         startedAt = System.currentTimeMillis()
@@ -119,7 +139,29 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.status.text = "${w}x$h"
     }
 
-    private fun onTouch(e: MotionEvent): Boolean {
+    private fun onTouch(view: View, e: MotionEvent): Boolean {
+        if (directTouch && e.pointerCount == 1) {
+            val nx = (e.x / view.width.coerceAtLeast(1)).coerceIn(0f, 1f)
+            val ny = (e.y / view.height.coerceAtLeast(1)).coerceIn(0f, 1f)
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downAt = System.currentTimeMillis()
+                    moved = false
+                    lastX = e.x; lastY = e.y
+                    session.send(StreamXy.moveAbs(nx, ny))
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = e.x - lastX; val dy = e.y - lastY
+                    if (dx * dx + dy * dy > 36f) moved = true
+                    session.send(StreamXy.moveAbs(nx, ny))
+                }
+                MotionEvent.ACTION_UP -> {
+                    session.send(StreamXy.moveAbs(nx, ny))
+                    if (!moved) click(if (System.currentTimeMillis() - downAt > 420) 1 else 0)
+                }
+            }
+            return true
+        }
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 lastX = e.x; lastY = e.y; moved = false; twoFinger = false
@@ -147,6 +189,16 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.video.postDelayed({ session.send(StreamXy.button(button, false)) }, 40)
     }
 
+    private fun sendKeyTap(vk: Int) {
+        session.send(StreamXy.key(vk, true))
+        session.send(StreamXy.key(vk, false))
+    }
+
+    private fun sendChord(vararg vks: Int) {
+        vks.forEach { session.send(StreamXy.key(it, true)) }
+        vks.reversed().forEach { session.send(StreamXy.key(it, false)) }
+    }
+
     private fun setupToolbar() {
         b.toolbar.setContent {
             SessionToolbar(
@@ -155,6 +207,18 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     quality = { session.send(StreamXy.quality(it)) },
                     resolution = { session.send(StreamXy.resolution(it)) },
                     display = { session.send(StreamXy.display(it)) },
+                    touchMode = { directTouch = it },
+                    audioMute = { session.setAudioMuted(it) },
+                    sendQuickKey = { combo ->
+                        when (combo) {
+                            QuickKey.ESC -> sendKeyTap(0x1B)
+                            QuickKey.TAB -> sendKeyTap(0x09)
+                            QuickKey.WIN -> sendKeyTap(0x5B)
+                            QuickKey.COPY -> sendChord(0xA2, 0x43)
+                            QuickKey.PASTE -> sendChord(0xA2, 0x56)
+                            QuickKey.CAD -> sendChord(0xA2, 0xA4, 0x2E)
+                        }
+                    },
                     toggleStats = { showStats = !showStats; if (!showStats) b.status.visibility = View.GONE },
                     disconnect = { outcome = "putus"; finish() },
                 ),
@@ -173,7 +237,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                 KeyEvent.KEYCODE_ESCAPE -> 0x1B
                 else -> return@setOnKeyListener false
             }
-            session.send(StreamXy.key(vk, true)); session.send(StreamXy.key(vk, false))
+            sendKeyTap(vk)
             true
         }
         b.keyboardSink.addTextChangedListener(object : TextWatcher {
@@ -182,7 +246,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 if (count > before && s != null) session.send(StreamXy.text(s.substring(start + before, start + count)))
                 else if (before > count) repeat(before - count) {
-                    session.send(StreamXy.key(0x08, true)); session.send(StreamXy.key(0x08, false))
+                    sendKeyTap(0x08)
                 }
             }
         })
@@ -208,6 +272,13 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     override fun onHostName(name: String) {
         hostName = name
+    }
+
+    override fun onRemoteClipboard(text: String) = runOnUiThread {
+        if (text.isNotEmpty() && text != lastSyncedClipboard) {
+            lastSyncedClipboard = text
+            clipboard?.setPrimaryClip(ClipData.newPlainText("XyDesk", text))
+        }
     }
 
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
@@ -241,6 +312,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onDestroy() {
+        clipboard?.removePrimaryClipChangedListener(clipListener)
         store.record(
             SessionRecord(
                 host = intent.getStringExtra("host").orEmpty(),
