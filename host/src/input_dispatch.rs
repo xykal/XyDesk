@@ -59,6 +59,7 @@ pub async fn serve(session: Arc<Session>) {
                     " (legacy pointer fallback)"
                 }
             );
+            screen::request_keyframe();
             let _ = dc.send_text(meta_json().to_string()).await;
             spawn_feedback(dc.clone(), meta_json());
             dispatch(dc, pointer_dc).await;
@@ -234,14 +235,26 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
         tokio::select! {biased; _=closed_rx.changed()=>None, data=rx.recv()=>data}
     {
         if data.len() == 2 && data[0] == 0x0f {
+            if data[1] >= 60 {
+                video_policy::promote_level(51);
+            }
             if video_policy::request_fps(data[1]) {
                 screen::set_target_bitrate_bps(screen::target_bitrate_bps());
+                screen::request_keyframe();
                 let _ = dc.send_text(meta_json().to_string()).await;
             }
             continue;
         }
         if data.len() == 2 && data[0] == 0x0c {
             let mode = data[1];
+            if mode >= 1 {
+                let min_lv = if mode >= 2 || video_policy::fps() >= 60 {
+                    51
+                } else {
+                    40
+                };
+                video_policy::promote_level(min_lv);
+            }
             if video_policy::request(mode) {
                 // Terapkan target desktop setelah preferensi
                 // client benar-benar diketahui. Sebelumnya host
@@ -269,6 +282,7 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                     }
                 }
                 screen::set_target_bitrate_bps(screen::target_bitrate_bps());
+                screen::request_keyframe();
                 let _ = dc.send_text(meta_json().to_string()).await;
             }
             continue;
@@ -322,27 +336,31 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
             match ev {
                 InputEvent::DisplaySelect(i) => {
                     screen::select_display(i);
+                    screen::request_keyframe();
                     let _ = dc.send_text(meta_json().to_string()).await;
                     continue;
                 }
                 InputEvent::VideoQuality(q) => {
-                    // 0=auto 1=medium 2=high 3=ultra → map ke bitrate preset host
+                    // 0=auto 1=medium 2=high 3=ultra → map ke bitrate + resolusi preset host
                     let bps = match q {
                         1 => 8_000_000,
                         2 => 15_000_000,
                         3 => 25_000_000,
                         _ => screen::DEFAULT_TARGET_BPS,
                     };
-                    if q == 0 {
-                        screen::set_target_bitrate_bps(screen::DEFAULT_TARGET_BPS);
-                    } else {
-                        screen::set_target_bitrate_bps(bps);
+                    if q >= 2 {
+                        video_policy::promote_level(if q >= 3 { 51 } else { 40 });
+                        video_policy::request(1);
                     }
+                    xyadapt::sync(bps);
+                    screen::set_target_bitrate_bps(bps);
+                    screen::request_keyframe();
                     println!("[xydesk-host] quality dari client: {} -> {} bps", q, bps);
                     continue;
                 }
                 InputEvent::VideoBitrate(mbps) => {
                     if mbps == 0 {
+                        xyadapt::sync(screen::DEFAULT_TARGET_BPS);
                         screen::set_target_bitrate_bps(screen::DEFAULT_TARGET_BPS);
                         println!("[xydesk-host] bitrate auto dari client");
                     } else {

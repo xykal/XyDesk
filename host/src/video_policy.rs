@@ -39,6 +39,19 @@ pub fn configure(level: u8) {
     REQUESTED.store(0, Ordering::Relaxed);
     record(None);
 }
+pub fn promote_level(min_level: u8) {
+    let target = if min_level >= 51 {
+        51
+    } else if min_level >= 40 {
+        40
+    } else {
+        31
+    };
+    let cur = LEVEL.load(Ordering::Relaxed);
+    if target > cur {
+        LEVEL.store(target, Ordering::Relaxed);
+    }
+}
 pub fn request(mode: u8) -> bool {
     if mode > 2 || (crate::virtual_target::enabled() && mode != 0) {
         return false;

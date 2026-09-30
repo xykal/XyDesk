@@ -87,6 +87,15 @@ pub fn request(current_bps: u32, wanted_bps: u32) -> Option<u32> {
     gov.propose(now_ms(), wanted_bps)
 }
 
+/// Sinkronkan governor ke bitrate tetap (mis. saat client memilih preset manual
+/// Sedang/Tinggi/Ultra atau kembali ke default), agar [`step`] tidak menimpa
+/// pilihan manual dengan sisa tangga otomatis lama.
+pub fn sync(bps: u32) {
+    let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
+    let clamped = bps.clamp(1_000_000, 50_000_000);
+    *slot = Some((BitrateGovernor::new(clamped), clamped));
+}
+
 /// Dipanggil berkala (≈1 detik): lanjutkan kenaikan bertahap bila masih ada.
 pub fn step() -> Option<u32> {
     let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
@@ -132,5 +141,12 @@ mod tests {
         let mut g = BitrateGovernor::new(40_000_000);
         assert_eq!(g.propose(9_000, 90_000_000), Some(50_000_000));
         assert_eq!(g.propose(9_000, 0), Some(1_000_000));
+    }
+
+    #[test]
+    fn sync_menghapus_sisa_tangga_lama() {
+        let _ = super::request(4_000_000, 24_000_000);
+        super::sync(15_000_000);
+        assert_eq!(super::step(), None);
     }
 }
