@@ -41,6 +41,7 @@ class SessionActions(
     val display: (index: Int) -> Unit,
     val touchMode: (direct: Boolean) -> Unit = {},
     val audioMute: (muted: Boolean) -> Unit = {},
+    val clipboardSync: (on: Boolean) -> Unit = {},
     val sendQuickKey: (combo: QuickKey) -> Unit = {},
     val toggleStats: () -> Unit,
     val disconnect: () -> Unit,
@@ -64,6 +65,7 @@ fun SessionToolbar(actions: SessionActions) {
     var open by remember { mutableStateOf(false) }
     var keysOpen by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(0) }
+    var clip by remember { mutableStateOf(false) }
     var res by remember { mutableStateOf(0) }
     var monitor by remember { mutableStateOf(0) }
     var directTouch by remember { mutableStateOf(false) }
@@ -111,6 +113,10 @@ fun SessionToolbar(actions: SessionActions) {
                 Pill(if (muted) "Bisu" else "Audio", accent = !muted) {
                     muted = !muted
                     actions.audioMute(muted)
+                }
+                Pill(if (clip) "Clipboard on" else "Clipboard", accent = clip) {
+                    clip = !clip
+                    actions.clipboardSync(clip)
                 }
                 Pill(labels[quality], accent = true) {
                     quality = (quality + 1) % labels.size

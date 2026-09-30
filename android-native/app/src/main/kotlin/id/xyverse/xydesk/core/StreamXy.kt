@@ -15,7 +15,9 @@ object StreamXy {
     external fun text(s: String): ByteArray
     external fun clipboardSet(s: String): ByteArray
     external fun clipboardReq(): ByteArray
-    external fun decodeClipboard(packet: ByteArray): String?
+    external fun decodeClipboard(packet: ByteArray): ByteArray?
+
+    fun clipboardText(packet: ByteArray): String? = decodeClipboard(packet)?.toString(Charsets.UTF_8)
     external fun quality(preset: Int): ByteArray
     external fun bitrate(mbps: Int): ByteArray
     external fun display(index: Int): ByteArray

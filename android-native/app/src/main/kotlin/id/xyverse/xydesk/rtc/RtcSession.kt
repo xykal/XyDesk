@@ -69,6 +69,10 @@ class RtcSession(
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
     private var remoteAudioTrack: AudioTrack? = null
+
+    /** Sinkron clipboard opt-in: default mati agar isi clipboard HP tidak bocor ke PC tanpa sengaja. */
+    @Volatile var clipboardSync = false
+        set(v) { field = v; if (v && input?.state() == DataChannel.State.OPEN) send(StreamXy.clipboardReq()) }
     @Volatile private var audioMuted = false
     @Volatile private var welcomed = false
     @Volatile private var retriedPreWelcome = false
@@ -218,13 +222,13 @@ class RtcSession(
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
             override fun onStateChange() {
                 if (ch.state() == DataChannel.State.OPEN) {
-                    send(StreamXy.clipboardReq())
+                    if (clipboardSync) send(StreamXy.clipboardReq())
                 }
             }
             override fun onMessage(buffer: DataChannel.Buffer) {
                 val data = ByteArray(buffer.data.remaining())
                 buffer.data.get(data)
-                StreamXy.decodeClipboard(data)?.takeIf { it.isNotEmpty() }?.let(listener::onRemoteClipboard)
+                if (clipboardSync) StreamXy.clipboardText(data)?.takeIf { it.isNotEmpty() }?.let(listener::onRemoteClipboard)
             }
         })
         input = ch

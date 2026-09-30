@@ -36,8 +36,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var session: RtcSession
     private var clipboard: ClipboardManager? = null
     private var lastSyncedClipboard = ""
+    private var clipboardSync = false
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
-        if (!connected) return@OnPrimaryClipChangedListener
+        if (!connected || !clipboardSync) return@OnPrimaryClipChangedListener
         val text = clipboard?.primaryClip?.getItemAt(0)?.coerceToText(this)?.toString().orEmpty()
         if (text.isNotEmpty() && text != lastSyncedClipboard) {
             lastSyncedClipboard = text
@@ -209,6 +210,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     display = { session.send(StreamXy.display(it)) },
                     touchMode = { directTouch = it },
                     audioMute = { session.setAudioMuted(it) },
+                    clipboardSync = { on -> clipboardSync = on; session.clipboardSync = on },
                     sendQuickKey = { combo ->
                         when (combo) {
                             QuickKey.ESC -> sendKeyTap(0x1B)

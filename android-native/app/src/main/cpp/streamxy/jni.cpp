@@ -101,7 +101,9 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_clipboardReq(J
   return wrap(env, b, sx_input_clipboard_req(b));
 }
 
-JNIEXPORT jstring JNICALL Java_id_xyverse_xydesk_core_StreamXy_decodeClipboard(JNIEnv* env, jclass, jbyteArray packet) {
+// Mengembalikan byte UTF-8 mentah; decode di Kotlin. NewStringUTF menuntut
+// Modified UTF-8 dan ART abort pada karakter 4-byte (emoji) dari clipboard PC.
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_decodeClipboard(JNIEnv* env, jclass, jbyteArray packet) {
   if (!packet) return nullptr;
   const jsize len = env->GetArrayLength(packet);
   if (len <= 1) return nullptr;
@@ -110,8 +112,9 @@ JNIEXPORT jstring JNICALL Java_id_xyverse_xydesk_core_StreamXy_decodeClipboard(J
   size_t out_len = 0;
   const char* ptr = sx_clipboard_decode(buf.data(), buf.size(), &out_len);
   if (!ptr || out_len == 0) return nullptr;
-  std::string text(ptr, out_len);
-  return env->NewStringUTF(text.c_str());
+  jbyteArray out = env->NewByteArray(static_cast<jsize>(out_len));
+  if (out) env->SetByteArrayRegion(out, 0, static_cast<jsize>(out_len), reinterpret_cast<const jbyte*>(ptr));
+  return out;
 }
 
 JNIEXPORT jlong JNICALL Java_id_xyverse_xydesk_core_StreamXy_statsNew(JNIEnv*, jclass, jint cap) {
