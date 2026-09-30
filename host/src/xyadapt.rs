@@ -68,6 +68,36 @@ impl BitrateGovernor {
     }
 }
 
+static GOVERNOR: std::sync::Mutex<Option<(BitrateGovernor, u32)>> =
+    std::sync::Mutex::new(None);
+
+fn now_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// Permintaan bitrate dari client (bps). Mengembalikan nilai yang harus
+/// diterapkan sekarang; sisa kenaikan dilanjutkan lewat [`step`].
+pub fn request(current_bps: u32, wanted_bps: u32) -> Option<u32> {
+    let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
+    let (gov, wanted) =
+        slot.get_or_insert_with(|| (BitrateGovernor::new(current_bps), current_bps));
+    *wanted = wanted_bps;
+    gov.propose(now_ms(), wanted_bps)
+}
+
+/// Dipanggil berkala (≈1 detik): lanjutkan kenaikan bertahap bila masih ada.
+pub fn step() -> Option<u32> {
+    let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
+    let (gov, wanted) = slot.as_mut()?;
+    if !gov.pending(*wanted) {
+        return None;
+    }
+    gov.propose(now_ms(), *wanted)
+}
+
 #[cfg(test)]
 mod tests {
     use super::BitrateGovernor;
@@ -104,33 +134,4 @@ mod tests {
         assert_eq!(g.propose(9_000, 90_000_000), Some(50_000_000));
         assert_eq!(g.propose(9_000, 0), Some(1_000_000));
     }
-}
-
-static GOVERNOR: std::sync::Mutex<Option<(BitrateGovernor, u32)>> = std::sync::Mutex::new(None);
-
-fn now_ms() -> u64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
-}
-
-/// Permintaan bitrate dari client (bps). Mengembalikan nilai yang harus
-/// diterapkan sekarang; sisa kenaikan dilanjutkan lewat [`step`].
-pub fn request(current_bps: u32, wanted_bps: u32) -> Option<u32> {
-    let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
-    let (gov, wanted) =
-        slot.get_or_insert_with(|| (BitrateGovernor::new(current_bps), current_bps));
-    *wanted = wanted_bps;
-    gov.propose(now_ms(), wanted_bps)
-}
-
-/// Dipanggil berkala (≈1 detik): lanjutkan kenaikan bertahap bila masih ada.
-pub fn step() -> Option<u32> {
-    let mut slot = GOVERNOR.lock().unwrap_or_else(|e| e.into_inner());
-    let (gov, wanted) = slot.as_mut()?;
-    if !gov.pending(*wanted) {
-        return None;
-    }
-    gov.propose(now_ms(), *wanted)
 }
