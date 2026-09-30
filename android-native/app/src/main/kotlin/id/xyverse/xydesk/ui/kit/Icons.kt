@@ -18,7 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Ikon garis milik XyDesk sendiri, digambar di Canvas (tanpa set ikon sistem). */
-enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH }
+enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH, NEWS, GRID, LIST, STAR, EDIT, LINK }
 
 @Composable
 fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, size: Dp = 22.dp) {
@@ -93,6 +93,40 @@ fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, s
             Icon.SEARCH -> {
                 drawCircle(tint, w * 0.26f, Offset(w * 0.42f, w * 0.42f), style = s)
                 line(0.62f, 0.62f, 0.86f, 0.86f, tint, s)
+            }
+            Icon.NEWS -> {
+                rr(0.1f, 0.14f, 0.8f, 0.72f, 0.08f, tint, s)
+                rr(0.2f, 0.26f, 0.24f, 0.22f, 0.03f, tint, s)
+                line(0.54f, 0.3f, 0.78f, 0.3f, tint, s)
+                line(0.54f, 0.44f, 0.78f, 0.44f, tint, s)
+                line(0.2f, 0.64f, 0.78f, 0.64f, tint, s)
+            }
+            Icon.GRID -> for (r in 0..1) for (c in 0..1) rr(0.12f + c * 0.42f, 0.12f + r * 0.42f, 0.34f, 0.34f, 0.06f, tint, s)
+            Icon.LIST -> for (i in 0..2) {
+                val y = 0.22f + i * 0.28f
+                dot(0.16f, y, 0.045f, tint)
+                line(0.32f, y, 0.86f, y, tint, s)
+            }
+            Icon.STAR -> {
+                val pts = (0 until 10).map { i ->
+                    val a = -Math.PI / 2 + i * Math.PI / 5
+                    val r = if (i % 2 == 0) 0.42f else 0.19f
+                    Offset(w * (0.5f + cos(a).toFloat() * r), w * (0.52f + sin(a).toFloat() * r))
+                }
+                val path = androidx.compose.ui.graphics.Path().apply { moveTo(pts[0].x, pts[0].y); pts.drop(1).forEach { lineTo(it.x, it.y) }; close() }
+                drawPath(path, tint, style = s)
+            }
+            Icon.EDIT -> {
+                line(0.2f, 0.8f, 0.72f, 0.28f, tint, s)
+                line(0.72f, 0.28f, 0.82f, 0.38f, tint, s)
+                line(0.82f, 0.38f, 0.3f, 0.9f, tint, s)
+                line(0.3f, 0.9f, 0.18f, 0.92f, tint, s)
+                line(0.18f, 0.92f, 0.2f, 0.8f, tint, s)
+            }
+            Icon.LINK -> {
+                drawArc(tint, 90f, 180f, false, Offset(w * 0.1f, w * 0.32f), Size(w * 0.36f, w * 0.36f), style = s)
+                drawArc(tint, -90f, 180f, false, Offset(w * 0.54f, w * 0.32f), Size(w * 0.36f, w * 0.36f), style = s)
+                line(0.3f, 0.5f, 0.7f, 0.5f, tint, s)
             }
         }
     }

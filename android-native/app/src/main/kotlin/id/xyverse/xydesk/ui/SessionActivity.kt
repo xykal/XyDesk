@@ -88,7 +88,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         clipboard?.addPrimaryClipChangedListener(clipListener)
         b = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(b.root)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (store.keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         hideSystemBars()
 
         showStats = store.showStats
@@ -243,7 +243,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED) && outcome == "berjalan") {
             outcome = phase.name.lowercase()
-            if (everConnected && ReconnectPolicy.retryable(outcome)) scheduleReconnect()
+            if (everConnected && store.autoReconnect && ReconnectPolicy.retryable(outcome)) scheduleReconnect()
         }
         record()
     }

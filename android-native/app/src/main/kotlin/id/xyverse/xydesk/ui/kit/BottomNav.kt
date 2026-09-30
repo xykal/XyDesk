@@ -19,6 +19,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -31,18 +33,18 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class Tab(val label: String) { HOME("Beranda"), DEVICES("Perangkat"), HISTORY("Riwayat"), ACCOUNT("Akun") }
+enum class Tab(val label: String) { HOME("Beranda"), DEVICES("Perangkat"), HISTORY("Riwayat"), NEWS("Berita"), ACCOUNT("Akun") }
 
 /** Bar bawah mengambang berbentuk pil; ikon garis digambar sendiri. */
 @Composable
-fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
+fun BottomNav(current: Tab, badge: Tab? = null, onSelect: (Tab) -> Unit) {
     Row(
         Modifier
             .padding(horizontal = 24.dp, vertical = 12.dp)
             .shadow(20.dp, RoundedCornerShape(Xy.pill), ambientColor = Xy.shadow, spotColor = Xy.shadow)
             .clip(RoundedCornerShape(Xy.pill))
             .background(Color.White)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 6.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -50,7 +52,7 @@ fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
             val active = t == current
             val bg by animateColorAsState(if (active) Xy.accent.copy(alpha = 0.12f) else Color.Transparent, label = "bg")
             val fg by animateColorAsState(if (active) Xy.accent else Xy.textLow, label = "fg")
-            val w by animateDpAsState(if (active) 112.dp else 48.dp, label = "w")
+            val w by animateDpAsState(if (active) 104.dp else 44.dp, label = "w")
             Row(
                 Modifier
                     .width(w)
@@ -61,7 +63,10 @@ fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Canvas(Modifier.size(20.dp)) { icon(t, fg) }
+                Box {
+                    Canvas(Modifier.size(20.dp)) { icon(t, fg) }
+                    if (t == badge && !active) Box(Modifier.align(Alignment.TopEnd).size(7.dp).background(Xy.danger, CircleShape))
+                }
                 if (active) {
                     Spacer(Modifier.width(8.dp))
                     XyText(t.label, Xy.label.copy(color = fg, letterSpacing = 0.2.sp))
@@ -87,6 +92,12 @@ private fun DrawScope.icon(t: Tab, c: Color) {
             drawCircle(c, w * 0.4f, Offset(w / 2, w / 2), style = s)
             drawLine(c, Offset(w / 2, w * 0.28f), Offset(w / 2, w / 2), s.width)
             drawLine(c, Offset(w / 2, w / 2), Offset(w * 0.68f, w * 0.62f), s.width)
+        }
+        Tab.NEWS -> {
+            drawRoundRect(c, Offset(w * 0.1f, w * 0.14f), Size(w * 0.8f, w * 0.72f), CornerRadius(w * 0.08f), style = s)
+            drawLine(c, Offset(w * 0.28f, w * 0.38f), Offset(w * 0.72f, w * 0.38f), s.width)
+            drawLine(c, Offset(w * 0.28f, w * 0.54f), Offset(w * 0.72f, w * 0.54f), s.width)
+            drawLine(c, Offset(w * 0.28f, w * 0.7f), Offset(w * 0.56f, w * 0.7f), s.width)
         }
         Tab.ACCOUNT -> {
             drawCircle(c, w * 0.18f, Offset(w / 2, w * 0.32f), style = s)

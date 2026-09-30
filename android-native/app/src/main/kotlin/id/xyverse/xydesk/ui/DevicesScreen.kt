@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package id.xyverse.xydesk.ui
 
 import android.graphics.BitmapFactory
@@ -5,7 +7,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -46,17 +51,29 @@ import java.util.Date
 
 /** Kartu per host: cuplikan layar terakhir, nama, spesifikasi ringkas; ketuk untuk detail. */
 @Composable
-fun DevicesSection(devices: List<SessionRecord>, compact: Boolean = false, onPick: (host: String) -> Unit) {
+fun DevicesSection(devices: List<SessionRecord>, compact: Boolean = false, onLong: (host: String) -> Unit = {}, onPick: (host: String) -> Unit) {
     if (devices.isEmpty()) return
     XyText("PERANGKAT TERAKHIR", Xy.label)
     Spacer(Modifier.height(8.dp))
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        devices.forEach { d -> if (compact) DeviceRow(d) { onPick(d.host) } else DeviceCard(d) { onPick(d.host) } }
+        devices.forEach { d -> if (compact) DeviceRow(d, { onLong(d.host) }) { onPick(d.host) } else DeviceCard(d, { onLong(d.host) }) { onPick(d.host) } }
     }
+    if (!compact) { Spacer(Modifier.height(10.dp)); XyText("Tahan kartu untuk beri nama, favorit, atau lupakan host.", Xy.caption.copy(color = Xy.textLow)) }
 }
 
+/** Nama tampilan: alias dari pengguna menang atas nama host. */
 @Composable
-private fun DeviceCard(d: SessionRecord, onConnect: () -> Unit) {
+fun hostTitle(d: SessionRecord): String {
+    val alias = LocalHostMeta.current.alias(d.host)
+    return alias.ifEmpty { title(d) }
+}
+
+data class HostMeta(val alias: (String) -> String = { "" }, val favorite: (String) -> Boolean = { false })
+
+val LocalHostMeta = compositionLocalOf { HostMeta() }
+
+@Composable
+private fun DeviceCard(d: SessionRecord, onLong: () -> Unit, onConnect: () -> Unit) {
     var open by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val file = Previews.file(ctx, d.host)
@@ -64,7 +81,7 @@ private fun DeviceCard(d: SessionRecord, onConnect: () -> Unit) {
     val preview = remember(stamp) { if (stamp > 0) BitmapFactory.decodeFile(file.path)?.asImageBitmap() else null }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusL)).background(Xy.overlay)
-            .clickable(remember { MutableInteractionSource() }, null) { open = !open },
+            .combinedClickable(remember { MutableInteractionSource() }, null, onLongClick = onLong) { open = !open },
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).background(Color(0xFF1B1B22)), contentAlignment = Alignment.Center) {
             if (preview != null) Image(preview, null, Modifier.fillMaxWidth().aspectRatio(16f / 9f), contentScale = ContentScale.Crop)
@@ -77,9 +94,10 @@ private fun DeviceCard(d: SessionRecord, onConnect: () -> Unit) {
                 Badge(pretty(d.host))
                 Badge(relative(d.startedAt))
             }
+            if (LocalHostMeta.current.favorite(d.host)) Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { XyIcon(Icon.STAR, tint = Color(0xFFFFC53D), size = 18.dp) }
         }
         Column(Modifier.padding(14.dp)) {
-            XyText(title(d), Xy.title)
+            XyText(hostTitle(d), Xy.title)
             XyText(subtitle(d.specs), Xy.caption)
             Spacer(Modifier.height(10.dp))
             AnimatedVisibility(open) { Column { SpecTable(d.specs); Spacer(Modifier.height(12.dp)) } }
@@ -96,10 +114,10 @@ private fun DeviceCard(d: SessionRecord, onConnect: () -> Unit) {
 }
 
 @Composable
-private fun DeviceRow(d: SessionRecord, onPick: () -> Unit) {
+private fun DeviceRow(d: SessionRecord, onLong: () -> Unit, onPick: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusM)).background(Xy.overlay)
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onPick).padding(horizontal = 14.dp, vertical = 12.dp),
+            .combinedClickable(remember { MutableInteractionSource() }, null, onLongClick = onLong, onClick = onPick).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(38.dp).clip(CircleShape).background(Xy.accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
@@ -107,9 +125,10 @@ private fun DeviceRow(d: SessionRecord, onPick: () -> Unit) {
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            XyText(title(d), Xy.body)
+            XyText(hostTitle(d), Xy.body)
             XyText(pretty(d.host) + " · " + relative(d.startedAt), Xy.caption)
         }
+        if (LocalHostMeta.current.favorite(d.host)) { XyIcon(Icon.STAR, tint = Color(0xFFFFC53D), size = 16.dp); Spacer(Modifier.width(8.dp)) }
         XyIcon(Icon.CHEVRON, tint = Xy.textLow, size = 18.dp)
     }
 }
@@ -153,7 +172,7 @@ fun HistorySection(history: List<SessionRecord>, onPick: (host: String) -> Unit 
                 Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    XyText(title(h), Xy.body)
+                    XyText(hostTitle(h), Xy.body)
                     XyText(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(h.startedAt)) + (if (ok) "" else " · " + outcomeLabel(h.outcome)), Xy.caption)
                 }
                 XyText(duration(h.durationSec), Xy.caption.copy(color = Xy.textLow))
@@ -162,19 +181,19 @@ fun HistorySection(history: List<SessionRecord>, onPick: (host: String) -> Unit 
     }
 }
 
-private fun title(d: SessionRecord) = d.name.ifEmpty { d.specs.hostname }.ifEmpty { "Host ${pretty(d.host)}" }
+internal fun title(d: SessionRecord) = d.name.ifEmpty { d.specs.hostname }.ifEmpty { "Host ${pretty(d.host)}" }
 
 private fun subtitle(s: HostSpecs) = listOf(s.cpu, s.gpu).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { s.os.ifEmpty { "Spesifikasi belum terbaca" } }
 
-private fun outcomeLabel(o: String) = when (o) {
+internal fun outcomeLabel(o: String) = when (o) {
     "rejected" -> "password salah"; "batal" -> "dibatalkan"; "retry" -> "coba ulang"; "peer_offline" -> "host offline"; "busy" -> "host sibuk"; "error" -> "gagal"; else -> o
 }
 
-private fun pretty(host: String) = host.filter(Char::isDigit).chunked(3).joinToString(" ")
+internal fun pretty(host: String) = host.filter(Char::isDigit).chunked(3).joinToString(" ")
 
-private fun duration(sec: Long): String = if (sec < 60) "${sec}d" else "${sec / 60}m ${sec % 60}d"
+internal fun duration(sec: Long): String = if (sec < 60) "${sec}d" else "${sec / 60}m ${sec % 60}d"
 
-private fun relative(at: Long): String {
+internal fun relative(at: Long): String {
     val m = (System.currentTimeMillis() - at) / 60000
     return when {
         m < 1 -> "baru saja"
