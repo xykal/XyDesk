@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.xyverse.xydesk.core.Lang
+import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Social
@@ -65,9 +66,10 @@ class Settings(
     val historyCount: Int = 0,
     val onClearHistory: () -> Unit = {},
     val onOpenAppSettings: () -> Unit = {},
+    val store: Store? = null,
 )
 
-private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS }
+private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS, SESSION }
 
 private data class SocialLink(val kind: Social, val name: String, val url: String, val color: Long)
 
@@ -95,6 +97,7 @@ fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings
             Sub.PROFILE -> SubPage("Profil", { sub = Sub.ROOT }) { ProfileBody(email, settings) }
             Sub.SECURITY -> SubPage("Keamanan", { sub = Sub.ROOT }) { SecurityBody(settings, onLogout) }
             Sub.PERMISSIONS -> SubPage("Izin", { sub = Sub.ROOT }) { PermissionsBody(settings) }
+            Sub.SESSION -> SubPage("Sesi", { sub = Sub.ROOT }) { settings.store?.let { SessionDefaults(it) } }
         }
     }
 }
@@ -131,6 +134,7 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
                 Segmented(listOf("ID" to Lang.ID, "EN" to Lang.EN), settings.lang, settings.onLang)
             }
             Box(Modifier.padding(horizontal = 6.dp)) { XyToggle("Getaran halus", "Umpan balik saat geser dan tekan.", settings.haptics, settings.onHaptics) }
+            XyRow(Icon.CONTROLS, "Sesi & trackpad", "Kualitas, fps, kecepatan kursor, scroll.", onClick = { go(Sub.SESSION) })
             XyRow(Icon.PHONE, "Putar intro lagi", "Splash dan panduan awal.", onClick = settings.onReplayIntro)
         }
         Spacer(Modifier.height(16.dp))

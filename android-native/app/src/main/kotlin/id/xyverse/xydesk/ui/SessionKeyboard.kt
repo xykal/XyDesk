@@ -1,0 +1,72 @@
+package id.xyverse.xydesk.ui
+
+import android.content.Context
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.KeyEvent
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import id.xyverse.xydesk.core.KeyMap
+import id.xyverse.xydesk.core.StreamXy
+
+/** Keyboard layar (EditText tak terlihat menampung IME), tombol cepat, dan keyboard fisik. */
+class SessionKeyboard(private val context: Context, private val sink: EditText, private val send: (ByteArray) -> Unit) {
+    init {
+        sink.setOnKeyListener { _, code, ev ->
+            if (ev.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+            val vk = when (code) {
+                KeyEvent.KEYCODE_DEL -> 0x08
+                KeyEvent.KEYCODE_ENTER -> 0x0D
+                KeyEvent.KEYCODE_TAB -> 0x09
+                KeyEvent.KEYCODE_ESCAPE -> 0x1B
+                else -> return@setOnKeyListener false
+            }
+            tap(vk)
+            true
+        }
+        sink.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun afterTextChanged(s: Editable?) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (count > before && s != null) send(StreamXy.text(s.substring(start + before, start + count)))
+                else if (before > count) repeat(before - count) { tap(0x08) }
+            }
+        })
+    }
+
+    fun toggle() {
+        sink.setText("")
+        sink.requestFocus()
+        context.getSystemService(InputMethodManager::class.java).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+    }
+
+    fun quick(combo: QuickKey) {
+        when (combo) {
+            QuickKey.ESC -> tap(0x1B)
+            QuickKey.TAB -> tap(0x09)
+            QuickKey.WIN -> tap(0x5B)
+            QuickKey.COPY -> chord(0xA2, 0x43)
+            QuickKey.PASTE -> chord(0xA2, 0x56)
+            QuickKey.CAD -> chord(0xA2, 0xA4, 0x2E)
+        }
+    }
+
+    /** Keyboard fisik/Bluetooth: VK langsung (tekan & lepas, termasuk modifier). */
+    fun physical(event: KeyEvent): Boolean {
+        val vk = KeyMap.vk(event.keyCode) ?: return false
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0 || vk !in 0xA0..0xA5) send(StreamXy.key(vk, true))
+            KeyEvent.ACTION_UP -> send(StreamXy.key(vk, false))
+        }
+        return true
+    }
+
+    private fun tap(vk: Int) {
+        send(StreamXy.key(vk, true)); send(StreamXy.key(vk, false))
+    }
+
+    private fun chord(vararg vks: Int) {
+        vks.forEach { send(StreamXy.key(it, true)) }
+        vks.reversed().forEach { send(StreamXy.key(it, false)) }
+    }
+}

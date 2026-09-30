@@ -144,9 +144,10 @@ fun HistorySection(history: List<SessionRecord>) {
     Spacer(Modifier.height(8.dp))
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         history.take(30).forEach { h ->
-            val ok = h.outcome == "ok" || h.outcome == "putus"
+            val ok = h.outcome == "ok" || h.outcome == "putus" || h.outcome == "berjalan"
+            val dot = when (h.outcome) { "berjalan" -> Xy.accent; "ok", "putus" -> Xy.success; else -> Xy.danger }
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(8.dp).clip(CircleShape).background(if (ok) Xy.success else Xy.danger))
+                Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     XyText(title(h), Xy.body)

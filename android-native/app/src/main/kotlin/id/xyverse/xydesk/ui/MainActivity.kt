@@ -15,6 +15,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -70,7 +71,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         var refresh by remember { mutableStateOf(0) }
                         LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
-                        val history = remember(refresh) { store.history }
+                        val history by store.observeHistory().collectAsState()
                         HomeShell(
                             email = store.email.orEmpty(),
                             lastHost = store.lastHost,
@@ -87,6 +88,7 @@ class MainActivity : ComponentActivity() {
                                 appVersion = BuildConfig.VERSION_NAME,
                                 historyCount = history.size,
                                 onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); refresh++ },
+                                store = store,
                                 onOpenAppSettings = {
                                     startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                                 },

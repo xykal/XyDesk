@@ -51,6 +51,7 @@ jobs:
         run: |
           set -eu
           mkdir -p "$RUNNER_TEMP/apk"
+          gradle --no-daemon :xyadapt:test
           if [ -n "$ANDROID_KEYSTORE_FILE" ]; then
             gradle --no-daemon assembleRelease
             src=app/build/outputs/apk/release; kind="release (signed, minify)"
