@@ -72,6 +72,7 @@ class SessionActivity : AppCompatActivity(), RtcListener {
             listener = this,
             lowLatencySurface = if (lowLatency) ({ b.raw.holder.surface.takeIf { it.isValid } }) else null,
             onNativeDecode = { ms -> decodeRing.push(ms); nativeFrames++ },
+            onNativeSize = { w, h -> runOnUiThread { fitSurface(w, h) } },
         )
         if (lowLatency) {
             b.raw.visibility = View.VISIBLE
@@ -82,6 +83,22 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         val touchTarget: View = if (lowLatency) b.raw else b.video
         touchTarget.setOnTouchListener { _, e -> onTouch(e) }
         session.start()
+    }
+
+    /** Letterbox: SurfaceView mengikuti rasio frame host (mis. 720p), bukan layar HP. */
+    private fun fitSurface(w: Int, h: Int) {
+        val parent = b.raw.parent as View
+        val pw = parent.width
+        val ph = parent.height
+        if (pw == 0 || ph == 0) return
+        val scale = minOf(pw.toFloat() / w, ph.toFloat() / h)
+        val lp = b.raw.layoutParams as android.widget.FrameLayout.LayoutParams
+        lp.width = (w * scale).toInt()
+        lp.height = (h * scale).toInt()
+        lp.gravity = android.view.Gravity.CENTER
+        b.raw.layoutParams = lp
+        b.raw.holder.setFixedSize(w, h)
+        b.status.text = "${w}x$h"
     }
 
     private fun onTouch(e: MotionEvent): Boolean {

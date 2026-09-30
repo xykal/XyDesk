@@ -48,6 +48,7 @@ class RtcSession(
     private val listener: RtcListener,
     lowLatencySurface: (() -> android.view.Surface?)? = null,
     onNativeDecode: (Float) -> Unit = {},
+    onNativeSize: (Int, Int) -> Unit = { _, _ -> },
 ) : SignalingListener {
     val egl: EglBase = EglBase.create()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -65,7 +66,7 @@ class RtcSession(
             PeerConnectionFactory.InitializationOptions.builder(context).createInitializationOptions(),
         )
         val decoderFactory = if (lowLatencySurface != null) {
-            LowLatencyDecoderFactory(egl.eglBaseContext, lowLatencySurface, onNativeDecode)
+            LowLatencyDecoderFactory(egl.eglBaseContext, lowLatencySurface, onNativeDecode, onNativeSize)
         } else {
             DefaultVideoDecoderFactory(egl.eglBaseContext)
         }

@@ -27,11 +27,12 @@ class LowLatencyDecoderFactory(
     egl: EglBase.Context,
     private val surface: () -> Surface?,
     private val onFrame: (decodeMs: Float) -> Unit,
+    private val onSize: (w: Int, h: Int) -> Unit,
 ) : VideoDecoderFactory {
     private val fallback = DefaultVideoDecoderFactory(egl)
 
     override fun createDecoder(info: VideoCodecInfo): VideoDecoder? =
-        if (info.name.equals("H264", true)) LowLatencyH264Decoder(surface, onFrame) else fallback.createDecoder(info)
+        if (info.name.equals("H264", true)) LowLatencyH264Decoder(surface, onFrame, onSize) else fallback.createDecoder(info)
 
     override fun getSupportedCodecs(): Array<VideoCodecInfo> = fallback.supportedCodecs
 }
@@ -39,6 +40,7 @@ class LowLatencyDecoderFactory(
 class LowLatencyH264Decoder(
     private val surfaceProvider: () -> Surface?,
     private val onFrame: (decodeMs: Float) -> Unit,
+    private val onSize: (w: Int, h: Int) -> Unit,
 ) : VideoDecoder {
     private var codec: MediaCodec? = null
     private val inflight = HashMap<Long, Long>()
@@ -69,7 +71,12 @@ class LowLatencyH264Decoder(
                     }
 
                     override fun onError(c: MediaCodec, e: MediaCodec.CodecException) { Log.e(TAG, "codec: ${e.diagnosticInfo}") }
-                    override fun onOutputFormatChanged(c: MediaCodec, f: MediaFormat) { Log.i(TAG, "format $f") }
+                    override fun onOutputFormatChanged(c: MediaCodec, f: MediaFormat) {
+                        Log.i(TAG, "format $f")
+                        val w = crop(f, "crop-right", "crop-left", MediaFormat.KEY_WIDTH)
+                        val h = crop(f, "crop-bottom", "crop-top", MediaFormat.KEY_HEIGHT)
+                        if (w > 0 && h > 0) onSize(w, h)
+                    }
                 })
                 configure(format, surface, null, 0)
                 start()
@@ -106,6 +113,9 @@ class LowLatencyH264Decoder(
     }
 
     override fun getImplementationName() = "XyDesk LowLatency MediaCodec"
+
+    private fun crop(f: MediaFormat, hi: String, lo: String, full: String): Int =
+        if (f.containsKey(hi) && f.containsKey(lo)) f.getInteger(hi) - f.getInteger(lo) + 1 else f.getInteger(full)
 
     private fun pickDecoder(): String? {
         val list = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos
