@@ -1,6 +1,8 @@
 package id.xyverse.xydesk.ui
 
 import android.media.MediaPlayer
+import android.media.audiofx.LoudnessEnhancer
+import android.media.audiofx.PresetReverb
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -40,23 +42,47 @@ import kotlinx.coroutines.launch
 private val ease = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)
 
 /**
+ * VO "XyDesk": diperkeras +12 dB (LoudnessEnhancer) dan diberi ruang gema aula
+ * besar lewat PresetReverb pada sesi audio pemutar — reverb, bukan echo/delay.
+ */
+private class IntroVoice(ctx: android.content.Context) {
+    private val player = MediaPlayer.create(ctx, R.raw.xydesk_vo)
+    private val loud = runCatching { LoudnessEnhancer(player.audioSessionId).apply { setTargetGain(1200); enabled = true } }.getOrNull()
+    private val reverb = runCatching {
+        PresetReverb(0, player.audioSessionId).apply { preset = PresetReverb.PRESET_LARGEHALL; enabled = true }
+    }.getOrNull()
+
+    fun start() = runCatching {
+        reverb?.let { player.attachAuxEffect(it.id); player.setAuxEffectSendLevel(1f) }
+        player.setVolume(1f, 1f)
+        player.start()
+    }
+
+    fun release() {
+        runCatching { player.release() }
+        runCatching { loud?.release() }
+        runCatching { reverb?.release() }
+    }
+}
+
+/**
  * Intro: garis "X" tergambar dari dua goresan, denyut cahaya ungu dari pusat,
  * wordmark muncul mengembang, lalu VO "XyDesk". Ketuk untuk melewati.
  */
 @Composable
-fun SplashScreen(onDone: () -> Unit) {
+fun SplashScreen(playVoice: Boolean, onDone: () -> Unit) {
     val ctx = LocalContext.current
     val stroke = remember { Animatable(0f) }
     val pulse = remember { Animatable(0f) }
     val word = remember { Animatable(0f) }
     val exit = remember { Animatable(0f) }
-    val player = remember { MediaPlayer.create(ctx, R.raw.xydesk_vo) }
-    DisposableEffect(Unit) { onDispose { runCatching { player.release() } } }
+    val voice = remember { if (playVoice) IntroVoice(ctx) else null }
+    DisposableEffect(Unit) { onDispose { voice?.release() } }
 
     LaunchedEffect(Unit) {
         launch { stroke.animateTo(1f, tween(900, easing = ease)) }
         delay(500)
-        runCatching { player.start() }
+        voice?.start()
         launch { pulse.animateTo(1f, tween(1400, easing = ease)) }
         delay(250)
         launch { word.animateTo(1f, tween(800, easing = ease)) }

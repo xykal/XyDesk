@@ -43,7 +43,7 @@ class MainActivity : ComponentActivity() {
                     label = "root",
                 ) { (st, loggedIn) ->
                     if (st == Stage.SPLASH) {
-                        SplashScreen { stage = if (store.onboarded) Stage.AUTH else Stage.ONBOARDING }
+                        SplashScreen(playVoice = !store.onboarded) { stage = if (store.onboarded) Stage.AUTH else Stage.ONBOARDING }
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
