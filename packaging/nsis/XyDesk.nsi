@@ -119,6 +119,20 @@ Section "XyDesk"
   IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
     CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk" "$INSTDIR\drivers\audio\install-audio.bat" "" "$INSTDIR\xydesk.ico"
 
+  # Driver dipasang saat instalasi, bukan ditunda ke pintasan: installer
+  # berjalan sebagai user, jadi satu prompt UAC dipakai untuk kedua driver
+  # lewat cmd.exe elevated. Gagal/ditolak tidak membatalkan instalasi.
+  IfFileExists "$INSTDIR\drivers\IddSampleDriver\install.bat" 0 skip_drivers
+    DetailPrint "Installing virtual display and audio drivers (UAC prompt)..."
+    StrCpy $0 '/C ""$INSTDIR\drivers\IddSampleDriver\install.bat" /silent'
+    IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
+      StrCpy $0 '$0 & "$INSTDIR\drivers\audio\install-audio.bat"'
+    StrCpy $0 '$0"'
+    ExecShellWait "runas" "$SYSDIR\cmd.exe" $0 SW_HIDE
+    IfErrors 0 +2
+      DetailPrint "Driver install skipped or failed; use Start Menu shortcuts later."
+  skip_drivers:
+
   WriteUninstaller "$INSTDIR\Uninstall-XyDesk.exe"
   DetailPrint "Done. XyDesk ${Version} is installed in $INSTDIR."
 SectionEnd
