@@ -62,7 +62,7 @@ enum class QuickKey(val label: String) {
  */
 @Composable
 fun SessionToolbar(actions: SessionActions) {
-    var open by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf(true) }
     var keysOpen by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(0) }
     var clip by remember { mutableStateOf(false) }
@@ -136,14 +136,18 @@ fun SessionToolbar(actions: SessionActions) {
             }
         }
         if (!open) {
-            Box(
+            Row(
                 Modifier
-                    .width(56.dp)
-                    .height(22.dp)
-                    .clickable(remember { MutableInteractionSource() }, null) { open = true },
-                contentAlignment = Alignment.Center,
+                    .clip(RoundedCornerShape(Xy.pill))
+                    .background(Color(0xE6FFFFFF))
+                    .border(1.dp, Xy.line, RoundedCornerShape(Xy.pill))
+                    .clickable(remember { MutableInteractionSource() }, null) { open = true }
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Color(0x99FFFFFF)))
+                Box(Modifier.width(18.dp).height(3.dp).clip(CircleShape).background(Xy.accent))
+                XyText("Kontrol", Xy.caption.copy(color = Xy.textHi))
             }
         }
     }

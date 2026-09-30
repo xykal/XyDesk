@@ -12,9 +12,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
-import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,9 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,65 +73,86 @@ private class IntroVoice(ctx: android.content.Context) {
 }
 
 /**
- * Intro minimal: huruf "XyDesk" muncul satu per satu dari bawah dengan blur
- * halus, garis tipis membentang di bawahnya, satu titik ungu meluncur di garis
- * itu, tagline menyusul. Putih bersih, tanpa ornamen. Ketuk untuk melewati.
+ * Intro brand: logo X kaca-ungu jatuh ke posisi dengan spring (skala 1.7→1,
+ * rotasi -14°→0), aura ungu memuai di belakangnya, kilau specular menyapu
+ * permukaan logo, lalu wordmark "XyDesk" meluncur keluar dari balik logo.
+ * Keluar: seluruh komposisi terangkat dan memudar. Ketuk untuk melewati.
  */
 @Composable
 fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit) {
     val ctx = LocalContext.current
-    val letters = "XyDesk".toList()
-    val reveal = remember { letters.map { Animatable(0f) } }
-    val line = remember { Animatable(0f) }
-    val dot = remember { Animatable(0f) }
-    val tagline = remember { Animatable(0f) }
+    val drop = remember { Animatable(0f) }
+    val aura = remember { Animatable(0f) }
+    val sheen = remember { Animatable(-1f) }
+    val word = remember { Animatable(0f) }
     val exit = remember { Animatable(0f) }
     val voice = remember { if (playVoice) IntroVoice(ctx) else null }
     DisposableEffect(Unit) { onDispose { voice?.release() } }
 
     LaunchedEffect(Unit) {
-        delay(150)
+        delay(120)
         voice?.start()
-        reveal.forEachIndexed { i, a -> launch { delay(i * 70L); a.animateTo(1f, tween(650, easing = ease)) } }
-        delay(520)
-        launch { line.animateTo(1f, tween(700, easing = ease)) }
-        delay(250)
-        launch { dot.animateTo(1f, tween(900, easing = ease)) }
-        launch { tagline.animateTo(1f, tween(600, easing = ease)) }
-        delay(if (short) 700L else 1500L)
-        exit.animateTo(1f, tween(400, easing = ease))
+        launch { drop.animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 170f)) }
+        delay(180)
+        launch { aura.animateTo(1f, tween(1400, easing = ease)) }
+        delay(420)
+        launch { sheen.animateTo(1.4f, tween(900, easing = ease)) }
+        delay(200)
+        launch { word.animateTo(1f, tween(700, easing = ease)) }
+        delay(if (short) 800L else 1600L)
+        exit.animateTo(1f, tween(420, easing = ease))
         onDone()
     }
 
     Box(
-        Modifier.fillMaxSize().background(Xy.bg).alpha(1f - exit.value).scale(1f + 0.04f * exit.value)
+        Modifier.fillMaxSize().background(Xy.bg)
+            .graphicsLayer { alpha = 1f - exit.value; translationY = -exit.value * 60.dp.toPx() }
             .clickable(remember { MutableInteractionSource() }, null) { onDone() },
         contentAlignment = Alignment.Center,
     ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val c = Offset(size.width / 2, size.height / 2 - 30.dp.toPx())
+            val r = 70.dp.toPx() + 140.dp.toPx() * aura.value
+            drawCircle(Brush.radialGradient(listOf(Xy.accent.copy(alpha = 0.22f * (1f - aura.value * 0.7f)), Color.Transparent), c, r), r, c)
+            val ringR = 60.dp.toPx() + 190.dp.toPx() * aura.value
+            drawCircle(Xy.accent.copy(alpha = 0.18f * (1f - aura.value)), ringR, c, style = Stroke(1.5.dp.toPx()))
+        }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Row {
-                letters.forEachIndexed { i, ch ->
-                    val v = reveal[i].value
-                    XyText(
-                        ch.toString(),
-                        Xy.display.copy(fontSize = 44.sp, letterSpacing = (-1.5).sp),
-                        Modifier.graphicsLayer { alpha = v; translationY = (1f - v) * 28.dp.toPx(); renderEffect = if (v < 1f) BlurEffect(6f * (1f - v), 6f * (1f - v)) else null },
+            Box(
+                Modifier.size(132.dp).graphicsLayer {
+                    val s = 1.7f - 0.7f * drop.value
+                    scaleX = s; scaleY = s
+                    rotationZ = -14f * (1f - drop.value)
+                    alpha = drop.value.coerceIn(0f, 1f)
+                    shadowElevation = 24.dp.toPx() * drop.value
+                    shape = CircleShape; clip = false
+                    ambientShadowColor = Xy.accent; spotShadowColor = Xy.accent
+                },
+                contentAlignment = Alignment.Center,
+            ) {
+                val logo = ImageBitmap.imageResource(R.drawable.logo_xy)
+                Canvas(Modifier.fillMaxSize().graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }) {
+                    drawImage(logo, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
+                    val x = size.width * sheen.value
+                    drawRect(
+                        Brush.linearGradient(
+                            listOf(Color.Transparent, Color.White.copy(alpha = 0.75f), Color.Transparent),
+                            Offset(x - size.width * 0.25f, 0f), Offset(x + size.width * 0.25f, size.height),
+                        ),
+                        blendMode = BlendMode.SrcAtop,
                     )
                 }
             }
-            Spacer(Modifier.height(14.dp))
-            Canvas(Modifier.width(120.dp).height(6.dp)) {
-                val w = size.width * line.value
-                val x0 = (size.width - w) / 2
-                drawLine(Xy.line, Offset(x0, size.height / 2), Offset(x0 + w, size.height / 2), 1.5.dp.toPx(), StrokeCap.Round)
-                if (dot.value > 0f && dot.value < 1f) {
-                    val x = x0 + w * dot.value
-                    drawCircle(Xy.accent.copy(alpha = 0.25f), 5.dp.toPx(), Offset(x, size.height / 2))
-                    drawCircle(Xy.accent, 2.5.dp.toPx(), Offset(x, size.height / 2))
-                }
+            Spacer(Modifier.height(22.dp))
+            Box(Modifier.clip(RectangleShape)) {
+                XyText(
+                    "XyDesk",
+                    Xy.display.copy(fontSize = 38.sp, letterSpacing = (-1.2).sp),
+                    Modifier.graphicsLayer { translationY = (1f - word.value) * (-46).dp.toPx(); alpha = word.value },
+                )
             }
-            Spacer(Modifier.height(14.dp))
-            XyText("XyVerse Technology Global", Xy.label, Modifier.alpha(tagline.value))
+            Spacer(Modifier.height(8.dp))
+            XyText("XyVerse Technology Global", Xy.label, Modifier.alpha(word.value))
         }
     }
 }
