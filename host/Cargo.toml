@@ -46,7 +46,7 @@ ureq = { version = "2", features = ["json"] }
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-capture = "2.0"
 # Injeksi input via SendInput (user-mode, tanpa driver) — lihat src/input.rs
-windows = { version = "0.61", features = [
+windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_System_Com",
   "Win32_System_Console",
