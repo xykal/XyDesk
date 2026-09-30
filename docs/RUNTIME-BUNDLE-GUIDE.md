@@ -82,3 +82,27 @@ Agar `android-native` memiliki kapabilitas penuh setara `host/src/input.rs` dan 
    - Menutup celah `HANDOFF.md` (soket zombie `id sudah online` / error sebelum `welcome`): bila signaling menerima `error` sebelum fase `pair-response`, `RtcSession` otomatis merotasi `deviceId` baru dan mencoba sambung ulang sekali setelah `600 ms`.
 6. **Perluasan `SessionToolbar.kt`**:
    - Menambahkan toggle **Mode Sentuh (`Trackpad` relatif vs `Sentuh` langsung `moveAbs`)**, toggle **Suara/Bisu (`Audio` / `Bisu`)**, dan baris tombol cepat PC (**`Esc`**, **`Tab`**, **`Win`**, **`Ctrl+C`**, **`Ctrl+V`**, **`CAD`**).
+
+
+---
+
+## 3. Protokol Wajib Pembersihan Cache, Artifact & Workflow Runs (Anti-Bloat 10 GB)
+
+GitHub Actions memiliki kuota cache terbatas per repositori (10 GB). Sebelumnya `.github/workflows/cleanup.yml` hanya menghapus `runs`, tetapi **tidak pernah menghapus `/actions/caches` maupun `/actions/artifacts`**, sehingga cache menumpuk hingga `> 9,1 GB` (75 cache) dan artifact `~890 MB` (69 artifact).
+
+### A. Otomatisasi di `.github/workflows/cleanup.yml` (Sudah Diaktifkan di PR Ini)
+Workflow `Bersihkan Actions` (`.github/workflows/cleanup.yml`) kini otomatis berjalan setiap `Build`, `Android Native`, atau `Release` selesai, dan melakukan 3 tahap:
+1. **Prune Workflow Runs**: hanya menyisakan **2 run selesai terakhir** per workflow.
+2. **Prune Artifacts**: hanya menyisakan **1 artifact terbaru** per nama (`XyDesk-Native-APK`, `XyDesk-Windows-x64`, dll.) dan menghapus sisanya.
+3. **Prune Actions Caches**: mengelompokkan cache berdasarkan prefix aktif (`native-Windows-x64-`, `test-Linux-cargo-`, `gradle-dependencies-`, `gradle-transforms-`, dll.), hanya menyimpan **1 cache dengan ID terbaru per prefix**, serta langsung menghapus semua cache berawalan `flutter-` / `pub-` / `codeql-`.
+
+### B. Perintah Manual Cepat untuk Agent di Akhir Sesi
+Setiap selesai menjalankan workflow di GitHub Actions, agent wajib menjalankan sapu bersih cache & run lama lewat REST API:
+
+```bash
+# 1) Hapus semua cache lama/duplikat
+gh api "repos/xykal/XyDesk/actions/caches?per_page=100" -q '.actions_caches[].id' | tail -n +5 | xargs -r -n1 -P8 -I{} gh api -X DELETE "repos/xykal/XyDesk/actions/caches/{}"
+
+# 2) Hapus semua artifact yang sudah tidak dipakai
+gh api "repos/xykal/XyDesk/actions/artifacts?per_page=100" -q '.artifacts[].id' | tail -n +3 | xargs -r -n1 -P8 -I{} gh api -X DELETE "repos/xykal/XyDesk/actions/artifacts/{}"
+```
