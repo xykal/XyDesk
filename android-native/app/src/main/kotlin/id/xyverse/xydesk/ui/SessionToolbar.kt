@@ -8,7 +8,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,28 +32,38 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyIcon
 import id.xyverse.xydesk.ui.kit.XyText
-import kotlin.math.roundToInt
 
 /** Aksi yang tersedia di dalam sesi; semua dikirim lewat `libstreamxy`. */
 class SessionActions(
     val keyboard: () -> Unit,
     val quality: (preset: Int) -> Unit,
     val resolution: (mode: Int) -> Unit,
+    val fps: (target: Int) -> Unit = {},
     val display: (index: Int) -> Unit,
     val touchMode: (direct: Boolean) -> Unit = {},
+    val trackpadSpeed: (speed: Float) -> Unit = {},
+    val naturalScroll: (on: Boolean) -> Unit = {},
     val audioMute: (muted: Boolean) -> Unit = {},
     val clipboardSync: (on: Boolean) -> Unit = {},
     val sendQuickKey: (combo: QuickKey) -> Unit = {},
-    val toggleStats: () -> Unit,
+    val stats: (show: Boolean) -> Unit = {},
     val disconnect: () -> Unit,
+)
+
+/** Nilai awal panel, diambil dari preferensi tersimpan. */
+data class SessionPrefs(
+    val quality: Int = 0,
+    val fps: Int = 60,
+    val directTouch: Boolean = false,
+    val trackpadSpeed: Float = 1.4f,
+    val naturalScroll: Boolean = false,
+    val showStats: Boolean = true,
 )
 
 enum class QuickKey(val label: String) { ESC("Esc"), TAB("Tab"), WIN("Win"), COPY("Ctrl+C"), PASTE("Ctrl+V"), CAD("CAD") }
@@ -65,25 +73,27 @@ private enum class Panel { NONE, CONTROLS, SETTINGS }
 private val glass = Color(0xF2FFFFFF)
 
 /**
- * Rel vertikal di tepi kanan: Keyboard, Kontrol, Pengaturan, Putus. Bisa digeser
- * naik-turun; panel terbuka ke kiri rel. Ketuk pegangan kecil untuk menyembunyikan.
+ * Rel vertikal tetap di tepi kanan: Keyboard, Kontrol, Atur, Putus. Panel terbuka
+ * ke kiri rel; pegangan kecil di atas menyembunyikan rel jadi satu garis tipis.
  */
 @Composable
-fun SessionToolbar(actions: SessionActions) {
+fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()) {
     var panel by remember { mutableStateOf(Panel.NONE) }
     var hidden by remember { mutableStateOf(false) }
-    var dragY by remember { mutableFloatStateOf(0f) }
-    var quality by remember { mutableStateOf(0) }
-    var res by remember { mutableStateOf(0) }
+    var quality by remember { mutableStateOf(prefs.quality) }
+    var fps by remember { mutableStateOf(prefs.fps) }
+    var res by remember { mutableStateOf(-1) }
     var monitor by remember { mutableStateOf(0) }
-    var directTouch by remember { mutableStateOf(false) }
+    var directTouch by remember { mutableStateOf(prefs.directTouch) }
+    var speed by remember { mutableFloatStateOf(prefs.trackpadSpeed) }
+    var natural by remember { mutableStateOf(prefs.naturalScroll) }
     var muted by remember { mutableStateOf(false) }
     var clip by remember { mutableStateOf(false) }
-    var stats by remember { mutableStateOf(true) }
+    var stats by remember { mutableStateOf(prefs.showStats) }
     val qLabels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
 
     Row(
-        Modifier.offset { IntOffset(0, dragY.roundToInt()) }.padding(end = 8.dp),
+        Modifier.padding(end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -100,20 +110,30 @@ fun SessionToolbar(actions: SessionActions) {
                         Pill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
                         Pill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
                     }
+                    XyText("TRACKPAD", Xy.label)
+                    Wrap {
+                        Pill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
+                        Pill("Kecepatan %.1f".format(speed), accent = true) {}
+                        Pill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
+                        Pill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
+                    }
+                    XyText("Ketuk klik kiri · tahan klik kanan · 2 jari scroll · ketuk-ketuk-tahan seret · 3 jari klik tengah", Xy.caption)
                 } else {
                     XyText("KUALITAS", Xy.label)
                     Wrap { qLabels.forEachIndexed { i, l -> Pill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
-                    XyText("RESOLUSI · MONITOR", Xy.label)
+                    XyText("FPS · RESOLUSI", Xy.label)
                     Wrap {
-                        listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; actions.resolution(i) } }
-                        Pill("Monitor ${monitor + 1}") { monitor = (monitor + 1) % 4; actions.display(monitor) }
+                        listOf(30, 60).forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
+                        listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; quality = 3.coerceAtMost(quality.coerceAtLeast(1)); actions.resolution(i) } }
                     }
-                    XyText("SESI", Xy.label)
+                    XyText("MONITOR · SESI", Xy.label)
                     Wrap {
+                        Pill("Monitor ${monitor + 1}") { monitor = (monitor + 1) % 4; actions.display(monitor) }
                         Pill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
-                        Pill("Stats", accent = stats) { stats = !stats; actions.toggleStats() }
+                        Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
                     }
+                    if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption)
                 }
             }
         }
@@ -130,7 +150,7 @@ fun SessionToolbar(actions: SessionActions) {
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Box(
-                    Modifier.size(width = 44.dp, height = 22.dp).pointerInput(Unit) { detectDragGestures { c, d -> c.consume(); dragY += d.y } }
+                    Modifier.size(width = 44.dp, height = 22.dp)
                         .clickable(remember { MutableInteractionSource() }, null) { hidden = true; panel = Panel.NONE },
                     contentAlignment = Alignment.Center,
                 ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Xy.textLow)) }

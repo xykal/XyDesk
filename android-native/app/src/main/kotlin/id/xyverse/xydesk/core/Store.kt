@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -37,6 +39,31 @@ class Store(context: Context) {
         get() = prefs.getBoolean("haptics", true)
         set(v) = prefs.edit().putBoolean("haptics", v).apply()
 
+    var trackpadSpeed: Float
+        get() = prefs.getFloat("trackpadSpeed", 1.4f)
+        set(v) = prefs.edit().putFloat("trackpadSpeed", v).apply()
+
+    var naturalScroll: Boolean
+        get() = prefs.getBoolean("naturalScroll", false)
+        set(v) = prefs.edit().putBoolean("naturalScroll", v).apply()
+
+    /** 0 = Auto (adaptif), 1..3 = preset tetap. */
+    var quality: Int
+        get() = prefs.getInt("quality", 0)
+        set(v) = prefs.edit().putInt("quality", v).apply()
+
+    var targetFps: Int
+        get() = prefs.getInt("targetFps", 60)
+        set(v) = prefs.edit().putInt("targetFps", v).apply()
+
+    var showStats: Boolean
+        get() = prefs.getBoolean("showStats", true)
+        set(v) = prefs.edit().putBoolean("showStats", v).apply()
+
+    var directTouch: Boolean
+        get() = prefs.getBoolean("directTouch", false)
+        set(v) = prefs.edit().putBoolean("directTouch", v).apply()
+
     var onboarded: Boolean
         get() = prefs.getBoolean("onboarded", false)
         set(v) = prefs.edit().putBoolean("onboarded", v).apply()
@@ -47,7 +74,10 @@ class Store(context: Context) {
             val arr = JSONArray(prefs.getString("history", "[]"))
             (0 until arr.length()).map { SessionRecord.from(arr.getJSONObject(it)) }
         }.getOrDefault(emptyList())
-        set(v) = prefs.edit().putString("history", JSONArray(v.take(50).map { it.json() }).toString()).apply()
+        set(v) {
+            prefs.edit().putString("history", JSONArray(v.take(50).map { it.json() }).toString()).apply()
+            historyFlow.value = v.take(50)
+        }
 
     fun record(rec: SessionRecord) {
         val known = history.firstOrNull { it.host == rec.host && !it.specs.isEmpty }?.specs
@@ -55,7 +85,21 @@ class Store(context: Context) {
         history = listOf(merged) + history.filterNot { it.startedAt == rec.startedAt }
     }
 
-    fun clearHistory() = prefs.edit().remove("history").apply()
+    fun clearHistory() {
+        prefs.edit().remove("history").apply()
+        historyFlow.value = emptyList()
+    }
+
+    /** Sumber tunggal riwayat untuk UI: berubah seketika saat sesi mencatat sesuatu. */
+    fun observeHistory(): StateFlow<List<SessionRecord>> {
+        if (!primed) { historyFlow.value = history; primed = true }
+        return historyFlow
+    }
+
+    companion object {
+        private val historyFlow = MutableStateFlow<List<SessionRecord>>(emptyList())
+        private var primed = false
+    }
 
     /** Host yang pernah tersambung, digabung per ID. */
     fun devices(): List<SessionRecord> = history.distinctBy { it.host }

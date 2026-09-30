@@ -68,6 +68,7 @@ android {
 dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     val compose = platform("androidx.compose:compose-bom:2024.12.01")
+    implementation(project(":xyadapt"))
     implementation(compose)
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.ui:ui")
