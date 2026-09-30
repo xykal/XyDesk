@@ -1,3 +1,7 @@
+val versionFile = rootProject.file("../VERSION").readText().trim()
+val appVersionName = versionFile.substringBefore("+")
+val appVersionCode = versionFile.substringAfter("+").toInt()
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,8 +16,8 @@ android {
         applicationId = "id.xyverse.xydesk"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.2.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
         buildConfigField("String", "API_URL", "\"https://signal.xydesk.my.id\"")
         buildConfigField("String", "SIGNALING_URL", "\"wss://signal.xydesk.my.id/ws\"")
         buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"${System.getenv("GOOGLE_WEB_CLIENT_ID").orEmpty()}\"")

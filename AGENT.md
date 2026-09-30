@@ -52,7 +52,7 @@
 
 | Role | Scope folder | Kerjaan khas |
 |---|---|---|
-| **Client Flutter** | `lib/`, `test/`, `assets/`, `android/`, `pubspec.yaml` | UI aplikasi, fitur sesi, panel gaming, l10n |
+| **Client Android native** | `android-native/` | Kotlin + Compose, `libstreamxy` C++, decoder low-latency |
 | **Host Engine** | `host/` | Rust: capture DXGI, encode, WebRTC, audio, control API, test loopback |
 | **Desktop Shell** | `packaging/native-host/` | Panel Windows native C++ (jendela, kontrol, tray). Shell Tauri/Electron lama di `desktop/` **dihapus 2026-09-23** atas keputusan pemilik — engine tetap Rust, jangan pindahkan logika ke panel |
 | **Web** | `web/`, `web_deploy/` | Landing, download, legal, blog, client tamu, OG renderer |
@@ -155,7 +155,7 @@ operator yang menang** — role ini wakil, bukan pengganti.
   (`docs/ARCHITECTURE.md`, `docs/PROTOCOL.md`, dll). Kalau tetap ragu,
   tanya operator — bertanya lebih murah daripada salah.
 - Sebelum menganggap kerjaan selesai, jalankan pemeriksaan area-mu:
-  - Client Flutter: `flutter analyze` + `dart format lib`
+  - Client Android: `gradle assembleDebug` (CI), Kotlin tanpa warning baru
   - Host Engine: `cargo fmt --check` + `cargo test` di `host/`
   - Backend/Edge: test Worker di `cloudflare/test/` + `gofmt` untuk Go
   - Web/Desktop: build lint sesuai `package.json` masing-masing

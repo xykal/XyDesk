@@ -1,7 +1,7 @@
 name: Release
 
 # Release stabil dibuat hanya setelah workflow Build pada main sukses.
-# Perubahan versi di pubspec.yaml (contoh 1.1.0+3) menjadi tag v1.1.0.
+# Perubahan versi di VERSION (contoh 1.1.0+3) menjadi tag v1.1.0.
 # Jika tag/release untuk versi itu sudah ada, workflow berhenti tanpa duplikasi.
 on:
   workflow_run:
@@ -56,7 +56,7 @@ jobs:
           fetch-depth: 2
 
       - id: release
-        name: Cocokkan pubspec dan Build
+        name: Cocokkan VERSION dan Build
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -69,9 +69,9 @@ jobs:
           # menghindari rilis yang salah menunjuk SHA tanpa Build.
           release_sha="${RELEASE_SHA_INPUT:-${WORKFLOW_SHA:-$GITHUB_SHA}}"
 
-          version_full="$(awk '/^version:[[:space:]]*/ { print $2; exit }' pubspec.yaml)"
+          version_full="$(tr -d '[:space:]' < VERSION)"
           if ! [[ "$version_full" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([1-9][0-9]*)$ ]]; then
-            echo "::error::version pubspec harus berbentuk SemVer+build, contoh 1.1.0+3"
+            echo "::error::version VERSION harus berbentuk SemVer+build, contoh 1.1.0+3"
             exit 1
           fi
           version="${BASH_REMATCH[1]}"
@@ -208,12 +208,12 @@ jobs:
             --name XyDesk-Android-APK --dir incoming/android
           gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
             --name XyDesk-Windows-x64 --dir incoming/windows-x64
-          cp incoming/android/XyDesk-Android-arm64-v8a.apk dist/
-          cp incoming/android/XyDesk-Android-armeabi-v7a.apk dist/
+          cp incoming/android/XyDesk-arm64-v8a.apk dist/
+          cp incoming/android/XyDesk-armeabi-v7a.apk dist/
           # Satu paket Windows native C++ + engine Rust sebagai bahan installer.
           (cd incoming/windows-x64 && zip -q -r ../../dist/app-windows-x64.zip .)
-          test -s dist/XyDesk-Android-arm64-v8a.apk
-          test -s dist/XyDesk-Android-armeabi-v7a.apk
+          test -s dist/XyDesk-arm64-v8a.apk
+          test -s dist/XyDesk-armeabi-v7a.apk
           test -s dist/app-windows-x64.zip
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -474,8 +474,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp artifacts/release-client-assets/XyDesk-Android-arm64-v8a.apk dist/
-          cp artifacts/release-client-assets/XyDesk-Android-armeabi-v7a.apk dist/
+          cp artifacts/release-client-assets/XyDesk-arm64-v8a.apk dist/
+          cp artifacts/release-client-assets/XyDesk-armeabi-v7a.apk dist/
           # Changelog rilis ikut dilampirkan — wajib ada di setiap rilis.
           cp CHANGELOG.md dist/CHANGELOG.md
           # Dua installer x64 dari payload yang sama: EXE NSIS untuk pengguna
@@ -490,19 +490,19 @@ jobs:
             --version "$VERSION" \
             --build "$BUILD_NUMBER" \
             --out dist/xydesk_update_banner_1024x512.jpg
-          test -s dist/XyDesk-Android-arm64-v8a.apk
-          test -s dist/XyDesk-Android-armeabi-v7a.apk
+          test -s dist/XyDesk-arm64-v8a.apk
+          test -s dist/XyDesk-armeabi-v7a.apk
           cd dist
-          sha256sum XyDesk-Android-arm64-v8a.apk \
-            XyDesk-Android-armeabi-v7a.apk \
+          sha256sum XyDesk-arm64-v8a.apk \
+            XyDesk-armeabi-v7a.apk \
             XyDesk-x64.exe \
             XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg \
             > SHA256SUMS.txt
-          arm64_sha="$(sha256sum XyDesk-Android-arm64-v8a.apk | cut -d' ' -f1)"
-          arm64_bytes="$(stat -c%s XyDesk-Android-arm64-v8a.apk)"
-          armv7_sha="$(sha256sum XyDesk-Android-armeabi-v7a.apk | cut -d' ' -f1)"
-          armv7_bytes="$(stat -c%s XyDesk-Android-armeabi-v7a.apk)"
+          arm64_sha="$(sha256sum XyDesk-arm64-v8a.apk | cut -d' ' -f1)"
+          arm64_bytes="$(stat -c%s XyDesk-arm64-v8a.apk)"
+          armv7_sha="$(sha256sum XyDesk-armeabi-v7a.apk | cut -d' ' -f1)"
+          armv7_bytes="$(stat -c%s XyDesk-armeabi-v7a.apk)"
           winx64_sha="$(sha256sum XyDesk-x64.exe | cut -d' ' -f1)"
           winx64_bytes="$(stat -c%s XyDesk-x64.exe)"
           winx64_msi_sha="$(sha256sum XyDesk-x64.msi | cut -d' ' -f1)"
@@ -533,12 +533,12 @@ jobs:
               ],
               "apks": {
                   "arm64-v8a": {
-                      "url": f"{base}/XyDesk-Android-arm64-v8a.apk",
+                      "url": f"{base}/XyDesk-arm64-v8a.apk",
                       "sha256": os.environ["arm64_sha"],
                       "bytes": int(os.environ["arm64_bytes"]),
                   },
                   "armeabi-v7a": {
-                      "url": f"{base}/XyDesk-Android-armeabi-v7a.apk",
+                      "url": f"{base}/XyDesk-armeabi-v7a.apk",
                       "sha256": os.environ["armv7_sha"],
                       "bytes": int(os.environ["armv7_bytes"]),
                   },
@@ -576,7 +576,7 @@ jobs:
           set -euo pipefail
           for asset in \
             CHANGELOG.md SHA256SUMS.txt update.json \
-            XyDesk-Android-arm64-v8a.apk XyDesk-Android-armeabi-v7a.apk \
+            XyDesk-arm64-v8a.apk XyDesk-armeabi-v7a.apk \
             XyDesk-x64.exe XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg
           do
@@ -625,8 +625,8 @@ jobs:
             |---|---|---|
             | Windows x64 EXE | `XyDesk-x64.exe` | Installer NSIS direct download |
             | Windows x64 MSI | `XyDesk-x64.msi` | Deployment Windows/enterprise |
-            | Android 64-bit | `XyDesk-Android-arm64-v8a.apk` | HP Android modern |
-            | Android 32-bit | `XyDesk-Android-armeabi-v7a.apk` | Perangkat ARMv7 lama |
+            | Android 64-bit | `XyDesk-arm64-v8a.apk` | HP Android modern |
+            | Android 32-bit | `XyDesk-armeabi-v7a.apk` | Perangkat ARMv7 lama |
 
             Installer Windows sudah memuat aplikasi dan engine Host sekaligus —
             tidak ada berkas terpisah yang perlu diunduh. Client web tersedia

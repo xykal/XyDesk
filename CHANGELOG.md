@@ -10,7 +10,7 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 > di file per versi. Lihat `changelogs/README.md`.
 
 Kebijakan rilis:
-- Setiap update aplikasi **wajib menaikkan versi** (`pubspec.yaml X.Y.Z+NN`,
+- Setiap update aplikasi **wajib menaikkan versi** (`VERSION` berisi `X.Y.Z+NN`,
   `web`/`desktop` package.json, `host` Cargo.toml).
 - Setiap rilis **wajib punya artikel Berita** dengan changelog yang jelas dan
   panjang (lihat `news/README.md` untuk alur penerbitan).
@@ -164,6 +164,11 @@ Kebijakan rilis:
 - Endpoint admin health read-only untuk Worker/AuthStore/Hub; status engine dinyatakan belum tersedia.
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
+
+## [6.9.0] - 2026-09-30
+
+- **Client Android ditulis ulang native.** Flutter (`lib/`, `android/`, `test/`, `pubspec`) dihapus; klien kini Kotlin + Jetpack Compose tanpa Material di `android-native/`, dengan pustaka C++ sendiri `libstreamxy` (protokol input, telemetri latensi) dan decoder H.264 low-latency langsung ke Surface (fallback otomatis). Paket `id.xyverse.xydesk` — pasang ulang, tidak bisa update di atas APK Flutter.
+- Sumber versi pindah dari `pubspec.yaml` ke berkas `VERSION`; Build membangun APK native per ABI (`XyDesk-arm64-v8a.apk`, `XyDesk-armeabi-v7a.apk`, `XyDesk.apk`) bertanda tangan keystore rilis dari secret. Rincian: `changelogs/6.9.0.md`.
 
 ## [6.8.8] - 2026-09-29
 
