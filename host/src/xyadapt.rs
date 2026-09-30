@@ -68,8 +68,7 @@ impl BitrateGovernor {
     }
 }
 
-static GOVERNOR: std::sync::Mutex<Option<(BitrateGovernor, u32)>> =
-    std::sync::Mutex::new(None);
+static GOVERNOR: std::sync::Mutex<Option<(BitrateGovernor, u32)>> = std::sync::Mutex::new(None);
 
 fn now_ms() -> u64 {
     std::time::SystemTime::now()
