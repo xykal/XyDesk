@@ -123,7 +123,39 @@ pub fn is_admin() -> bool {
 }
 
 pub fn try_install_driver() -> Result<String, String> {
-    Err("Gunakan Setup-VirtualDisplay.ps1 -Install secara eksplisit sebagai Administrator. Discovery tidak memasang driver atau melemahkan keamanan Windows.".into())
+    #[cfg(target_os = "windows")]
+    {
+        if is_admin() {
+            if let Ok(exe) = std::env::current_exe() {
+                if let Some(dir) = exe.parent() {
+                    let bat = dir
+                        .join("drivers")
+                        .join("IddSampleDriver")
+                        .join("install.bat");
+                    if bat.is_file() {
+                        let out = std::process::Command::new("cmd.exe")
+                            .args(["/C", &bat.to_string_lossy(), "/silent"])
+                            .output()
+                            .map_err(|e| format!("Gagal menjalankan install.bat: {e}"))?;
+                        let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                        if out.status.success() {
+                            return Ok(if stdout.is_empty() {
+                                "Driver display virtual berhasil dipasang.".into()
+                            } else {
+                                stdout
+                            });
+                        }
+                        return Err(format!(
+                            "install.bat keluar dengan kode {:?}: {}",
+                            out.status.code(),
+                            stdout
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    Err("Jalankan drivers\\IddSampleDriver\\install.bat atau Setup-VirtualDisplay.ps1 -Install secara eksplisit sebagai Administrator.".into())
 }
 pub fn ensure_virtual_display_created() -> bool {
     find_virtual_display().is_some()

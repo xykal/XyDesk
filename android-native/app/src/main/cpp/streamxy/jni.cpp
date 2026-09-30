@@ -1,12 +1,20 @@
 #include <jni.h>
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "streamxy.h"
 
 // Jembatan tipis Kotlin ↔ libstreamxy. Semua logika ada di file C++ lain.
 namespace {
+constexpr size_t kMaxTextPayload = 32768;
+
 jbyteArray wrap(JNIEnv* env, const uint8_t* buf, size_t n) {
   jbyteArray arr = env->NewByteArray(static_cast<jsize>(n));
-  env->SetByteArrayRegion(arr, 0, static_cast<jsize>(n), reinterpret_cast<const jbyte*>(buf));
+  if (n > 0) {
+    env->SetByteArrayRegion(arr, 0, static_cast<jsize>(n), reinterpret_cast<const jbyte*>(buf));
+  }
   return arr;
 }
 }  // namespace
@@ -47,6 +55,12 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_quality(JNIEnv
   return wrap(env, b, sx_input_quality(b, static_cast<uint8_t>(preset)));
 }
 
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_bitrate(JNIEnv* env, jclass, jint mbps) {
+  uint8_t b[4];
+  const auto clamped = static_cast<uint16_t>(std::clamp<jint>(mbps, 0, 50));
+  return wrap(env, b, sx_input_bitrate(b, clamped));
+}
+
 JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_display(JNIEnv* env, jclass, jint index) {
   uint8_t b[4];
   return wrap(env, b, sx_input_display(b, static_cast<uint8_t>(index)));
@@ -57,13 +71,50 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_resolution(JNI
   return wrap(env, b, sx_input_resolution(b, static_cast<uint8_t>(mode)));
 }
 
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_fps(JNIEnv* env, jclass, jint target_fps) {
+  uint8_t b[4];
+  return wrap(env, b, sx_input_fps(b, static_cast<uint8_t>(target_fps)));
+}
+
 JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_text(JNIEnv* env, jclass, jstring s) {
+  if (!s) return wrap(env, nullptr, 0);
   const char* utf8 = env->GetStringUTFChars(s, nullptr);
-  const size_t len = static_cast<size_t>(env->GetStringUTFLength(s));
-  uint8_t b[2048];
-  const size_t n = sx_input_text(b, sizeof b, utf8, len);
+  const size_t len = std::min(static_cast<size_t>(env->GetStringUTFLength(s)), kMaxTextPayload);
+  std::vector<uint8_t> b(len + 1);
+  const size_t n = sx_input_text(b.data(), b.size(), utf8, len);
   env->ReleaseStringUTFChars(s, utf8);
-  return wrap(env, b, n);
+  return wrap(env, b.data(), n);
+}
+
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_clipboardSet(JNIEnv* env, jclass, jstring s) {
+  if (!s) return wrap(env, nullptr, 0);
+  const char* utf8 = env->GetStringUTFChars(s, nullptr);
+  const size_t len = std::min(static_cast<size_t>(env->GetStringUTFLength(s)), kMaxTextPayload);
+  std::vector<uint8_t> b(len + 1);
+  const size_t n = sx_input_clipboard_set(b.data(), b.size(), utf8, len);
+  env->ReleaseStringUTFChars(s, utf8);
+  return wrap(env, b.data(), n);
+}
+
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_clipboardReq(JNIEnv* env, jclass) {
+  uint8_t b[2];
+  return wrap(env, b, sx_input_clipboard_req(b));
+}
+
+// Mengembalikan byte UTF-8 mentah; decode di Kotlin. NewStringUTF menuntut
+// Modified UTF-8 dan ART abort pada karakter 4-byte (emoji) dari clipboard PC.
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_decodeClipboard(JNIEnv* env, jclass, jbyteArray packet) {
+  if (!packet) return nullptr;
+  const jsize len = env->GetArrayLength(packet);
+  if (len <= 1) return nullptr;
+  std::vector<uint8_t> buf(static_cast<size_t>(len));
+  env->GetByteArrayRegion(packet, 0, len, reinterpret_cast<jbyte*>(buf.data()));
+  size_t out_len = 0;
+  const char* ptr = sx_clipboard_decode(buf.data(), buf.size(), &out_len);
+  if (!ptr || out_len == 0) return nullptr;
+  jbyteArray out = env->NewByteArray(static_cast<jsize>(out_len));
+  if (out) env->SetByteArrayRegion(out, 0, static_cast<jsize>(out_len), reinterpret_cast<const jbyte*>(ptr));
+  return out;
 }
 
 JNIEXPORT jlong JNICALL Java_id_xyverse_xydesk_core_StreamXy_statsNew(JNIEnv*, jclass, jint cap) {

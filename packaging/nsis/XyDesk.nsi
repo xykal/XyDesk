@@ -111,7 +111,13 @@ Section "XyDesk"
   CreateShortCut "$DESKTOP\XyDesk Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
   CreateShortCut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
   CreateShortCut "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk" "$INSTDIR\LICENSE-XyDesk.txt"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk"
   CreateShortCut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk.exe"
+  IfFileExists "$INSTDIR\drivers\IddSampleDriver\install.bat" 0 +2
+    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Display Driver.lnk" "$INSTDIR\drivers\IddSampleDriver\install.bat" "/silent" "$INSTDIR\xydesk.ico"
+  IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
+    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk" "$INSTDIR\drivers\audio\install-audio.bat" "" "$INSTDIR\xydesk.ico"
 
   WriteUninstaller "$INSTDIR\Uninstall-XyDesk.exe"
   DetailPrint "Done. XyDesk ${Version} is installed in $INSTDIR."
@@ -124,6 +130,8 @@ Section "Uninstall"
   Delete "$DESKTOP\XyDesk Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Display Driver.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT}"
 

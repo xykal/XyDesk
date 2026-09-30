@@ -11,7 +11,13 @@ enum Tag : uint8_t {
   kScroll = 0x04,
   kKey = 0x05,
   kText = 0x06,
+  kDisplay = 0x07,
+  kClipboardSet = 0x08,
+  kClipboardReq = 0x09,
   kQuality = 0x0A,
+  kBitrate = 0x0B,
+  kResolution = 0x0C,
+  kFps = 0x0F,
 };
 
 inline void put16(uint8_t* p, uint16_t v) {
@@ -22,7 +28,7 @@ inline void put16(uint8_t* p, uint16_t v) {
 
 extern "C" {
 
-const char* sx_version() { return "streamxy 0.1.0"; }
+const char* sx_version() { return "streamxy 0.2.0"; }
 
 size_t sx_input_move_rel(uint8_t* out, int16_t dx, int16_t dy) {
   out[0] = kMoveRel;
@@ -63,8 +69,26 @@ size_t sx_input_key(uint8_t* out, uint16_t vk, bool down) {
 size_t sx_input_text(uint8_t* out, size_t cap, const char* utf8, size_t len) {
   if (cap < len + 1) return 0;
   out[0] = kText;
-  std::memcpy(out + 1, utf8, len);
+  if (len > 0) std::memcpy(out + 1, utf8, len);
   return len + 1;
+}
+
+size_t sx_input_display(uint8_t* out, uint8_t index) {
+  out[0] = kDisplay;
+  out[1] = index;
+  return 2;
+}
+
+size_t sx_input_clipboard_set(uint8_t* out, size_t cap, const char* utf8, size_t len) {
+  if (cap < len + 1) return 0;
+  out[0] = kClipboardSet;
+  if (len > 0) std::memcpy(out + 1, utf8, len);
+  return len + 1;
+}
+
+size_t sx_input_clipboard_req(uint8_t* out) {
+  out[0] = kClipboardReq;
+  return 1;
 }
 
 size_t sx_input_quality(uint8_t* out, uint8_t preset) {
@@ -73,15 +97,27 @@ size_t sx_input_quality(uint8_t* out, uint8_t preset) {
   return 2;
 }
 
-size_t sx_input_display(uint8_t* out, uint8_t index) {
-  out[0] = 0x07;
-  out[1] = index;
-  return 2;
+size_t sx_input_bitrate(uint8_t* out, uint16_t mbps) {
+  out[0] = kBitrate;
+  put16(out + 1, mbps);
+  return 3;
 }
 
 size_t sx_input_resolution(uint8_t* out, uint8_t mode) {
-  out[0] = 0x0C;
+  out[0] = kResolution;
   out[1] = mode;
   return 2;
+}
+
+size_t sx_input_fps(uint8_t* out, uint8_t fps) {
+  out[0] = kFps;
+  out[1] = fps;
+  return 2;
+}
+
+const char* sx_clipboard_decode(const uint8_t* packet, size_t packet_len, size_t* out_len) {
+  if (!packet || packet_len < 1 || packet[0] != kClipboardSet) return nullptr;
+  if (out_len) *out_len = packet_len - 1;
+  return reinterpret_cast<const char*>(packet + 1);
 }
 }
