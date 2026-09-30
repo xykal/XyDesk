@@ -14,7 +14,7 @@ use webrtc::data_channel::RTCDataChannel;
 
 use crate::input::{Injector, InputEvent, InputLease};
 use crate::session::Session;
-use crate::{input_queue, screen, video_policy};
+use crate::{input_queue, screen, video_policy, xyadapt};
 
 /// Snapshot META yang dikirim ke client saat data channel terbuka dan setiap
 /// kali keadaan host berubah (pindah monitor, mode video, fps).
@@ -89,6 +89,9 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
             }
             ticks += 1;
             if ticks.is_multiple_of(20) {
+                if let Some(bps) = xyadapt::step() {
+                    screen::set_target_bitrate_bps(bps);
+                }
                 let mut meta = base_meta.clone();
                 meta["video"] = video_policy::telemetry();
                 meta["capture"] = screen::capture_telemetry();
@@ -343,9 +346,13 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                         screen::set_target_bitrate_bps(screen::DEFAULT_TARGET_BPS);
                         println!("[xydesk-host] bitrate auto dari client");
                     } else {
-                        let bps = (mbps as u32).clamp(1, 50) * 1_000_000;
-                        if screen::set_target_bitrate_bps(bps) {
-                            println!("[xydesk-host] bitrate dari client: {} Mbps", mbps);
+                        let wanted = (mbps as u32).clamp(1, 50) * 1_000_000;
+                        let applied = xyadapt::request(screen::target_bitrate_bps(), wanted);
+                        if let Some(bps) = applied {
+                            if screen::set_target_bitrate_bps(bps) {
+                                let line = format!("bitrate client {mbps} Mbps -> {bps} bps");
+                                println!("[xydesk-host] {line}");
+                            }
                         }
                     }
                     continue;
