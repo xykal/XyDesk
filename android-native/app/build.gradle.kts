@@ -27,6 +27,14 @@ android {
         }
     }
     buildFeatures { viewBinding = true; buildConfig = true; compose = true }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a")
+            isUniversalApk = true
+        }
+    }
     signingConfigs {
         create("release") {
             val ks = System.getenv("ANDROID_KEYSTORE_FILE")

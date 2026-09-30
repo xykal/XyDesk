@@ -49,19 +49,25 @@ jobs:
           ANDROID_KEYSTORE_FILE: ${{ steps.ks.outputs.file }}
           ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
         run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/apk"
           if [ -n "$ANDROID_KEYSTORE_FILE" ]; then
             gradle --no-daemon assembleRelease
-            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/XyDesk-Native.apk"
-            echo "APK release (signed, minify): $(du -h "$RUNNER_TEMP/XyDesk-Native.apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+            src=app/build/outputs/apk/release; kind="release (signed, minify)"
           else
             gradle --no-daemon assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/XyDesk-Native.apk"
-            echo "APK debug (tanpa keystore): $(du -h "$RUNNER_TEMP/XyDesk-Native.apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+            src=app/build/outputs/apk/debug; kind="debug (tanpa keystore)"
           fi
+          for abi in universal arm64-v8a armeabi-v7a; do
+            f=$(ls "$src"/app-"$abi"-*.apk | head -n1)
+            if [ "$abi" = universal ]; then out=XyDesk.apk; else out="XyDesk-$abi.apk"; fi
+            cp "$f" "$RUNNER_TEMP/apk/$out"
+            echo "$out ($kind): $(du -h "$RUNNER_TEMP/apk/$out" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: XyDesk-Native-APK
-          path: ${{ runner.temp }}/XyDesk-Native.apk
+          name: XyDesk-APK
+          path: ${{ runner.temp }}/apk/*.apk
           retention-days: 7
       # Salin APK ke draft release terbaru supaya bisa diunduh langsung
       # (tanpa zip) setelah login. Draft tidak punya ref tag, jadi dicari
@@ -76,9 +82,11 @@ jobs:
           auth="Authorization: Bearer ${TOKEN}"
           rel=$(curl -sf -H "$auth" "$api/releases?per_page=5" | python3 -c 'import json,sys;r=[x for x in json.load(sys.stdin) if x["draft"]];print(r[0]["id"] if r else "")')
           [ -n "$rel" ] || { echo "tidak ada draft release"; exit 0; }
-          old=$(curl -sf -H "$auth" "$api/releases/$rel/assets" | python3 -c 'import json,sys;print(" ".join(str(a["id"]) for a in json.load(sys.stdin) if a["name"]=="XyDesk-Native.apk"))')
+          old=$(curl -sf -H "$auth" "$api/releases/$rel/assets" | python3 -c 'import json,sys;print(" ".join(str(a["id"]) for a in json.load(sys.stdin) if a["name"] in ("XyDesk-Native.apk","XyDesk.apk","XyDesk-arm64-v8a.apk","XyDesk-armeabi-v7a.apk")))')
           for a in $old; do curl -sf -X DELETE -H "$auth" "$api/releases/assets/$a"; done
-          curl -sf -H "$auth" -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary @"$RUNNER_TEMP/XyDesk-Native.apk" \
-            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$rel/assets?name=XyDesk-Native.apk" >/dev/null
-          echo "APK native diunggah ke draft release $rel" >> "$GITHUB_STEP_SUMMARY"
+          for f in "$RUNNER_TEMP"/apk/*.apk; do
+            curl -sf -H "$auth" -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary @"$f" \
+              "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$rel/assets?name=$(basename "$f")" >/dev/null
+          done
+          echo "APK diunggah ke draft release $rel" >> "$GITHUB_STEP_SUMMARY"
