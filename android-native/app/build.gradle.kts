@@ -27,8 +27,24 @@ android {
         }
     }
     buildFeatures { viewBinding = true; buildConfig = true; compose = true }
+    signingConfigs {
+        create("release") {
+            val ks = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (!ks.isNullOrEmpty()) {
+                storeFile = file(ks)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASS")
+                keyAlias = "xydesk"
+                keyPassword = System.getenv("ANDROID_KEYSTORE_PASS")
+            }
+        }
+    }
     buildTypes {
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (!System.getenv("ANDROID_KEYSTORE_FILE").isNullOrEmpty()) signingConfig = signingConfigs.getByName("release")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -46,6 +62,7 @@ dependencies {
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.animation:animation")
     implementation("androidx.activity:activity-compose:1.9.3")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")

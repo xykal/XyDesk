@@ -1,0 +1,108 @@
+package id.xyverse.xydesk.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.ui.kit.Xy
+import id.xyverse.xydesk.ui.kit.XyText
+
+/** Aksi yang tersedia di dalam sesi; semua dikirim lewat `libstreamxy`. */
+class SessionActions(
+    val keyboard: () -> Unit,
+    val quality: (preset: Int) -> Unit,
+    val toggleStats: () -> Unit,
+    val disconnect: () -> Unit,
+)
+
+/**
+ * Pil mengambang di bawah layar: satu titik kecil saat tersembunyi, ketuk untuk
+ * membuka. Tidak memakai widget sistem; muncul/hilang dengan slide + fade.
+ */
+@Composable
+fun SessionToolbar(actions: SessionActions) {
+    var open by remember { mutableStateOf(false) }
+    var quality by remember { mutableStateOf(0) }
+    val labels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 10.dp)) {
+        AnimatedVisibility(open, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+            Row(
+                Modifier
+                    .clip(RoundedCornerShape(Xy.radiusL))
+                    .background(Color(0xE61B1B1E))
+                    .border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Pill("Keyboard") { actions.keyboard() }
+                Pill(labels[quality], accent = true) {
+                    quality = (quality + 1) % labels.size
+                    actions.quality(quality)
+                }
+                Pill("Stats") { actions.toggleStats() }
+                Pill("Putus", danger = true) { actions.disconnect() }
+                Pill("×") { open = false }
+            }
+        }
+        if (!open) {
+            Box(
+                Modifier
+                    .width(56.dp)
+                    .height(22.dp)
+                    .clickable(remember { MutableInteractionSource() }, null) { open = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Color(0x66FFFFFF)))
+            }
+        }
+    }
+}
+
+@Composable
+private fun Pill(text: String, accent: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
+    val bg = when {
+        danger -> Xy.danger.copy(alpha = 0.18f)
+        accent -> Xy.accent.copy(alpha = 0.25f)
+        else -> Xy.overlay
+    }
+    val fg = when {
+        danger -> Xy.danger
+        accent -> Xy.lavender
+        else -> Xy.textHi
+    }
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(Xy.radiusM))
+            .background(bg)
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        XyText(text, Xy.caption.copy(color = fg))
+    }
+}

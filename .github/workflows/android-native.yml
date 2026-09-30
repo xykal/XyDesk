@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
     paths: ['android-native/**', '.github/workflows/android-native.yml']
+  pull_request:
+    paths: ['android-native/**', '.github/workflows/android-native.yml']
 
 permissions:
   contents: read
@@ -15,7 +17,7 @@ concurrency:
 
 jobs:
   apk:
-    name: APK Kotlin (debug)
+    name: APK native
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -30,19 +32,36 @@ jobs:
       - uses: gradle/actions/setup-gradle@ac638b010cf58a27ee6c972d7336334ccaf61c96 # v4.4.1
         with:
           gradle-version: '8.11.1'
-      - name: Build APK debug
+      # Keystore rilis dari secret (dibuat oleh workflow android-keystore.yml).
+      # Tanpa secret: hanya debug APK (PR dari fork, dsb).
+      - name: Siapkan keystore
+        id: ks
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/xydesk.jks"
+            echo "file=$RUNNER_TEMP/xydesk.jks" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build APK
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
-        run: gradle --no-daemon assembleDebug
-      - name: Ringkasan
+          ANDROID_KEYSTORE_FILE: ${{ steps.ks.outputs.file }}
+          ANDROID_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
         run: |
-          apk=app/build/outputs/apk/debug/app-debug.apk
-          ls -la "$apk"
-          echo "APK debug: $(du -h "$apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$ANDROID_KEYSTORE_FILE" ]; then
+            gradle --no-daemon assembleRelease
+            cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/XyDesk-Native.apk"
+            echo "APK release (signed, minify): $(du -h "$RUNNER_TEMP/XyDesk-Native.apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            gradle --no-daemon assembleDebug
+            cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/XyDesk-Native.apk"
+            echo "APK debug (tanpa keystore): $(du -h "$RUNNER_TEMP/XyDesk-Native.apk" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: XyDesk-Native-APK
-          path: android-native/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ runner.temp }}/XyDesk-Native.apk
           retention-days: 7
       # Salin APK ke draft release terbaru supaya bisa diunduh langsung
       # (tanpa zip) setelah login. Draft tidak punya ref tag, jadi dicari
@@ -60,6 +79,6 @@ jobs:
           old=$(curl -sf -H "$auth" "$api/releases/$rel/assets" | python3 -c 'import json,sys;print(" ".join(str(a["id"]) for a in json.load(sys.stdin) if a["name"]=="XyDesk-Native.apk"))')
           for a in $old; do curl -sf -X DELETE -H "$auth" "$api/releases/assets/$a"; done
           curl -sf -H "$auth" -H "Content-Type: application/vnd.android.package-archive" \
-            --data-binary @app/build/outputs/apk/debug/app-debug.apk \
+            --data-binary @"$RUNNER_TEMP/XyDesk-Native.apk" \
             "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$rel/assets?name=XyDesk-Native.apk" >/dev/null
           echo "APK native diunggah ke draft release $rel" >> "$GITHUB_STEP_SUMMARY"

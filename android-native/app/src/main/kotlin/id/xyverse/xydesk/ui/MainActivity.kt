@@ -15,6 +15,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.credentials.CredentialManager
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -37,10 +38,15 @@ class MainActivity : ComponentActivity() {
                             store.jwt = token; store.email = email; jwt = token
                         }
                     } else {
+                        var refresh by remember { mutableStateOf(0) }
+                        LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
+                        val history = remember(refresh) { store.history }
                         ConnectScreen(
                             email = store.email.orEmpty(),
                             initialHost = store.lastHost,
                             initialLowLatency = store.lowLatency,
+                            devices = history.distinctBy { it.host },
+                            history = history,
                             onConnect = { host, pin, ll -> openSession(host, pin, ll) },
                             onLogout = { store.clear(); jwt = null },
                         )

@@ -32,6 +32,7 @@ enum class Phase { PAIRING, NEGOTIATING, CONNECTED, REJECTED, PEER_OFFLINE, BUSY
 
 interface RtcListener {
     fun onPhase(phase: Phase, message: String?)
+    fun onHostName(name: String) {}
 }
 
 /**
@@ -102,6 +103,7 @@ class RtcSession(
         Log.d(TAG, "terima ${m.type} ${m.error ?: ""}")
         when (m.type) {
             "pair-response" -> if (m.accepted) {
+                m.json.optString("name").takeIf { it.isNotBlank() }?.let(listener::onHostName)
                 listener.onPhase(Phase.NEGOTIATING, null)
                 scope.launch { negotiate() }
             } else {

@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyButton
@@ -36,6 +37,8 @@ fun ConnectScreen(
     email: String,
     initialHost: String,
     initialLowLatency: Boolean,
+    devices: List<SessionRecord>,
+    history: List<SessionRecord>,
     onConnect: (host: String, pin: String, lowLatency: Boolean) -> Unit,
     onLogout: () -> Unit,
 ) {
@@ -47,8 +50,9 @@ fun ConnectScreen(
 
     Column(
         Modifier.fillMaxSize().safeDrawingPadding().imePadding().verticalScroll(rememberScrollState()).padding(Xy.pad),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
     ) {
+        Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
             Column(Modifier.weight(1f)) {
                 XyText("Sambungkan", Xy.display)
@@ -70,6 +74,10 @@ fun ConnectScreen(
                 if (digits.length < 6) notice = "ID perangkat belum lengkap." else onConnect(digits, pin, lowLatency)
             }
         }
+        Spacer(Modifier.height(24.dp))
+        DevicesSection(devices) { host = it }
+        Spacer(Modifier.height(20.dp))
+        HistorySection(history)
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             XyText("native", Xy.label)
