@@ -30,21 +30,18 @@ import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
-import id.xyverse.xydesk.ui.kit.XyToggle
 
 @Composable
 fun ConnectScreen(
     email: String,
     initialHost: String,
-    initialLowLatency: Boolean,
     devices: List<SessionRecord>,
     history: List<SessionRecord>,
-    onConnect: (host: String, pin: String, lowLatency: Boolean) -> Unit,
+    onConnect: (host: String, pin: String) -> Unit,
     onLogout: () -> Unit,
 ) {
     var host by remember { mutableStateOf(initialHost) }
     var pin by remember { mutableStateOf("") }
-    var lowLatency by remember { mutableStateOf(initialLowLatency) }
     var notice by remember { mutableStateOf("") }
     val digits = host.filter(Char::isDigit)
 
@@ -66,15 +63,13 @@ fun ConnectScreen(
             Spacer(Modifier.height(Xy.gap))
             XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = "sesuai di aplikasi host", transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
-            XyToggle("Decoder low-latency", "H.264 langsung ke MediaCodec, tanpa antrian render.", lowLatency) { lowLatency = it }
-            Spacer(Modifier.height(Xy.gap))
             XyNotice(notice, Xy.warning)
             Spacer(Modifier.height(Xy.gap))
             XyButton("Hubungkan", enabled = digits.length >= 6 && pin.isNotEmpty()) {
                 when {
                     digits.length < 6 -> notice = "ID perangkat belum lengkap."
                     pin.isEmpty() -> notice = "Password host wajib diisi."
-                    else -> onConnect(digits, pin, lowLatency)
+                    else -> onConnect(digits, pin)
                 }
             }
         }

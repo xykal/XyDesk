@@ -73,7 +73,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
         setContentView(b.root)
         hideSystemBars()
 
-        lowLatency = intent.getBooleanExtra("lowLatency", false)
         session = RtcSession(
             context = applicationContext,
             jwt = intent.getStringExtra("jwt").orEmpty(),
@@ -81,22 +80,26 @@ class SessionActivity : ComponentActivity(), RtcListener {
             pin = intent.getStringExtra("pin").orEmpty(),
             selfName = "${Build.MANUFACTURER} ${Build.MODEL}",
             listener = this,
-            lowLatencySurface = if (lowLatency) ({ b.raw.holder.surface.takeIf { it.isValid } }) else null,
+            lowLatencySurface = { b.raw.holder.surface.takeIf { it.isValid } },
             onNativeDecode = { ms -> decodeRing.push(ms); nativeFrames++ },
             onNativeSize = { w, h -> runOnUiThread { fitSurface(w, h) } },
+            onDecodeMode = { ll -> runOnUiThread { applyDecodeMode(ll) } },
         )
-        if (lowLatency) {
-            b.raw.visibility = View.VISIBLE
-            b.video.visibility = View.GONE
-        } else {
-            session.attach(b.video)
-        }
-        val touchTarget: View = if (lowLatency) b.raw else b.video
-        touchTarget.setOnTouchListener { _, e -> onTouch(e) }
+        session.attach(b.video)
+        applyDecodeMode(true)
+        b.raw.setOnTouchListener { _, e -> onTouch(e) }
+        b.video.setOnTouchListener { _, e -> onTouch(e) }
         setupToolbar()
         setupKeyboard()
         startedAt = System.currentTimeMillis()
         session.start()
+    }
+
+    /** Jalur decode dipilih otomatis oleh decoder; UI hanya mengikuti. */
+    private fun applyDecodeMode(ll: Boolean) {
+        lowLatency = ll
+        b.raw.visibility = if (ll) View.VISIBLE else View.GONE
+        b.video.visibility = if (ll) View.GONE else View.VISIBLE
     }
 
     /** Letterbox: SurfaceView mengikuti rasio frame host (mis. 720p), bukan layar HP. */
