@@ -656,7 +656,9 @@ pub fn set_virtual_display_mode(
         .iter()
         .any(|d| d.width == width && d.height == height)
     {
-        Ok(format!("Virtual display aktif teramati {width}x{height}"))
+        Ok(format!(
+            "Virtual display aktif teramati {width}x{height} @ {hz}Hz"
+        ))
     } else {
         Err("Display dengan ukuran yang diminta belum terlihat. Gunakan setup driver eksplisit lalu periksa --display-probe.".into())
     }
