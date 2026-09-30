@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
  * Token desain XyDesk — cermin `lib/core/tokens.dart`. Tidak memakai Material:
  * semua komponen digambar sendiri di atas Compose foundation.
  */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
 private fun manrope(w: FontWeight) = Font(R.font.manrope, w, variationSettings = FontVariation.Settings(w, androidx.compose.ui.text.font.FontStyle.Normal))
 
 /** Manrope (OFL) dibundel di res/font; satu berkas variabel untuk semua bobot. */
