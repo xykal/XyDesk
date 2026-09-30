@@ -31,6 +31,8 @@ jobs:
         with:
           gradle-version: '8.11.1'
       - name: Build APK debug
+        env:
+          GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: gradle --no-daemon assembleDebug
       - name: Ringkasan
         run: |

@@ -1,0 +1,131 @@
+package id.xyverse.xydesk.ui.kit
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+@Composable
+fun XyText(text: String, style: TextStyle = Xy.body, modifier: Modifier = Modifier, color: Color? = null) =
+    BasicText(text, modifier, style = if (color != null) style.copy(color = color) else style)
+
+/** Tombol utama: gradien ungu, tanpa ripple, mengecil halus saat ditekan. */
+@Composable
+fun XyButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, ghost: Boolean = false, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 600f), label = "press")
+    val shape = RoundedCornerShape(Xy.radiusM)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .scale(scale)
+            .clip(shape)
+            .then(if (ghost) Modifier.border(1.dp, Xy.line, shape).background(Xy.raised) else Modifier.background(Xy.accentBrush))
+            .clickable(source, indication = null, enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        XyText(text, Xy.title.copy(fontSize = 15.5.sp), color = if (!enabled) Xy.textLow else if (ghost) Xy.textHi else Color.White)
+    }
+}
+
+@Composable
+fun XyField(
+    value: String,
+    onChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    keyboard: KeyboardType = KeyboardType.Text,
+    mono: Boolean = false,
+    hint: String = "",
+    transformation: VisualTransformation = VisualTransformation.None,
+) {
+    val shape = RoundedCornerShape(Xy.radiusS)
+    Column(modifier.fillMaxWidth()) {
+        XyText(label.uppercase(), Xy.label)
+        Spacer(Modifier.height(6.dp))
+        Box(
+            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.dp, Xy.line, shape).padding(horizontal = 14.dp, vertical = 14.dp),
+        ) {
+            if (value.isEmpty()) XyText(hint, if (mono) Xy.mono else Xy.body, color = Xy.textLow)
+            BasicTextField(
+                value = value,
+                onValueChange = onChange,
+                singleLine = true,
+                textStyle = if (mono) Xy.mono else Xy.body,
+                cursorBrush = SolidColor(Xy.lavender),
+                keyboardOptions = KeyboardOptions(keyboardType = keyboard),
+                visualTransformation = transformation,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+fun XyCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val shape = RoundedCornerShape(Xy.radiusL)
+    Box(modifier.fillMaxWidth().clip(shape).background(Xy.raised).border(1.dp, Xy.line, shape).padding(Xy.pad)) {
+        Column { content() }
+    }
+}
+
+@Composable
+fun XyToggle(text: String, caption: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val knob by animateFloatAsState(if (checked) 1f else 0f, label = "knob")
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onChange(!checked) }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            XyText(text, Xy.body)
+            XyText(caption, Xy.caption)
+        }
+        Spacer(Modifier.width(12.dp))
+        Box(Modifier.width(44.dp).height(26.dp).clip(CircleShape).background(if (checked) Xy.accent else Xy.overlay).padding(3.dp)) {
+            Box(Modifier.padding(start = (18 * knob).dp).size(20.dp).clip(CircleShape).background(Color.White))
+        }
+    }
+}
+
+@Composable
+fun XyNotice(text: String, tone: Color = Xy.textMid) {
+    if (text.isEmpty()) return
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Box(Modifier.size(6.dp).clip(CircleShape).background(tone))
+        XyText(text, Xy.caption, color = tone)
+    }
+}

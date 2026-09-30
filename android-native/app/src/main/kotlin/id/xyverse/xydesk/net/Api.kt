@@ -47,6 +47,9 @@ object Api {
     suspend fun verifyOtp(email: String, otp: String): String =
         post("/auth/verify-otp", JSONObject().put("email", email).put("otp", otp)).getString("token")
 
+    suspend fun googleLogin(idToken: String): JSONObject =
+        post("/auth/google", JSONObject().put("id_token", idToken))
+
     suspend fun signalToken(jwt: String, deviceId: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder()
             .url("${BuildConfig.API_URL}/signal-token?id=$deviceId")

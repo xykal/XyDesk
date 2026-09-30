@@ -6,7 +6,7 @@ dengan host (`host/src/input.rs`). Login OTP email, ID + password pairing,
 mode trackpad (geser, ketuk, dua jari = klik kanan/scroll).
 
 Build hanya di CI: workflow **Android Native** → artefak `XyDesk-Native-APK`.
-Package `id.xyverse.xydesk.native` (bisa dipasang berdampingan dengan APK Flutter).
+Package `id.xyverse.xydesk` (bisa dipasang berdampingan dengan APK Flutter).
 
 Belum ada: keyboard, gamepad, audio kontrol, pilih monitor, statistik latensi.
 
