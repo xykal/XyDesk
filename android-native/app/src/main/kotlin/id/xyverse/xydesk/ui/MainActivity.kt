@@ -1,6 +1,7 @@
 package id.xyverse.xydesk.ui
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -54,12 +55,12 @@ class MainActivity : ComponentActivity() {
                         var refresh by remember { mutableStateOf(0) }
                         LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
                         val history = remember(refresh) { store.history }
-                        ConnectScreen(
+                        HomeShell(
                             email = store.email.orEmpty(),
-                            initialHost = store.lastHost,
-                            devices = history.distinctBy { it.host },
+                            lastHost = store.lastHost,
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
+                            onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
                             onLogout = { store.clear(); jwt = null },
                         )
                     }

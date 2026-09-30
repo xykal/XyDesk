@@ -1,16 +1,13 @@
 package id.xyverse.xydesk.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -23,7 +20,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import id.xyverse.xydesk.core.SessionRecord
-import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyButton
 import id.xyverse.xydesk.ui.kit.XyCard
@@ -36,9 +32,7 @@ fun ConnectScreen(
     email: String,
     initialHost: String,
     devices: List<SessionRecord>,
-    history: List<SessionRecord>,
     onConnect: (host: String, pin: String) -> Unit,
-    onLogout: () -> Unit,
 ) {
     var host by remember { mutableStateOf(initialHost) }
     var pin by remember { mutableStateOf("") }
@@ -50,13 +44,8 @@ fun ConnectScreen(
         verticalArrangement = Arrangement.Top,
     ) {
         Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
-            Column(Modifier.weight(1f)) {
-                XyText("Sambungkan", Xy.display)
-                XyText(email, Xy.caption)
-            }
-            XyText("keluar", Xy.label, Modifier.padding(bottom = 6.dp).clickableText(onLogout), color = Xy.lavender)
-        }
+        XyText("Sambungkan", Xy.display)
+        XyText(email, Xy.caption)
         Spacer(Modifier.height(24.dp))
         XyCard {
             XyField(digits.chunked(3).joinToString(" "), { host = it }, "ID perangkat", keyboard = KeyboardType.Number, mono = true, hint = "000 000 000")
@@ -74,16 +63,7 @@ fun ConnectScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
-        DevicesSection(devices) { host = it }
-        Spacer(Modifier.height(20.dp))
-        HistorySection(history)
-        Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            XyText("native", Xy.label)
-            Spacer(Modifier.width(2.dp))
-            XyText(StreamXy.version(), Xy.label, color = Xy.textLow)
-        }
+        DevicesSection(devices.take(3)) { host = it }
+        Spacer(Modifier.height(96.dp))
     }
 }
-
-private fun Modifier.clickableText(onClick: () -> Unit): Modifier = clickable(onClick = onClick)

@@ -52,11 +52,11 @@ fun XyButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = tru
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 600f), label = "press")
-    val shape = RoundedCornerShape(Xy.radiusM)
+    val shape = RoundedCornerShape(Xy.pill)
     Box(
         modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .height(54.dp)
             .scale(scale)
             .clip(shape)
             .then(if (ghost) Modifier.background(Xy.overlay) else Modifier.shadow(10.dp, shape, ambientColor = Xy.shadow, spotColor = Xy.shadow).background(Xy.accentBrush))
@@ -78,14 +78,14 @@ fun XyField(
     hint: String = "",
     transformation: VisualTransformation = VisualTransformation.None,
 ) {
-    val shape = RoundedCornerShape(Xy.radiusS)
+    val shape = RoundedCornerShape(Xy.pill)
     Column(modifier.fillMaxWidth()) {
         XyText(label.uppercase(), Xy.label)
         Spacer(Modifier.height(6.dp))
         var focused by remember { mutableStateOf(false) }
         val ring by animateColorAsState(if (focused) Xy.accent else Xy.line, label = "ring")
         Box(
-            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.5.dp, ring, shape).padding(horizontal = 14.dp, vertical = 14.dp),
+            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.5.dp, ring, shape).padding(horizontal = 18.dp, vertical = 14.dp),
         ) {
             if (value.isEmpty()) XyText(hint, if (mono) Xy.mono else Xy.body, color = Xy.textLow)
             BasicTextField(
