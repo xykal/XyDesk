@@ -22,3 +22,4 @@ AMediaCodec low-latency langsung ke Surface dan transport UDP khusus game.
 - `res/raw/xydesk_vo.mp3` — VO "XyDesk", dibuat sendiri (TTS), diputar sekali saat first launch.
 - `res/raw/sfx_confirm.mp3` — efek konfirmasi geser-ke-Google, sumber: myinstants.com (`/en/instant/apple-pay-45496/`).
 - `res/font/manrope.ttf` — Manrope (SIL OFL 1.1, © The Manrope Project Authors), font variabel dibundel; tidak ada font dari jaringan.
+- `res/drawable/ic_social_*.xml` — logo resmi dari Simple Icons (CC0 1.0); `ic_google_g.xml` — logo "G" Google (pedoman brand Google Sign-In).
