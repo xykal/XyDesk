@@ -25,7 +25,7 @@ Name "${PRODUCT}"
 OutFile "${OutputDir}\XyDesk-${Arch}.exe"
 InstallDir "$LOCALAPPDATA\Programs\XyDesk"
 InstallDirRegKey HKCU "${INSTALLKEY}" "InstallDir"
-RequestExecutionLevel user
+RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 SetCompressorDictSize 32
 ShowInstDetails show
@@ -53,9 +53,9 @@ VIAddVersionKey /LANG=1033 "CompanyName" "${COMPANY}"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "banner-welcome.bmp"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP_NOSTRETCH
 !define MUI_WELCOMEPAGE_TITLE "Welcome to XyDesk"
-!define MUI_WELCOMEPAGE_TEXT "XyDesk gives you a quiet native Windows control panel and a Rust streaming engine.\r\n\r\nThe installer keeps the engine, native UI, supporting DLLs, third-party notices, and English license text together."
+!define MUI_WELCOMEPAGE_TEXT "XyDesk gives you a quiet native Windows control panel, a Rust streaming engine, and the dedicated XyDesk Virtual Display Adapter & Virtual Audio drivers.\r\n\r\nThe installer keeps the engine, native UI, virtual drivers, third-party notices, and English license text together."
 !define MUI_FINISHPAGE_TITLE "XyDesk is ready"
-!define MUI_FINISHPAGE_TEXT "XyDesk Control Panel is installed and verified. Run it now, or start it later from the Desktop or Start Menu shortcut.$\r$\n$\r$\nTip: run XyDesk inside the Windows session you actually use (your RDP user), so screen capture sees that session."
+!define MUI_FINISHPAGE_TEXT "XyDesk Control Panel and XyDesk Virtual Display Adapter are installed and verified. Run it now, or start it later from the Desktop or Start Menu shortcut.$\r$\n$\r$\nTip: run XyDesk inside the Windows session you actually use (your RDP user), so screen capture sees that session."
 ; Panel langsung terbuka setelah install supaya hasil pemasangan terlihat.
 !define MUI_FINISHPAGE_RUN "$INSTDIR\XyDesk.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Run XyDesk Control Panel now"
@@ -119,19 +119,31 @@ Section "XyDesk"
   IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
     CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk" "$INSTDIR\drivers\audio\install-audio.bat" "" "$INSTDIR\xydesk.ico"
 
-  # Driver dipasang saat instalasi, bukan ditunda ke pintasan: installer
-  # berjalan sebagai user, jadi satu prompt UAC dipakai untuk kedua driver
-  # lewat cmd.exe elevated. Gagal/ditolak tidak membatalkan instalasi.
-  IfFileExists "$INSTDIR\drivers\IddSampleDriver\install.bat" 0 skip_drivers
-    DetailPrint "Installing virtual display and audio drivers (UAC prompt)..."
-    StrCpy $0 '/C ""$INSTDIR\drivers\IddSampleDriver\install.bat" /silent'
-    IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
-      StrCpy $0 '$0 & "$INSTDIR\drivers\audio\install-audio.bat"'
-    StrCpy $0 '$0"'
-    ExecShellWait "runas" "$SYSDIR\cmd.exe" $0 SW_HIDE
-    IfErrors 0 +2
-      DetailPrint "Driver install skipped or failed; use Start Menu shortcuts later."
-  skip_drivers:
+  # Pasang XyDesk Virtual Display Adapter (IddCx UMDF2 + PnP Device Node + Custom EDID)
+  # dan driver Virtual Audio & Mic (VB-CABLE) secara langsung saat instalasi.
+  IfFileExists "$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" 0 skip_vdd_ctl
+    DetailPrint "Installing XyDesk Virtual Display Adapter (native SetupAPI controller)..."
+    nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" install --dir "$INSTDIR\drivers\IddSampleDriver"'
+    Pop $0
+  skip_vdd_ctl:
+
+  IfFileExists "$INSTDIR\drivers\install-all-drivers.bat" 0 fallback_individual_drivers
+    DetailPrint "Configuring XyDesk Virtual Display & Virtual Audio drivers..."
+    nsExec::ExecToLog '"$SYSDIR\cmd.exe" /D /C "call "$INSTDIR\drivers\install-all-drivers.bat" /silent"'
+    Pop $0
+    Goto done_drivers
+
+  fallback_individual_drivers:
+  IfFileExists "$INSTDIR\drivers\IddSampleDriver\install.bat" 0 skip_vdd_bat
+    DetailPrint "Running XyDesk Virtual Display driver setup..."
+    nsExec::ExecToLog '"$SYSDIR\cmd.exe" /D /C "call "$INSTDIR\drivers\IddSampleDriver\install.bat" /silent"'
+    Pop $0
+  skip_vdd_bat:
+  IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 done_drivers
+    DetailPrint "Running XyDesk Virtual Audio & Mic driver setup..."
+    nsExec::ExecToLog '"$SYSDIR\cmd.exe" /D /C "call "$INSTDIR\drivers\audio\install-audio.bat" /silent"'
+    Pop $0
+  done_drivers:
 
   WriteUninstaller "$INSTDIR\Uninstall-XyDesk.exe"
   DetailPrint "Done. XyDesk ${Version} is installed in $INSTDIR."
@@ -139,6 +151,9 @@ SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
+  IfFileExists "$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" 0 +3
+    nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" uninstall'
+    Pop $0
   ; Do not kill a live host or delete the user's identity/log directory.
   ; The installer leaves personal diagnostics under %LOCALAPPDATA%\XyDesk.
   Delete "$DESKTOP\XyDesk Control Panel.lnk"

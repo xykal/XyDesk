@@ -273,8 +273,26 @@ jobs:
             exit 0
           }
 
-          # Tag rilis ge9/IddSampleDriver TIDAK memakai awalan "v".
-          # URL lama (v0.0.1.4) selalu 404 dan try/catch menelannya diam-diam.
+          # 1. Unduh MttVDD (VirtualDrivers/Virtual-Display-Driver 24.10.27 HDR IddCx)
+          $mttZip = "$env:RUNNER_TEMP\mttvdd.zip"
+          $mttUrl = "https://github.com/VirtualDrivers/Virtual-Display-Driver/releases/download/24.10.27/VirtualDisplayDriver-x64.zip"
+          try {
+            Invoke-WebRequest -Uri $mttUrl -OutFile $mttZip -UseBasicParsing -ErrorAction Stop
+            $mttStage = Join-Path $env:RUNNER_TEMP "mtt-stage"
+            Remove-Item $mttStage -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive $mttZip -DestinationPath $mttStage -Force
+            $mttInner = Join-Path $mttStage "VirtualDisplayDriver"
+            if (Test-Path $mttInner) {
+              Copy-Item "$mttInner\*" $driverIDD -Recurse -Force
+            } else {
+              Copy-Item "$mttStage\*" $driverIDD -Recurse -Force
+            }
+            Write-Host "[OK] Driver MttVDD 24.10.27 HDR berhasil disertakan."
+          } catch {
+            Write-Host "[WARN] Gagal unduh MttVDD ($mttUrl): $($_.Exception.Message)"
+          }
+
+          # 2. Unduh ge9/IddSampleDriver 0.0.1.4 (fallback universal Win10 1607+)
           $hasDriver = $false
           $iddZip = "$env:RUNNER_TEMP\idd.zip"
           $urls = @(
@@ -301,7 +319,7 @@ jobs:
             }
           }
           # Unduhan gagal = bug (URL/tag salah), bukan kondisi normal.
-          if (-not $hasDriver) {
+          if (-not $hasDriver -and -not (Test-Path (Join-Path $driverIDD "MttVDD.inf"))) {
             Write-Host "::error::Driver VDD gagal diunduh dari semua URL."
             exit 1
           }
@@ -317,16 +335,21 @@ jobs:
 
 
           $copy = @(
-            @{ src = "packaging/windows/drivers/IddSampleDriver/install.bat";   dst = "IddSampleDriver/install.bat" },
-            @{ src = "packaging/windows/drivers/IddSampleDriver/uninstall.bat"; dst = "IddSampleDriver/uninstall.bat" },
-            @{ src = "packaging/windows/drivers/IddSampleDriver/option.txt";    dst = "IddSampleDriver/option.txt" },
-            @{ src = "packaging/windows/drivers/license-ge9.txt";                dst = "license-ge9.txt" },
-            @{ src = "packaging/windows/drivers/README-VDD.txt";                dst = "README-VDD.txt" }
+            @{ src = "packaging/windows/drivers/IddSampleDriver/install.bat";      dst = "IddSampleDriver/install.bat" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/uninstall.bat";    dst = "IddSampleDriver/uninstall.bat" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/option.txt";       dst = "IddSampleDriver/option.txt" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/vdd_settings.xml"; dst = "IddSampleDriver/vdd_settings.xml" },
+            @{ src = "packaging/windows/drivers/install-all-drivers.bat";          dst = "install-all-drivers.bat" },
+            @{ src = "packaging/windows/drivers/license-ge9.txt";                  dst = "license-ge9.txt" },
+            @{ src = "packaging/windows/drivers/README-VDD.txt";                  dst = "README-VDD.txt" }
           )
           foreach ($s in $copy) {
             if (Test-Path $s.src) {
               Copy-Item $s.src (Join-Path $driverRoot $s.dst) -Force
             }
+          }
+          if (Test-Path (Join-Path $bundle "xydesk-vdd-ctl.exe")) {
+            Copy-Item (Join-Path $bundle "xydesk-vdd-ctl.exe") (Join-Path $driverIDD "xydesk-vdd-ctl.exe") -Force
           }
 
           # Bundle Driver Virtual Audio & Mic (VB-CABLE)

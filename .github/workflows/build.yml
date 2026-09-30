@@ -365,6 +365,11 @@ jobs:
           $cmd = "call `"$vcvars`" && rc.exe /nologo /fo `"$res`" `"$rc`" && cl.exe /nologo /utf-8 /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$src`" `"$res`" /link /SUBSYSTEM:WINDOWS /OUT:`"$exe`" user32.lib gdi32.lib shell32.lib"
           cmd.exe /d /s /c $cmd
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $exe)) { throw 'UI native C++ gagal dikompilasi' }
+          $ctlSrc = (Resolve-Path 'packaging/windows/drivers/xydesk_vdd_ctl.cpp').Path
+          $ctlExe = Join-Path $out 'xydesk-vdd-ctl.exe'
+          $ctlCmd = "call `"$vcvars`" && cl.exe /nologo /utf-8 /std:c++20 /O2 /EHsc /MT /DUNICODE /D_UNICODE `"$ctlSrc`" /link /SUBSYSTEM:CONSOLE /OUT:`"$ctlExe`" setupapi.lib newdev.lib cfgmgr32.lib crypt32.lib advapi32.lib user32.lib gdi32.lib shell32.lib ole32.lib"
+          cmd.exe /d /s /c $ctlCmd
+          if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ctlExe)) { throw 'Controller XyDesk Virtual Display Adapter gagal dikompilasi' }
       - name: Satukan aplikasi dan engine
         shell: pwsh
         run: |
@@ -379,6 +384,10 @@ jobs:
           New-Item -ItemType Directory -Force -Path 'native-windows-x64/drivers' | Out-Null
           if (Test-Path 'packaging/windows/drivers/*') {
             Copy-Item 'packaging/windows/drivers/*' 'native-windows-x64/drivers/' -Recurse -Force
+          }
+          if (Test-Path 'native-windows-x64/xydesk-vdd-ctl.exe') {
+            New-Item -ItemType Directory -Force -Path 'native-windows-x64/drivers/IddSampleDriver' | Out-Null
+            Copy-Item 'native-windows-x64/xydesk-vdd-ctl.exe' 'native-windows-x64/drivers/IddSampleDriver/xydesk-vdd-ctl.exe' -Force
           }
           if (-not (Test-Path 'native-windows-x64/XyDesk.exe')) { throw 'XyDesk.exe native tidak ada' }
           if (-not (Test-Path 'native-windows-x64/xydesk-host.exe')) { throw 'engine Rust tidak dibundel' }

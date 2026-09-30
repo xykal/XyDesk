@@ -168,6 +168,7 @@ Kebijakan rilis:
 ## [6.9.0] - 2026-09-30
 
 - **Client Android ditulis ulang native.** Flutter (`lib/`, `android/`, `test/`, `pubspec`) dihapus; klien kini Kotlin + Jetpack Compose tanpa Material di `android-native/`, dengan pustaka C++ sendiri `libstreamxy` (protokol input, telemetri latensi) dan decoder H.264 low-latency langsung ke Surface (fallback otomatis). Paket `id.xyverse.xydesk` — pasang ulang, tidak bisa update di atas APK Flutter.
+- **XyDesk Virtual Display Adapter & instalasi driver otomatis (NSIS + MSI).** Controller native Win32 C++ `xydesk-vdd-ctl.exe` (SetupAPI + `newdev.dll`) membuat Root-Enumerated PnP Device Node (`Root\MttVDD` / `Root\IddSampleDriver`), mengikat driver UMDF2 IddCx secara paksa (`UpdateDriverForPlugAndPlayDevicesW`), menamai perangkat `XyDesk Virtual Display Adapter` di Device Manager, menghasilkan blok EDID 256-byte kustom (`XyDesk VDD`, manufaktur `XYD`), dan memasang matriks 26 resolusi (720p..8K, 16:9, 16:10, 21:9, 32:9, Tablet/Mobile) × 8 refresh rate (30Hz..240Hz) beserta driver Virtual Audio VB-CABLE langsung saat setup berlangsung.
 - Sumber versi pindah dari `pubspec.yaml` ke berkas `VERSION`; Build membangun APK native per ABI (`XyDesk-arm64-v8a.apk`, `XyDesk-armeabi-v7a.apk`, `XyDesk.apk`) bertanda tangan keystore rilis dari secret. Rincian: `changelogs/6.9.0.md`.
 
 ## [6.8.8] - 2026-09-29
