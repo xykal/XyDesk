@@ -29,9 +29,9 @@ class Store(context: Context) {
         get() = prefs.getString("lastHost", "").orEmpty()
         set(v) = prefs.edit().putString("lastHost", v).apply()
 
-    var lowLatency: Boolean
-        get() = prefs.getBoolean("lowLatency", true)
-        set(v) = prefs.edit().putBoolean("lowLatency", v).apply()
+    var onboarded: Boolean
+        get() = prefs.getBoolean("onboarded", false)
+        set(v) = prefs.edit().putBoolean("onboarded", v).apply()
 
     /** Riwayat sesi (terbaru dulu, maksimal 50). */
     var history: List<SessionRecord>

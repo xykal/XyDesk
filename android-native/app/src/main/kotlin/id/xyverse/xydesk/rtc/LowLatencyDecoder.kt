@@ -28,13 +28,39 @@ class LowLatencyDecoderFactory(
     private val surface: () -> Surface?,
     private val onFrame: (decodeMs: Float) -> Unit,
     private val onSize: (w: Int, h: Int) -> Unit,
+    private val onMode: (lowLatency: Boolean) -> Unit,
 ) : VideoDecoderFactory {
     private val fallback = DefaultVideoDecoderFactory(egl)
 
-    override fun createDecoder(info: VideoCodecInfo): VideoDecoder? =
-        if (info.name.equals("H264", true)) LowLatencyH264Decoder(surface, onFrame, onSize) else fallback.createDecoder(info)
+    /** H.264 → coba jalur LL; gagal init → decoder standar libwebrtc, otomatis. */
+    override fun createDecoder(info: VideoCodecInfo): VideoDecoder? {
+        val std = fallback.createDecoder(info)
+        if (!info.name.equals("H264", true)) { onMode(false); return std }
+        return AutoDecoder(LowLatencyH264Decoder(surface, onFrame, onSize), std, onMode)
+    }
 
     override fun getSupportedCodecs(): Array<VideoCodecInfo> = fallback.supportedCodecs
+}
+
+private class AutoDecoder(
+    private val ll: VideoDecoder,
+    private val std: VideoDecoder?,
+    private val onMode: (Boolean) -> Unit,
+) : VideoDecoder {
+    private var active: VideoDecoder = ll
+
+    override fun initDecode(settings: VideoDecoder.Settings, callback: VideoDecoder.Callback): VideoCodecStatus {
+        if (ll.initDecode(settings, callback) == VideoCodecStatus.OK) { active = ll; onMode(true); return VideoCodecStatus.OK }
+        ll.release()
+        val s = std ?: return VideoCodecStatus.ERROR
+        active = s
+        onMode(false)
+        return s.initDecode(settings, callback)
+    }
+
+    override fun decode(image: EncodedImage, info: VideoDecoder.DecodeInfo?) = active.decode(image, info)
+    override fun release() = active.release()
+    override fun getImplementationName(): String = active.implementationName
 }
 
 class LowLatencyH264Decoder(

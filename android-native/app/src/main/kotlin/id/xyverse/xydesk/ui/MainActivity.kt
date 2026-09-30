@@ -9,6 +9,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +25,8 @@ import id.xyverse.xydesk.BuildConfig
 import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.ui.kit.XyTheme
 
+private enum class Stage { SPLASH, ONBOARDING, AUTH }
+
 class MainActivity : ComponentActivity() {
     private val store by lazy { Store(applicationContext) }
 
@@ -31,9 +35,18 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             var jwt by remember { mutableStateOf(store.jwt) }
+            var stage by remember { mutableStateOf(Stage.SPLASH) }
             XyTheme {
-                AnimatedContent(jwt != null, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "auth") { loggedIn ->
-                    if (!loggedIn) {
+                AnimatedContent(
+                    Triple(stage, jwt != null, 0),
+                    transitionSpec = { (fadeIn(tween(500)) + scaleIn(tween(500), 0.98f)) togetherWith fadeOut(tween(250)) },
+                    label = "root",
+                ) { (st, loggedIn) ->
+                    if (st == Stage.SPLASH) {
+                        SplashScreen(playVoice = !store.onboarded) { stage = if (store.onboarded) Stage.AUTH else Stage.ONBOARDING }
+                    } else if (st == Stage.ONBOARDING) {
+                        OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
+                    } else if (!loggedIn) {
                         LoginScreen(onGoogle = ::googleIdToken) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                         }
@@ -44,10 +57,9 @@ class MainActivity : ComponentActivity() {
                         ConnectScreen(
                             email = store.email.orEmpty(),
                             initialHost = store.lastHost,
-                            initialLowLatency = store.lowLatency,
                             devices = history.distinctBy { it.host },
                             history = history,
-                            onConnect = { host, pin, ll -> openSession(host, pin, ll) },
+                            onConnect = { host, pin -> openSession(host, pin) },
                             onLogout = { store.clear(); jwt = null },
                         )
                     }
@@ -56,15 +68,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openSession(host: String, pin: String, lowLatency: Boolean) {
+    private fun openSession(host: String, pin: String) {
         store.lastHost = host
-        store.lowLatency = lowLatency
         startActivity(
             Intent(this, SessionActivity::class.java)
                 .putExtra("jwt", store.jwt)
                 .putExtra("host", host)
-                .putExtra("pin", pin)
-                .putExtra("lowLatency", lowLatency),
+                .putExtra("pin", pin),
         )
     }
 
