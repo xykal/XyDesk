@@ -110,7 +110,7 @@ private data class SocialLink(val kind: Social, val name: String, val url: Strin
 private val socials = listOf(
     SocialLink(Social.TIKTOK, "TikTok", "https://tiktok.com/@xydesk", 0xFF010101),
     SocialLink(Social.INSTAGRAM, "Instagram", "https://instagram.com/xydesk", 0xFFE1306C),
-    SocialLink(Social.YOUTUBE, "YouTube", "https://youtube.com/@xydesk", 0xFFFFFFFF),
+    SocialLink(Social.YOUTUBE, "YouTube", "https://youtube.com/@xydesk", 0xFFFF0000),
     SocialLink(Social.X, "X", "https://x.com/xydesk", 0xFF000000),
     SocialLink(Social.WEB, "Web", "https://xydesk.my.id", 0xFF7C3AED),
 )
@@ -140,7 +140,7 @@ private fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: 
                         Box(
                             Modifier.size(48.dp).background(Color(s.color), CircleShape).border(1.dp, Xy.line, CircleShape).clickable { onOpenUrl(s.url) },
                             contentAlignment = Alignment.Center,
-                        ) { SocialMark(s.kind, Modifier.size(26.dp), color = if (s.kind == Social.YOUTUBE) Color(0xFFFF0000) else Color.White) }
+                        ) { SocialMark(s.kind, Modifier.size(22.dp)) }
                         Spacer(Modifier.height(6.dp))
                         XyText(s.name, Xy.caption)
                     }

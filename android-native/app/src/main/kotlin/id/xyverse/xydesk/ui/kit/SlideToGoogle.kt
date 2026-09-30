@@ -8,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -33,11 +32,13 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -46,6 +47,42 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+/**
+ * "Ular" cahaya: segmen garis yang merayap mengikuti tepi pil (bukan berputar
+ * di tengah). Kepala tebal & pekat, ekor menipis lewat beberapa sub-segmen.
+ */
+private fun DrawScope.drawSnake(measure: PathMeasure, t: Float) {
+    val stroke = 3.dp.toPx()
+    val rect = Path().apply {
+        addRoundRect(RoundRect(stroke / 2, stroke / 2, size.width - stroke / 2, size.height - stroke / 2, CornerRadius(size.height / 2)))
+    }
+    measure.setPath(rect, true)
+    val len = measure.length
+    val body = len * 0.32f
+    val head = t * len
+    val steps = 6
+    for (i in 0 until steps) {
+        val a = head - body * (i + 1) / steps
+        val b = head - body * i / steps
+        val seg = Path()
+        segment(measure, len, a, b, seg)
+        val alpha = 1f - i / steps.toFloat()
+        drawPath(seg, Xy.accent.copy(alpha = alpha), style = Stroke(stroke * (1f - 0.5f * i / steps), cap = StrokeCap.Round))
+    }
+}
+
+/** getSegment yang membungkus lewat titik nol path tertutup. */
+private fun segment(m: PathMeasure, len: Float, from: Float, to: Float, out: Path) {
+    var a = from
+    var b = to
+    while (a < 0f) { a += len; b += len }
+    if (b <= len) { m.getSegment(a, b, out, true); return }
+    m.getSegment(a, len, out, true)
+    val rest = Path()
+    m.getSegment(0f, b - len, rest, true)
+    out.addPath(rest)
+}
 
 /**
  * "Geser ke kanan untuk lanjut dengan Google". Knob bulat berlogo G digeser ke
@@ -59,9 +96,10 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
     val pad = 4.dp
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
-    val spin by rememberInfiniteTransition(label = "spin").animateFloat(
-        0f, 360f, infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart), label = "angle",
+    val travel by rememberInfiniteTransition(label = "snake").animateFloat(
+        0f, 1f, infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart), label = "t",
     )
+    val measure = remember { PathMeasure() }
     val shape = RoundedCornerShape(Xy.pill)
     val haptic = LocalHapticFeedback.current
 
@@ -71,18 +109,7 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
             .height(54.dp)
             .drawWithContent {
                 drawContent()
-                if (loading) {
-                    val stroke = 3.dp.toPx()
-                    rotate(spin) {
-                        drawRoundRect(
-                            brush = Brush.sweepGradient(listOf(Color.Transparent, Color.Transparent, Xy.accent, Color(0xFF4285F4), Color.Transparent)),
-                            topLeft = Offset(stroke / 2, stroke / 2),
-                            size = Size(size.width - stroke, size.height - stroke),
-                            cornerRadius = CornerRadius(size.height / 2),
-                            style = Stroke(stroke),
-                        )
-                    }
-                }
+                if (loading) drawSnake(measure, travel)
             }
             .padding(2.dp)
             .clip(shape)
@@ -124,20 +151,3 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
     }
 }
 
-/** Logo "G" Google digambar dengan empat busur (tanpa aset bitmap). */
-@Composable
-fun GoogleMark(modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val stroke = size.minDimension * 0.2f
-        val inset = stroke / 2
-        val arc = Size(size.width - stroke, size.height - stroke)
-        val tl = Offset(inset, inset)
-        fun seg(color: Color, start: Float, sweep: Float) =
-            drawArc(color, start, sweep, false, tl, arc, style = Stroke(stroke))
-        seg(Color(0xFF4285F4), -10f, 80f)
-        seg(Color(0xFF34A853), 70f, 80f)
-        seg(Color(0xFFFBBC05), 150f, 70f)
-        seg(Color(0xFFEA4335), 220f, 90f)
-        drawLine(Color(0xFF4285F4), Offset(size.width / 2, size.height / 2), Offset(size.width - inset, size.height / 2), stroke)
-    }
-}
