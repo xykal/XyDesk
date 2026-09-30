@@ -13,7 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import id.xyverse.xydesk.databinding.ActivitySessionBinding
 import id.xyverse.xydesk.core.LatencyRing
 import id.xyverse.xydesk.core.StreamXy
@@ -26,7 +26,7 @@ import id.xyverse.xydesk.rtc.RtcSession
  * Satu jari geser = gerak kursor relatif, ketuk = klik kiri,
  * ketuk dua jari = klik kanan, geser dua jari = scroll.
  */
-class SessionActivity : AppCompatActivity(), RtcListener {
+class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var b: ActivitySessionBinding
     private lateinit var session: RtcSession
     private var lastX = 0f

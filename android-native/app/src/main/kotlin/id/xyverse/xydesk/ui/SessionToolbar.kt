@@ -53,7 +53,7 @@ fun SessionToolbar(actions: SessionActions) {
             Row(
                 Modifier
                     .clip(RoundedCornerShape(Xy.radiusL))
-                    .background(Color(0xE61B1B1E))
+                    .background(Color(0xF2FFFFFF))
                     .border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL))
                     .padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -77,7 +77,7 @@ fun SessionToolbar(actions: SessionActions) {
                     .clickable(remember { MutableInteractionSource() }, null) { open = true },
                 contentAlignment = Alignment.Center,
             ) {
-                Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Color(0x66FFFFFF)))
+                Box(Modifier.width(36.dp).height(5.dp).clip(CircleShape).background(Color(0x99FFFFFF)))
             }
         }
     }

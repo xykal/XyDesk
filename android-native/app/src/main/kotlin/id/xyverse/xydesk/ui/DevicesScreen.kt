@@ -39,7 +39,7 @@ fun DevicesSection(devices: List<SessionRecord>, onPick: (host: String) -> Unit)
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(Xy.radiusM))
-                    .background(Xy.raised)
+                    .background(Xy.overlay)
                     .clickable(remember { MutableInteractionSource() }, null) { onPick(d.host) }
                     .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
