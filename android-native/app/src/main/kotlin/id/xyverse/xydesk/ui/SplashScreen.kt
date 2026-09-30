@@ -35,6 +35,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
@@ -151,8 +155,13 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
                     Modifier.graphicsLayer { translationY = (1f - word.value) * (-46).dp.toPx(); alpha = word.value },
                 )
             }
-            Spacer(Modifier.height(8.dp))
-            XyText("XyVerse Technology Global", Xy.label, Modifier.alpha(word.value))
+            Spacer(Modifier.height(6.dp))
+            XyText("Kendalikan PC dari mana saja", Xy.caption.copy(letterSpacing = 0.4.sp), Modifier.alpha(word.value))
+            Spacer(Modifier.height(18.dp))
+            Box(Modifier.width(56.dp).height(3.dp).clip(RoundedCornerShape(Xy.pill)).background(Xy.line).alpha(word.value)) {
+                Box(Modifier.fillMaxWidth(sheen.value.coerceIn(0f, 1f)).height(3.dp).background(Xy.accentBrush))
+            }
         }
+        XyText("XyVerse Technology Global", Xy.label, Modifier.align(Alignment.BottomCenter).padding(bottom = 36.dp).alpha(word.value))
     }
 }

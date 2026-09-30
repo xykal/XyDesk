@@ -140,6 +140,10 @@ private val en = mapOf(
     "FPS · RESOLUSI" to "FPS · RESOLUTION",
     "MONITOR · SESI" to "MONITOR · SESSION",
     "Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt)." to "Auto: resolution and bitrate follow your network (libxyadapt).",
+    "Dengan masuk, kamu menyetujui:" to "By signing in you agree to:",
+    "Syarat & Ketentuan" to "Terms & Conditions",
+    "Kebijakan Privasi" to "Privacy Policy",
+    "Kendalikan PC dari mana saja" to "Control your PC from anywhere",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

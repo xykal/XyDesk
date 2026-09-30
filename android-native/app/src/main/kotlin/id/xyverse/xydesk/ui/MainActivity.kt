@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
-                        LoginScreen(onGoogle = ::googleIdToken) { token, email ->
+                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                         }
                     } else {
