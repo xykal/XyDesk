@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -78,5 +79,4 @@ fun ConnectScreen(
     }
 }
 
-private fun Modifier.clickableText(onClick: () -> Unit): Modifier =
-    androidx.compose.foundation.clickable(this, onClick = onClick)
+private fun Modifier.clickableText(onClick: () -> Unit): Modifier = clickable(onClick = onClick)
