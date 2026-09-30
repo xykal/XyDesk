@@ -500,7 +500,8 @@ fn sync_host_driver_configs(width: u32, height: u32, hz: u32, count: u32) {
         build_vdd_settings_xml(width, height, hz, count),
     );
     let opt = build_option_txt(width, height, hz, count);
-    let _ = std::fs::write(vdd_dir.join("option.tlet _ = std::fs::write(idd_dir.join("option.txt"), &opt);
+    let _ = std::fs::write(vdd_dir.join("option.txt"), &opt);
+    let _ = std::fs::write(idd_dir.join("option.txt"), &opt);
 }
 
 #[rustfmt::skip]
@@ -596,6 +597,7 @@ pub fn ensure_virtual_display_created() -> bool {
     find_virtual_display().is_some()
 }
 
+#[rustfmt::skip]
 pub fn ensure_display() {
     if needs_virtual_display() && find_virtual_display().is_none() {
         #[cfg(target_os = "windows")]
@@ -609,6 +611,7 @@ pub fn ensure_display() {
     }
 }
 
+#[rustfmt::skip]
 pub fn set_virtual_display_mode(
     width: u32,
     height: u32,
@@ -657,6 +660,7 @@ pub fn set_virtual_display_mode(
     }
 }
 
+#[rustfmt::skip]
 pub fn create_virtual_display(width: u32, height: u32, count: u32) -> Result<String, String> {
     if count != 1 {
         return Err("Konfigurasi jumlah monitor dilakukan melalui driver; tidak ada perintah manager tebakan.".into());
