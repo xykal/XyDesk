@@ -33,6 +33,8 @@ import org.webrtc.VideoTrack
 import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
+import org.json.JSONObject
+import id.xyverse.xydesk.core.HostSpecs
 import kotlin.random.Random
 
 enum class Phase { PAIRING, NEGOTIATING, CONNECTED, REJECTED, PEER_OFFLINE, BUSY, ENDED, ERROR }
@@ -41,6 +43,7 @@ interface RtcListener {
     fun onPhase(phase: Phase, message: String?)
     fun onHostName(name: String) {}
     fun onRemoteClipboard(text: String) {}
+    fun onHostSpecs(specs: HostSpecs) {}
 }
 
 /**
@@ -228,6 +231,7 @@ class RtcSession(
             override fun onMessage(buffer: DataChannel.Buffer) {
                 val data = ByteArray(buffer.data.remaining())
                 buffer.data.get(data)
+                if (!buffer.binary) { onText(String(data, Charsets.UTF_8)); return }
                 if (clipboardSync) StreamXy.clipboardText(data)?.takeIf { it.isNotEmpty() }?.let(listener::onRemoteClipboard)
             }
         })
@@ -238,6 +242,18 @@ class RtcSession(
                 signaling.offer(Signaling.normalizeId(hostId), desc.description)
             }
         }, MediaConstraints())
+    }
+
+    private var specsSent = false
+
+    /** Pesan JSON dari host di kanal input; saat ini hanya `meta.hardware` yang dipakai. */
+    private fun onText(text: String) {
+        if (specsSent || !text.startsWith("{")) return
+        val hw = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" }?.optJSONObject("hardware") ?: return
+        val specs = HostSpecs.from(hw)
+        if (specs.isEmpty) return
+        specsSent = true
+        listener.onHostSpecs(specs)
     }
 
     fun setAudioMuted(muted: Boolean) {

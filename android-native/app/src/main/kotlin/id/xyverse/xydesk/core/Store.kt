@@ -50,8 +50,12 @@ class Store(context: Context) {
         set(v) = prefs.edit().putString("history", JSONArray(v.take(50).map { it.json() }).toString()).apply()
 
     fun record(rec: SessionRecord) {
-        history = listOf(rec) + history.filterNot { it.startedAt == rec.startedAt }
+        val known = history.firstOrNull { it.host == rec.host && !it.specs.isEmpty }?.specs
+        val merged = if (rec.specs.isEmpty && known != null) rec.copy(specs = known) else rec
+        history = listOf(merged) + history.filterNot { it.startedAt == rec.startedAt }
     }
+
+    fun clearHistory() = prefs.edit().remove("history").apply()
 
     /** Host yang pernah tersambung, digabung per ID. */
     fun devices(): List<SessionRecord> = history.distinctBy { it.host }
@@ -65,15 +69,43 @@ data class SessionRecord(
     val startedAt: Long,
     val durationSec: Long,
     val outcome: String,
+    val specs: HostSpecs = HostSpecs(),
 ) {
     fun json(): JSONObject = JSONObject()
         .put("host", host).put("name", name).put("startedAt", startedAt)
-        .put("durationSec", durationSec).put("outcome", outcome)
+        .put("durationSec", durationSec).put("outcome", outcome).put("specs", specs.json())
 
     companion object {
         fun from(o: JSONObject) = SessionRecord(
             o.getString("host"), o.optString("name"), o.getLong("startedAt"),
             o.optLong("durationSec"), o.optString("outcome", "ok"),
+            o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(),
         )
+    }
+}
+
+/** Spesifikasi host dari blok `meta.hardware`; string kosong = tidak terbaca. */
+data class HostSpecs(
+    val hostname: String = "",
+    val os: String = "",
+    val motherboard: String = "",
+    val cpu: String = "",
+    val gpu: String = "",
+    val ram: String = "",
+    val storage: String = "",
+) {
+    val isEmpty get() = listOf(hostname, os, motherboard, cpu, gpu, ram, storage).all { it.isEmpty() }
+
+    fun json(): JSONObject = JSONObject()
+        .put("hostname", hostname).put("os", os).put("motherboard", motherboard)
+        .put("cpu", cpu).put("gpu", gpu).put("ram", ram).put("storage", storage)
+
+    companion object {
+        fun from(o: JSONObject) = HostSpecs(
+            o.str("hostname"), o.str("os"), o.str("motherboard"),
+            o.str("cpu"), o.str("gpu"), o.str("ram"), o.str("storage"),
+        )
+
+        private fun JSONObject.str(k: String) = if (isNull(k)) "" else optString(k).trim()
     }
 }
