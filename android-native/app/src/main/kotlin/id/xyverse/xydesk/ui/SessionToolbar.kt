@@ -6,6 +6,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -35,6 +37,8 @@ import id.xyverse.xydesk.ui.kit.XyText
 class SessionActions(
     val keyboard: () -> Unit,
     val quality: (preset: Int) -> Unit,
+    val resolution: (mode: Int) -> Unit,
+    val display: (index: Int) -> Unit,
     val toggleStats: () -> Unit,
     val disconnect: () -> Unit,
 )
@@ -47,11 +51,15 @@ class SessionActions(
 fun SessionToolbar(actions: SessionActions) {
     var open by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(0) }
+    var res by remember { mutableStateOf(0) }
+    var monitor by remember { mutableStateOf(0) }
     val labels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
+    val resLabels = listOf("720p", "1080p")
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(bottom = 10.dp)) {
         AnimatedVisibility(open, enter = slideInVertically { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
             Row(
                 Modifier
+                    .horizontalScroll(rememberScrollState())
                     .clip(RoundedCornerShape(Xy.radiusL))
                     .background(Color(0xF2FFFFFF))
                     .border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL))
@@ -63,6 +71,14 @@ fun SessionToolbar(actions: SessionActions) {
                 Pill(labels[quality], accent = true) {
                     quality = (quality + 1) % labels.size
                     actions.quality(quality)
+                }
+                Pill(resLabels[res], accent = true) {
+                    res = (res + 1) % resLabels.size
+                    actions.resolution(res)
+                }
+                Pill("Monitor ${monitor + 1}") {
+                    monitor = (monitor + 1) % 4
+                    actions.display(monitor)
                 }
                 Pill("Stats") { actions.toggleStats() }
                 Pill("Putus", danger = true) { actions.disconnect() }

@@ -17,6 +17,8 @@ size_t sx_input_scroll(uint8_t* out, int16_t dx, int16_t dy);
 size_t sx_input_key(uint8_t* out, uint16_t vk, bool down);
 size_t sx_input_text(uint8_t* out, size_t cap, const char* utf8, size_t len);
 size_t sx_input_quality(uint8_t* out, uint8_t preset);
+size_t sx_input_display(uint8_t* out, uint8_t index);
+size_t sx_input_resolution(uint8_t* out, uint8_t mode);
 
 // ── Telemetri latensi ──────────────────────────────────────────────────
 // Ring buffer sampel (ms). Thread-safe untuk satu penulis + satu pembaca.

@@ -14,6 +14,8 @@ object StreamXy {
     external fun key(vk: Int, down: Boolean): ByteArray
     external fun text(s: String): ByteArray
     external fun quality(preset: Int): ByteArray
+    external fun display(index: Int): ByteArray
+    external fun resolution(mode: Int): ByteArray
 
     external fun statsNew(capacity: Int): Long
     external fun statsFree(handle: Long)
