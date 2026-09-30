@@ -63,7 +63,8 @@ impl BitrateGovernor {
 
     fn within_deadband(cur: u32, wanted: u32) -> bool {
         let diff = wanted.abs_diff(cur) as f32;
-        diff / cur.max(1) as f32 < 0.10
+        let base = cur.max(1) as f32;
+        diff / base < 0.10
     }
 }
 
