@@ -14,7 +14,19 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.inputmethod.InputMethodManager
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
+import android.view.PixelCopy
+import android.view.SurfaceView
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import id.xyverse.xydesk.core.HostSpecs
+import id.xyverse.xydesk.core.LocalLang
+import id.xyverse.xydesk.core.Previews
 import id.xyverse.xydesk.core.KeyMap
 import id.xyverse.xydesk.core.LatencyRing
 import id.xyverse.xydesk.core.SessionRecord
@@ -77,6 +89,14 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var lowLatency = false
     private var showStats = true
     private var hostName = ""
+    private var specs = HostSpecs()
+    private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
+    private val previewTick = object : Runnable {
+        override fun run() {
+            capturePreview()
+            b.video.postDelayed(this, 10_000)
+        }
+    }
     private var startedAt = 0L
     private var outcome = "ok"
     private val store by lazy { Store(applicationContext) }
@@ -111,7 +131,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
         applyDecodeMode(true)
         b.raw.setOnTouchListener { v, e -> onTouch(v, e) }
         b.video.setOnTouchListener { v, e -> onTouch(v, e) }
+        connectState = ConnectState(Phase.PAIRING, null, intent.getStringExtra("host").orEmpty())
         setupToolbar()
+        setupOverlay()
         setupKeyboard()
         startedAt = System.currentTimeMillis()
         session.start()
@@ -200,9 +222,37 @@ class SessionActivity : ComponentActivity(), RtcListener {
         vks.reversed().forEach { session.send(StreamXy.key(it, false)) }
     }
 
+    private fun setupOverlay() {
+        b.overlay.setContent {
+            CompositionLocalProvider(LocalLang provides store.lang) {
+                ConnectingOverlay(
+                    connectState,
+                    onRetry = { outcome = "retry"; startActivity(intent); finish() },
+                    onBack = { if (outcome == "ok") outcome = "batal"; finish() },
+                )
+            }
+        }
+    }
+
+    /** Salin frame yang sedang tampil ke bitmap kecil; jadi cuplikan kartu perangkat. */
+    private fun capturePreview() {
+        if (!connected) return
+        val view: SurfaceView = if (lowLatency) b.raw else b.video
+        if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
+        val w = 480
+        val h = (w * view.height / view.width).coerceAtLeast(1)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val host = intent.getStringExtra("host").orEmpty()
+        runCatching {
+            PixelCopy.request(view, bmp, { r ->
+                if (r == PixelCopy.SUCCESS) Thread { Previews.save(applicationContext, host, bmp) }.start()
+            }, Handler(Looper.getMainLooper()))
+        }
+    }
+
     private fun setupToolbar() {
         b.toolbar.setContent {
-            SessionToolbar(
+            CompositionLocalProvider(LocalLang provides store.lang) { SessionToolbar(
                 SessionActions(
                     keyboard = { toggleKeyboard() },
                     quality = { session.send(StreamXy.quality(it)) },
@@ -224,7 +274,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     toggleStats = { showStats = !showStats; if (!showStats) b.status.visibility = View.GONE },
                     disconnect = { outcome = "putus"; finish() },
                 ),
-            )
+            ) }
         }
     }
 
@@ -276,6 +326,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         hostName = name
     }
 
+    override fun onHostSpecs(specs: HostSpecs) {
+        this.specs = specs
+    }
+
     override fun onRemoteClipboard(text: String) = runOnUiThread {
         if (text.isNotEmpty() && text != lastSyncedClipboard) {
             lastSyncedClipboard = text
@@ -284,19 +338,19 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
-        val text = when (phase) {
-            Phase.PAIRING -> "Menghubungi host…"
-            Phase.NEGOTIATING -> "Pairing diterima, menyiapkan video…"
-            Phase.CONNECTED -> ""
-            else -> message ?: phase.name
-        }
         connected = phase == Phase.CONNECTED
-        if (connected) b.video.postDelayed(statsTick, 1000) else b.video.removeCallbacks(statsTick)
-        b.status.text = text
-        b.status.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
-        if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED)) {
-            if (outcome == "ok") outcome = phase.name.lowercase()
-            b.status.setOnClickListener { finish() }
+        connectState = connectState.copy(phase = phase, message = message)
+        b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
+        b.status.visibility = View.GONE
+        if (connected) {
+            b.video.postDelayed(statsTick, 1000)
+            b.video.postDelayed(previewTick, 3000)
+        } else {
+            b.video.removeCallbacks(statsTick)
+            b.video.removeCallbacks(previewTick)
+        }
+        if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED) && outcome == "ok") {
+            outcome = phase.name.lowercase()
         }
     }
 
@@ -322,9 +376,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
                 startedAt = startedAt,
                 durationSec = (System.currentTimeMillis() - startedAt) / 1000,
                 outcome = outcome,
+                specs = specs,
             ),
         )
         b.video.removeCallbacks(statsTick)
+        b.video.removeCallbacks(previewTick)
         decodeRing.close()
         rttRing.close()
         session.stop()

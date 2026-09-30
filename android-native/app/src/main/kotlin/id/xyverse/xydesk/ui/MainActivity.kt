@@ -28,7 +28,9 @@ import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import id.xyverse.xydesk.BuildConfig
+import id.xyverse.xydesk.core.Previews
 import id.xyverse.xydesk.core.Store
+import android.os.Build
 import id.xyverse.xydesk.ui.kit.XyTheme
 
 private enum class Stage { SPLASH, ONBOARDING, AUTH }
@@ -81,6 +83,13 @@ class MainActivity : ComponentActivity() {
                                 haptics = haptics,
                                 onHaptics = { haptics = it; store.haptics = it },
                                 onReplayIntro = { replay = true; stage = Stage.SPLASH },
+                                deviceLabel = "${Build.MANUFACTURER} ${Build.MODEL}",
+                                appVersion = BuildConfig.VERSION_NAME,
+                                historyCount = history.size,
+                                onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); refresh++ },
+                                onOpenAppSettings = {
+                                    startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                                },
                             ),
                             onLogout = { store.clear(); jwt = null },
                         )
