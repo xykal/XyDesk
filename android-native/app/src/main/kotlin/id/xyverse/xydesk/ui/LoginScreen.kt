@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.core.LocalLang
 import id.xyverse.xydesk.core.Sfx
+import id.xyverse.xydesk.core.tr
 import id.xyverse.xydesk.net.Api
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyButton
@@ -46,6 +48,8 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
     var googleBusy by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
+    val lang = LocalLang.current
+    fun t0(k: String) = k.tr(lang)
     val sfx = remember { Sfx(ctx) }
     DisposableEffect(Unit) { onDispose { sfx.release() } }
 
@@ -75,7 +79,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
             Spacer(Modifier.height(Xy.gap))
             XyButton(if (sent) "Masuk" else "Kirim kode", enabled = !busy && email.contains('@')) {
                 if (!sent) run {
-                    Api.requestOtp(email); sent = true; notice = "Kode dikirim ke $email"; tone = Xy.success
+                    Api.requestOtp(email); sent = true; notice = t0("Kode dikirim ke") + " " + email; tone = Xy.success
                 } else run {
                     val jwt = Api.verifyOtp(email, otp); onLoggedIn(jwt, email)
                 }
@@ -83,7 +87,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f).height(1.dp).background(Xy.line))
-                XyText("  atau  ", Xy.label)
+                XyText("atau", Xy.label, Modifier.padding(horizontal = 10.dp))
                 Box(Modifier.weight(1f).height(1.dp).background(Xy.line))
             }
             Spacer(Modifier.height(14.dp))
@@ -92,7 +96,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
                 googleBusy = true
                 scope.launch {
                     runCatching {
-                        val idToken = onGoogle() ?: throw IllegalStateException("Login Google dibatalkan.")
+                        val idToken = onGoogle() ?: throw IllegalStateException(t0("Login Google dibatalkan."))
                         val res = Api.googleLogin(idToken)
                         onLoggedIn(res.getString("token"), res.optJSONObject("user")?.optString("email").orEmpty())
                     }.onFailure { notice = it.message ?: "Gagal"; tone = Xy.danger }
