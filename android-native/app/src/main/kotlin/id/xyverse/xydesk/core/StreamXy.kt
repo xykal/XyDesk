@@ -13,6 +13,7 @@ object StreamXy {
     external fun scroll(dx: Int, dy: Int): ByteArray
     external fun key(vk: Int, down: Boolean): ByteArray
     external fun text(s: String): ByteArray
+    external fun quality(preset: Int): ByteArray
 
     external fun statsNew(capacity: Int): Long
     external fun statsFree(handle: Long)

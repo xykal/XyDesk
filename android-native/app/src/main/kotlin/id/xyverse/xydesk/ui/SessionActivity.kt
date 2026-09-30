@@ -3,6 +3,12 @@ package id.xyverse.xydesk.ui
 import android.annotation.SuppressLint
 import android.os.Build
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.KeyEvent
+import android.view.inputmethod.InputMethodManager
+import id.xyverse.xydesk.core.SessionRecord
+import id.xyverse.xydesk.core.Store
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
@@ -45,13 +51,18 @@ class SessionActivity : AppCompatActivity(), RtcListener {
                     if (lowLatency) "LL" else "std", shownFps, decodeRing.p(50f), decodeRing.p(95f), rttRing.p(50f),
                     if (relay) "relay" else "langsung",
                 )
-                runOnUiThread { if (connected) { b.status.text = text; b.status.visibility = View.VISIBLE } }
+                runOnUiThread { if (connected && showStats) { b.status.text = text; b.status.visibility = View.VISIBLE } }
             }
             b.video.postDelayed(this, 1000)
         }
     }
     private var connected = false
     private var lowLatency = false
+    private var showStats = true
+    private var hostName = ""
+    private var startedAt = 0L
+    private var outcome = "ok"
+    private val store by lazy { Store(applicationContext) }
     private var nativeFrames = 0L
     private var lastNativeFrames = 0L
 
@@ -82,6 +93,9 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         }
         val touchTarget: View = if (lowLatency) b.raw else b.video
         touchTarget.setOnTouchListener { _, e -> onTouch(e) }
+        setupToolbar()
+        setupKeyboard()
+        startedAt = System.currentTimeMillis()
         session.start()
     }
 
@@ -129,6 +143,56 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         b.video.postDelayed({ session.send(StreamXy.button(button, false)) }, 40)
     }
 
+    private fun setupToolbar() {
+        b.toolbar.setContent {
+            SessionToolbar(
+                SessionActions(
+                    keyboard = { toggleKeyboard() },
+                    quality = { session.send(StreamXy.quality(it)) },
+                    toggleStats = { showStats = !showStats; if (!showStats) b.status.visibility = View.GONE },
+                    disconnect = { outcome = "putus"; finish() },
+                ),
+            )
+        }
+    }
+
+    /** EditText tak terlihat menampung IME; setiap perubahan teks dikirim sebagai Text/Key ke host. */
+    private fun setupKeyboard() {
+        b.keyboardSink.setOnKeyListener { _, code, ev ->
+            if (ev.action != KeyEvent.ACTION_DOWN) return@setOnKeyListener false
+            val vk = when (code) {
+                KeyEvent.KEYCODE_DEL -> 0x08
+                KeyEvent.KEYCODE_ENTER -> 0x0D
+                KeyEvent.KEYCODE_TAB -> 0x09
+                KeyEvent.KEYCODE_ESCAPE -> 0x1B
+                else -> return@setOnKeyListener false
+            }
+            session.send(StreamXy.key(vk, true)); session.send(StreamXy.key(vk, false))
+            true
+        }
+        b.keyboardSink.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun afterTextChanged(s: Editable?) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (count > before && s != null) session.send(StreamXy.text(s.substring(start + before, start + count)))
+                else if (before > count) repeat(before - count) {
+                    session.send(StreamXy.key(0x08, true)); session.send(StreamXy.key(0x08, false))
+                }
+            }
+        })
+    }
+
+    private fun toggleKeyboard() {
+        val imm = getSystemService(InputMethodManager::class.java)
+        b.keyboardSink.setText("")
+        b.keyboardSink.requestFocus()
+        imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+    }
+
+    override fun onHostName(name: String) {
+        hostName = name
+    }
+
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
         val text = when (phase) {
             Phase.PAIRING -> "Menghubungi host…"
@@ -141,6 +205,7 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         b.status.text = text
         b.status.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED)) {
+            if (outcome == "ok") outcome = phase.name.lowercase()
             b.status.setOnClickListener { finish() }
         }
     }
@@ -159,6 +224,15 @@ class SessionActivity : AppCompatActivity(), RtcListener {
     }
 
     override fun onDestroy() {
+        store.record(
+            SessionRecord(
+                host = intent.getStringExtra("host").orEmpty(),
+                name = hostName,
+                startedAt = startedAt,
+                durationSec = (System.currentTimeMillis() - startedAt) / 1000,
+                outcome = outcome,
+            ),
+        )
         b.video.removeCallbacks(statsTick)
         decodeRing.close()
         rttRing.close()
