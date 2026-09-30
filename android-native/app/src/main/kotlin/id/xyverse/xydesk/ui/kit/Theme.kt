@@ -42,6 +42,7 @@ object Xy {
     val radiusS = 10.dp
     val radiusM = 16.dp
     val radiusL = 24.dp
+    val pill = 999.dp
     val gap = 12.dp
     val pad = 20.dp
 
