@@ -6,6 +6,13 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import id.xyverse.xydesk.core.Lang
+import id.xyverse.xydesk.ui.kit.Social
+import id.xyverse.xydesk.ui.kit.SocialMark
+import id.xyverse.xydesk.ui.kit.XyToggle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +53,7 @@ fun HomeShell(
     history: List<SessionRecord>,
     onConnect: (host: String, pin: String) -> Unit,
     onOpenUrl: (String) -> Unit,
+    settings: Settings,
     onLogout: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
@@ -63,7 +71,7 @@ fun HomeShell(
                     if (history.isEmpty()) Empty("Belum ada sesi.")
                     HistorySection(history)
                 }
-                Tab.ACCOUNT -> AccountScreen(email, onOpenUrl, onLogout)
+                Tab.ACCOUNT -> AccountScreen(email, onOpenUrl, settings, onLogout)
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) { BottomNav(tab) { tab = it } }
@@ -88,19 +96,41 @@ private fun Empty(text: String) {
     Spacer(Modifier.height(16.dp))
 }
 
-private data class Social(val name: String, val url: String, val color: Long)
+/** Preferensi yang bisa diubah dari tab Akun. */
+class Settings(
+    val lang: Lang,
+    val onLang: (Lang) -> Unit,
+    val haptics: Boolean,
+    val onHaptics: (Boolean) -> Unit,
+    val onReplayIntro: () -> Unit,
+)
+
+private data class SocialLink(val kind: Social, val name: String, val url: String, val color: Long)
 
 private val socials = listOf(
-    Social("TikTok", "https://tiktok.com/@xydesk", 0xFF010101),
-    Social("Instagram", "https://instagram.com/xydesk", 0xFFE1306C),
-    Social("YouTube", "https://youtube.com/@xydesk", 0xFFFF0000),
-    Social("X", "https://x.com/xydesk", 0xFF000000),
-    Social("Web", "https://xydesk.my.id", 0xFF7C3AED),
+    SocialLink(Social.TIKTOK, "TikTok", "https://tiktok.com/@xydesk", 0xFF010101),
+    SocialLink(Social.INSTAGRAM, "Instagram", "https://instagram.com/xydesk", 0xFFE1306C),
+    SocialLink(Social.YOUTUBE, "YouTube", "https://youtube.com/@xydesk", 0xFFFFFFFF),
+    SocialLink(Social.X, "X", "https://x.com/xydesk", 0xFF000000),
+    SocialLink(Social.WEB, "Web", "https://xydesk.my.id", 0xFF7C3AED),
 )
 
 @Composable
-private fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, onLogout: () -> Unit) {
+private fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings, onLogout: () -> Unit) {
     Page("Akun", email) {
+        XyCard {
+            XyText("PENGATURAN", Xy.label)
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                XyText("Bahasa", Xy.body, Modifier.weight(1f))
+                Segmented(listOf("ID" to Lang.ID, "EN" to Lang.EN), settings.lang, settings.onLang)
+            }
+            Spacer(Modifier.height(4.dp))
+            XyToggle("Getaran halus", "Umpan balik saat geser dan tekan.", settings.haptics, settings.onHaptics)
+            Spacer(Modifier.height(8.dp))
+            XyButton("Putar intro lagi", ghost = true, onClick = settings.onReplayIntro)
+        }
+        Spacer(Modifier.height(16.dp))
         XyCard {
             XyText("IKUTI XYDESK", Xy.label)
             Spacer(Modifier.height(12.dp))
@@ -108,9 +138,9 @@ private fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, onLogout: 
                 socials.forEach { s ->
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
-                            Modifier.size(48.dp).background(Color(s.color), CircleShape).clickable { onOpenUrl(s.url) },
+                            Modifier.size(48.dp).background(Color(s.color), CircleShape).border(1.dp, Xy.line, CircleShape).clickable { onOpenUrl(s.url) },
                             contentAlignment = Alignment.Center,
-                        ) { XyText(s.name.take(1), Xy.title.copy(color = Color.White)) }
+                        ) { SocialMark(s.kind, Modifier.size(26.dp), color = if (s.kind == Social.YOUTUBE) Color(0xFFFF0000) else Color.White) }
                         Spacer(Modifier.height(6.dp))
                         XyText(s.name, Xy.caption)
                     }
@@ -126,5 +156,18 @@ private fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, onLogout: 
         }
         Spacer(Modifier.height(16.dp))
         XyButton("Keluar", ghost = true, onClick = onLogout)
+    }
+}
+
+@Composable
+private fun <T> Segmented(items: List<Pair<String, T>>, value: T, onChange: (T) -> Unit) {
+    Row(Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay).padding(3.dp)) {
+        items.forEach { (label, v) ->
+            val on = v == value
+            Box(
+                Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (on) Color.White else Color.Transparent)
+                    .clickable { onChange(v) }.padding(horizontal = 14.dp, vertical = 6.dp),
+            ) { XyText(label, Xy.label.copy(color = if (on) Xy.accent else Xy.textMid)) }
+        }
     }
 }

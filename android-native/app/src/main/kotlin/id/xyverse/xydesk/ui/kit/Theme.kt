@@ -11,7 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
+import id.xyverse.xydesk.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -20,6 +23,12 @@ import androidx.compose.ui.unit.sp
  * Token desain XyDesk — cermin `lib/core/tokens.dart`. Tidak memakai Material:
  * semua komponen digambar sendiri di atas Compose foundation.
  */
+@OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
+private fun manrope(w: FontWeight) = Font(R.font.manrope, w, variationSettings = FontVariation.Settings(w, androidx.compose.ui.text.font.FontStyle.Normal))
+
+/** Manrope (OFL) dibundel di res/font; satu berkas variabel untuk semua bobot. */
+val XyFont = FontFamily(manrope(FontWeight.Normal), manrope(FontWeight.Medium), manrope(FontWeight.SemiBold), manrope(FontWeight.Bold))
+
 object Xy {
     val bg = Color(0xFFFFFFFF)
     val raised = Color(0xFFFFFFFF)
@@ -46,11 +55,11 @@ object Xy {
     val gap = 12.dp
     val pad = 20.dp
 
-    val display = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 32.sp, letterSpacing = (-0.8).sp, color = textHi)
-    val title = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = textHi)
-    val body = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 15.sp, color = textHi, lineHeight = 22.sp)
-    val caption = TextStyle(fontFamily = FontFamily.SansSerif, fontSize = 12.5.sp, color = textMid, lineHeight = 18.sp)
-    val label = TextStyle(fontFamily = FontFamily.SansSerif, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.6.sp, color = textLow)
+    val display = TextStyle(fontFamily = XyFont, fontWeight = FontWeight.SemiBold, fontSize = 32.sp, letterSpacing = (-0.8).sp, color = textHi)
+    val title = TextStyle(fontFamily = XyFont, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = textHi)
+    val body = TextStyle(fontFamily = XyFont, fontSize = 15.sp, color = textHi, lineHeight = 22.sp)
+    val caption = TextStyle(fontFamily = XyFont, fontSize = 12.5.sp, color = textMid, lineHeight = 18.sp)
+    val label = TextStyle(fontFamily = XyFont, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.6.sp, color = textLow)
     val mono = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 20.sp, letterSpacing = 2.sp, color = textHi)
 }
 

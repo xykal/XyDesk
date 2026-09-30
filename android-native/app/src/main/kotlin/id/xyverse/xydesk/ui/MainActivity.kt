@@ -13,7 +13,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.hapticfeedback.HapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import id.xyverse.xydesk.core.LocalLang
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -37,6 +42,12 @@ class MainActivity : ComponentActivity() {
         setContent {
             var jwt by remember { mutableStateOf(store.jwt) }
             var stage by remember { mutableStateOf(Stage.SPLASH) }
+            var lang by remember { mutableStateOf(store.lang) }
+            var haptics by remember { mutableStateOf(store.haptics) }
+            var replay by remember { mutableStateOf(false) }
+            val hapticOwner = LocalHapticFeedback.current
+            val quiet = remember { object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit } }
+            CompositionLocalProvider(LocalLang provides lang, LocalHapticFeedback provides if (haptics) hapticOwner else quiet) {
             XyTheme {
                 AnimatedContent(
                     Triple(stage, jwt != null, 0),
@@ -44,7 +55,10 @@ class MainActivity : ComponentActivity() {
                     label = "root",
                 ) { (st, loggedIn) ->
                     if (st == Stage.SPLASH) {
-                        SplashScreen(playVoice = !store.onboarded) { stage = if (store.onboarded) Stage.AUTH else Stage.ONBOARDING }
+                        SplashScreen(playVoice = !store.onboarded || replay, short = store.onboarded && !replay) {
+                            replay = false
+                            stage = if (store.onboarded) Stage.AUTH else Stage.ONBOARDING
+                        }
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
@@ -61,10 +75,18 @@ class MainActivity : ComponentActivity() {
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
                             onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
+                            settings = Settings(
+                                lang = lang,
+                                onLang = { lang = it; store.lang = it },
+                                haptics = haptics,
+                                onHaptics = { haptics = it; store.haptics = it },
+                                onReplayIntro = { replay = true; stage = Stage.SPLASH },
+                            ),
                             onLogout = { store.clear(); jwt = null },
                         )
                     }
                 }
+            }
             }
         }
     }

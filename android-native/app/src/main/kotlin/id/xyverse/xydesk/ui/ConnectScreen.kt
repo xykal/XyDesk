@@ -26,6 +26,7 @@ import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
+import id.xyverse.xydesk.ui.kit.t
 
 @Composable
 fun ConnectScreen(
@@ -50,7 +51,7 @@ fun ConnectScreen(
         XyCard {
             XyField(digits.chunked(3).joinToString(" "), { host = it }, "ID perangkat", keyboard = KeyboardType.Number, mono = true, hint = "000 000 000")
             Spacer(Modifier.height(Xy.gap))
-            XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = "sesuai di aplikasi host", transformation = PasswordVisualTransformation())
+            XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = t("sesuai di aplikasi host"), transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
             XyNotice(notice, Xy.warning)
             Spacer(Modifier.height(Xy.gap))

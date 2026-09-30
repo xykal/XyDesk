@@ -39,17 +39,26 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.core.LocalLang
+import id.xyverse.xydesk.core.tr
 import androidx.compose.ui.unit.sp
 
+/** Teks diterjemahkan otomatis menurut LocalLang. */
 @Composable
 fun XyText(text: String, style: TextStyle = Xy.body, modifier: Modifier = Modifier, color: Color? = null) =
-    BasicText(text, modifier, style = if (color != null) style.copy(color = color) else style)
+    BasicText(text.tr(LocalLang.current), modifier, style = if (color != null) style.copy(color = color) else style)
+
+@Composable
+fun t(text: String): String = text.tr(LocalLang.current)
 
 /** Tombol utama: gradien ungu, tanpa ripple, mengecil halus saat ditekan. */
 @Composable
 fun XyButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = true, ghost: Boolean = false, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
+    val haptic = LocalHapticFeedback.current
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 600f), label = "press")
     val shape = RoundedCornerShape(Xy.pill)
@@ -60,7 +69,7 @@ fun XyButton(text: String, modifier: Modifier = Modifier, enabled: Boolean = tru
             .scale(scale)
             .clip(shape)
             .then(if (ghost) Modifier.background(Xy.overlay) else Modifier.shadow(10.dp, shape, ambientColor = Xy.shadow, spotColor = Xy.shadow).background(Xy.accentBrush))
-            .clickable(source, indication = null, enabled = enabled, onClick = onClick),
+            .clickable(source, indication = null, enabled = enabled) { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() },
         contentAlignment = Alignment.Center,
     ) {
         XyText(text, Xy.title.copy(fontSize = 15.5.sp), color = if (!enabled) Xy.textLow else if (ghost) Xy.textHi else Color.White)

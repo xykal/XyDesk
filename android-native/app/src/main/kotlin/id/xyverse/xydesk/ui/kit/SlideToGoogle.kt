@@ -40,6 +40,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
@@ -61,6 +63,7 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
         0f, 360f, infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart), label = "angle",
     )
     val shape = RoundedCornerShape(Xy.pill)
+    val haptic = LocalHapticFeedback.current
 
     BoxWithConstraints(
         Modifier
@@ -103,7 +106,7 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
                     detectHorizontalDragGestures(
                         onDragEnd = {
                             scope.launch {
-                                if (offset.value > maxPx * 0.85f) { offset.animateTo(maxPx, tween(120)); onTrigger() }
+                                if (offset.value > maxPx * 0.85f) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); offset.animateTo(maxPx, tween(120)); onTrigger() }
                                 else offset.animateTo(0f, spring(stiffness = 500f))
                             }
                         },

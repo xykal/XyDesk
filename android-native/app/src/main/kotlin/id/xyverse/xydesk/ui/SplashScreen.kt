@@ -70,7 +70,7 @@ private class IntroVoice(ctx: android.content.Context) {
  * wordmark muncul mengembang, lalu VO "XyDesk". Ketuk untuk melewati.
  */
 @Composable
-fun SplashScreen(playVoice: Boolean, onDone: () -> Unit) {
+fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit) {
     val ctx = LocalContext.current
     val stroke = remember { Animatable(0f) }
     val pulse = remember { Animatable(0f) }
@@ -86,7 +86,7 @@ fun SplashScreen(playVoice: Boolean, onDone: () -> Unit) {
         launch { pulse.animateTo(1f, tween(1400, easing = ease)) }
         delay(250)
         launch { word.animateTo(1f, tween(800, easing = ease)) }
-        delay(1900)
+        delay(if (short) 900L else 1900L)
         exit.animateTo(1f, tween(450, easing = ease))
         onDone()
     }

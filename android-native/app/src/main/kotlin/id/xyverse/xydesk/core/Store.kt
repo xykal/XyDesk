@@ -29,6 +29,14 @@ class Store(context: Context) {
         get() = prefs.getString("lastHost", "").orEmpty()
         set(v) = prefs.edit().putString("lastHost", v).apply()
 
+    var lang: Lang
+        get() = if (prefs.getString("lang", "id") == "en") Lang.EN else Lang.ID
+        set(v) = prefs.edit().putString("lang", if (v == Lang.EN) "en" else "id").apply()
+
+    var haptics: Boolean
+        get() = prefs.getBoolean("haptics", true)
+        set(v) = prefs.edit().putBoolean("haptics", v).apply()
+
     var onboarded: Boolean
         get() = prefs.getBoolean("onboarded", false)
         set(v) = prefs.edit().putBoolean("onboarded", v).apply()
