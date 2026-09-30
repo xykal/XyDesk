@@ -51,3 +51,37 @@ class TrackpadTest {
         assertEquals(2, v.index)
     }
 }
+
+class ExtraTest {
+    @Test fun pinchZoomsOut() {
+        val acts = mutableListOf<Act>()
+        val p = Trackpad { acts += it }
+        p.down(0, 0f, 0f); p.pointerDown()
+        p.pinch(100f); p.pinch(130f); p.pinch(160f)
+        assertTrue(acts.filterIsInstance<Act.Zoom>().sumOf { it.steps } >= 2)
+    }
+
+    @Test fun threeFingerSwipeRight() {
+        val acts = mutableListOf<Act>()
+        val p = Trackpad { acts += it }
+        p.down(0, 0f, 0f); p.pointerDown(); p.pointerDown()
+        p.move(20, 60f, 0f); p.move(40, 120f, 0f); p.up(100)
+        assertEquals(Act.Swipe3(1), acts.last { it is Act.Swipe3 })
+        assertTrue(acts.none { it is Act.Click })
+    }
+
+    @Test fun networkScoreGrades() {
+        val s = NetworkScore()
+        repeat(5) { s.push(60.0, 30.0) }
+        assertEquals(Grade.BAGUS, s.grade(60))
+        repeat(5) { s.push(12.0, 300.0) }
+        assertEquals(Grade.BURUK, s.grade(60))
+    }
+
+    @Test fun reconnectBackoff() {
+        val r = ReconnectPolicy(maxAttempts = 3)
+        assertEquals(1000L, r.nextDelayMs()); assertEquals(2000L, r.nextDelayMs()); assertEquals(4000L, r.nextDelayMs())
+        assertEquals(null, r.nextDelayMs()); assertTrue(r.exhausted)
+        r.reset(); assertEquals(1000L, r.nextDelayMs())
+    }
+}

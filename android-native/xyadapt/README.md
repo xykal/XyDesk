@@ -7,6 +7,9 @@ Pustaka Kotlin murni milik XyDesk (tanpa dependensi Android) yang dipakai client
 - `AdaptiveVideo` — pengendali kualitas otomatis: dari sampel fps/RTT/dekode memutuskan bitrate,
   resolusi, dan target fps dengan histeresis, hanya mengeluarkan perintah saat ada perubahan.
 - `StatsLine` — format baris statistik ringkas (fps, ms, jalur, jaringan).
+- `NetworkScore` — peringkat koneksi (bagus/sedang/buruk) dari fps, RTT, dan jitter dalam jendela 5 sampel.
+- `ReconnectPolicy` — sambung ulang otomatis dengan mundur eksponensial, hanya untuk putus tak terduga.
+- Gestur tambahan: cubit dua jari = zoom (Ctrl+roda), geser tiga jari kiri/kanan = Alt+Tab, ke atas = Win+Tab.
 
 Murni JVM agar bisa diuji tanpa emulator (`./gradlew :xyadapt:test`).
 

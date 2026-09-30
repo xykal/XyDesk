@@ -8,6 +8,7 @@ import id.xyverse.xyadapt.Act
 import id.xyverse.xyadapt.Trackpad
 import id.xyverse.xyadapt.TrackpadConfig
 import id.xyverse.xydesk.core.StreamXy
+import kotlin.math.hypot
 
 /**
  * Menjembatani MotionEvent ke mesin gestur `libxyadapt` (mode trackpad) atau
@@ -42,7 +43,10 @@ class SessionTouch(
             }
             MotionEvent.ACTION_POINTER_DOWN -> { pad.pointerDown(); handler.removeCallbacks(hold) }
             MotionEvent.ACTION_POINTER_UP -> pad.pointerUp()
-            MotionEvent.ACTION_MOVE -> pad.move(t, e.x, e.y)
+            MotionEvent.ACTION_MOVE -> {
+                if (e.pointerCount == 2) pad.pinch(hypot(e.getX(1) - e.getX(0), e.getY(1) - e.getY(0)))
+                pad.move(t, e.x, e.y)
+            }
             MotionEvent.ACTION_UP -> { handler.removeCallbacks(hold); pad.up(t) }
             MotionEvent.ACTION_CANCEL -> { handler.removeCallbacks(hold); pad.cancel() }
         }
@@ -77,6 +81,16 @@ class SessionTouch(
             is Act.Button -> send(StreamXy.button(act.button, act.down))
             is Act.Click -> click(act.button)
             is Act.Scroll -> send(StreamXy.scroll(act.dx, act.dy))
+            is Act.Zoom -> {
+                send(StreamXy.key(VK_CTRL, true))
+                send(StreamXy.scroll(0, act.steps * 120))
+                send(StreamXy.key(VK_CTRL, false))
+            }
+            is Act.Swipe3 -> when (act.dir) {
+                1 -> chord(VK_ALT, VK_TAB)
+                -1 -> { send(StreamXy.key(VK_ALT, true)); send(StreamXy.key(VK_SHIFT, true)); send(StreamXy.key(VK_TAB, true)); send(StreamXy.key(VK_TAB, false)); send(StreamXy.key(VK_SHIFT, false)); send(StreamXy.key(VK_ALT, false)) }
+                else -> chord(VK_WIN, VK_TAB)
+            }
             Act.Haptic -> haptic()
         }
     }
@@ -86,7 +100,20 @@ class SessionTouch(
         handler.postDelayed({ send(StreamXy.button(button, false)) }, 40)
     }
 
+    private fun chord(vararg vks: Int) {
+        vks.forEach { send(StreamXy.key(it, true)) }
+        vks.reversed().forEach { send(StreamXy.key(it, false)) }
+    }
+
     fun release() = handler.removeCallbacksAndMessages(null)
+
+    private companion object {
+        const val VK_TAB = 0x09
+        const val VK_SHIFT = 0xA0
+        const val VK_CTRL = 0xA2
+        const val VK_ALT = 0xA4
+        const val VK_WIN = 0x5B
+    }
 
     private fun now() = System.currentTimeMillis()
 }

@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.R
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.ui.kit.BottomNav
 import id.xyverse.xydesk.ui.kit.Icon
@@ -43,24 +44,36 @@ fun HomeShell(
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var prefill by remember { mutableStateOf(lastHost) }
+    var asking by remember { mutableStateOf<String?>(null) }
     val devices = history.distinctBy { it.host }
+    val store = settings.store
+    fun quickConnect(host: String) {
+        val saved = store?.hostPin(host)
+        if (saved != null) onConnect(host, saved) else asking = host
+    }
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
                 Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
-                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan") { tab = Tab.HOME }
-                    } else DevicesSection(devices.take(10)) { host -> prefill = host; tab = Tab.HOME }
+                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
+                    } else DevicesSection(devices.take(10)) { host -> quickConnect(host) }
                 }
                 Tab.HISTORY -> Page("Riwayat", "Sesi terakhir, durasi, dan hasilnya.") {
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
-                    else HistorySection(history)
+                    else HistorySection(history) { host -> quickConnect(host) }
                 }
                 Tab.ACCOUNT -> AccountScreen(email, onOpenUrl, settings, onLogout)
             }
         }
         Box(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) { BottomNav(tab) { tab = it } }
+        PinSheet(asking, remembered = false, onDismiss = { asking = null }) { pin, keep ->
+            val host = asking ?: return@PinSheet
+            store?.setHostPin(host, if (keep) pin else null)
+            asking = null
+            onConnect(host, pin)
+        }
     }
 }
 

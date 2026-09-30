@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.R
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Xy
@@ -66,7 +67,7 @@ fun ConnectScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
-        if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.")
+        if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.", image = R.drawable.empty_devices)
         else DevicesSection(devices.take(3), compact = true) { host = it }
         Spacer(Modifier.height(96.dp))
     }

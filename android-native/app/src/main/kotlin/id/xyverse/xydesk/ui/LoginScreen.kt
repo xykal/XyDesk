@@ -71,7 +71,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
     Box(Modifier.fillMaxSize()) {
         LoginHero()
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).safeDrawingPadding().imePadding().padding(Xy.pad)) {
-        Spacer(Modifier.height(236.dp))
+        Spacer(Modifier.height(300.dp))
         XyText("XyDesk", Xy.display)
         XyText("Kendalikan PC dari mana saja — latensi rendah, jalur langsung.", Xy.caption)
         Spacer(Modifier.height(20.dp))
@@ -112,14 +112,16 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
             }
         }
         Spacer(Modifier.height(16.dp))
-        XyText("Dengan masuk, kamu menyetujui:", Xy.caption)
-        Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LegalPill("Syarat & Ketentuan") { onOpenUrl("https://xydesk.my.id/legal#syarat") }
-            LegalPill("Kebijakan Privasi") { onOpenUrl("https://xydesk.my.id/legal#privasi") }
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            XyText("Dengan masuk, kamu menyetujui:", Xy.caption)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LegalPill("Syarat & Ketentuan") { onOpenUrl("https://xydesk.my.id/legal#syarat") }
+                LegalPill("Kebijakan Privasi") { onOpenUrl("https://xydesk.my.id/legal#privasi") }
+            }
+            Spacer(Modifier.height(20.dp))
+            XyText("XyVerse Technology Global", Xy.label)
         }
-        Spacer(Modifier.height(20.dp))
-        XyText("XyVerse Technology Global", Xy.label)
         Spacer(Modifier.height(24.dp))
         }
     }

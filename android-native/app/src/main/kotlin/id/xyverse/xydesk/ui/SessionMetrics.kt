@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import id.xyverse.xyadapt.AdaptiveVideo
+import id.xyverse.xyadapt.NetworkScore
 import id.xyverse.xyadapt.StatsLine
 import id.xyverse.xyadapt.VideoCmd
 import id.xyverse.xydesk.core.LatencyRing
@@ -23,6 +24,7 @@ class SessionMetrics(
     private val decodeRing = LatencyRing()
     private val rttRing = LatencyRing()
     private val adaptive = AdaptiveVideo()
+    private val score = NetworkScore()
     private var lastFrames = 0L
     private var lastDecodeSec = 0.0
     private var nativeFrames = 0L
@@ -47,7 +49,8 @@ class SessionMetrics(
             val decode = decodeRing.p(50f).toDouble()
             val rtt = rttRing.p(50f).toDouble()
             if (auto) adaptive.sample(shownFps, rtt, decode, targetFps).forEach(onCmd)
-            onLine(StatsLine.format(shownFps, rtt, relay, network()))
+            score.push(shownFps, rtt)
+            onLine(StatsLine.format(shownFps, rtt, relay, network()) + " · " + score.grade(targetFps).label)
         }
     }
 

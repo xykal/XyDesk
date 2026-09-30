@@ -144,6 +144,13 @@ private val en = mapOf(
     "Syarat & Ketentuan" to "Terms & Conditions",
     "Kebijakan Privasi" to "Privacy Policy",
     "Kendalikan PC dari mana saja" to "Control your PC from anywhere",
+    "Sambung ke host" to "Connect to host",
+    "Ingat password host ini" to "Remember this host password",
+    "Disimpan terenkripsi di HP ini; sekali ketuk untuk sambung berikutnya." to "Stored encrypted on this phone; one tap to connect next time.",
+    "Lupakan password host tersimpan" to "Forget saved host passwords",
+    "Semua host akan minta password lagi." to "Every host will ask for its password again.",
+    "Menyambung ulang…" to "Reconnecting…",
+    "BITRATE" to "BITRATE",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

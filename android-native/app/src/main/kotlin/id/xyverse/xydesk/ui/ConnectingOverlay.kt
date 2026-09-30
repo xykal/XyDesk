@@ -29,13 +29,13 @@ import id.xyverse.xydesk.ui.kit.XyError
 import id.xyverse.xydesk.ui.kit.XyText
 
 /** Keadaan layar sesi sebelum video tampil: memuat (morph HP → PC → Server) atau gagal. */
-data class ConnectState(val phase: Phase, val message: String?, val hostId: String)
+data class ConnectState(val phase: Phase, val message: String?, val hostId: String, val attempt: Int = 0, val reconnecting: Boolean = false)
 
 private val failed = setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED)
 
 @Composable
 fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Unit) {
-    val isError = state.phase in failed
+    val isError = state.phase in failed && !state.reconnecting
     Box(Modifier.fillMaxSize().background(Xy.bg).safeDrawingPadding(), contentAlignment = Alignment.Center) {
         AnimatedContent(isError, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) }, label = "conn") { err ->
             if (err) {
@@ -53,7 +53,8 @@ fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Un
                 Column(Modifier.padding(Xy.pad), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     MorphLoader(size = 132.dp)
                     Spacer(Modifier.height(28.dp))
-                    XyText(phaseTitle(state.phase), Xy.title.copy(textAlign = TextAlign.Center))
+                    XyText(if (state.reconnecting) "Menyambung ulang…" else phaseTitle(state.phase), Xy.title.copy(textAlign = TextAlign.Center))
+                    if (state.attempt > 0) XyText("Percobaan ${state.attempt}/3", Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(4.dp))
                     XyText("Host " + state.hostId.chunked(3).joinToString(" "), Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(36.dp))

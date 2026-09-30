@@ -64,6 +64,20 @@ class Store(context: Context) {
         get() = prefs.getBoolean("directTouch", false)
         set(v) = prefs.edit().putBoolean("directTouch", v).apply()
 
+    /** Password host tersimpan per ID (opt-in, terenkripsi bersama token). */
+    fun hostPin(host: String): String? = prefs.getString("pin." + host.filter(Char::isDigit), null)
+
+    fun setHostPin(host: String, pin: String?) {
+        val k = "pin." + host.filter(Char::isDigit)
+        prefs.edit().apply { if (pin.isNullOrEmpty()) remove(k) else putString(k, pin) }.apply()
+    }
+
+    fun forgetAllPins() {
+        val e = prefs.edit()
+        prefs.all.keys.filter { it.startsWith("pin.") }.forEach { e.remove(it) }
+        e.apply()
+    }
+
     var onboarded: Boolean
         get() = prefs.getBoolean("onboarded", false)
         set(v) = prefs.edit().putBoolean("onboarded", v).apply()

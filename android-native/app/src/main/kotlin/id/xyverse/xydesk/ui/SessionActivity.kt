@@ -22,6 +22,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import id.xyverse.xyadapt.ReconnectPolicy
 import id.xyverse.xyadapt.TrackpadConfig
 import id.xyverse.xyadapt.VideoCmd
 import id.xyverse.xydesk.core.HostSpecs
@@ -49,6 +50,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var keys: SessionKeyboard
     private val store by lazy { Store(applicationContext) }
     private val hostId by lazy { intent.getStringExtra("host").orEmpty() }
+    private val reconnect by lazy { ReconnectPolicy().also { p -> repeat(intent.getIntExtra("attempt", 0)) { p.nextDelayMs() } } }
+    private var everConnected = false
     private var clipboard: ClipboardManager? = null
     private var lastSyncedClipboard = ""
     private var clipboardSync = false
@@ -113,7 +116,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         applyDecodeMode(true)
         b.raw.setOnTouchListener { v, e -> touch.onTouch(v, e) }
         b.video.setOnTouchListener { v, e -> touch.onTouch(v, e) }
-        connectState = ConnectState(Phase.PAIRING, null, hostId)
+        connectState = ConnectState(Phase.PAIRING, null, hostId, attempt = intent.getIntExtra("attempt", 0))
         setupToolbar()
         setupOverlay()
         startedAt = System.currentTimeMillis()
@@ -174,6 +177,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },
+                        bitrate = { metrics.auto = false; session.send(StreamXy.bitrate(it)) },
                         display = { session.send(StreamXy.display(it)) },
                         touchMode = { store.directTouch = it; touch.directTouch = it },
                         trackpadSpeed = { store.trackpadSpeed = it; touch.config = touch.config.copy(speed = it) },
@@ -230,6 +234,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.status.visibility = View.GONE
         ui.removeCallbacks(statsTick); ui.removeCallbacks(previewTick)
         if (connected) {
+            everConnected = true
+            reconnect.reset()
             ui.postDelayed(statsTick, 1000)
             ui.postDelayed(previewTick, 3000)
             session.send(StreamXy.fps(metrics.targetFps))
@@ -237,8 +243,20 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED) && outcome == "berjalan") {
             outcome = phase.name.lowercase()
+            if (everConnected && ReconnectPolicy.retryable(outcome)) scheduleReconnect()
         }
         record()
+    }
+
+    /** Putus tak terduga setelah sempat tersambung: coba lagi dengan jeda mundur eksponensial. */
+    private fun scheduleReconnect() {
+        val delay = reconnect.nextDelayMs() ?: return
+        connectState = connectState.copy(reconnecting = true, attempt = reconnect.attempt)
+        ui.postDelayed({
+            outcome = "retry"
+            startActivity(intent.putExtra("attempt", reconnect.attempt))
+            finish()
+        }, delay)
     }
 
     private fun hideSystemBars() {
