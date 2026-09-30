@@ -35,12 +35,15 @@ class SessionActivity : AppCompatActivity(), RtcListener {
     private val statsTick = object : Runnable {
         override fun run() {
             session.stats { fps, frames, decodeSec, rttMs, relay ->
+                val shownFps = if (lowLatency) (nativeFrames - lastNativeFrames).toDouble() else fps
+                lastNativeFrames = nativeFrames
                 val d = frames - lastFrames
-                if (d > 0) decodeRing.push(((decodeSec - lastDecodeSec) / d * 1000).toFloat())
+                if (!lowLatency && d > 0) decodeRing.push(((decodeSec - lastDecodeSec) / d * 1000).toFloat())
                 lastFrames = frames; lastDecodeSec = decodeSec
                 if (rttMs > 0) rttRing.push(rttMs.toFloat())
-                val text = "%.0f fps · dekode %.1f ms (p95 %.1f) · RTT %.0f ms · %s".format(
-                    fps, decodeRing.p(50f), decodeRing.p(95f), rttRing.p(50f), if (relay) "relay" else "langsung",
+                val text = "%s · %.0f fps · dekode %.1f ms (p95 %.1f) · RTT %.0f ms · %s".format(
+                    if (lowLatency) "LL" else "std", shownFps, decodeRing.p(50f), decodeRing.p(95f), rttRing.p(50f),
+                    if (relay) "relay" else "langsung",
                 )
                 runOnUiThread { if (connected) { b.status.text = text; b.status.visibility = View.VISIBLE } }
             }
@@ -48,6 +51,9 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         }
     }
     private var connected = false
+    private var lowLatency = false
+    private var nativeFrames = 0L
+    private var lastNativeFrames = 0L
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +62,7 @@ class SessionActivity : AppCompatActivity(), RtcListener {
         setContentView(b.root)
         hideSystemBars()
 
+        lowLatency = intent.getBooleanExtra("lowLatency", false)
         session = RtcSession(
             context = applicationContext,
             jwt = intent.getStringExtra("jwt").orEmpty(),
@@ -63,10 +70,18 @@ class SessionActivity : AppCompatActivity(), RtcListener {
             pin = intent.getStringExtra("pin").orEmpty(),
             selfName = "${Build.MANUFACTURER} ${Build.MODEL}",
             listener = this,
+            lowLatencySurface = if (lowLatency) ({ b.raw.holder.surface.takeIf { it.isValid } }) else null,
+            onNativeDecode = { ms -> decodeRing.push(ms); nativeFrames++ },
         )
-        session.attach(b.video)
+        if (lowLatency) {
+            b.raw.visibility = View.VISIBLE
+            b.video.visibility = View.GONE
+        } else {
+            session.attach(b.video)
+        }
+        val touchTarget: View = if (lowLatency) b.raw else b.video
+        touchTarget.setOnTouchListener { _, e -> onTouch(e) }
         session.start()
-        b.video.setOnTouchListener { _, e -> onTouch(e) }
     }
 
     private fun onTouch(e: MotionEvent): Boolean {

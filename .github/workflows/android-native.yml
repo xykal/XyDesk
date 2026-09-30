@@ -42,3 +42,22 @@ jobs:
           name: XyDesk-Native-APK
           path: android-native/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
+      # Salin APK ke draft release terbaru supaya bisa diunduh langsung
+      # (tanpa zip) setelah login. Draft tidak punya ref tag, jadi dicari
+      # lewat daftar release, bukan by-tag.
+      - name: Unggah ke draft release
+        if: github.ref == 'refs/heads/main' && env.TOKEN != ''
+        env:
+          TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -eu
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          auth="Authorization: Bearer ${TOKEN}"
+          rel=$(curl -sf -H "$auth" "$api/releases?per_page=5" | python3 -c 'import json,sys;r=[x for x in json.load(sys.stdin) if x["draft"]];print(r[0]["id"] if r else "")')
+          [ -n "$rel" ] || { echo "tidak ada draft release"; exit 0; }
+          old=$(curl -sf -H "$auth" "$api/releases/$rel/assets" | python3 -c 'import json,sys;print(" ".join(str(a["id"]) for a in json.load(sys.stdin) if a["name"]=="XyDesk-Native.apk"))')
+          for a in $old; do curl -sf -X DELETE -H "$auth" "$api/releases/assets/$a"; done
+          curl -sf -H "$auth" -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary @app/build/outputs/apk/debug/app-debug.apk \
+            "https://uploads.github.com/repos/${GITHUB_REPOSITORY}/releases/$rel/assets?name=XyDesk-Native.apk" >/dev/null
+          echo "APK native diunggah ke draft release $rel" >> "$GITHUB_STEP_SUMMARY"

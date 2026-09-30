@@ -42,6 +42,7 @@
             android:visibility="gone">
             <EditText android:id="@+id/hostId" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="ID perangkat" android:inputType="number" />
             <EditText android:id="@+id/pin" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="Password pairing" android:inputType="textPassword" />
+            <CheckBox android:id="@+id/lowLatency" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Decoder low-latency (eksperimen, H.264)" android:checked="true" />
             <Button android:id="@+id/connectBtn" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Konek sekarang" />
             <Button android:id="@+id/logoutBtn" style="?attr/borderlessButtonStyle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Keluar" />
         </LinearLayout>

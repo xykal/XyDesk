@@ -3,6 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000">
+    <SurfaceView
+        android:id="@+id/raw"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
     <org.webrtc.SurfaceViewRenderer
         android:id="@+id/video"
         android:layout_width="match_parent"

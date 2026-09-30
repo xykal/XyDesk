@@ -78,7 +78,8 @@ class ConnectActivity : AppCompatActivity() {
             Intent(this, SessionActivity::class.java)
                 .putExtra("jwt", prefs.getString("jwt", ""))
                 .putExtra("host", host)
-                .putExtra("pin", pin),
+                .putExtra("pin", pin)
+                .putExtra("lowLatency", b.lowLatency.isChecked),
         )
     }
 
