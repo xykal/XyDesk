@@ -7,6 +7,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.KeyEvent
 import android.view.inputmethod.InputMethodManager
+import id.xyverse.xydesk.core.KeyMap
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.core.Store
 import android.view.MotionEvent
@@ -190,6 +191,17 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.keyboardSink.setText("")
         b.keyboardSink.requestFocus()
         imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+    }
+
+    /** Keyboard fisik/Bluetooth: kirim VK langsung (tekan & lepas, termasuk modifier). */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!connected || !KeyMap.isPhysical(event) || event.keyCode == KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
+        val vk = KeyMap.vk(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        when (event.action) {
+            KeyEvent.ACTION_DOWN -> if (event.repeatCount == 0 || vk !in 0xA0..0xA5) session.send(StreamXy.key(vk, true))
+            KeyEvent.ACTION_UP -> session.send(StreamXy.key(vk, false))
+        }
+        return true
     }
 
     override fun onHostName(name: String) {

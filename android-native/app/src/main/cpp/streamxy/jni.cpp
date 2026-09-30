@@ -47,6 +47,16 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_quality(JNIEnv
   return wrap(env, b, sx_input_quality(b, static_cast<uint8_t>(preset)));
 }
 
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_display(JNIEnv* env, jclass, jint index) {
+  uint8_t b[4];
+  return wrap(env, b, sx_input_display(b, static_cast<uint8_t>(index)));
+}
+
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_resolution(JNIEnv* env, jclass, jint mode) {
+  uint8_t b[4];
+  return wrap(env, b, sx_input_resolution(b, static_cast<uint8_t>(mode)));
+}
+
 JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_text(JNIEnv* env, jclass, jstring s) {
   const char* utf8 = env->GetStringUTFChars(s, nullptr);
   const size_t len = static_cast<size_t>(env->GetStringUTFLength(s));

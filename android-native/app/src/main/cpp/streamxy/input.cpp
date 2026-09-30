@@ -72,4 +72,16 @@ size_t sx_input_quality(uint8_t* out, uint8_t preset) {
   out[1] = preset;
   return 2;
 }
+
+size_t sx_input_display(uint8_t* out, uint8_t index) {
+  out[0] = 0x07;
+  out[1] = index;
+  return 2;
+}
+
+size_t sx_input_resolution(uint8_t* out, uint8_t mode) {
+  out[0] = 0x0C;
+  out[1] = mode;
+  return 2;
+}
 }
