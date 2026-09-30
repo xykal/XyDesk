@@ -324,7 +324,9 @@ pub fn build_vdd_settings_xml(
             xml.push_str(&format!("            <refresh_rate>{r}</refresh_rate>\r\n"));
         }
         if !has_pref {
-            xml.push_str(&format!("            <refresh_rate>{hz}</refresh_rate>\r\n"));
+            xml.push_str(&format!(
+                "            <refresh_rate>{hz}</refresh_rate>\r\n"
+            ));
         }
         xml.push_str("        </resolution>\r\n");
     }
@@ -713,7 +715,11 @@ mod tests {
         let sum0: u32 = edid[..128].iter().map(|&b| u32::from(b)).sum();
         assert_eq!(sum0 % 256, 0, "base EDID block checksum must be 0 mod 256");
         let sum1: u32 = edid[128..256].iter().map(|&b| u32::from(b)).sum();
-        assert_eq!(sum1 % 256, 0, "CEA-861 extension checksum must be 0 mod 256");
+        assert_eq!(
+            sum1 % 256,
+            0,
+            "CEA-861 extension checksum must be 0 mod 256"
+        );
         let name_slice = &edid[113..123];
         assert_eq!(name_slice, b"XyDesk VDD");
     }
