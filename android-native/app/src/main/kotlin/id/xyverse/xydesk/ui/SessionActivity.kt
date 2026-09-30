@@ -153,6 +153,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
                 SessionActions(
                     keyboard = { toggleKeyboard() },
                     quality = { session.send(StreamXy.quality(it)) },
+                    resolution = { session.send(StreamXy.resolution(it)) },
+                    display = { session.send(StreamXy.display(it)) },
                     toggleStats = { showStats = !showStats; if (!showStats) b.status.visibility = View.GONE },
                     disconnect = { outcome = "putus"; finish() },
                 ),
