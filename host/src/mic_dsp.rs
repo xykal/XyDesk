@@ -42,7 +42,7 @@ impl Default for MicDspState {
             hp_prev_in: [0.0; 2],
             hp_prev_out: [0.0; 2],
             envelope: 0.0,
-            gate_gain: 1.0,
+            gate_gain: 0.0,
             last_peak: 0.0,
         }
     }
