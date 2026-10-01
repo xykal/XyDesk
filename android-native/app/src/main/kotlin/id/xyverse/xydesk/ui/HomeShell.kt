@@ -73,7 +73,8 @@ fun HomeShell(
     val store = settings.store
     var grid by remember { mutableStateOf(store?.devicesGrid ?: false) }
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
-    val presence = remember { store?.jwt?.let { Presence(it) } }
+    val knownHosts = remember { mutableStateOf<List<String>>(emptyList()) }
+    val presence = remember { store?.jwt?.let { Presence(it) { knownHosts.value } } }
     DisposableEffect(presence) { presence?.start(); onDispose { presence?.stop() } }
     val lifecycle = LocalLifecycleOwner.current
     DisposableEffect(lifecycle, presence) {
@@ -100,6 +101,7 @@ fun HomeShell(
             .onFailure { offline = true; if (posts == null) posts = emptyList() }
     }
     val devices = remember(history, metaTick) { history.distinctBy { it.host }.sortedByDescending { meta.favorite(it.host) } }
+    LaunchedEffect(devices) { knownHosts.value = devices.map { it.host }; presence?.refresh() }
     val unread = (posts?.firstOrNull()?.slug ?: "").let { it.isNotEmpty() && it != seen }
     fun quickConnect(host: String) {
         val saved = store?.hostPin(host)

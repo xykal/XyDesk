@@ -37,12 +37,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import id.xyverse.xydesk.core.HostSpecs
 import id.xyverse.xydesk.core.Previews
+import id.xyverse.xydesk.core.P
 import id.xyverse.xydesk.core.SessionRecord
+import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyButton
@@ -100,7 +103,7 @@ private fun PreviewBox(d: SessionRecord, ratio: Float, iconSize: Dp, caption: Bo
     val preview by Previews.rememberPreview(d.host, d.durationSec)
     Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color(0xFF1B1B22)), contentAlignment = Alignment.Center) {
         val img = preview
-        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Crop)
+        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Crop, filterQuality = FilterQuality.High)
         else Column(horizontalAlignment = Alignment.CenterHorizontally) {
             XyIcon(Icon.MONITOR, tint = Color.White.copy(alpha = 0.5f), size = iconSize)
             if (caption) { Spacer(Modifier.height(6.dp)); XyText("Belum ada cuplikan", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f))) }
@@ -120,7 +123,7 @@ private fun DeviceCard(d: SessionRecord, onLong: () -> Unit, onSession: (Session
     ) {
         PreviewBox(d, 16f / 9f, 34.dp, caption = true) {
             Row(Modifier.align(Alignment.TopStart).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Badge(pretty(d.host))
+                if (Store(LocalContext.current).bool(P.SHOW_ID, true)) Badge(pretty(d.host))
                 Badge(relative(d.startedAt))
                 meta.online(d.host)?.let { on -> Badge(if (on) "● Online" else "○ Offline", if (on) Color(0xCC167347) else null) }
             }

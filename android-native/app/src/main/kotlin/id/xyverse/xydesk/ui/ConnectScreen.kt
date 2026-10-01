@@ -42,12 +42,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import id.xyverse.xydesk.R
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.ui.kit.Icon
+import id.xyverse.xydesk.core.P
+import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyEmpty
 import id.xyverse.xydesk.ui.kit.XyButton
@@ -70,7 +73,8 @@ fun ConnectScreen(
     var host by remember { mutableStateOf(initialHost) }
     var pin by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
-    var keep by remember { mutableStateOf(true) }
+    val ctx = LocalContext.current
+    var keep by remember { mutableStateOf(Store(ctx).bool(P.REMEMBER_DEFAULT, true)) }
     val digits = host.filter(Char::isDigit)
 
     Column(

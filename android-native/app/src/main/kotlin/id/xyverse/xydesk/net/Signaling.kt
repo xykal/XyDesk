@@ -5,6 +5,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONObject
 
 /** Pesan signaling — bentuk JSON sama persis dengan client Flutter/web. */
@@ -80,6 +81,9 @@ class Signaling(
     fun bye(hostId: String) = send(JSONObject().put("type", "bye").put("to", hostId))
 
     fun list() = send(JSONObject().put("type", "list"))
+
+    /** Tanya status online untuk ID host yang sudah dikenal; jawaban `presence` berisi yang online. */
+    fun presence(ids: Collection<String>) = send(JSONObject().put("type", "presence").put("ids", JSONArray(ids.toList())))
 
     fun close() {
         open = false

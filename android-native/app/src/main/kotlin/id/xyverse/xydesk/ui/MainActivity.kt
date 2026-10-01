@@ -16,7 +16,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
@@ -24,7 +23,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Density
 import id.xyverse.xydesk.core.LocalLang
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import id.xyverse.xydesk.BuildConfig
+import id.xyverse.xydesk.core.P
 import id.xyverse.xydesk.core.Previews
 import id.xyverse.xydesk.core.Store
 import android.os.Build
@@ -55,6 +57,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         Images.attach(applicationContext)
         NewsWatch.schedule(applicationContext)
+        store.pruneHistory()
+        autoConnectLast(savedInstanceState)
         if (intent.getStringExtra("tab") == "news") openNews = true
         onBackPressedDispatcher.addCallback(this) {
             val now = System.currentTimeMillis()
@@ -67,13 +71,16 @@ class MainActivity : ComponentActivity() {
             var lang by remember { mutableStateOf(store.lang) }
             var haptics by remember { mutableStateOf(store.haptics) }
             var replay by remember { mutableStateOf(false) }
+            var textSize by remember { mutableStateOf(store.int(P.TEXT_SIZE, 1)) }
+            val base = LocalDensity.current
+            val density = remember(textSize, base) { Density(base.density, base.fontScale * listOf(0.9f, 1f, 1.12f)[textSize]) }
             val hapticOwner = LocalHapticFeedback.current
             val quiet = remember { object : HapticFeedback { override fun performHapticFeedback(hapticFeedbackType: HapticFeedbackType) = Unit } }
-            CompositionLocalProvider(LocalLang provides lang, LocalHapticFeedback provides if (haptics) hapticOwner else quiet) {
+            CompositionLocalProvider(LocalLang provides lang, LocalDensity provides density, LocalHapticFeedback provides if (haptics) hapticOwner else quiet) {
             XyTheme {
                 AnimatedContent(
                     Triple(stage, jwt != null, 0),
-                    transitionSpec = { (fadeIn(tween(500)) + scaleIn(tween(500), 0.98f)) togetherWith fadeOut(tween(250)) },
+                    transitionSpec = { fadeIn(tween(400)) togetherWith fadeOut(tween(200)) },
                     label = "root",
                 ) { (st, loggedIn) ->
                     if (st == Stage.SPLASH) {
@@ -111,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                 historyCount = history.size,
                                 onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); Images.clearDisk(); refresh++ },
                                 store = store,
+                                onTextSize = { textSize = it },
                                 onOpenAppSettings = {
                                     startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                                 },
@@ -123,6 +131,14 @@ class MainActivity : ComponentActivity() {
             }
             }
         }
+    }
+
+    /** Pengaturan "Sambung otomatis": sekali per proses, hanya bila password PC terakhir tersimpan. */
+    private fun autoConnectLast(saved: Bundle?) {
+        if (saved != null || openNews || !store.bool(P.AUTO_LAST, false) || store.jwt == null) return
+        val host = store.lastHost.ifEmpty { return }
+        val pin = store.hostPin(host) ?: return
+        openSession(host, pin)
     }
 
     private fun openSession(host: String, pin: String) {

@@ -72,6 +72,19 @@ class Store(context: Context) {
     var dockKeys: List<String>
         get() = prefs.getString("dockKeys", null)?.split(",")?.filter { it.isNotEmpty() } ?: DOCK_DEFAULT
         set(v) = prefs.edit().putString("dockKeys", v.joinToString(",")).apply()
+    fun int(key: String, def: Int) = prefs.getInt(key, def)
+    fun bool(key: String, def: Boolean) = prefs.getBoolean(key, def)
+    fun set(key: String, v: Int) = prefs.edit().putInt(key, v).apply()
+    fun set(key: String, v: Boolean) = prefs.edit().putBoolean(key, v).apply()
+
+    /** Pangkas riwayat lebih tua dari `historyDays` (0 = simpan semua). Dipanggil saat aplikasi dibuka. */
+    fun pruneHistory() {
+        val days = int(P.HISTORY_DAYS, 0)
+        if (days <= 0) return
+        val cut = System.currentTimeMillis() - days * 86_400_000L
+        history = history.filter { it.startedAt >= cut || it.outcome == "berjalan" }
+    }
+
     var hudItems: Set<String>
         get() = prefs.getStringSet("hudItems", null) ?: HUD_DEFAULT
         set(v) = prefs.edit().putStringSet("hudItems", v).apply()
@@ -221,6 +234,36 @@ data class SessionRecord(
             o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(), o.optString("trace"),
         )
     }
+}
+
+/** Kunci preferensi tambahan; nilai int memakai indeks pilihan di halaman Pengaturan. */
+object P {
+    const val ORIENTATION = "orientation"        // 0 otomatis, 1 lanskap, 2 potret
+    const val RAIL_AUTOHIDE = "railAutohide"      // 0 mati, 1 = 5 d, 2 = 10 d, 3 = 20 d
+    const val START_MUTED = "startMuted"
+    const val START_MIC = "startMic"
+    const val START_CLIP = "startClip"
+    const val START_RES = "startRes"              // 0 auto, 1 720p, 2 1080p
+    const val MAX_MBPS = "maxMbps"                // 0 auto, lalu 8/12/20/30
+    const val ACCEL = "accel"                     // 0 mati, 1 sedang, 2 kuat
+    const val SCROLL_SPEED = "scrollSpeed"        // 0 lambat, 1 normal, 2 cepat
+    const val TWO_FINGER_RIGHT = "twoFingerRight"
+    const val SWIPE3 = "swipe3"
+    const val HUD_RIGHT = "hudRight"
+    const val HUD_SIZE = "hudSize"                // 0 S, 1 M, 2 L
+    const val SESSION_HAPTIC = "sessionHaptic"
+    const val AUTO_LAST = "autoLast"
+    const val FORCE_RELAY = "forceRelay"
+    const val SAVE_PREVIEW = "savePreview"
+    const val HISTORY_DAYS = "historyDays"        // 0 semua, 7, 30, 90
+    const val NEWS_HOURS = "newsHours"            // 3, 6, 12
+    const val TEXT_SIZE = "textSize"              // 0 S, 1 M, 2 L
+    const val REMEMBER_DEFAULT = "rememberDefault"
+    const val DOCK_TOP = "dockTop"
+    const val SHOW_ID = "showId"
+    val MBPS = listOf(0, 8, 12, 20, 30)
+    val HISTORY = listOf(0, 7, 30, 90)
+    val HOURS = listOf(3, 6, 12)
 }
 
 val DOCK_DEFAULT = listOf("lmb", "rmb", "sup", "sdn", "esc", "win", "alttab", "enter")

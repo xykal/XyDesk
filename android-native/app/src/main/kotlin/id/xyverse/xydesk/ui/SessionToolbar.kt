@@ -33,6 +33,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -77,6 +82,7 @@ data class SessionPrefs(
     val dockOn: Boolean = true,
     val dockSize: Int = 1,
     val dockKeys: List<String> = DockCatalog.default,
+    val autohideMs: Long = 0,
 )
 
 enum class QuickKey(val label: String) {
@@ -112,9 +118,13 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var dockSize by remember { mutableStateOf(prefs.dockSize) }
     var dockKeys by remember { mutableStateOf(prefs.dockKeys) }
     val qLabels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
+    var touched by remember { mutableStateOf(0L) }
+    if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
+        if (!hidden && panel == Panel.NONE) { kotlinx.coroutines.delay(prefs.autohideMs); hidden = true }
+    }
 
     Row(
-        Modifier.padding(end = 8.dp),
+        Modifier.padding(end = 8.dp).pointerInput(Unit) { awaitEachGesture { awaitFirstDown(false, PointerEventPass.Initial); touched = System.currentTimeMillis() } },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
