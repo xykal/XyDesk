@@ -59,6 +59,9 @@ class Store(context: Context) {
     var showStats: Boolean
         get() = prefs.getBoolean("showStats", true)
         set(v) = prefs.edit().putBoolean("showStats", v).apply()
+    var hudItems: Set<String>
+        get() = prefs.getStringSet("hudItems", null) ?: HUD_DEFAULT
+        set(v) = prefs.edit().putStringSet("hudItems", v).apply()
 
     var directTouch: Boolean
         get() = prefs.getBoolean("directTouch", false)
@@ -81,14 +84,10 @@ class Store(context: Context) {
         get() = prefs.getBoolean("newsNotify", true)
         set(v) = prefs.edit().putBoolean("newsNotify", v).apply()
 
-    /** 0 Beranda, 1 Perangkat, 2 Berita. */
+    /** 0 Koneksi, 1 Perangkat, 2 Berita. */
     var startTab: Int
         get() = prefs.getInt("startTab", 0)
         set(v) = prefs.edit().putInt("startTab", v).apply()
-
-    var historyGrid: Boolean
-        get() = prefs.getBoolean("historyGrid", false)
-        set(v) = prefs.edit().putBoolean("historyGrid", v).apply()
 
     var newsCache: String
         get() = prefs.getString("newsCache", "").orEmpty()
@@ -210,6 +209,9 @@ data class SessionRecord(
         )
     }
 }
+
+val HUD_ALL = listOf("FPS", "MS", "JALUR", "JARINGAN", "KUALITAS", "MIC")
+val HUD_DEFAULT = setOf("FPS", "MS", "JALUR", "JARINGAN")
 
 /** Spesifikasi host dari blok `meta.hardware`; string kosong = tidak terbaca. */
 data class HostSpecs(

@@ -34,7 +34,7 @@ fun PreferencesSection(store: Store) {
     var notify by remember { mutableStateOf(store.newsNotify) }
     Row(Modifier.padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         XyText("Tab awal", Xy.body, Modifier.weight(1f))
-        Segmented(listOf("Beranda" to 0, "Perangkat" to 1, "Berita" to 2), start) { start = it; store.startTab = it }
+        Segmented(listOf("Koneksi" to 0, "Perangkat" to 1, "Berita" to 2), start) { start = it; store.startTab = it }
     }
     Box(Modifier.padding(horizontal = 6.dp)) {
         XyToggle("Tanya sebelum putus", "Tombol Kembali perlu ditekan dua kali untuk mengakhiri sesi.", confirm) { confirm = it; store.confirmDisconnect = it }
@@ -61,8 +61,8 @@ fun AboutBody(appVersion: String, onOpenUrl: (String) -> Unit) {
     XyCard {
         XyText("LEGAL", Xy.label)
         Spacer(Modifier.height(8.dp))
-        XyRow(Icon.SHIELD, "Syarat & Ketentuan", "", onClick = { onOpenUrl("https://xydesk.my.id/legal#syarat") })
-        XyRow(Icon.KEY, "Kebijakan Privasi", "", onClick = { onOpenUrl("https://xydesk.my.id/legal#privasi") })
+        XyRow(Icon.SHIELD, "Syarat & Ketentuan", "Dibaca di dalam aplikasi.", onClick = { Legal.open = Legal.TERMS })
+        XyRow(Icon.KEY, "Kebijakan Privasi", "Dibaca di dalam aplikasi.", onClick = { Legal.open = Legal.PRIVACY })
         XyRow(Icon.LIST, "Lisensi pihak ketiga", "Pustaka sumber terbuka yang dipakai.", onClick = { onOpenUrl("https://github.com/xykal/XyDesk/blob/main/ATTRIBUTION.md") })
     }
 }

@@ -59,7 +59,6 @@ import id.xyverse.xydesk.ui.kit.t
 
 @Composable
 fun ConnectScreen(
-    email: String,
     initialHost: String,
     devices: List<SessionRecord>,
     onQuick: (host: String) -> Unit = {},
@@ -78,7 +77,7 @@ fun ConnectScreen(
     ) {
         Spacer(Modifier.height(12.dp))
         XyText("Sambungkan", Xy.display)
-        XyText(email, Xy.caption)
+        XyText("Masukkan ID dan password host, atau pilih PC yang pernah tersambung.", Xy.caption)
         Spacer(Modifier.height(24.dp))
         if (newsTitle != null) { NewsBanner(newsTitle, onNews); Spacer(Modifier.height(16.dp)) }
         XyCard {

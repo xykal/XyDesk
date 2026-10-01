@@ -29,6 +29,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.DisposableEffect
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
+import android.os.Build
+import android.content.pm.PackageManager
+import android.Manifest
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -238,20 +249,40 @@ private fun SecurityBody(settings: Settings, onLogout: () -> Unit) {
 
 @Composable
 private fun PermissionsBody(settings: Settings) {
+    val ctx = LocalContext.current
+    fun granted(p: String) = ContextCompat.checkSelfPermission(ctx, p) == PackageManager.PERMISSION_GRANTED
+    var mic by remember { mutableStateOf(granted(Manifest.permission.RECORD_AUDIO)) }
+    var notif by remember { mutableStateOf(Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)) }
+    val askMic = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { mic = it }
+    val askNotif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { notif = it }
+    val lifecycle = LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) {
+                mic = granted(Manifest.permission.RECORD_AUDIO)
+                notif = Build.VERSION.SDK_INT < 33 || granted(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        lifecycle.lifecycle.addObserver(obs); onDispose { lifecycle.lifecycle.removeObserver(obs) }
+    }
     XyCard {
         XyText("DIPAKAI", Xy.label)
         Spacer(Modifier.height(8.dp))
         XyRow(Icon.PLUG, "Internet", "Signaling dan jalur WebRTC ke host.", value = "Aktif", chevron = false, tint = Xy.success)
+        XyRow(Icon.KEYBOARD, "Mikrofon", "Suara HP dikirim ke PC saat tombol Mic di sesi dinyalakan.",
+            value = if (mic) "Diizinkan" else "Minta izin", chevron = !mic, tint = if (mic) Xy.success else Xy.accent,
+            onClick = if (mic) null else ({ askMic.launch(Manifest.permission.RECORD_AUDIO) }))
+        XyRow(Icon.NEWS, "Notifikasi", "Satu pemberitahuan saat ada berita baru.",
+            value = if (notif) "Diizinkan" else "Minta izin", chevron = !notif, tint = if (notif) Xy.success else Xy.accent,
+            onClick = if (notif || Build.VERSION.SDK_INT < 33) null else ({ askNotif.launch(Manifest.permission.POST_NOTIFICATIONS) }))
         XyRow(Icon.CONTROLS, "Clipboard", "Hanya saat kamu menyalakannya di dalam sesi.", value = "Opsional", chevron = false)
-        XyRow(Icon.KEYBOARD, "Mikrofon", "Hanya saat tombol Mic di sesi dinyalakan; suara dikirim ke host.", value = "Opsional", chevron = false)
-        XyRow(Icon.NEWS, "Notifikasi", "Satu pemberitahuan saat ada berita baru; bisa dimatikan di sistem.", value = "Opsional", chevron = false)
         XyRow(Icon.MONITOR, "Penyimpanan internal", "Riwayat dan cuplikan; tidak menyentuh galeri.", value = "Aktif", chevron = false, tint = Xy.success)
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("TIDAK DIMINTA", Xy.label)
         Spacer(Modifier.height(8.dp))
-        XyRow(Icon.SEARCH, "Mikrofon, kamera, lokasi, kontak", "XyDesk tidak meminta izin ini.", chevron = false, tint = Xy.textLow)
+        XyRow(Icon.SEARCH, "Kamera, lokasi, kontak, galeri", "XyDesk tidak meminta izin ini.", chevron = false, tint = Xy.textLow)
     }
     Spacer(Modifier.height(16.dp))
     XyButton("Buka pengaturan aplikasi", ghost = true, onClick = settings.onOpenAppSettings)

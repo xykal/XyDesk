@@ -130,7 +130,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         Pill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
                         Pill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
                     }
-                    XyText("Ketuk klik kiri · tahan klik kanan · 2 jari scroll / cubit zoom · ketuk-ketuk-tahan seret · 3 jari geser Alt+Tab", Xy.caption)
+                    XyText("Ketuk klik kiri · ketuk 2 jari klik kanan · geser 2 jari scroll · ketuk-ketuk-tahan seret · 3 jari geser Alt+Tab", Xy.caption)
                 } else {
                     XyText("KUALITAS", Xy.label)
                     Wrap { qLabels.forEachIndexed { i, l -> Pill(l, accent = quality == i) { quality = i; actions.quality(i) } } }

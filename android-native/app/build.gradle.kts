@@ -31,6 +31,7 @@ android {
         }
     }
     buildFeatures { viewBinding = true; buildConfig = true; compose = true }
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/legal"))
     splits {
         abi {
             isEnable = true
@@ -85,3 +86,10 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.github.webrtc-sdk:android:125.6422.07")
 }
+
+val copyLegal by tasks.registering(Copy::class) {
+    from(rootProject.file("../docs/LEGAL.md"))
+    into(layout.buildDirectory.dir("generated/legal"))
+    rename { "legal.md" }
+}
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(copyLegal) }
