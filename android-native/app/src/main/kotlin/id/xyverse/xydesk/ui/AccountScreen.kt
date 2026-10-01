@@ -141,7 +141,7 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
         }
         Spacer(Modifier.height(16.dp))
         XyCard {
-            XyText("PENGATURAN", Xy.label)
+            XyText("UMUM", Xy.label)
             Spacer(Modifier.height(8.dp))
             Row(Modifier.padding(horizontal = 6.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 XyText("Bahasa", Xy.body, Modifier.weight(1f))
@@ -149,16 +149,27 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
             }
             Box(Modifier.padding(horizontal = 6.dp)) { XyToggle("Getaran halus", "Umpan balik saat geser dan tekan.", settings.haptics, settings.onHaptics) }
             settings.store?.let { PreferencesSection(it) }
-            XyRow(Icon.CONTROLS, "Sesi & trackpad", "Kualitas, fps, kecepatan kursor, scroll, gestur.", onClick = { go(Sub.SESSION) })
-            XyRow(Icon.PHONE, "Putar intro lagi", "Splash dan panduan awal.", onClick = settings.onReplayIntro)
         }
         Spacer(Modifier.height(16.dp))
         XyCard {
-            XyText("AKUN & PRIVASI", Xy.label)
+            XyText("SESI", Xy.label)
             Spacer(Modifier.height(8.dp))
-            XyRow(Icon.SHIELD, "Keamanan", "Token, password host, riwayat.", onClick = { go(Sub.SECURITY) })
-            XyRow(Icon.KEY, "Izin", "Apa saja yang diakses aplikasi.", onClick = { go(Sub.PERMISSIONS) })
-            XyRow(Icon.NEWS, "Tentang", "Versi, catatan rilis, lisensi.", onClick = { go(Sub.ABOUT) })
+            XyRow(Icon.CONTROLS, "Video, kursor, HUD", "Kualitas, fps, trackpad, HUD, panduan gestur.", onClick = { go(Sub.SESSION) })
+            XyText("Tombol dok (klik, scroll, Esc, F1–F12, dll.) diatur langsung di dalam sesi lewat tombol Dok.", Xy.caption, Modifier.padding(horizontal = 6.dp, vertical = 6.dp))
+        }
+        Spacer(Modifier.height(16.dp))
+        XyCard {
+            XyText("PRIVASI & KEAMANAN", Xy.label)
+            Spacer(Modifier.height(8.dp))
+            XyRow(Icon.SHIELD, "Keamanan", "Token, password host tersimpan, hapus riwayat.", onClick = { go(Sub.SECURITY) })
+            XyRow(Icon.KEY, "Izin", "Mikrofon, notifikasi, dan yang tidak diminta.", onClick = { go(Sub.PERMISSIONS) })
+        }
+        Spacer(Modifier.height(16.dp))
+        XyCard {
+            XyText("TENTANG", Xy.label)
+            Spacer(Modifier.height(8.dp))
+            XyRow(Icon.NEWS, "Tentang XyDesk", "Versi, catatan rilis, S&K, privasi, lisensi.", onClick = { go(Sub.ABOUT) })
+            XyRow(Icon.PHONE, "Putar intro lagi", "Splash dan panduan awal.", onClick = settings.onReplayIntro)
         }
         Spacer(Modifier.height(16.dp))
         XyCard {

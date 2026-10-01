@@ -70,6 +70,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var specs = HostSpecs()
     private var startedAt = 0L
     private var outcome = "berjalan"
+    private var dockOn = true
+    private var dockSize by mutableStateOf(1)
+    private var dockKeys by mutableStateOf<List<String>>(emptyList())
+    private var dockHeld by mutableStateOf<Set<String>>(emptySet())
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
     private val statsTick = object : Runnable {
@@ -110,6 +114,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         hideSystemBars()
 
         showStats = store.showStats
+        dockOn = store.dockOn; dockSize = store.dockSize; dockKeys = store.dockKeys
         session = RtcSession(
             context = applicationContext,
             jwt = intent.getStringExtra("jwt").orEmpty(),
@@ -137,6 +142,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         connectState = ConnectState(Phase.PAIRING, null, hostId, attempt = intent.getIntExtra("attempt", 0))
         setupToolbar()
         setupOverlay()
+        setupDock()
         startedAt = System.currentTimeMillis()
         record()
         session.start()
@@ -175,6 +181,31 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.raw.holder.setFixedSize(w, h)
     }
 
+    private fun setupDock() {
+        b.dock.visibility = View.GONE
+        b.dock.setContent {
+            CompositionLocalProvider(LocalLang provides store.lang) {
+                ControlDock(dockKeys, dockHeld, dockSize) { k -> onDock(k) }
+            }
+        }
+    }
+
+    /** Tombol dok: modifier/seret bersifat tahan (ditekan sampai diketuk lagi), sisanya tekan-lepas. */
+    private fun onDock(k: DockKey) {
+        b.root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+        when {
+            k.sticky -> {
+                val down = k.id !in dockHeld
+                dockHeld = if (down) dockHeld + k.id else dockHeld - k.id
+                if (k.mouse >= 0) session.send(StreamXy.button(k.mouse, down)) else session.send(StreamXy.key(k.vk, down))
+            }
+            k.mouse >= 0 -> { session.send(StreamXy.button(k.mouse, true)); ui.postDelayed({ session.send(StreamXy.button(k.mouse, false)) }, 40) }
+            k.scroll != 0 -> session.send(StreamXy.scroll(0, k.scroll * 240))
+            k.chord.isNotEmpty() -> { k.chord.forEach { session.send(StreamXy.key(it, true)) }; k.chord.reversed().forEach { session.send(StreamXy.key(it, false)) } }
+            else -> { session.send(StreamXy.key(k.vk, true)); session.send(StreamXy.key(k.vk, false)) }
+        }
+    }
+
     private fun setupOverlay() {
         b.overlay.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
@@ -188,7 +219,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     private fun setupToolbar() {
-        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats)
+        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, dockOn, dockSize, dockKeys)
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
@@ -216,6 +247,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
                         centerCursor = { session.send(StreamXy.moveAbs(0.5f, 0.5f)) },
                         present = { setPresenting(true) },
+                        dockOn = { store.dockOn = it; dockOn = it; b.dock.visibility = if (it && connected) View.VISIBLE else View.GONE },
+                        dockSize = { store.dockSize = it; dockSize = it },
+                        dockKeys = { store.dockKeys = it; dockKeys = it },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
@@ -239,6 +273,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun setPresenting(on: Boolean) {
         presenting = on
         b.toolbar.visibility = if (on) View.GONE else View.VISIBLE
+        b.dock.visibility = if (!on && dockOn && connected) View.VISIBLE else View.GONE
         if (on) b.status.visibility = View.GONE
         if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
     }
@@ -248,7 +283,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (!connected) return
         val view: SurfaceView = if (lowLatency) b.raw else b.video
         if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
-        val w = 480
+        val w = 1280
         val bmp = Bitmap.createBitmap(w, (w * view.height / view.width).coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         runCatching {
             PixelCopy.request(view, bmp, { r -> if (r == PixelCopy.SUCCESS) Thread { Previews.save(applicationContext, hostId, bmp) }.start() }, ui)
@@ -283,8 +318,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
         connected = phase == Phase.CONNECTED
+        if (phase == Phase.REJECTED) store.setHostPin(hostId, null)
         connectState = connectState.copy(phase = phase, message = message)
         b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
+        b.dock.visibility = if (connected && dockOn && !presenting) View.VISIBLE else View.GONE
         b.status.visibility = View.GONE
         ui.removeCallbacks(statsTick); ui.removeCallbacks(previewTick)
         if (connected) {

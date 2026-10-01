@@ -59,6 +59,19 @@ class Store(context: Context) {
     var showStats: Boolean
         get() = prefs.getBoolean("showStats", true)
         set(v) = prefs.edit().putBoolean("showStats", v).apply()
+    var devicesGrid: Boolean
+        get() = prefs.getBoolean("devicesGrid", false)
+        set(v) = prefs.edit().putBoolean("devicesGrid", v).apply()
+    var dockOn: Boolean
+        get() = prefs.getBoolean("dockOn", true)
+        set(v) = prefs.edit().putBoolean("dockOn", v).apply()
+    var dockSize: Int
+        get() = prefs.getInt("dockSize", 1)
+        set(v) = prefs.edit().putInt("dockSize", v).apply()
+    /** Urutan tombol dok sesi, id dari `DockCatalog`. */
+    var dockKeys: List<String>
+        get() = prefs.getString("dockKeys", null)?.split(",")?.filter { it.isNotEmpty() } ?: DOCK_DEFAULT
+        set(v) = prefs.edit().putString("dockKeys", v.joinToString(",")).apply()
     var hudItems: Set<String>
         get() = prefs.getStringSet("hudItems", null) ?: HUD_DEFAULT
         set(v) = prefs.edit().putStringSet("hudItems", v).apply()
@@ -210,6 +223,7 @@ data class SessionRecord(
     }
 }
 
+val DOCK_DEFAULT = listOf("lmb", "rmb", "sup", "sdn", "esc", "win", "alttab", "enter")
 val HUD_ALL = listOf("FPS", "MS", "JALUR", "JARINGAN", "KUALITAS", "MIC")
 val HUD_DEFAULT = setOf("FPS", "MS", "JALUR", "JARINGAN")
 

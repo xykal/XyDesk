@@ -55,6 +55,7 @@ import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
+import id.xyverse.xydesk.ui.kit.XyToggle
 import id.xyverse.xydesk.ui.kit.t
 
 @Composable
@@ -64,11 +65,12 @@ fun ConnectScreen(
     onQuick: (host: String) -> Unit = {},
     newsTitle: String? = null,
     onNews: () -> Unit = {},
-    onConnect: (host: String, pin: String) -> Unit,
+    onConnect: (host: String, pin: String, remember: Boolean) -> Unit,
 ) {
     var host by remember { mutableStateOf(initialHost) }
     var pin by remember { mutableStateOf("") }
     var notice by remember { mutableStateOf("") }
+    var keep by remember { mutableStateOf(true) }
     val digits = host.filter(Char::isDigit)
 
     Column(
@@ -85,13 +87,15 @@ fun ConnectScreen(
             Spacer(Modifier.height(Xy.gap))
             XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = t("sesuai di aplikasi host"), transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
+            XyToggle("Ingat perangkat ini", "Password disimpan terenkripsi; lain kali cukup satu ketuk. Diminta lagi hanya bila password di PC diganti.", keep) { keep = it }
+            Spacer(Modifier.height(Xy.gap))
             XyNotice(notice, Xy.warning)
             Spacer(Modifier.height(Xy.gap))
             XyButton("Hubungkan", enabled = digits.length >= 6 && pin.isNotEmpty()) {
                 when {
                     digits.length < 6 -> notice = "ID perangkat belum lengkap."
                     pin.isEmpty() -> notice = "Password host wajib diisi."
-                    else -> onConnect(digits, pin)
+                    else -> onConnect(digits, pin, keep)
                 }
             }
         }

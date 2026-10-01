@@ -40,44 +40,17 @@ import id.xyverse.xydesk.ui.kit.XyText
 import java.text.DateFormat
 import java.util.Date
 
-/** Riwayat: satu baris per PC (sesi terakhir + jumlah sesi), saringan hasil. */
+/** Saklar tampilan daftar / grid. */
 @Composable
-fun HistoryBrowser(history: List<SessionRecord>, onOpen: (SessionRecord) -> Unit) {
-    var filter by remember { mutableStateOf("Semua") }
-    val shown = history.filter {
-        when (filter) { "Berhasil" -> it.outcome in okOutcomes; "Gagal" -> it.outcome !in okOutcomes; else -> true }
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("Semua", "Berhasil", "Gagal").forEach { Chip(it, it == filter) { filter = it } }
-    }
-    Spacer(Modifier.height(16.dp))
-    val perHost = shown.groupBy { it.host }.values.map { runs -> runs.maxBy { it.startedAt } to runs.size }.sortedByDescending { it.first.startedAt }
-    if (perHost.isEmpty()) XyText("Tidak ada sesi untuk saringan ini.", Xy.caption)
-    else Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { perHost.forEach { (h, n) -> HistoryRow(h, n) { onOpen(h) } } }
-}
-
-@Composable
-private fun HistoryRow(h: SessionRecord, count: Int, onPick: () -> Unit) {
-    val ctx = LocalContext.current
-    val file = Previews.file(ctx, h.host)
-    val stamp = file.lastModified()
-    val preview = remember(stamp) { if (stamp > 0) BitmapFactory.decodeFile(file.path)?.asImageBitmap() else null }
-    val dot = when (h.outcome) { "berjalan" -> Xy.accent; "ok", "putus" -> Xy.success; else -> Xy.danger }
-    Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusM)).background(Xy.overlay)
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onPick).padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(Modifier.width(92.dp).aspectRatio(16f / 10f).clip(RoundedCornerShape(Xy.radiusS)).background(Color(0xFF1B1B22)), contentAlignment = Alignment.Center) {
-            if (preview != null) Image(preview, null, Modifier.fillMaxWidth().aspectRatio(16f / 10f), contentScale = ContentScale.Crop)
-            else XyIcon(Icon.MONITOR, tint = Color.White.copy(alpha = 0.4f), size = 22.dp)
-            Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(8.dp).clip(CircleShape).background(dot))
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            XyText(hostTitle(h), Xy.body, maxLines = 1)
-            XyText(DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(h.startedAt)) + " · " + duration(h.durationSec), Xy.caption)
-            XyText(if (h.outcome in okOutcomes) "$count sesi" else outcomeLabel(h.outcome) + " · $count sesi", Xy.caption.copy(color = if (h.outcome in okOutcomes) Xy.textLow else Xy.danger))
+fun ViewSwitch(grid: Boolean, onGrid: (Boolean) -> Unit) {
+    Row(Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay).padding(3.dp)) {
+        listOf(false to Icon.LIST, true to Icon.GRID).forEach { (g, ic) ->
+            val on = g == grid
+            Box(
+                Modifier.size(34.dp).clip(CircleShape).background(if (on) Color.White else Color.Transparent)
+                    .clickable(remember { MutableInteractionSource() }, null) { onGrid(g) },
+                contentAlignment = Alignment.Center,
+            ) { XyIcon(ic, tint = if (on) Xy.accent else Xy.textLow, size = 17.dp) }
         }
     }
 }

@@ -38,6 +38,12 @@ fun SessionDefaults(store: Store) {
     var retry by remember { mutableStateOf(store.autoReconnect) }
     var awake by remember { mutableStateOf(store.keepAwake) }
     XyCard {
+        XyText("SESI", Xy.label)
+        Spacer(Modifier.height(8.dp))
+        DisconnectPref(store)
+    }
+    Spacer(Modifier.height(16.dp))
+    XyCard {
         XyText("VIDEO", Xy.label)
         Spacer(Modifier.height(8.dp))
         Line("Kualitas") {
