@@ -208,7 +208,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     /** Catat/perbarui sesi ini di riwayat; dipanggil ulang tiap ada info baru. */
     private fun record() = store.record(
-        SessionRecord(hostId, hostName, startedAt, (System.currentTimeMillis() - startedAt) / 1000, outcome, specs),
+        SessionRecord(
+            hostId, hostName, startedAt, (System.currentTimeMillis() - startedAt) / 1000, outcome, specs,
+            if (::metrics.isInitialized) metrics.trace.encode() else "",
+        ),
     )
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {

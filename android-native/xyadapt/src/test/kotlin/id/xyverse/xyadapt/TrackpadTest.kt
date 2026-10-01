@@ -85,3 +85,31 @@ class ExtraTest {
         r.reset(); assertEquals(1000L, r.nextDelayMs())
     }
 }
+
+class TraceTest {
+    @Test
+    fun traceCompactsAndRoundTrips() {
+        val t = SessionTrace(buckets = 10)
+        repeat(100) { t.push(60.0 - it % 5, 40.0 + it % 7) }
+        val pts = SessionTrace.decode(t.encode())
+        assertTrue(pts.size in 1..10)
+        assertTrue(pts.all { it.first in 55..60 && it.second in 40..46 })
+        assertEquals(100, t.size)
+        assertTrue(t.avgFps() in 57.0..59.0)
+    }
+
+    @Test
+    fun emptyTraceEncodesEmpty() {
+        assertEquals("", SessionTrace().encode())
+        assertTrue(SessionTrace.decode("").isEmpty())
+        assertTrue(SessionTrace.decode("x,1:2,:").size == 1)
+    }
+
+    @Test
+    fun semverCompares() {
+        assertTrue(Semver.newer("6.10.0", "6.9.0+63"))
+        assertTrue(Semver.newer("v7.0.0", "6.9.9"))
+        assertTrue(!Semver.newer("6.9.0", "6.9.0+63"))
+        assertTrue(!Semver.newer("6.8.12", "6.9.0"))
+    }
+}

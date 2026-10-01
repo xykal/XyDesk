@@ -37,6 +37,7 @@ fun ConnectScreen(
     initialHost: String,
     devices: List<SessionRecord>,
     history: List<SessionRecord> = emptyList(),
+    onHistory: () -> Unit = {},
     onConnect: (host: String, pin: String) -> Unit,
 ) {
     var host by remember { mutableStateOf(initialHost) }
@@ -68,7 +69,7 @@ fun ConnectScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
-        UsageStrip(history)
+        UsageStrip(history, onHistory)
         if (history.isNotEmpty()) Spacer(Modifier.height(24.dp))
         if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.", image = R.drawable.empty_devices)
         else DevicesSection(devices.take(3), compact = true) { host = it }

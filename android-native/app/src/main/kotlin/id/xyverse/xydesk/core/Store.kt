@@ -172,16 +172,17 @@ data class SessionRecord(
     val durationSec: Long,
     val outcome: String,
     val specs: HostSpecs = HostSpecs(),
+    val trace: String = "",
 ) {
     fun json(): JSONObject = JSONObject()
         .put("host", host).put("name", name).put("startedAt", startedAt)
-        .put("durationSec", durationSec).put("outcome", outcome).put("specs", specs.json())
+        .put("durationSec", durationSec).put("outcome", outcome).put("specs", specs.json()).put("trace", trace)
 
     companion object {
         fun from(o: JSONObject) = SessionRecord(
             o.getString("host"), o.optString("name"), o.getLong("startedAt"),
             o.optLong("durationSec"), o.optString("outcome", "ok"),
-            o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(),
+            o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(), o.optString("trace"),
         )
     }
 }

@@ -42,7 +42,7 @@ import java.util.Date
 
 /** Riwayat dengan dua tampilan (grid kartu / daftar) dan saringan hasil. */
 @Composable
-fun HistoryBrowser(history: List<SessionRecord>, grid: Boolean, onGrid: (Boolean) -> Unit, onPick: (host: String) -> Unit) {
+fun HistoryBrowser(history: List<SessionRecord>, grid: Boolean, onGrid: (Boolean) -> Unit, onOpen: (SessionRecord) -> Unit) {
     var filter by remember { mutableStateOf("Semua") }
     val shown = history.filter {
         when (filter) { "Berhasil" -> it.outcome in okOutcomes; "Gagal" -> it.outcome !in okOutcomes; else -> true }
@@ -55,8 +55,8 @@ fun HistoryBrowser(history: List<SessionRecord>, grid: Boolean, onGrid: (Boolean
     }
     Spacer(Modifier.height(16.dp))
     if (shown.isEmpty()) XyText("Tidak ada sesi untuk saringan ini.", Xy.caption)
-    else if (grid) HistoryGrid(shown.take(30), onPick)
-    else HistorySection(shown, onPick)
+    else if (grid) HistoryGrid(shown.take(30), onOpen)
+    else HistorySection(shown, onOpen)
 }
 
 @Composable
@@ -74,11 +74,11 @@ private fun ViewSwitch(grid: Boolean, onGrid: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun HistoryGrid(items: List<SessionRecord>, onPick: (host: String) -> Unit) {
+private fun HistoryGrid(items: List<SessionRecord>, onOpen: (SessionRecord) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                pair.forEach { h -> Box(Modifier.weight(1f)) { HistoryTile(h) { onPick(h.host) } } }
+                pair.forEach { h -> Box(Modifier.weight(1f)) { HistoryTile(h) { onOpen(h) } } }
                 if (pair.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -109,14 +109,17 @@ private fun HistoryTile(h: SessionRecord, onPick: () -> Unit) {
     }
 }
 
-/** Ringkasan pemakaian di beranda: jumlah sesi, total jam, host paling sering. */
+/** Ringkasan pemakaian di beranda: jumlah sesi, total jam, host paling sering; ketuk ke Riwayat. */
 @Composable
-fun UsageStrip(history: List<SessionRecord>) {
+fun UsageStrip(history: List<SessionRecord>, onOpen: () -> Unit = {}) {
     if (history.isEmpty()) return
     val secs = history.sumOf { it.durationSec }
     val hours = if (secs < 3600) "${secs / 60} mnt" else "%.1f jam".format(secs / 3600f)
     val top = history.groupBy { it.host }.maxByOrNull { it.value.size }?.value?.first()
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusM)).background(Xy.overlay).padding(vertical = 12.dp)) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusM)).background(Xy.overlay)
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onOpen).padding(vertical = 12.dp),
+    ) {
         Stat("${history.size}", "sesi", Modifier.weight(1f))
         Stat(hours, "total", Modifier.weight(1f))
         Stat(top?.let { hostTitle(it) } ?: "—", "paling sering", Modifier.weight(1.4f))

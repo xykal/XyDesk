@@ -174,6 +174,10 @@ private val en = mapOf(
     "Geser 3 jari kiri/kanan" to "Three-finger swipe left/right", "Geser 3 jari ke atas" to "Three-finger swipe up",
     "Win+Tab (semua jendela)" to "Win+Tab (task view)", "Tombol kanan" to "Right rail",
     "Keyboard, tombol cepat, kualitas, putus" to "Keyboard, quick keys, quality, disconnect",
+    "Cari nama atau ID host" to "Search host name or ID",
+    "Tidak ada host yang cocok." to "No matching host.",
+    "Sambungkan lagi" to "Connect again", "Tutup" to "Close",
+    "Grafik muncul untuk sesi yang berjalan lebih dari beberapa detik." to "The chart appears for sessions longer than a few seconds.",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

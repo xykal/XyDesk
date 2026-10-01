@@ -53,6 +53,8 @@ fun HomeShell(
     var prefill by remember { mutableStateOf(lastHost) }
     var asking by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<String?>(null) }
+    var detail by remember { mutableStateOf<SessionRecord?>(null) }
+    var query by remember { mutableStateOf("") }
     val store = settings.store
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
     val meta = remember(metaTick, store) { HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }) }
@@ -70,15 +72,21 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
-                    } else DevicesSection(devices.take(10), onLong = { editing = it }) { host -> quickConnect(host) }
+                    } else {
+                        DeviceSearch(query) { query = it }
+                        Spacer(Modifier.height(16.dp))
+                        val shown = devices.filter { d -> query.isBlank() || hostTitle(d).contains(query, true) || d.host.contains(query.filter(Char::isDigit).ifEmpty { "\u0000" }) }
+                        if (shown.isEmpty()) XyText("Tidak ada host yang cocok.", Xy.caption)
+                        else DevicesSection(shown.take(20), onLong = { editing = it }) { host -> quickConnect(host) }
+                    }
                 }
                 Tab.HISTORY -> Page("Riwayat", "Sesi terakhir, durasi, dan hasilnya.") {
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
-                    else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { host -> quickConnect(host) }
+                    else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
                 }
                 Tab.NEWS -> Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
                     NewsScreen(feed, settings.appVersion, seen, onOpenUrl) { seen = it; store?.newsSeen = it }
@@ -94,6 +102,7 @@ fun HomeShell(
             onConnect(host, pin)
         }
         store?.let { HostSheet(editing, it) { editing = null } }
+        SessionDetailSheet(detail, onDismiss = { detail = null }) { host -> detail = null; quickConnect(host) }
     } }
 }
 

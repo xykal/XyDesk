@@ -157,7 +157,7 @@ private fun Badge(text: String) {
 }
 
 @Composable
-fun HistorySection(history: List<SessionRecord>, onPick: (host: String) -> Unit = {}) {
+fun HistorySection(history: List<SessionRecord>, onOpen: (SessionRecord) -> Unit = {}) {
     if (history.isEmpty()) return
     XyText("RIWAYAT SESI", Xy.label)
     Spacer(Modifier.height(8.dp))
@@ -166,7 +166,7 @@ fun HistorySection(history: List<SessionRecord>, onPick: (host: String) -> Unit 
             val ok = h.outcome == "ok" || h.outcome == "putus" || h.outcome == "berjalan"
             val dot = when (h.outcome) { "berjalan" -> Xy.accent; "ok", "putus" -> Xy.success; else -> Xy.danger }
             Row(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onPick(h.host) }.padding(vertical = 8.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onOpen(h) }.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(dot))

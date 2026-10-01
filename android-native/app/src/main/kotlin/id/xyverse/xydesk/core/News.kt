@@ -1,6 +1,7 @@
 package id.xyverse.xydesk.core
 
 import android.content.Context
+import id.xyverse.xyadapt.Semver
 import id.xyverse.xydesk.R
 import id.xyverse.xydesk.net.Api
 import kotlinx.coroutines.Dispatchers
@@ -38,14 +39,5 @@ object News {
         return NewsFeed(o.optString("latest"), items, network)
     }
 
-    /** true bila versi terbaru di feed lebih tinggi dari yang terpasang. */
-    fun newer(latest: String, installed: String): Boolean {
-        fun parts(v: String) = v.substringBefore('+').split('.').map { it.filter(Char::isDigit).toIntOrNull() ?: 0 }
-        val a = parts(latest); val b = parts(installed)
-        for (i in 0 until maxOf(a.size, b.size)) {
-            val x = a.getOrElse(i) { 0 }; val y = b.getOrElse(i) { 0 }
-            if (x != y) return x > y
-        }
-        return false
-    }
+    fun newer(latest: String, installed: String) = Semver.newer(latest, installed)
 }

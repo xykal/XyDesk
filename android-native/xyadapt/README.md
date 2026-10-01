@@ -17,3 +17,7 @@ Murni JVM agar bisa diuji tanpa emulator (`./gradlew :xyadapt:test`).
 
 Pure-Kotlin library (no Android dependency) used by the native client: trackpad gesture engine,
 adaptive video controller with hysteresis, and compact stats formatting. JVM-only so it is unit-testable.
+
+## SessionTrace & Semver
+- `SessionTrace` menampung fps/RTT per detik, `encode()` memadatkannya ke ≤60 titik (`fps:rtt,...`) untuk disimpan di riwayat dan digambar sebagai grafik; `decode()` membaca kembali.
+- `Semver.newer(candidate, installed)` membandingkan `major.minor.patch`, mengabaikan `+build`/`-pre`.
