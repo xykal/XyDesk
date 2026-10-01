@@ -430,7 +430,9 @@ mod windows {
     /// (termasuk CABLE Input) sebagai UNPLUGGED/NOTPRESENT; pass kedua memastikan
     /// endpoint virtual tetap terdeteksi.
     pub fn list_outputs_detailed() -> Vec<(String, String)> {
-        use windows::Win32::Media::Audio::{DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE};
+        use windows::Win32::Media::Audio::{
+            DEVICE_STATEMASK_ALL, DEVICE_STATE, DEVICE_STATE_ACTIVE,
+        };
         let Ok(_com) = init_com() else {
             return Vec::new();
         };
@@ -441,13 +443,21 @@ mod windows {
             };
         let mut out = Vec::new();
         collect_endpoints(&enumerator, eRender, DEVICE_STATE_ACTIVE, false, &mut out);
-        collect_endpoints(&enumerator, eRender, DEVICE_STATEMASK_ALL, true, &mut out);
+        collect_endpoints(
+            &enumerator,
+            eRender,
+            DEVICE_STATE(DEVICE_STATEMASK_ALL),
+            true,
+            &mut out,
+        );
         out
     }
 
     /// Daftar (ID, friendly name) input (capture) — untuk deteksi virtual mic
     pub fn list_inputs_detailed() -> Vec<(String, String)> {
-        use windows::Win32::Media::Audio::{DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE};
+        use windows::Win32::Media::Audio::{
+            DEVICE_STATEMASK_ALL, DEVICE_STATE, DEVICE_STATE_ACTIVE,
+        };
         let Ok(_com) = init_com() else {
             return Vec::new();
         };
@@ -458,7 +468,13 @@ mod windows {
             };
         let mut out = Vec::new();
         collect_endpoints(&enumerator, eCapture, DEVICE_STATE_ACTIVE, false, &mut out);
-        collect_endpoints(&enumerator, eCapture, DEVICE_STATEMASK_ALL, true, &mut out);
+        collect_endpoints(
+            &enumerator,
+            eCapture,
+            DEVICE_STATE(DEVICE_STATEMASK_ALL),
+            true,
+            &mut out,
+        );
         out
     }
 
