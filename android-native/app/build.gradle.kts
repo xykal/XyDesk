@@ -31,7 +31,6 @@ android {
         }
     }
     buildFeatures { viewBinding = true; buildConfig = true; compose = true }
-    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/legal"))
     splits {
         abi {
             isEnable = true
@@ -87,9 +86,17 @@ dependencies {
     implementation("io.github.webrtc-sdk:android:125.6422.07")
 }
 
-val copyLegal by tasks.registering(Copy::class) {
-    from(rootProject.file("../docs/LEGAL.md"))
-    into(layout.buildDirectory.dir("generated/legal"))
-    rename { "legal.md" }
+abstract class CopyLegalTask : DefaultTask() {
+    @get:InputFile abstract val source: RegularFileProperty
+    @get:OutputDirectory abstract val outDir: DirectoryProperty
+    @TaskAction fun run() { source.get().asFile.copyTo(outDir.get().asFile.resolve("legal.md"), overwrite = true) }
 }
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach { dependsOn(copyLegal) }
+
+androidComponents {
+    onVariants { variant ->
+        val task = tasks.register<CopyLegalTask>("copyLegal${variant.name.replaceFirstChar(Char::uppercase)}") {
+            source.set(rootProject.file("../docs/LEGAL.md"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(task, CopyLegalTask::outDir)
+    }
+}
