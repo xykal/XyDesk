@@ -431,7 +431,7 @@ mod windows {
     /// endpoint virtual tetap terdeteksi.
     pub fn list_outputs_detailed() -> Vec<(String, String)> {
         use windows::Win32::Media::Audio::{
-            DEVICE_STATEMASK_ALL, DEVICE_STATE, DEVICE_STATE_ACTIVE,
+            DEVICE_STATE, DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE,
         };
         let Ok(_com) = init_com() else {
             return Vec::new();
@@ -456,7 +456,7 @@ mod windows {
     /// Daftar (ID, friendly name) input (capture) — untuk deteksi virtual mic
     pub fn list_inputs_detailed() -> Vec<(String, String)> {
         use windows::Win32::Media::Audio::{
-            DEVICE_STATEMASK_ALL, DEVICE_STATE, DEVICE_STATE_ACTIVE,
+            DEVICE_STATE, DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE,
         };
         let Ok(_com) = init_com() else {
             return Vec::new();
