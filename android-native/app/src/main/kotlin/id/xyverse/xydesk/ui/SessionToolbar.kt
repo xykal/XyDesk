@@ -233,6 +233,7 @@ private fun DockEditor(on: Boolean, size: Int, ids: List<String>, onOn: (Boolean
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Wrap(content: @Composable () -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }

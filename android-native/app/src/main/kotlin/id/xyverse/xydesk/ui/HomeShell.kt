@@ -69,9 +69,9 @@ fun HomeShell(
     var editing by remember { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf<SessionRecord?>(null) }
     var query by remember { mutableStateOf("") }
-    var grid by remember { mutableStateOf(store?.devicesGrid ?: false) }
     var sort by remember { mutableStateOf("Terakhir") }
     val store = settings.store
+    var grid by remember { mutableStateOf(store?.devicesGrid ?: false) }
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
     val presence = remember { store?.jwt?.let { Presence(it) } }
     DisposableEffect(presence) { presence?.start(); onDispose { presence?.stop() } }
