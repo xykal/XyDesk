@@ -165,6 +165,10 @@ Kebijakan rilis:
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
 
+## [6.10.0] - 2026-10-01
+
+- Satu update besar klien Android native: Berita tersambung ke news worker (komentar, suka, notifikasi), riwayat grid/daftar + detail sesi bergrafik, host alias/favorit/online-offline realtime, mic HP ke PC dengan DSP di host, mode presentasi, pengaturan lengkap, peramban internal. Rincian: `changelogs/6.10.0.md`.
+
 ## [6.9.0] - 2026-09-30
 
 - **Client Android ditulis ulang native.** Flutter (`lib/`, `android/`, `test/`, `pubspec`) dihapus; klien kini Kotlin + Jetpack Compose tanpa Material di `android-native/`, dengan pustaka C++ sendiri `libstreamxy` (protokol input, telemetri latensi) dan decoder H.264 low-latency langsung ke Surface (fallback otomatis). Paket `id.xyverse.xydesk` — pasang ulang, tidak bisa update di atas APK Flutter.
