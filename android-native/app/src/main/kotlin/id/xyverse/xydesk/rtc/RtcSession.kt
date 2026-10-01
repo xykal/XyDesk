@@ -263,7 +263,20 @@ class RtcSession(
     }
 
     /** Mic HP ke host; jalur sendrecv seperti web, track hanya di-enable saat pengguna menyalakan. */
-    fun setMicEnabled(on: Boolean) { micTrack?.setEnabled(on) }
+    fun setMicEnabled(on: Boolean) { micOn = on; micTrack?.setEnabled(on) }
+
+    @Volatile var micOn = false
+        private set
+
+    /** Level mic lokal 0..1 dari stats `media-source`; hanya berarti saat micOn. */
+    fun micLevel(cb: (Double) -> Unit) {
+        val conn = pc ?: return
+        conn.getStats { report ->
+            val lvl = report.statsMap.values.firstOrNull { it.type == "media-source" && it.members["kind"] == "audio" }
+                ?.members?.get("audioLevel") as? Number
+            cb(lvl?.toDouble() ?: 0.0)
+        }
+    }
 
     fun setAudioMuted(muted: Boolean) {
         audioMuted = muted

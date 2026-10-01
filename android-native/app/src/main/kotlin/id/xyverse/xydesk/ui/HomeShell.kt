@@ -21,6 +21,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import id.xyverse.xydesk.core.Presence
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -67,7 +69,12 @@ fun HomeShell(
     var sort by remember { mutableStateOf("Terakhir") }
     val store = settings.store
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
-    val meta = remember(metaTick, store) { HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }) }
+    val presence = remember { store?.jwt?.let { Presence(it) } }
+    DisposableEffect(presence) { presence?.start(); onDispose { presence?.stop() } }
+    val online by (presence?.online ?: remember { MutableStateFlow<Set<String>?>(null) }).collectAsState()
+    val meta = remember(metaTick, store, online) {
+        HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }, { h -> online?.let { Presence.hostKey(h) in it } })
+    }
     var grid by remember { mutableStateOf(store?.historyGrid ?: false) }
     var posts by remember { mutableStateOf<List<NewsPost>?>(null) }
     var offline by remember { mutableStateOf(false) }

@@ -53,8 +53,14 @@ class SessionMetrics(
             if (auto) adaptive.sample(shownFps, rtt, decode, targetFps).forEach(onCmd)
             score.push(shownFps, rtt)
             trace.push(shownFps, rtt)
-            onLine(StatsLine.format(shownFps, rtt, relay, network()) + " · " + score.grade(targetFps).label)
+            val base = StatsLine.format(shownFps, rtt, relay, network()) + " · " + score.grade(targetFps).label
+            if (session.micOn) session.micLevel { lvl -> onLine(base + " · mic " + bars(lvl)) } else onLine(base)
         }
+    }
+
+    private fun bars(level: Double): String {
+        val n = (level * 5).toInt().coerceIn(0, 4)
+        return "▁▂▃▅▇".mapIndexed { i, c -> if (i <= n) c else '·' }.joinToString("")
     }
 
     fun network(): String {

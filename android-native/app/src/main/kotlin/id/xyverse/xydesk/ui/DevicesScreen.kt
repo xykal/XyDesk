@@ -68,7 +68,7 @@ fun hostTitle(d: SessionRecord): String {
     return alias.ifEmpty { title(d) }
 }
 
-data class HostMeta(val alias: (String) -> String = { "" }, val favorite: (String) -> Boolean = { false })
+data class HostMeta(val alias: (String) -> String = { "" }, val favorite: (String) -> Boolean = { false }, val online: (String) -> Boolean? = { null })
 
 val LocalHostMeta = compositionLocalOf { HostMeta() }
 
@@ -93,6 +93,7 @@ private fun DeviceCard(d: SessionRecord, onLong: () -> Unit, onConnect: () -> Un
             Row(Modifier.align(Alignment.TopStart).padding(10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Badge(pretty(d.host))
                 Badge(relative(d.startedAt))
+                LocalHostMeta.current.online(d.host)?.let { on -> Badge(if (on) "● Online" else "○ Offline", if (on) Color(0xCC167347) else null) }
             }
             if (LocalHostMeta.current.favorite(d.host)) Box(Modifier.align(Alignment.TopEnd).padding(10.dp)) { XyIcon(Icon.STAR, tint = Color(0xFFFFC53D), size = 18.dp) }
         }
@@ -122,6 +123,7 @@ private fun DeviceRow(d: SessionRecord, onLong: () -> Unit, onPick: () -> Unit) 
     ) {
         Box(Modifier.size(38.dp).clip(CircleShape).background(Xy.accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
             XyIcon(Icon.MONITOR, tint = Xy.accent, size = 18.dp)
+            LocalHostMeta.current.online(d.host)?.let { on -> Box(Modifier.align(Alignment.BottomEnd).size(10.dp).clip(CircleShape).background(if (on) Xy.success else Xy.textLow)) }
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -150,8 +152,8 @@ private fun SpecTable(s: HostSpecs) {
 }
 
 @Composable
-private fun Badge(text: String) {
-    Box(Modifier.clip(RoundedCornerShape(Xy.pill)).background(Color(0x99000000)).padding(horizontal = 9.dp, vertical = 3.dp)) {
+private fun Badge(text: String, color: Color? = null) {
+    Box(Modifier.clip(RoundedCornerShape(Xy.pill)).background(color ?: Color(0x99000000)).padding(horizontal = 9.dp, vertical = 3.dp)) {
         XyText(text, Xy.label.copy(color = Color.White))
     }
 }
