@@ -189,6 +189,9 @@ const PROTECTED_NAMES = [
   'haekal',
   'xydesk',
   'timxydesk',
+  'xyverse',
+  'xyversetechnology',
+  'xyversetechnologyglobal',
   'xyspace',
   'xyspacetech',
   'admin',
@@ -406,7 +409,7 @@ async function adminPublish(env, request, body) {
   const cover = clean(body.cover).slice(0, 300);
   const category = (clean(body.category) || 'umum').slice(0, 24);
   // Penulis bawaan: nama manusia (Haekal Saputra), label resminya
-  // ditangani badge XySpace di klien — bukan ditumpuk ke nama penulis.
+  // ditangani badge XyVerse di klien — bukan ditumpuk ke nama penulis.
   const author = (clean(body.author) || 'Haekal Saputra').slice(0, 60);
   if (title.length < 4 || content.length < 10) {
     return json({ error: 'judul dan isi wajib diisi' }, 400);
@@ -506,7 +509,7 @@ async function sendEmails(env, post) {
     <p style="color:#9a94ad;font-size:12px;margin:20px 0 0">Kamu menerima email ini karena berlangganan berita XyDesk.</p>
     <div style="display:flex;align-items:center;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid #e9e5f2">
       <img src="https://www.xydesk.my.id/team/founder.jpg" alt="Haekal Saputra" width="34" height="34" style="border-radius:50%;object-fit:cover;display:block" />
-      <div style="font-size:13px;color:#160f2b"><strong>Haekal Saputra</strong><br /><span style="color:#9a94ad">Founder, XySpace — via XyDesk News</span></div>
+      <div style="font-size:13px;color:#160f2b"><strong>Haekal Saputra</strong><br /><span style="color:#9a94ad">Founder, XyVerse Technology Global — via XyDesk News</span></div>
     </div>
   </div>
 </div>`,

@@ -9,7 +9,7 @@
 ## 1. Sifat lisensi XyDesk — PROPRIETARY
 
 XyDesk adalah perangkat lunak **proprietary (bukan sumber terbuka)** milik
-**XySpace Tech (xykalnotkel)**. Kode sumber XyDesk adalah rahasia dagang
+**XyVerse Technology Global (xykal)**. Kode sumber XyDesk adalah rahasia dagang
 dan dilindungi hukum hak cipta (UU No. 28 Tahun 2014 tentang Hak Cipta,
 serta perjanjian hak cipta internasional yang berlaku).
 
@@ -20,7 +20,7 @@ serta perjanjian hak cipta internasional yang berlaku).
   berwenang kelola.
 - Membagikan tautan unduhan resmi ke rilis XyDesk.
 
-**DILARANG — tanpa izin tertulis dari XySpace Tech:**
+**DILARANG — tanpa izin tertulis dari XyVerse Technology Global:**
 
 1. **Meng-clone, menyalin, atau mendistribusikan ulang kode sumber**,
    sebagian maupun seluruhnya, untuk tujuan apa pun.

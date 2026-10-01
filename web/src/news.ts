@@ -162,7 +162,7 @@ export function postComment(
 
 // ── Mode founder ───────────────────────────────────────────────
 // Email Google founder → balasan tampil sebagai Haekal Saputra dengan foto
-// profil resmi + badge XySpace. Email hanya MEMBUKA UI-nya; otoritas
+// profil resmi + badge XyVerse. Email hanya MEMBUKA UI-nya; otoritas
 // sesungguhnya adalah Google ID token yang divalidasi worker.
 export const ADMIN_EMAIL = 'xycdigital@gmail.com';
 export const ADMIN_DISPLAY_NAME = 'Haekal Saputra';

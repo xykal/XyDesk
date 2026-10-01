@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.8.8](./6.8.8.md) - 2026-09-29 — Encoder hardware AMD/Intel lewat Media Foundation (NVENC > MFT > openh264), CRT statis, rilis draft
 - [6.8.7](./6.8.7.md) - 2026-09-28 — Resolusi+FPS otomatis (web & APK), APK akhirnya mengirim preset video ke host
 - [6.8.6](./6.8.6.md) - 2026-09-28 — Latensi terukur: abs-capture-time host + probe web "Layar ke layar", laporan JSON, rapikan root repo
 - [6.7.11](./6.7.11.md) - 2026-09-07 — Fix CI Windows PROPERTYKEY Foundation

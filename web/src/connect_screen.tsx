@@ -388,7 +388,7 @@ export function ConnectScreen({
     if (!sessionOpen) return;
     const overflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const background=Array.from(document.querySelectorAll<HTMLElement>('.remote-header,.connect-account-bar')).map(el=>({el,inert:el.inert}));
+    const background=Array.from(document.querySelectorAll<HTMLElement>('.site-header,.connect-account-bar')).map(el=>({el,inert:el.inert}));
     background.forEach(({el})=>{el.inert=true;});
     return () => { document.body.style.overflow = overflow;background.forEach(({el,inert})=>{el.inert=inert;}); };
   }, [sessionOpen]);
@@ -723,7 +723,7 @@ export function ConnectScreen({
         const next=p.bitrateMbps===0?adaptive.current.update(s,ceiling,performance.now()):null;
         if(next!==null)sessionRef.current?.setBitrate(next);
         if(p.preset!=='manual'){
-          const d=autoPreset.current.update({...autoInputFromMeta(hostMetaRef.current),rttMs:s.rttMs,recentLossPct:s.recentLossPct,jitterBufferMs:s.jitterBufferMs,deliveredFps:s.fps,glassMs:s.latencyEstimate?.totalMs},performance.now());
+          const d=autoPreset.current.update({...autoInputFromMeta(hostMetaRef.current),rttMs:s.rttMs,recentLossPct:s.recentLossPct,jitterBufferMs:s.jitterBufferMs,decodeMs:s.decodeMs,deliveredFps:s.fps,glassMs:s.latencyEstimate?.totalMs},performance.now());
           if(d)applyAutoDecision(d);
         }
         setStats(s);
@@ -852,8 +852,10 @@ export function ConnectScreen({
     <section className={sessionOpen ? 'remote-session' : 'connect-card surface-card'}>
       {!sessionOpen && (
         <div className="connect-form">
-          <h1>Kendalikan PC dari browser.</h1>
-          <p className="muted">Tidak perlu akun. Ambil ID dan password dari XyDesk Host di PC.</p>
+          <div className="connect-intro">
+            <h1>Kendalikan PC dari browser</h1>
+            <p className="muted">Masukkan ID dan password dari XyDesk Host.</p>
+          </div>
           <div className="field-head">
             <span className="field-label">ID perangkat</span>
             <span className="field-tools">
@@ -863,9 +865,10 @@ export function ConnectScreen({
               className="recents-toggle"
               onClick={() => setQrOpen(true)}
               title="Pindai QR dari XyDesk Host"
+              aria-label="Pindai QR"
             >
               <QrIcon />
-              Pindai QR
+              <span className="chip-text">Pindai QR</span>
             </button>
             )}
             {recents.length > 0 && (
@@ -874,9 +877,10 @@ export function ConnectScreen({
                 className={recentsOpen ? 'recents-toggle open' : 'recents-toggle'}
                 onClick={() => setRecentsOpen((v) => !v)}
                 aria-expanded={recentsOpen}
+                aria-label="Riwayat"
               >
                 <HistoryIcon />
-                Riwayat
+                <span className="chip-text">Riwayat</span>
               </button>
             )}
             </span>
@@ -896,7 +900,7 @@ export function ConnectScreen({
                   }}
                 >
                   <span className="recent-id">{formatHostId(r.id)}</span>
-                  <span className="recent-pw">ketik password</span>
+                  <span className="recent-pw">password</span>
                 </button>
               ))}
               <button
@@ -917,7 +921,7 @@ export function ConnectScreen({
             setHostId(value);
             if (value.replace(/\s/g, '').length === 9) pinRef.current?.focus();
           }} />
-          {savedAccess&&<p>Izin PC ini tersimpan. <button type="button" className="text-action" onClick={()=>{forgetHostAccess(hostId.replace(/[\s-]/g,''));updateAccess(x=>x+1);}}>Lupakan akses browser</button></p>}
+          {savedAccess&&<p className="saved-access">Akses tersimpan. <button type="button" className="text-action" onClick={()=>{forgetHostAccess(hostId.replace(/[\s-]/g,''));updateAccess(x=>x+1);}}>Lupakan</button></p>}
           {!savedAccess&&<><span className="field-label">Password pairing</span>
           <div className="pw-field">
             {/* autoCapitalize "none", bukan "characters" seperti dulu: host
@@ -927,7 +931,7 @@ export function ConnectScreen({
             <input
               ref={pinRef}
               type={showPw ? 'text' : 'password'}
-              placeholder={savedAccess?"Izin browser tersimpan — password tidak diperlukan":"Password pairing"}
+              placeholder="Password pairing"
               value={pin}
               autoCapitalize="none"
               autoCorrect="off"
@@ -953,9 +957,7 @@ export function ConnectScreen({
             </p>
           )}
           {retryInfo && <p className="status-text">{retryInfo}</p>}
-          <a className="text-action" href="/history">Buka halaman riwayat</a>
           <button className="connect-cta" disabled={!canConnect} onClick={() => void connect()}>{['pairing', 'negotiating'].includes(phase) ? labels[phase] : 'Konek sekarang'}</button>
-          <p className="microcopy">Sesi tamu tanpa batas durasi. Izin dan riwayat tersimpan di browser ini; pemilik PC tetap dapat mencabut akses.</p>
         </div>
       )}
       <div
@@ -976,14 +978,14 @@ export function ConnectScreen({
           <img src="/logo.png" alt="XyDesk" width="64" height="64"/>
           {['pairing','negotiating'].includes(phase)&&<ConnectionMorph/>}
           <h2 aria-live="polite">{['pairing','negotiating'].includes(phase)?'Menghubungkan perangkat…':fasePesan||labels[phase]||'Lanjutkan sesi perangkat'}</h2>
-          <p>{['pairing','negotiating'].includes(phase)?'Menyiapkan layar jarak jauh.':'Siap melanjutkan koneksi lu.'}</p>
+          <p>{['pairing','negotiating'].includes(phase)?'Menyiapkan layar jarak jauh.':'Siap melanjutkan koneksi.'}</p>
           {!['pairing','negotiating'].includes(phase)&&<div className="session-resume-form">
             {!/^\d{9}$/.test(hostId.replace(/[\s-]/g,''))&&<label>ID perangkat<input inputMode="numeric" value={hostId} onChange={e=>setHostId(e.target.value)} autoComplete="off"/></label>}
             {!savedAccess&&<label>Password pairing<input ref={pinRef} type="password" value={pin} onChange={e=>setPin(e.target.value)} autoComplete="off" onKeyDown={e=>{if(e.key==='Enter'&&canConnect)void connect();}}/><small>Akses tersimpan tidak tersedia atau sudah dicabut. Password tidak disimpan.</small></label>}
             <button className="btn primary" disabled={!canConnect} onClick={()=>void connect()}>Sambungkan ulang</button>
-            {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun untuk memakai akses tersimpan</button>}
+            {!savedAccess&&<button className="btn ghost" onClick={onLogin}>Masuk akun</button>}
           </div>}
-          <button className="btn ghost" onClick={disconnect}>Kembali / batalkan</button>
+          <button className="btn ghost" onClick={disconnect}>Batalkan</button>
         </div>}
         <div className="remote-input-area" aria-hidden="true" hidden={!connected} />
         <div ref={cursorRef} className="remote-control-cursor" hidden={true} style={{display:"none",width:prefs.cursorSize,height:prefs.cursorSize*4/3}} aria-hidden="true" data-revision={SESSION_UI_REVISION}>

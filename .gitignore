@@ -86,3 +86,6 @@ admin/package-lock.json
 
 # Rust build outputs, including small cross-target validation crates.
 target/
+
+# flutter gen-l10n (dibuat saat pub get)
+lib/l10n/gen/
