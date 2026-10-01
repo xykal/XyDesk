@@ -35,6 +35,7 @@ pub fn meta_json() -> serde_json::Value {
         },
         "micInput": {
             "available": crate::audio::mic_input_available(),
+            "reason": crate::virtual_mic::unavailable_reason(),
             "device": "XyDesk Virtual Microphone",
             "route": "virtual-cable",
             "dsp": crate::mic_dsp::telemetry(),
@@ -111,6 +112,7 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
                 });
                 meta["micInput"] = serde_json::json!({
                     "available": crate::audio::mic_input_available(),
+                    "reason": crate::virtual_mic::unavailable_reason(),
                     "device": "XyDesk Virtual Microphone",
                     "route": "virtual-cable",
                     "dsp": crate::mic_dsp::telemetry(),

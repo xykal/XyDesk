@@ -165,6 +165,10 @@ Kebijakan rilis:
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
 
+## [6.11.1] - 2026-10-01
+
+- **Host + klien, mic virtual (1 Oktober):** host kini mengirim `micInput.reason` (`no-driver` / `no-endpoint`) sehingga klien native menampilkan petunjuk yang tepat, bukan "perbarui host"; host tanpa hak admin mencoba memasang VB-CABLE lewat UAC satu kali per versi saat start (penanda di folder konfigurasi), bukan hanya saat sudah admin. Mulai versi ini host dan klien dikerjakan satu agen (koordinasi lintas agen di #31/#34 ditutup).
+
 ## [6.11.0] - 2026-10-01
 
 - **Klien Android native (1 Oktober, putaran 3):** status online diperbaiki dari akarnya — hub signaling mendapat pesan `presence` (jawab hanya ID yang ditanya, maks 50) karena `list` sengaja kosong demi privasi, klien bertanya tiap 10 d; blur teks saat pindah halaman dihilangkan (transisi root tanpa skala); cuplikan PC JPEG q92 + filter tinggi; 24 pengaturan baru di Akun > Sesi dan Akun > Umum: orientasi, rel otomatis sembunyi, resolusi awal, batas bitrate, getaran sesi, audio bisu/mic/clipboard saat mulai, percepatan kursor, kecepatan scroll, ketuk dua jari, gestur tiga jari, ukuran & posisi HUD, posisi dok, ingat perangkat bawaan, sambung otomatis ke PC terakhir, selalu relay, simpan cuplikan, tampilkan ID, hapus riwayat otomatis, ukuran teks, interval cek berita.

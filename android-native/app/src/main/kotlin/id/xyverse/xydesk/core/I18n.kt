@@ -273,6 +273,8 @@ private val en = mapOf(
     "Berlaku di seluruh aplikasi." to "Applies across the app.",
     "Cek berita tiap" to "Check news every", "3 jam" to "3 h", "6 jam" to "6 h", "12 jam" to "12 h",
     "Interval pemeriksaan artikel baru di latar." to "How often new articles are checked in the background.",
+    "Driver mic virtual ada, tapi perangkat CABLE Input nonaktif di PC. Aktifkan di Pengaturan Suara Windows, lalu sambung ulang." to "The virtual mic driver exists, but CABLE Input is disabled on the PC. Enable it in Windows Sound settings, then reconnect.",
+    "PC belum punya driver mic virtual. Di PC: Start Menu > XyDesk > Install Virtual Audio Driver (Run as administrator), lalu sambung ulang." to "The PC has no virtual mic driver yet. On the PC: Start Menu > XyDesk > Install Virtual Audio Driver (Run as administrator), then reconnect.",
     "Umum" to "General", "Koneksi, privasi, data, ukuran teks, berita." to "Connection, privacy, data, text size, news.",
 )
 
