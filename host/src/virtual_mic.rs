@@ -300,13 +300,49 @@ pub fn try_install_driver() -> Result<String, String> {
     Err("hanya Windows".to_string())
 }
 
+/// Alasan mic virtual belum bisa dipakai, untuk `meta.micInput.reason` di client.
+/// `None` berarti siap. Nilai: `no-driver` (VB-CABLE belum terpasang),
+/// `no-endpoint` (driver ada tapi endpoint "CABLE Input" nonaktif/dicabut).
+pub fn unavailable_reason() -> Option<&'static str> {
+    if get_render_device_id().is_some() {
+        return None;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if kernel_driver_installed() {
+            return Some("no-endpoint");
+        }
+    }
+    Some("no-driver")
+}
+
+/// Penanda "sudah pernah mencoba pasang lewat UAC" supaya prompt tidak muncul
+/// tiap host start; dihapus otomatis saat versi host berubah.
+#[cfg(target_os = "windows")]
+fn uac_attempt_marker() -> std::path::PathBuf {
+    crate::identity::config_dir().join(format!("vbcable-uac-{}", env!("CARGO_PKG_VERSION")))
+}
+
 #[cfg(target_os = "windows")]
 pub fn ensure_virtual_mic() {
     let mut status = get_status();
-    if !status.installed && crate::virtual_display::is_admin() {
-        if let Ok(msg) = try_install_driver() {
-            eprintln!("[xydesk-host] auto-provision VB-CABLE: {msg}");
-            status = get_status();
+    if !status.installed {
+        let admin = crate::virtual_display::is_admin();
+        let marker = uac_attempt_marker();
+        let first_uac = !admin && !marker.exists();
+        if admin || first_uac {
+            if !admin {
+                let _ =
+                    std::fs::create_dir_all(marker.parent().unwrap_or(std::path::Path::new(".")));
+                let _ = std::fs::write(&marker, b"1");
+            }
+            match try_install_driver() {
+                Ok(msg) => {
+                    eprintln!("[xydesk-host] auto-provision VB-CABLE: {msg}");
+                    status = get_status();
+                }
+                Err(e) => eprintln!("[xydesk-host] auto-provision VB-CABLE gagal: {e}"),
+            }
         }
     }
     eprintln!(

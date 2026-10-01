@@ -67,6 +67,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var presenting = false
     private var lastBack = 0L
     private var micInput: Boolean? = null
+    private var micReason = ""
     private var hostName = ""
     private var specs = HostSpecs()
     private var startedAt = 0L
@@ -253,7 +254,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         mic = { on ->
                             when {
                                 !on -> session.setMicEnabled(false)
-                                micInput == false -> Toast.makeText(this, "PC belum punya input mic virtual. Perbarui XyDesk Host ke versi terbaru.".tr(store.lang), Toast.LENGTH_LONG).show()
+                                micInput == false -> Toast.makeText(this, micHint().tr(store.lang), Toast.LENGTH_LONG).show()
                                 hasMic() -> session.setMicEnabled(true)
                                 else -> requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7)
                             }
@@ -292,6 +293,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.dock.visibility = if (!on && dockOn && connected) View.VISIBLE else View.GONE
         if (on) b.status.visibility = View.GONE
         if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
+    }
+
+    private fun micHint() = when (micReason) {
+        "no-endpoint" -> "Driver mic virtual ada, tapi perangkat CABLE Input nonaktif di PC. Aktifkan di Pengaturan Suara Windows, lalu sambung ulang."
+        "no-driver" -> "PC belum punya driver mic virtual. Di PC: Start Menu > XyDesk > Install Virtual Audio Driver (Run as administrator), lalu sambung ulang."
+        else -> "PC belum punya input mic virtual. Perbarui XyDesk Host ke versi terbaru."
     }
 
     /** Orientasi, posisi HUD, ukuran HUD, dan posisi dok dari Pengaturan. */
@@ -352,7 +359,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         return keys.physical(event) || super.dispatchKeyEvent(event)
     }
 
-    override fun onMicInput(available: Boolean) { micInput = available }
+    override fun onMicInput(available: Boolean, reason: String) { micInput = available; micReason = reason }
 
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
 
