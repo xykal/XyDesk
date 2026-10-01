@@ -29,6 +29,7 @@ data class TrackpadConfig(
     val scrollUnit: Int = 40,
     val pinchStepPx: Float = 28f,
     val swipe3Px: Float = 90f,
+    val twoFingerTap: Boolean = true,
 )
 
 /**
@@ -153,7 +154,7 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
         if (!moved && quick) {
             when (maxFingers) {
                 1 -> { out(Act.Click(0)); lastTapUp = t }
-                2 -> out(Act.Click(1))
+                2 -> if (cfg.twoFingerTap) out(Act.Click(1))
                 else -> out(Act.Click(2))
             }
         }

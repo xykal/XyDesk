@@ -93,6 +93,8 @@ fun SessionDefaults(store: Store) {
         }
     }
     Spacer(Modifier.height(16.dp))
+    SessionMorePrefs(store)
+    Spacer(Modifier.height(16.dp))
     GestureGuide()
 }
 

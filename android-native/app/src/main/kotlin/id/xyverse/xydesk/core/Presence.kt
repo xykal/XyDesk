@@ -17,11 +17,11 @@ import org.json.JSONObject
 import java.security.SecureRandom
 
 /**
- * Kehadiran host: satu soket signaling ringan selama beranda terbuka. Server
- * menyiarkan `devices` (hanya host) tiap ada yang masuk/keluar, jadi titik
- * online/offline di kartu perangkat ikut berubah seketika.
+ * Kehadiran host: satu soket signaling ringan selama beranda terbuka. Klien
+ * menanyakan `presence` untuk ID yang sudah dikenalnya (hub tidak membuka daftar
+ * global) tiap beberapa detik dan saat kembali ke aplikasi.
  */
-class Presence(private val jwt: String) : SignalingListener {
+class Presence(private val jwt: String, private val known: () -> Collection<String>) : SignalingListener {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val id = "app-presence-" + SecureRandom().nextInt(900_000).plus(100_000)
     private var signaling: Signaling? = null
@@ -41,7 +41,7 @@ class Presence(private val jwt: String) : SignalingListener {
                 val ok = runCatching { s.connect(Api.signalToken(jwt, id)) }.isSuccess
                 if (!ok) { delay(backoff); backoff = (backoff * 2).coerceAtMost(60_000); continue }
                 backoff = 2000
-                while (isActive && s.open) { delay(12_000); s.list() }
+                while (isActive && s.open) { delay(10_000); ask() }
                 delay(backoff)
             }
         }
@@ -53,20 +53,24 @@ class Presence(private val jwt: String) : SignalingListener {
         _online.value = null
     }
 
-    override fun onOpen() { signaling?.list() }
+    override fun onOpen() { ask() }
 
-    /** Minta daftar ulang sekarang, mis. saat kembali dari sesi. */
-    fun refresh() { signaling?.takeIf { it.open }?.list() }
+    /** Tanya ulang sekarang, mis. saat kembali dari sesi. */
+    fun refresh() = ask()
+
+    private fun ask() {
+        val ids = known().map { hostKey(it) }.filter { it.length >= 6 }.distinct()
+        signaling?.takeIf { it.open }?.presence(ids)
+    }
 
     /**
      * Host dianggap offline hanya bila absen di dua daftar berturut-turut: host yang
      * baru saja memutus sesi sering mendaftar ulang beberapa detik kemudian.
      */
     override fun onMessage(m: SignalMessage) {
-        if (m.type != "devices") return
-        val arr = m.json.optJSONArray("devices") ?: return
-        val now = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
-            .filter { it.optString("role") == "host" }.map { it.optString("id").filter(Char::isDigit) }.toSet()
+        if (m.type != "presence") return
+        val arr = m.json.optJSONArray("online") ?: return
+        val now = (0 until arr.length()).map { arr.optString(it).filter(Char::isDigit) }.toSet()
         val shown = _online.value
         _online.value = if (shown == null) now else now + (shown - now).filter { it in previous }
         previous = now

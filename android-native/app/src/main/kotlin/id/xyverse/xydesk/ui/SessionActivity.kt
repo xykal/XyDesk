@@ -33,6 +33,7 @@ import id.xyverse.xyadapt.VideoCmd
 import id.xyverse.xydesk.core.HostSpecs
 import id.xyverse.xydesk.core.KeyMap
 import id.xyverse.xydesk.core.LocalLang
+import id.xyverse.xydesk.core.P
 import id.xyverse.xydesk.core.Previews
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.core.Store
@@ -101,6 +102,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(b.root)
         if (store.keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        applyLayoutPrefs()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 val now = System.currentTimeMillis()
@@ -126,12 +128,22 @@ class SessionActivity : ComponentActivity(), RtcListener {
             onNativeDecode = { ms -> metrics.onNativeDecode(ms) },
             onNativeSize = { w, h -> runOnUiThread { fitSurface(w, h) } },
             onDecodeMode = { ll -> runOnUiThread { applyDecodeMode(ll) } },
+            forceRelay = store.bool(P.FORCE_RELAY, false),
         )
         metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
         metrics.targetFps = store.targetFps
         metrics.auto = store.quality == 0
-        touch = SessionTouch(TrackpadConfig(speed = store.trackpadSpeed, naturalScroll = store.naturalScroll), session::send) {
-            b.root.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+        val cfg = TrackpadConfig(
+            speed = store.trackpadSpeed,
+            naturalScroll = store.naturalScroll,
+            accel = listOf(0f, 0.6f, 1.2f)[store.int(P.ACCEL, 1)],
+            scrollUnit = listOf(24, 40, 70)[store.int(P.SCROLL_SPEED, 1)],
+            twoFingerTap = store.bool(P.TWO_FINGER_RIGHT, true),
+            swipe3Px = if (store.bool(P.SWIPE3, true)) 90f else Float.MAX_VALUE,
+        )
+        val haptic = store.bool(P.SESSION_HAPTIC, true)
+        touch = SessionTouch(cfg, session::send) {
+            if (haptic) b.root.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
         }
         touch.directTouch = store.directTouch
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
@@ -148,9 +160,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
         session.start()
     }
 
+    private val maxMbps get() = P.MBPS[store.int(P.MAX_MBPS, 0)]
+    private fun capped(mbps: Int) = if (maxMbps > 0) minOf(mbps, maxMbps) else mbps
+
     private fun applyVideoCmd(cmd: VideoCmd) {
         when (cmd) {
-            is VideoCmd.Bitrate -> session.send(StreamXy.bitrate(cmd.mbps))
+            is VideoCmd.Bitrate -> session.send(StreamXy.bitrate(capped(cmd.mbps)))
             is VideoCmd.Resolution -> session.send(StreamXy.resolution(cmd.mode))
             is VideoCmd.Fps -> session.send(StreamXy.fps(cmd.target))
         }
@@ -219,7 +234,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     private fun setupToolbar() {
-        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, dockOn, dockSize, dockKeys)
+        val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
+        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, dockOn, dockSize, dockKeys, autohide)
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
@@ -228,7 +244,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },
-                        bitrate = { metrics.auto = false; session.send(StreamXy.bitrate(it)) },
+                        bitrate = { metrics.auto = false; session.send(StreamXy.bitrate(capped(it))) },
                         display = { session.send(StreamXy.display(it)) },
                         touchMode = { store.directTouch = it; touch.directTouch = it },
                         trackpadSpeed = { store.trackpadSpeed = it; touch.config = touch.config.copy(speed = it) },
@@ -278,9 +294,42 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
     }
 
+    /** Orientasi, posisi HUD, ukuran HUD, dan posisi dok dari Pengaturan. */
+    private fun applyLayoutPrefs() {
+        requestedOrientation = when (store.int(P.ORIENTATION, 0)) {
+            1 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            2 -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+        b.status.textSize = listOf(10f, 12f, 14.5f)[store.int(P.HUD_SIZE, 1)]
+        (b.status.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let { lp ->
+            val right = store.bool(P.HUD_RIGHT, false)
+            lp.gravity = android.view.Gravity.TOP or (if (right) android.view.Gravity.END else android.view.Gravity.START)
+            if (right) lp.marginEnd = (resources.displayMetrics.density * 72).toInt()
+            b.status.layoutParams = lp
+        }
+        (b.dock.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let { lp ->
+            val top = store.bool(P.DOCK_TOP, false)
+            lp.gravity = (if (top) android.view.Gravity.TOP else android.view.Gravity.BOTTOM) or android.view.Gravity.CENTER_HORIZONTAL
+            val m = (resources.displayMetrics.density * 10).toInt()
+            lp.topMargin = if (top) m else 0; lp.bottomMargin = if (top) 0 else m
+            b.dock.layoutParams = lp
+        }
+    }
+
+    /** Preferensi "saat mulai sesi": audio bisu, mic, clipboard, resolusi awal, batas bitrate. */
+    private fun applyStartPrefs() {
+        if (store.bool(P.START_MUTED, false)) session.setAudioMuted(true)
+        if (store.bool(P.START_MIC, false) && hasMic()) session.setMicEnabled(true)
+        if (store.bool(P.START_CLIP, false)) { clipboardSync = true; session.clipboardSync = true }
+        val res = store.int(P.START_RES, 0)
+        if (res > 0) { metrics.auto = false; session.send(StreamXy.resolution(res - 1)) }
+        if (maxMbps > 0 && metrics.auto) session.send(StreamXy.bitrate(maxMbps))
+    }
+
     /** Salin frame yang sedang tampil ke bitmap kecil; jadi cuplikan kartu perangkat. */
     private fun capturePreview() {
-        if (!connected) return
+        if (!connected || !store.bool(P.SAVE_PREVIEW, true)) return
         val view: SurfaceView = if (lowLatency) b.raw else b.video
         if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
         val w = 1280
@@ -331,6 +380,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             ui.postDelayed(previewTick, 3000)
             session.send(StreamXy.fps(metrics.targetFps))
             if (store.quality == 0) metrics.auto = true else session.send(StreamXy.quality(store.quality))
+            applyStartPrefs()
         }
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED) && outcome == "berjalan") {
             outcome = phase.name.lowercase()

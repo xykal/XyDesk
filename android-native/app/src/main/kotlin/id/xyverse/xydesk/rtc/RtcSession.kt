@@ -63,6 +63,7 @@ class RtcSession(
     onNativeDecode: (Float) -> Unit = {},
     onNativeSize: (Int, Int) -> Unit = { _, _ -> },
     onDecodeMode: (Boolean) -> Unit = {},
+    private val forceRelay: Boolean = false,
 ) : SignalingListener {
     val egl: EglBase = EglBase.create()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -212,6 +213,7 @@ class RtcSession(
         }
         val config = PeerConnection.RTCConfiguration(servers).apply {
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
+            if (forceRelay) iceTransportsType = PeerConnection.IceTransportsType.RELAY
         }
         val conn = factory.createPeerConnection(config, PcObserver()) ?: return fail("PeerConnection gagal dibuat.")
         pc = conn

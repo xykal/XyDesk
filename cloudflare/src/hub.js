@@ -205,6 +205,8 @@ export class Hub {
         // Tanpa registri kepemilikan, daftar global akan membocorkan semua ID
         // host ke setiap akun. Koneksi langsung tetap bekerja lewat ID tujuan.
         return this.send(ws, { type: 'devices', devices: [] });
+      case 'presence':
+        return this.handlePresence(ws, msg);
       case 'ping':
         return this.send(ws, { type: 'pong' });
       case 'pair':
@@ -397,6 +399,22 @@ export class Hub {
 
   send(ws, msg) {
     try { ws.send(JSON.stringify(msg)); } catch { /* abaikan */ }
+  }
+
+  /**
+   * Status online untuk ID yang sudah diketahui client (maks 50). Hanya
+   * menjawab ya/tidak per ID yang diminta — sama dengan yang terungkap oleh
+   * satu percobaan sambung (`peer-offline`), tanpa membuka daftar global.
+   */
+  handlePresence(ws, msg) {
+    const asked = Array.isArray(msg.ids) ? msg.ids : [];
+    const ids = [...new Set(asked.map((x) => String(x).replace(/\D/g, '')).filter((x) => x.length >= 6))].slice(0, 50);
+    const hosts = new Set();
+    for (const w of this.sockets()) {
+      let a; try { a = w.deserializeAttachment(); } catch { continue; }
+      if (a && a.registered && a.role === 'host' && a.id) hosts.add(String(a.id).replace(/\D/g, ''));
+    }
+    return this.send(ws, { type: 'presence', online: ids.filter((id) => hosts.has(id)) });
   }
 
   sockets() {

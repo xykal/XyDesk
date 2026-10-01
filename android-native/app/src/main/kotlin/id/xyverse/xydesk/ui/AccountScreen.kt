@@ -79,9 +79,10 @@ class Settings(
     val onClearHistory: () -> Unit = {},
     val onOpenAppSettings: () -> Unit = {},
     val store: Store? = null,
+    val onTextSize: (Int) -> Unit = {},
 )
 
-private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS, SESSION, ABOUT }
+private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS, SESSION, GENERAL, ABOUT }
 
 private data class SocialLink(val kind: Social, val name: String, val url: String, val color: Long)
 
@@ -112,6 +113,7 @@ fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings
             Sub.PERMISSIONS -> SubPage("Izin", { sub = Sub.ROOT }) { PermissionsBody(settings) }
             Sub.ABOUT -> SubPage("Tentang", { sub = Sub.ROOT }) { AboutBody(settings.appVersion, onOpenUrl) }
             Sub.SESSION -> SubPage("Sesi", { sub = Sub.ROOT }) { settings.store?.let { SessionDefaults(it) } }
+            Sub.GENERAL -> SubPage("Umum", { sub = Sub.ROOT }) { settings.store?.let { GeneralMorePrefs(it, settings.onTextSize) } }
         }
     }
 }
@@ -155,6 +157,7 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
             XyText("SESI", Xy.label)
             Spacer(Modifier.height(8.dp))
             XyRow(Icon.CONTROLS, "Video, kursor, HUD", "Kualitas, fps, trackpad, HUD, panduan gestur.", onClick = { go(Sub.SESSION) })
+            XyRow(Icon.SETTINGS, "Umum", "Koneksi, privasi, data, ukuran teks, berita.", onClick = { go(Sub.GENERAL) })
             XyText("Tombol dok (klik, scroll, Esc, F1–F12, dll.) diatur langsung di dalam sesi lewat tombol Dok.", Xy.caption, Modifier.padding(horizontal = 6.dp, vertical = 6.dp))
         }
         Spacer(Modifier.height(16.dp))

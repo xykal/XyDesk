@@ -391,3 +391,13 @@ test('hello tanpa id perangkat ditolak', () => {
   assert.equal(out[0].error, 'hello butuh id perangkat');
   assert.equal(sock.deserializeAttachment().registered, false);
 });
+
+test('presence hanya menjawab ID yang diminta, tidak membocorkan host lain', async () => {
+  const out = [];
+  const { hub } = harness([{ id: 'c1', ip: '1.1.1.1', out }]);
+  const client = fakeSocket({ id: 'c1', role: 'client', registered: true }, out);
+  hub.handlePresence(client, { ids: ['111 222 333', '999888777', 'x'] });
+  assert.deepEqual(out.at(-1), { type: 'presence', online: ['111222333'] });
+  hub.handlePresence(client, { ids: [] });
+  assert.deepEqual(out.at(-1), { type: 'presence', online: [] });
+});
