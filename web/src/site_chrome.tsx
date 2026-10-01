@@ -2,6 +2,7 @@ import { RELEASE_BASE, Route, WHATSAPP_CHANNEL } from './app_routes';
 import {PUBLIC_ORIGIN} from './site_routes';
 import { useEffect, useRef, useState } from 'react';
 import { BRAND_POWERED_BY } from './config/brand';
+import { XyDeskMark } from './xydesk_mark';
 
 import {
   APP_VERSION,
@@ -12,10 +13,8 @@ import {
   STAGE_LABEL,
 } from './version';
 
-export function Logo({ size = 30 }: { size?: number }) {
-  return (
-    <img src="/logo.png" alt="XyDesk" width={size} height={size} aria-hidden="true" />
-  );
+export function Logo({ size = 30, variant = 'header' }: { size?: number; variant?: 'header' | 'footer' }) {
+  return <XyDeskMark size={size} variant={variant} />;
 }
 
 export function SiteHeader({
@@ -79,23 +78,26 @@ export function SiteHeader({
         </nav>
       )}
       <div className="header-actions">
-        {!bare && (
-          <button className="btn ghost desktop-only" onClick={() => navigate('/connect')}>
-            Connect Web
-          </button>
-        )}
         {DOWNLOAD_ENABLED ? (
-          <a className="btn primary" href={`${RELEASE_BASE}/XyDesk-x64.exe`}>
-            Unduh Windows
-          </a>
+          <>
+            {!bare && (
+              <button className="btn ghost desktop-only" onClick={() => navigate('/connect')}>
+                Connect Web
+              </button>
+            )}
+            <a className="btn primary" href={`${RELEASE_BASE}/XyDesk-x64.exe`}>
+              Unduh Windows
+            </a>
+          </>
         ) : (
-          <button
-            className="btn primary"
-            disabled
-            title={DOWNLOAD_DISABLED_REASON}
-          >
-            {STAGE_LABEL[RELEASE_STAGE]}
-          </button>
+          <>
+            <span className="stage-chip desktop-only" title={DOWNLOAD_DISABLED_REASON}>
+              {STAGE_LABEL[RELEASE_STAGE]}
+            </span>
+            <button className="btn primary" onClick={() => navigate('/connect')}>
+              Connect Web
+            </button>
+          </>
         )}
         {!bare && (
           <button
@@ -105,15 +107,7 @@ export function SiteHeader({
             aria-controls="mobile-nav"
             onClick={() => setMenuOpen((o) => !o)}
           >
-            {menuOpen ? (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" />
-              </svg>
-            ) : (
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-            )}
+            <MenuIcon open={menuOpen} />
           </button>
         )}
       </div>
@@ -134,23 +128,51 @@ export function NavigationOverlay({onClose,navigate,current}:{onClose:()=>void;n
   </dialog>;
 }
 
-export function RemoteHeader({route,navigate}:{route:Route;navigate:(r:Route)=>void}){
-  const [open,setOpen]=useState(false);
-  useEffect(()=>setOpen(false),[route]);
-  return <header className="remote-header"><a className="brand" href={PUBLIC_ORIGIN}><Logo/><strong>XyDesk <small>Remote</small></strong></a>
-    <nav aria-label="Aplikasi remote">{([['/devices','Perangkat'],['/history','Riwayat'],['/controls','Kontrol']] as const).map(([path,label])=><a key={path} href={path} aria-current={route===path?'page':undefined} onClick={e=>{e.preventDefault();navigate(path);}}>{label}</a>)}</nav>
-    <button className="btn primary" onClick={()=>navigate('/connect')}>Koneksi baru</button><button className="remote-menu-toggle" type="button" aria-label={open?"Tutup menu":"Buka menu"} aria-expanded={open} aria-controls="mobile-nav" onClick={()=>setOpen(v=>!v)}><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-    {open&&<NavigationOverlay onClose={()=>setOpen(false)} navigate={navigate} current={typeof route==='string'?route:'/devices'}/>}
-  </header>;
+const REMOTE_LINKS = [['/devices', 'Perangkat'], ['/history', 'Riwayat'], ['/controls', 'Kontrol']] as const;
+
+// Header area remote memakai kerangka & gaya yang sama dengan header situs.
+export function RemoteHeader({ route, navigate }: { route: Route; navigate: (r: Route) => void }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [route]);
+  const current = typeof route === 'string' ? route : '/devices';
+  return (
+    <header className="site-header remote">
+      <a className="brand" href={PUBLIC_ORIGIN}>
+        <Logo />
+        <strong>XyDesk <small>Remote</small></strong>
+      </a>
+      <nav className="top-nav" aria-label="Aplikasi remote">
+        {REMOTE_LINKS.map(([path, label]) => (
+          <button key={path} className={current === path ? 'active' : ''} aria-current={current === path ? 'page' : undefined} onClick={() => navigate(path)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+      <div className="header-actions">
+        <button className="btn primary" onClick={() => navigate('/connect')}>Koneksi baru</button>
+        <button className="nav-toggle" type="button" aria-label={open ? 'Tutup menu' : 'Buka menu'} aria-expanded={open} aria-controls="mobile-nav" onClick={() => setOpen((v) => !v)}>
+          <MenuIcon open={open} />
+        </button>
+      </div>
+      {open && <NavigationOverlay onClose={() => setOpen(false)} navigate={navigate} current={current} />}
+    </header>
+  );
 }
 
+function MenuIcon({ open }: { open: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+    </svg>
+  );
+}
 
 export function SiteFooter({ navigate }: { navigate: (r: Route) => void }) {
   return (
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-brand">
-          <img src="/logo-white.png" alt="XyDesk" />
+          <Logo size={32} variant="footer" />
           <strong>XyDesk</strong>
           <p>Remote desktop ringan untuk kerja, bermain, dan mengakses PC dari mana saja.</p>
         </div>
@@ -188,7 +210,7 @@ export function SiteFooter({ navigate }: { navigate: (r: Route) => void }) {
               bukan ke GitHub Releases — pengguna butuh penjelasan, bukan
               artefak build. */}
           <span>
-            © 2026 XySpace Tech ·{' '}
+            © 2026 XyVerse Technology Global ·{' '}
             <button
               className="footer-version"
               onClick={() => navigate({ page: 'news-detail', slug: CHANGELOG_SLUG })}

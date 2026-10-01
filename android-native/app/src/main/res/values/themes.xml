@@ -1,0 +1,11 @@
+<resources>
+    <style name="Theme.XyDesk" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#FFFFFF</item>
+        <item name="android:statusBarColor">#FFFFFF</item>
+        <item name="android:navigationBarColor">#FFFFFF</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+    <style name="Theme.XyDesk.Session" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+    </style>
+</resources>

@@ -199,7 +199,7 @@ assert.equal(await page.locator('.remote-control-cursor').isVisible(),false);
   const rows=await page.evaluate(()=>JSON.parse(localStorage.getItem('xydesk.guest.history.v1')));
   assert.equal(rows.length,1);assert.equal(rows[0].state,'ended');assert.equal(rows[0].name,'PC uji sintetis');assert.ok(rows[0].preview?.startsWith('data:image/jpeg;base64,'));
   await page.evaluate(()=>{const key='xydesk.guest.history.v1',rows=JSON.parse(localStorage.getItem(key));rows.push({...rows[0],id:crypto.randomUUID(),endedAt:rows[0].endedAt-1});localStorage.setItem(key,JSON.stringify(rows));});
-  await page.getByRole('link',{name:'Buka halaman riwayat',exact:true}).click();
+  await page.goto(new URL('/history',page.url()).href);
   await page.getByRole('heading',{name:'Riwayat koneksi',exact:true}).waitFor();
   assert.equal(await page.getByRole('heading',{name:'PC uji sintetis',exact:true}).count(),1);
   if(viewport.width===844)await page.screenshot({fullPage:true,path:new URL('../../docs/qa/host-finish-history-2026-09-18.png',import.meta.url).pathname});

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gerbang konsistensi versi.
 
-`pubspec.yaml` adalah satu-satunya sumber nomor versi XyDesk (lihat
+`VERSION` adalah satu-satunya sumber nomor versi XyDesk (lihat
 `docs/VERSIONING.md`). Skrip ini memastikan setiap manifest turunan menyebut
 angka yang sama, dan bahwa versi teratas `CHANGELOG.md` cocok.
 
@@ -25,9 +25,9 @@ def read(rel: str) -> str:
 
 
 def pubspec_version() -> tuple[str, int]:
-    m = re.search(r"^version:\s*(\d+\.\d+\.\d+)\+(\d+)\s*$", read("pubspec.yaml"), re.M)
+    m = re.fullmatch(r"(\d+\.\d+\.\d+)\+(\d+)", read("VERSION").strip())
     if not m:
-        sys.exit("VERSI GAGAL: pubspec.yaml tidak punya baris 'version: X.Y.Z+NN'")
+        sys.exit("VERSI GAGAL: VERSION harus berisi 'X.Y.Z+NN'")
     return m.group(1), int(m.group(2))
 
 

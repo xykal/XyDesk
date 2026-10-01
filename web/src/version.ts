@@ -9,7 +9,7 @@
 // pernah ada.
 //
 // Sekarang `__APP_VERSION__` disuntik saat build oleh `vite.config.ts` yang
-// MEMBACA `pubspec.yaml` — sumber yang sama dengan APK dan installer. Tidak
+// MEMBACA `VERSION` — sumber yang sama dengan APK dan installer. Tidak
 // ada lagi tempat kedua untuk lupa.
 
 declare const __APP_VERSION__: string;

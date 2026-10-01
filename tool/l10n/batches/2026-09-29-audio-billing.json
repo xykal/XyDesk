@@ -1,0 +1,482 @@
+[
+ {
+  "key": "au_got_it",
+  "id": "Mengerti",
+  "en": "Got it",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pc_to_device",
+  "id": "Suara PC ke perangkat",
+  "en": "PC audio to device",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pc_to_device_sub",
+  "id": "Preferensi output untuk audio sistem Windows.",
+  "en": "Output preference for Windows system audio.",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_request_pc",
+  "id": "Minta audio PC",
+  "en": "Request PC audio",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_request_pc_on",
+  "id": "Aktif — audio PC (WASAPI loopback) diputar di perangkat ini",
+  "en": "On — PC audio (WASAPI loopback) plays on this device",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_not_requested",
+  "id": "Tidak diminta",
+  "en": "Not requested",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_host_source",
+  "id": "Sumber host",
+  "en": "Host source",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_win_default",
+  "id": "Output default Windows",
+  "en": "Windows default output",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_pc_source",
+  "id": "Pilih sumber audio PC",
+  "en": "Choose PC audio source",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_pc_source_req",
+  "id": "WASAPI loopback dan daftar render endpoint host",
+  "en": "WASAPI loopback and the host render endpoint list",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_device_output",
+  "id": "Output perangkat",
+  "en": "Device output",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_auto",
+  "id": "Otomatis",
+  "en": "Automatic",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_device_output",
+  "id": "Pilih output perangkat",
+  "en": "Choose device output",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_device_output_req",
+  "id": "Track audio remote yang aktif",
+  "en": "An active remote audio track",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_remote_volume",
+  "id": "Volume remote",
+  "en": "Remote volume",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_stereo",
+  "id": "Audio stereo",
+  "en": "Stereo audio",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_stereo_sub",
+  "id": "Mono menghemat bandwidth",
+  "en": "Mono saves bandwidth",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_latency_mode",
+  "id": "MODE LATENSI",
+  "en": "LATENCY MODE",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mode_gaming",
+  "id": "Gaming",
+  "en": "Gaming",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mode_balanced",
+  "id": "Seimbang",
+  "en": "Balanced",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mode_quality",
+  "id": "Kualitas",
+  "en": "Quality",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mic_to_win",
+  "id": "Mikrofon HP ke Windows",
+  "en": "Phone mic to Windows",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mic_to_win_sub",
+  "id": "Target akhir: endpoint XyDesk Virtual Microphone.",
+  "en": "Final target: the XyDesk Virtual Microphone endpoint.",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_request_mic",
+  "id": "Minta passthrough mikrofon",
+  "en": "Request mic passthrough",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_request_mic_on",
+  "id": "Aktif — mic dikirim dan diputar di speaker PC host",
+  "en": "On — mic is sent and played on the host PC speakers",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_mic_not_requested",
+  "id": "Mikrofon tidak diminta",
+  "en": "Mic not requested",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_input",
+  "id": "Input",
+  "en": "Input",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_phone_default_mic",
+  "id": "Mikrofon default HP",
+  "en": "Phone default mic",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_mic",
+  "id": "Pilih input mikrofon",
+  "en": "Choose mic input",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_pick_mic_req",
+  "id": "Izin mikrofon dan enumerasi input perangkat",
+  "en": "Microphone permission and device input enumeration",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_win_output",
+  "id": "Output Windows",
+  "en": "Windows output",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_virtual_mic_short",
+  "id": "XyDesk Virtual Mic",
+  "en": "XyDesk Virtual Mic",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_win_target",
+  "id": "Target Windows",
+  "en": "Windows target",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_virtual_mic",
+  "id": "XyDesk Virtual Microphone",
+  "en": "XyDesk Virtual Microphone",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_virtual_mic_req",
+  "id": "Komponen virtual microphone terpasang di host",
+  "en": "Virtual microphone component installed on the host",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_input_gain",
+  "id": "Gain input",
+  "en": "Input gain",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_send_level",
+  "id": "Level kirim",
+  "en": "Send level",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_processing",
+  "id": "Pemrosesan suara",
+  "en": "Voice processing",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_processing_sub",
+  "id": "Diterapkan pada capture sebelum Opus ketika engine siap.",
+  "en": "Applied to capture before Opus once the engine is ready.",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_ns",
+  "id": "Peredam bising",
+  "en": "Noise reduction",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_ns_sub",
+  "id": "Noise suppression",
+  "en": "Noise suppression",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_aec",
+  "id": "Peredam gema",
+  "en": "Echo cancellation",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_aec_sub",
+  "id": "AEC untuk suara speaker perangkat",
+  "en": "AEC for the device speaker output",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_agc",
+  "id": "Gain otomatis",
+  "en": "Auto gain",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_agc_sub",
+  "id": "AGC menstabilkan volume suara",
+  "en": "AGC keeps voice volume steady",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_always_on",
+  "id": "Selalu aktif",
+  "en": "Always on",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "au_ptt",
+  "id": "Push to talk",
+  "en": "Push to talk",
+  "files": [
+   "lib/features/session/panel_audio.dart"
+  ]
+ },
+ {
+  "key": "bl_title",
+  "id": "Sewa PC",
+  "en": "Rent a PC",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_eyebrow",
+  "id": "SEWA PC",
+  "en": "RENT A PC",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_headline",
+  "id": "Main di PC kencang, bayar per jam.",
+  "en": "Play on a fast PC, pay by the hour.",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_intro",
+  "id": "Tidak punya PC gaming? Sewa punya kami. Kamu terima ID + password, konek lewat XyDesk dari HP, dan PC-nya jadi milikmu selama durasi berjalan.",
+  "en": "No gaming PC? Rent ours. You get an ID + password, connect through XyDesk from your phone, and the PC is yours for the duration.",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_pick_duration",
+  "id": "PILIH DURASI",
+  "en": "PICK DURATION",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_custom",
+  "id": "Custom",
+  "en": "Custom",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_order_wa",
+  "id": "Pesan via WhatsApp",
+  "en": "Order via WhatsApp",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_out_of_stock",
+  "id": "Stok habis",
+  "en": "Out of stock",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_manual_note",
+  "id": "Pembayaran otomatis (QRIS) sedang disiapkan — untuk sekarang pesanan dikonfirmasi manual oleh tim, biasanya dalam hitungan menit pada jam operasional.",
+  "en": "Automatic payment (QRIS) is being prepared — for now orders are confirmed manually by the team, usually within minutes during business hours.",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_how",
+  "id": "CARA KERJANYA",
+  "en": "HOW IT WORKS",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_buy_pc",
+  "id": "Mau sekalian beli PC?",
+  "en": "Want to buy a PC too?",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_buy_pc_body",
+  "id": "Kami juga merakit PC sesuai budget — konsultasi spek gratis, garansi toko, dan XyDesk Host terpasang siap remote dari hari pertama.",
+  "en": "We also build PCs to budget — free spec consultation, store warranty, and XyDesk Host preinstalled and remote-ready from day one.",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ },
+ {
+  "key": "bl_consult_wa",
+  "id": "Konsultasi via WhatsApp",
+  "en": "Consult via WhatsApp",
+  "files": [
+   "lib/features/account/billing_page.dart"
+  ]
+ }
+]

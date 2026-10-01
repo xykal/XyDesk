@@ -1,0 +1,634 @@
+[
+ {
+  "key": "upd_allow_title",
+  "id": "Izinkan pemasangan update",
+  "en": "Allow update installation",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_allow_body",
+  "id": "Android memerlukan izin “Instal aplikasi yang tidak dikenal” untuk XyDesk. Anda tetap harus meninjau dan mengonfirmasi pemasangan di installer Android.",
+  "en": "Android requires the “Install unknown apps” permission for XyDesk. You still review and confirm the installation in the Android installer.",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_later",
+  "id": "Nanti",
+  "en": "Later",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_open_settings",
+  "id": "Buka pengaturan",
+  "en": "Open settings",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_title",
+  "id": "Pusat Update",
+  "en": "Update Center",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_banner_alt",
+  "id": "Banner update resmi XyDesk",
+  "en": "Official XyDesk update banner",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_latest",
+  "id": "Versi terbaru",
+  "en": "Latest version",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_official_release",
+  "id": "Release resmi",
+  "en": "Official release",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_up_to_date",
+  "id": "XyDesk sudah terbaru",
+  "en": "XyDesk is up to date",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_up_to_date_body",
+  "id": "Build yang terpasang sudah sama atau lebih baru dari Release resmi saat ini.",
+  "en": "The installed build is the same as or newer than the current official release.",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_prepared",
+  "id": "Yang disiapkan",
+  "en": "What is prepared",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_release_notes",
+  "id": "Catatan rilis",
+  "en": "Release notes",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_view_github",
+  "id": "Lihat GitHub Release resmi",
+  "en": "View the official GitHub Release",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_checking_release",
+  "id": "Memeriksa Release resmi…",
+  "en": "Checking the official release…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_check_again",
+  "id": "Coba cek lagi",
+  "en": "Check again",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_you_latest",
+  "id": "Anda memakai versi terbaru",
+  "en": "You are on the latest version",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_open_download",
+  "id": "Buka download resmi",
+  "en": "Open official download",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_preparing_installer",
+  "id": "Menyiapkan installer…",
+  "en": "Preparing installer…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_install_now",
+  "id": "Pasang Update Sekarang",
+  "en": "Install Update Now",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_downloading_bg",
+  "id": "Download berjalan di latar belakang…",
+  "en": "Download running in the background…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_preparing_download",
+  "id": "Menyiapkan download…",
+  "en": "Preparing download…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_retry_download",
+  "id": "Coba unduh lagi",
+  "en": "Retry download",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_download_official",
+  "id": "Unduh Update Resmi",
+  "en": "Download Official Update",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_loading",
+  "id": "Memuat…",
+  "en": "Loading…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_unknown",
+  "id": "Belum diketahui",
+  "en": "Unknown yet",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_checking",
+  "id": "Memeriksa…",
+  "en": "Checking…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_installed",
+  "id": "Terpasang",
+  "en": "Installed",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_processing",
+  "id": "Memproses update…",
+  "en": "Processing update…",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_progress_notif",
+  "id": "Progress juga terlihat di notifikasi sistem Android.",
+  "en": "Progress is also visible in the Android system notification.",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "upd_verify_body",
+  "id": "APK diunduh oleh Android di latar belakang. Sebelum tombol “Pasang update” aktif, XyDesk memeriksa checksum SHA-256, arsitektur CPU, package ID, nomor build, dan sertifikat signing. Pemasangan tetap memerlukan konfirmasi Anda di installer Android.",
+  "en": "Android downloads the APK in the background. Before “Install update” becomes active, XyDesk verifies the SHA-256 checksum, CPU architecture, package ID, build number, and signing certificate. Installation still needs your confirmation in the Android installer.",
+  "files": [
+   "lib/features/notifications/update_page.dart"
+  ]
+ },
+ {
+  "key": "notif_not_enabled",
+  "id": "Notifikasi belum aktif. Jika izin pernah ditolak, aktifkan melalui pengaturan notifikasi Android.",
+  "en": "Notifications are not enabled. If permission was denied before, enable it in Android notification settings.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_update_title",
+  "id": "Notifikasi pembaruan",
+  "en": "Update notifications",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_know_when",
+  "id": "Tahu saat XyDesk diperbarui",
+  "en": "Know when XyDesk is updated",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_rare",
+  "id": "XyDesk hanya mengirim pengumuman versi baru sesekali. Tidak ada promosi rutin dan izin ini selalu opsional.",
+  "en": "XyDesk only sends occasional new-version announcements. No routine promotions, and this permission is always optional.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_status",
+  "id": "Status",
+  "en": "Status",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_how",
+  "id": "Cara kerjanya",
+  "en": "How it works",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_you_decide",
+  "id": "Kamu yang memutuskan",
+  "en": "You decide",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_you_decide_sub",
+  "id": "Dialog izin Android baru muncul setelah tombol Aktifkan ditekan, bukan saat aplikasi pertama dibuka.",
+  "en": "The Android permission dialog appears only after you tap Enable, not on first launch.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_internal",
+  "id": "Masuk ke halaman internal",
+  "en": "Opens an in-app page",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_internal_sub",
+  "id": "Mengetuk notifikasi membuka detail update di XyDesk lebih dahulu, bukan langsung memasang APK.",
+  "en": "Tapping a notification opens the update details in XyDesk first, never installs an APK directly.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_official",
+  "id": "Unduhan resmi",
+  "en": "Official downloads",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_official_sub",
+  "id": "Aksi unduh pada halaman update hanya menuju GitHub Releases resmi XyDesk.",
+  "en": "The download action on the update page only goes to XyDesk's official GitHub Releases.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_preparing",
+  "id": "Menyiapkan…",
+  "en": "Preparing…",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_pause",
+  "id": "Jeda notifikasi update",
+  "en": "Pause update notifications",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_open_settings",
+  "id": "Buka pengaturan notifikasi",
+  "en": "Open notification settings",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_enable",
+  "id": "Aktifkan notifikasi update",
+  "en": "Enable update notifications",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_pause_note",
+  "id": "Menjeda di sini tidak mengubah izin sistem; kamu bisa mengaktifkannya kembali kapan saja.",
+  "en": "Pausing here does not change the system permission; you can turn it back on any time.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_unsupported",
+  "id": "Tidak tersedia di platform ini",
+  "en": "Not available on this platform",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_unsupported_sub",
+  "id": "Push update saat ini disiapkan untuk aplikasi Android.",
+  "en": "Update push is currently set up for the Android app.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_not_connected",
+  "id": "Belum terhubung",
+  "en": "Not connected",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_active",
+  "id": "Aktif",
+  "en": "Active",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_active_sub",
+  "id": "Perangkat ini dapat menerima pengumuman versi baru.",
+  "en": "This device can receive new-version announcements.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_paused",
+  "id": "Dijeda",
+  "en": "Paused",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_paused_sub",
+  "id": "Izin Android ada, tetapi langganan XyDesk sedang dijeda.",
+  "en": "Android permission is granted, but the XyDesk subscription is paused.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_off",
+  "id": "Belum diaktifkan",
+  "en": "Not enabled",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "notif_off_sub",
+  "id": "Tekan Aktifkan bila kamu ingin menerima info update.",
+  "en": "Tap Enable if you want update announcements.",
+  "files": [
+   "lib/features/notifications/notification_preferences_page.dart"
+  ]
+ },
+ {
+  "key": "host_ready",
+  "id": "PC siap menerima koneksi",
+  "en": "PC is ready for connections",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_stopped",
+  "id": "Mode Host berhenti",
+  "en": "Host mode stopped",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_share",
+  "id": "Bagikan PC ini",
+  "en": "Share this PC",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_share_sub",
+  "id": "Gunakan ID dan password ini dari Android, Windows lain, atau Connect Web.",
+  "en": "Use this ID and password from Android, another Windows PC, or Connect Web.",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_device_id",
+  "id": "ID perangkat",
+  "en": "Device ID",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_pairing_password",
+  "id": "Password pairing",
+  "en": "Pairing password",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_unavailable",
+  "id": "Belum tersedia",
+  "en": "Not available yet",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_hide_password",
+  "id": "Sembunyikan password",
+  "en": "Hide password",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_show_password",
+  "id": "Lihat password",
+  "en": "Show password",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_stop",
+  "id": "Hentikan Host",
+  "en": "Stop Host",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_start",
+  "id": "Aktifkan Host",
+  "en": "Start Host",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_change_password",
+  "id": "Ganti password",
+  "en": "Change password",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_quick_access",
+  "id": "Akses cepat",
+  "en": "Quick access",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_connect_web",
+  "id": "Connect Web",
+  "en": "Connect Web",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_connect_web_sub",
+  "id": "Kendalikan PC ini dari browser atau iPhone",
+  "en": "Control this PC from a browser or iPhone",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_whatsapp",
+  "id": "Dukung kami di saluran WhatsApp",
+  "en": "Support us on the WhatsApp channel",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_whatsapp_sub",
+  "id": "Info rilis, panduan, dan perkembangan XyDesk",
+  "en": "Release info, guides, and XyDesk progress",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_change_password_title",
+  "id": "Ganti password Host",
+  "en": "Change Host password",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_min_chars",
+  "id": "Minimal 6 karakter",
+  "en": "At least 6 characters",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "cancel",
+  "id": "Batal",
+  "en": "Cancel",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "save",
+  "id": "Simpan",
+  "en": "Save",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "copy",
+  "id": "Salin",
+  "en": "Copy",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ },
+ {
+  "key": "host_preparing",
+  "id": "Menyiapkan…",
+  "en": "Preparing…",
+  "files": [
+   "lib/features/host/host_mode_page.dart"
+  ]
+ }
+]

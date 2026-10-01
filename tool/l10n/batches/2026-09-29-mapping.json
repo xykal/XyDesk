@@ -1,0 +1,178 @@
+[
+ {
+  "key": "cm_title",
+  "id": "Control Mapping",
+  "en": "Control Mapping",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_new_profile",
+  "id": "Profil baru",
+  "en": "New profile",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_reset_default",
+  "id": "Reset ke default",
+  "en": "Reset to default",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_tab_list",
+  "id": "Daftar Mapping",
+  "en": "Mapping list",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_tab_preview",
+  "id": "Preview",
+  "en": "Preview",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_delete_q",
+  "id": "Hapus profil?",
+  "en": "Delete profile?",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_delete_body",
+  "id": "Profil ini akan dihapus permanen.",
+  "en": "This profile will be deleted permanently.",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "delete",
+  "id": "Hapus",
+  "en": "Delete",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_default_updated",
+  "id": "Profil default diperbarui",
+  "en": "Default profile updated",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_profile_name",
+  "id": "Nama profil",
+  "en": "Profile name",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_create",
+  "id": "Buat",
+  "en": "Create",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_reset_q",
+  "id": "Reset mapping?",
+  "en": "Reset mapping?",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_reset_body",
+  "id": "Semua profil custom akan dihapus dan diganti dengan profil default (Gaming & Desktop).",
+  "en": "All custom profiles will be removed and replaced with the default profiles (Gaming & Desktop).",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_empty",
+  "id": "Belum ada profil",
+  "en": "No profiles yet",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_empty_hint",
+  "id": "Ketuk + untuk membuat profil baru",
+  "en": "Tap + to create a new profile",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_make_default",
+  "id": "Jadikan default",
+  "en": "Make default",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_edit",
+  "id": "Edit mapping",
+  "en": "Edit mapping",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_delete_profile",
+  "id": "Hapus profil",
+  "en": "Delete profile",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_just_now",
+  "id": "Baru saja",
+  "en": "Just now",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_none",
+  "id": "Tidak ada profil",
+  "en": "No profile",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cm_profile_label",
+  "id": "Profil:",
+  "en": "Profile:",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ },
+ {
+  "key": "cancel",
+  "id": "Batal",
+  "en": "Cancel",
+  "files": [
+   "lib/features/session/control_mapping_page.dart"
+  ]
+ }
+]
