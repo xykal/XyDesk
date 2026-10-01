@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -44,14 +47,16 @@ import id.xyverse.xydesk.ui.kit.XyText
 fun HomeShell(
     email: String,
     lastHost: String,
+    startTab: Tab = Tab.HOME,
     history: List<SessionRecord>,
     onConnect: (host: String, pin: String) -> Unit,
     onOpenUrl: (String) -> Unit,
     onShare: (String) -> Unit = onOpenUrl,
+    googleToken: (suspend () -> String?)? = null,
     settings: Settings,
     onLogout: () -> Unit,
 ) {
-    var tab by remember { mutableStateOf(Tab.HOME) }
+    var tab by remember { mutableStateOf(startTab) }
     var prefill by remember { mutableStateOf(lastHost) }
     var asking by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<String?>(null) }
@@ -77,6 +82,10 @@ fun HomeShell(
     fun quickConnect(host: String) {
         val saved = store?.hostPin(host)
         if (saved != null) onConnect(host, saved) else asking = host
+    }
+    val askNotif = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(tab) {
+        if (tab == Tab.NEWS && Build.VERSION.SDK_INT >= 33) askNotif.launch(android.Manifest.permission.POST_NOTIFICATIONS)
     }
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
@@ -108,7 +117,7 @@ fun HomeShell(
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
                     else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
                 }
-                Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), onShare) { reading = null } }
+                Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), email, googleToken, onShare) { reading = null } }
                     ?: Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
                         NewsScreen(posts, offline, seen) { p -> reading = p; seen = p.slug; store?.newsSeen = p.slug }
                     }

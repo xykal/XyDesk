@@ -72,6 +72,8 @@ class RtcSession(
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
     private var remoteAudioTrack: AudioTrack? = null
+    private var micTrack: AudioTrack? = null
+    private var micSrc: org.webrtc.AudioSource? = null
 
     /** Sinkron clipboard opt-in: default mati agar isi clipboard HP tidak bocor ke PC tanpa sengaja. */
     @Volatile var clipboardSync = false
@@ -216,10 +218,10 @@ class RtcSession(
             org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
             RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY),
         )
-        conn.addTransceiver(
-            org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,
-            RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY),
-        )
+        val micSource = factory.createAudioSource(org.webrtc.MediaConstraints())
+        val mic = factory.createAudioTrack("xy-mic", micSource).apply { setEnabled(false) }
+        micTrack = mic; micSrc = micSource
+        conn.addTransceiver(mic, RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_RECV))
         val ch = conn.createDataChannel("input", DataChannel.Init().apply { ordered = false; maxRetransmits = 0 })
         ch?.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
@@ -255,6 +257,9 @@ class RtcSession(
         specsSent = true
         listener.onHostSpecs(specs)
     }
+
+    /** Mic HP ke host; jalur sendrecv seperti web, track hanya di-enable saat pengguna menyalakan. */
+    fun setMicEnabled(on: Boolean) { micTrack?.setEnabled(on) }
 
     fun setAudioMuted(muted: Boolean) {
         audioMuted = muted
@@ -308,6 +313,8 @@ class RtcSession(
         pc?.close()
         pc = null
         remoteAudioTrack = null
+        micTrack?.dispose(); micTrack = null
+        micSrc?.dispose(); micSrc = null
         scope.cancel()
         listener.onPhase(phase, message)
     }

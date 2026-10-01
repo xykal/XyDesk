@@ -84,6 +84,10 @@ class Store(context: Context) {
     val newsFp: String
         get() = prefs.getString("newsFp", null) ?: News.newFingerprint().also { prefs.edit().putString("newsFp", it).apply() }
 
+    var newsNotified: String
+        get() = prefs.getString("newsNotified", "").orEmpty()
+        set(v) = prefs.edit().putString("newsNotified", v).apply()
+
     var newsSeen: String
         get() = prefs.getString("newsSeen", "").orEmpty()
         set(v) = prefs.edit().putString("newsSeen", v).apply()

@@ -6,6 +6,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.addCallback
 import id.xyverse.xydesk.core.tr
+import id.xyverse.xydesk.core.Images
+import id.xyverse.xydesk.core.NewsWatch
+import id.xyverse.xydesk.ui.kit.Tab
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,6 +45,7 @@ private enum class Stage { SPLASH, ONBOARDING, AUTH }
 class MainActivity : ComponentActivity() {
     private val store by lazy { Store(applicationContext) }
     private var lastBack = 0L
+    private var openNews = false
 
     private fun shareText(text: String) =
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
@@ -49,6 +53,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        Images.attach(applicationContext)
+        NewsWatch.schedule(applicationContext)
+        if (intent.getStringExtra("tab") == "news") openNews = true
         onBackPressedDispatcher.addCallback(this) {
             val now = System.currentTimeMillis()
             if (now - lastBack < 2000) finish()
@@ -87,10 +94,12 @@ class MainActivity : ComponentActivity() {
                         HomeShell(
                             email = store.email.orEmpty(),
                             lastHost = store.lastHost,
+                            startTab = if (openNews) Tab.NEWS else Tab.HOME,
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
                             onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
                             onShare = { shareText(it) },
+                            googleToken = { runCatching { googleIdToken() }.getOrNull() },
                             settings = Settings(
                                 lang = lang,
                                 onLang = { lang = it; store.lang = it },
@@ -100,7 +109,7 @@ class MainActivity : ComponentActivity() {
                                 deviceLabel = "${Build.MANUFACTURER} ${Build.MODEL}",
                                 appVersion = BuildConfig.VERSION_NAME,
                                 historyCount = history.size,
-                                onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); refresh++ },
+                                onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); Images.clearDisk(); refresh++ },
                                 store = store,
                                 onOpenAppSettings = {
                                     startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))

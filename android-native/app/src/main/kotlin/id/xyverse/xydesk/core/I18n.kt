@@ -190,6 +190,10 @@ private val en = mapOf(
     "Belum ada komentar. Jadilah yang pertama." to "No comments yet. Be the first.",
     "Membalas" to "Replying to", "Balas" to "Reply", "Bagikan" to "Share", "Kirim komentar" to "Send comment", "Mengirim…" to "Sending…",
     "Komentar minimal 2 huruf" to "At least 2 characters", "Memuat…" to "Loading…", "BARU" to "NEW",
+    "Izin mikrofon ditolak." to "Microphone permission denied.",
+    "Mikrofon" to "Microphone", "Notifikasi" to "Notifications",
+    "Hanya saat tombol Mic di sesi dinyalakan; suara dikirim ke host." to "Only while the Mic button is on in a session; audio goes to the host.",
+    "Satu pemberitahuan saat ada berita baru; bisa dimatikan di sistem." to "One notification per new post; can be turned off in system settings.",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

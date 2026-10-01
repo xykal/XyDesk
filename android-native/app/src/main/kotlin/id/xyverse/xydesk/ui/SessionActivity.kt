@@ -1,6 +1,8 @@
 package id.xyverse.xydesk.ui
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.graphics.Bitmap
@@ -198,6 +200,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         trackpadSpeed = { store.trackpadSpeed = it; touch.config = touch.config.copy(speed = it) },
                         naturalScroll = { store.naturalScroll = it; touch.config = touch.config.copy(naturalScroll = it) },
                         audioMute = { session.setAudioMuted(it) },
+                        mic = { on -> if (!on) session.setMicEnabled(false) else if (hasMic()) session.setMicEnabled(true) else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7) },
                         clipboardSync = { on -> clipboardSync = on; session.clipboardSync = on },
                         sendQuickKey = { keys.quick(it) },
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
@@ -208,6 +211,17 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     prefs,
                 )
             }
+        }
+    }
+
+    private fun hasMic() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    override fun onRequestPermissionsResult(code: Int, perms: Array<String>, res: IntArray) {
+        super.onRequestPermissionsResult(code, perms, res)
+        if (code == 7) {
+            val ok = res.firstOrNull() == PackageManager.PERMISSION_GRANTED
+            session.setMicEnabled(ok)
+            if (!ok) Toast.makeText(this, "Izin mikrofon ditolak.".tr(store.lang), Toast.LENGTH_SHORT).show()
         }
     }
 

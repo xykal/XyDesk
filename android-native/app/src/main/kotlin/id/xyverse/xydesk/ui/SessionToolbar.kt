@@ -51,6 +51,7 @@ class SessionActions(
     val trackpadSpeed: (speed: Float) -> Unit = {},
     val naturalScroll: (on: Boolean) -> Unit = {},
     val audioMute: (muted: Boolean) -> Unit = {},
+    val mic: (on: Boolean) -> Unit = {},
     val clipboardSync: (on: Boolean) -> Unit = {},
     val sendQuickKey: (combo: QuickKey) -> Unit = {},
     val stats: (show: Boolean) -> Unit = {},
@@ -95,6 +96,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var speed by remember { mutableFloatStateOf(prefs.trackpadSpeed) }
     var natural by remember { mutableStateOf(prefs.naturalScroll) }
     var muted by remember { mutableStateOf(false) }
+    var mic by remember { mutableStateOf(false) }
     var clip by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(prefs.showStats) }
     val qLabels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
@@ -145,6 +147,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                     Wrap {
                         Pill("Monitor ${monitor + 1}") { monitor = (monitor + 1) % 4; actions.display(monitor) }
                         Pill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
+                        Pill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
                         Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
                     }
