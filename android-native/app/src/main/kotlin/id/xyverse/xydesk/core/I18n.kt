@@ -178,6 +178,11 @@ private val en = mapOf(
     "Tidak ada host yang cocok." to "No matching host.",
     "Sambungkan lagi" to "Connect again", "Tutup" to "Close",
     "Grafik muncul untuk sesi yang berjalan lebih dari beberapa detik." to "The chart appears for sessions longer than a few seconds.",
+    "Pusatkan kursor" to "Center cursor", "Mode presentasi" to "Presentation mode",
+    "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi." to "Presentation mode. Press Back to show controls again.",
+    "Berita baru" to "New post", "Urutkan" to "Sort", "Terakhir" to "Recent", "Nama" to "Name",
+    "Ekspor riwayat" to "Export history", "Simpan riwayat sesi sebagai berkas JSON." to "Save session history as a JSON file.",
+    "Riwayat tersimpan." to "History saved.",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

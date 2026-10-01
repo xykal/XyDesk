@@ -35,6 +35,7 @@ import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyIcon
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
+import id.xyverse.xydesk.ui.kit.t
 
 /** Tab Berita: catatan rilis dan info produk dari repo, tetap terbaca saat offline. */
 @Composable
@@ -57,6 +58,21 @@ fun NewsScreen(feed: NewsFeed?, appVersion: String, seenId: String, onOpenUrl: (
         shown.items.filter { tag == "Semua" || it.tag == tag }.forEachIndexed { i, n ->
             NewsCard(n, fresh = i == 0 && n.id != seenId, onOpen = { if (n.url.isNotEmpty()) onOpenUrl(n.url) })
         }
+    }
+}
+
+/** Pita kecil di beranda saat ada berita yang belum dibaca. */
+@Composable
+fun NewsBanner(title: String, onOpen: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.pill)).background(Xy.accent.copy(alpha = 0.1f))
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onOpen).padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        XyIcon(Icon.NEWS, tint = Xy.accent, size = 18.dp)
+        Spacer(Modifier.width(10.dp))
+        XyText(t("Berita baru") + ": " + title, Xy.caption.copy(color = Xy.accentDeep), Modifier.weight(1f), maxLines = 1)
+        XyIcon(Icon.CHEVRON, tint = Xy.accent, size = 16.dp)
     }
 }
 

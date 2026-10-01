@@ -17,6 +17,9 @@ import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import id.xyverse.xydesk.core.tr
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -58,6 +61,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var connected = false
     private var lowLatency = false
     private var showStats = true
+    private var presenting = false
     private var hostName = ""
     private var specs = HostSpecs()
     private var startedAt = 0L
@@ -89,6 +93,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(b.root)
         if (store.keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (presenting) setPresenting(false) else { isEnabled = false; onBackPressedDispatcher.onBackPressed() }
+            }
+        })
         hideSystemBars()
 
         showStats = store.showStats
@@ -133,7 +142,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     private fun showLine(text: String) = runOnUiThread {
-        if (connected && showStats) { b.status.text = text; b.status.visibility = View.VISIBLE }
+        if (connected && showStats && !presenting) { b.status.text = text; b.status.visibility = View.VISIBLE }
     }
 
     private fun applyDecodeMode(ll: Boolean) {
@@ -186,12 +195,22 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         clipboardSync = { on -> clipboardSync = on; session.clipboardSync = on },
                         sendQuickKey = { keys.quick(it) },
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
+                        centerCursor = { session.send(StreamXy.moveAbs(0.5f, 0.5f)) },
+                        present = { setPresenting(true) },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
                 )
             }
         }
+    }
+
+    /** Mode presentasi: semua overlay disembunyikan; tombol Kembali mengembalikannya. */
+    private fun setPresenting(on: Boolean) {
+        presenting = on
+        b.toolbar.visibility = if (on) View.GONE else View.VISIBLE
+        if (on) b.status.visibility = View.GONE
+        if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
     }
 
     /** Salin frame yang sedang tampil ke bitmap kecil; jadi cuplikan kartu perangkat. */

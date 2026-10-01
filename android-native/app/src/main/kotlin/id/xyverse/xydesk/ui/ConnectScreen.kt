@@ -38,6 +38,8 @@ fun ConnectScreen(
     devices: List<SessionRecord>,
     history: List<SessionRecord> = emptyList(),
     onHistory: () -> Unit = {},
+    newsTitle: String? = null,
+    onNews: () -> Unit = {},
     onConnect: (host: String, pin: String) -> Unit,
 ) {
     var host by remember { mutableStateOf(initialHost) }
@@ -53,6 +55,7 @@ fun ConnectScreen(
         XyText("Sambungkan", Xy.display)
         XyText(email, Xy.caption)
         Spacer(Modifier.height(24.dp))
+        if (newsTitle != null) { NewsBanner(newsTitle, onNews); Spacer(Modifier.height(16.dp)) }
         XyCard {
             XyField(digits.chunked(3).joinToString(" "), { host = it }, "ID perangkat", keyboard = KeyboardType.Number, mono = true, hint = "000 000 000")
             Spacer(Modifier.height(Xy.gap))

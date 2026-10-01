@@ -54,6 +54,8 @@ class SessionActions(
     val clipboardSync: (on: Boolean) -> Unit = {},
     val sendQuickKey: (combo: QuickKey) -> Unit = {},
     val stats: (show: Boolean) -> Unit = {},
+    val centerCursor: () -> Unit = {},
+    val present: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -110,6 +112,10 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 if (panel == Panel.CONTROLS) {
                     XyText("KONTROL", Xy.label)
                     Wrap { QuickKey.entries.forEach { k -> Pill(k.label) { actions.sendQuickKey(k) } } }
+                    Wrap {
+                        Pill("Pusatkan kursor") { actions.centerCursor() }
+                        Pill("Mode presentasi") { panel = Panel.NONE; actions.present() }
+                    }
                     XyText("MODE SENTUH", Xy.label)
                     Wrap {
                         Pill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }

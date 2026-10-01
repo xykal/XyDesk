@@ -224,6 +224,7 @@ private fun SecurityBody(settings: Settings, onLogout: () -> Unit) {
     XyCard {
         XyText("TINDAKAN", Xy.label)
         Spacer(Modifier.height(8.dp))
+        settings.store?.let { ExportHistoryRow(it) }
         XyRow(Icon.TRASH, "Hapus riwayat & cuplikan", "${settings.historyCount} sesi akan dihapus.", tint = Xy.warning, onClick = settings.onClearHistory)
         XyRow(Icon.KEY, "Lupakan password host tersimpan", "Semua host akan minta password lagi.", tint = Xy.warning, onClick = { settings.store?.forgetAllPins() })
         XyRow(Icon.POWER, "Keluar dari HP ini", "Token dihapus, harus login ulang.", tint = Xy.danger, onClick = onLogout)

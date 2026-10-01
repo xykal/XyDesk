@@ -5,7 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -55,6 +57,7 @@ fun HomeShell(
     var editing by remember { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf<SessionRecord?>(null) }
     var query by remember { mutableStateOf("") }
+    var sort by remember { mutableStateOf("Terakhir") }
     val store = settings.store
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
     val meta = remember(metaTick, store) { HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }) }
@@ -72,14 +75,25 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, if (unread) feed?.items?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
                     } else {
                         DeviceSearch(query) { query = it }
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            XyText("Urutkan", Xy.caption, Modifier.align(Alignment.CenterVertically))
+                            listOf("Terakhir", "Nama", "Favorit").forEach { Chip(it, it == sort) { sort = it } }
+                        }
                         Spacer(Modifier.height(16.dp))
-                        val shown = devices.filter { d -> query.isBlank() || hostTitle(d).contains(query, true) || d.host.contains(query.filter(Char::isDigit).ifEmpty { "\u0000" }) }
+                        val filtered = devices.filter { d -> query.isBlank() || hostTitle(d).contains(query, true) || d.host.contains(query.filter(Char::isDigit).ifEmpty { "\u0000" }) }
+                        val names = filtered.associate { it.host to hostTitle(it) }
+                        val shown = when (sort) {
+                            "Nama" -> filtered.sortedBy { names[it.host]?.lowercase() }
+                            "Favorit" -> filtered.sortedByDescending { meta.favorite(it.host) }
+                            else -> filtered.sortedByDescending { it.startedAt }
+                        }
                         if (shown.isEmpty()) XyText("Tidak ada host yang cocok.", Xy.caption)
                         else DevicesSection(shown.take(20), onLong = { editing = it }) { host -> quickConnect(host) }
                     }
