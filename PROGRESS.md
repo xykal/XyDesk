@@ -5,6 +5,32 @@ Start: 2026-09-28
 Riwayat sebelum tanggal ini: tidak ada log harian (lihat `CHANGELOG.md`
 dan `docs/archive/` untuk jejak rilis dan audit lama).
 
+## 2026-09-29 — hari kerja ke-2
+Done:
+- Encoder MFT (Media Foundation, AMD/Intel/NVIDIA): `host/src/mft.rs` +
+  `mft_setup.rs`, pemilih tunggal NVENC > MFT > openh264 (WGC/GDI/DXGI),
+  label `video.encoder` nvenc|mft|openh264. Host Check 36501126463 dan
+  Build 36501298475 hijau. Belum diuji di GPU nyata.
+- `host-check.yml` manual (fmt + clippy Linux, clippy target Windows).
+- 6.8.8+62: CRT statis engine Rust, `release.yml` input `draft` + repo var
+  `RELEASE_DRAFT=true`; Build 36503307846 hijau, Release 36504191667 hijau
+  sebagai DRAFT (tidak publik). Rilis publik tetap v6.8.7.
+- i18n klien: `tool/l10n/replace_literals.py` + `flutter-check.yml`;
+  8 batch (account, permissions, subscription, connect, guide, update,
+  notifikasi, host mode, panel sesi/stream/kontrol/audio, billing,
+  control mapping) = 553 kunci ARB id+en. Flutter Check 36566301479 hijau.
+- Web: `web/src/device.css` (zoom input iOS, safe-area, target sentuh 44px,
+  tablet 2 kolom, desktop lebar, lanskap pendek, reduced-motion).
+Blocked:
+- Verifikasi fungsi MFT butuh mesin AMD/Intel; tim hanya punya RDP.
+Skipped (sengaja):
+- legal_page (teks hukum DRAFT, bahasa acuan ID), guest_identity (nama),
+  control_mapping default (data profil tersimpan), string setelah `await`
+  tanpa `mounted`, factory error_state tanpa BuildContext.
+Next:
+- Hapus `RELEASE_DRAFT` saat siap publik; zero-copy DXGI -> MFT;
+  VERSIONINFO main.rc; sisa literal session_page/rtc_service.
+
 ## 2026-09-28 — hari kerja ke-1
 Done:
 - Audit `docs/AUDIT-2026-09-28.md`; HIGH-1 (HSTS, frame-ancestors,

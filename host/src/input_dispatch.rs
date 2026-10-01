@@ -14,7 +14,7 @@ use webrtc::data_channel::RTCDataChannel;
 
 use crate::input::{Injector, InputEvent, InputLease};
 use crate::session::Session;
-use crate::{input_queue, screen, video_policy};
+use crate::{input_queue, screen, video_policy, xyadapt};
 
 /// Snapshot META yang dikirim ke client saat data channel terbuka dan setiap
 /// kali keadaan host berubah (pindah monitor, mode video, fps).
@@ -59,6 +59,7 @@ pub async fn serve(session: Arc<Session>) {
                     " (legacy pointer fallback)"
                 }
             );
+            screen::request_keyframe();
             let _ = dc.send_text(meta_json().to_string()).await;
             spawn_feedback(dc.clone(), meta_json());
             dispatch(dc, pointer_dc).await;
@@ -89,6 +90,9 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
             }
             ticks += 1;
             if ticks.is_multiple_of(20) {
+                if let Some(bps) = xyadapt::step() {
+                    screen::set_target_bitrate_bps(bps);
+                }
                 let mut meta = base_meta.clone();
                 meta["video"] = video_policy::telemetry();
                 meta["capture"] = screen::capture_telemetry();
@@ -96,6 +100,14 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
                 meta["cursorEmbedded"] = serde_json::json!(screen::cursor_embedded());
                 meta["wanted"] = serde_json::json!(screen::wanted_display());
                 meta["displays"] = serde_json::json!(screen::list_displays());
+                meta["audio"] = serde_json::json!({
+                    "available": crate::audio::capture_available(),
+                    "pipeline": crate::audio::capture_status(),
+                });
+                meta["micInput"] = serde_json::json!({
+                    "available": crate::audio::mic_input_available(),
+                    "route": "virtual-cable",
+                });
                 if feedback_dc.send_text(meta.to_string()).await.is_err() {
                     break;
                 }
@@ -231,14 +243,26 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
         tokio::select! {biased; _=closed_rx.changed()=>None, data=rx.recv()=>data}
     {
         if data.len() == 2 && data[0] == 0x0f {
+            if data[1] >= 60 {
+                video_policy::promote_level(51);
+            }
             if video_policy::request_fps(data[1]) {
                 screen::set_target_bitrate_bps(screen::target_bitrate_bps());
+                screen::request_keyframe();
                 let _ = dc.send_text(meta_json().to_string()).await;
             }
             continue;
         }
         if data.len() == 2 && data[0] == 0x0c {
             let mode = data[1];
+            if mode >= 1 {
+                let min_lv = if mode >= 2 || video_policy::fps() >= 60 {
+                    51
+                } else {
+                    40
+                };
+                video_policy::promote_level(min_lv);
+            }
             if video_policy::request(mode) {
                 // Terapkan target desktop setelah preferensi
                 // client benar-benar diketahui. Sebelumnya host
@@ -266,6 +290,7 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                     }
                 }
                 screen::set_target_bitrate_bps(screen::target_bitrate_bps());
+                screen::request_keyframe();
                 let _ = dc.send_text(meta_json().to_string()).await;
             }
             continue;
@@ -319,33 +344,41 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
             match ev {
                 InputEvent::DisplaySelect(i) => {
                     screen::select_display(i);
+                    screen::request_keyframe();
                     let _ = dc.send_text(meta_json().to_string()).await;
                     continue;
                 }
                 InputEvent::VideoQuality(q) => {
-                    // 0=auto 1=medium 2=high 3=ultra → map ke bitrate preset host
+                    // 0=auto 1=medium 2=high 3=ultra → map ke bitrate + resolusi preset host
                     let bps = match q {
                         1 => 8_000_000,
                         2 => 15_000_000,
                         3 => 25_000_000,
                         _ => screen::DEFAULT_TARGET_BPS,
                     };
-                    if q == 0 {
-                        screen::set_target_bitrate_bps(screen::DEFAULT_TARGET_BPS);
-                    } else {
-                        screen::set_target_bitrate_bps(bps);
+                    if q >= 2 {
+                        video_policy::promote_level(if q >= 3 { 51 } else { 40 });
+                        video_policy::request(1);
                     }
+                    xyadapt::sync(bps);
+                    screen::set_target_bitrate_bps(bps);
+                    screen::request_keyframe();
                     println!("[xydesk-host] quality dari client: {} -> {} bps", q, bps);
                     continue;
                 }
                 InputEvent::VideoBitrate(mbps) => {
                     if mbps == 0 {
+                        xyadapt::sync(screen::DEFAULT_TARGET_BPS);
                         screen::set_target_bitrate_bps(screen::DEFAULT_TARGET_BPS);
                         println!("[xydesk-host] bitrate auto dari client");
                     } else {
-                        let bps = (mbps as u32).clamp(1, 50) * 1_000_000;
-                        if screen::set_target_bitrate_bps(bps) {
-                            println!("[xydesk-host] bitrate dari client: {} Mbps", mbps);
+                        let wanted = (mbps as u32).clamp(1, 50) * 1_000_000;
+                        let applied = xyadapt::request(screen::target_bitrate_bps(), wanted);
+                        if let Some(bps) = applied {
+                            if screen::set_target_bitrate_bps(bps) {
+                                let line = format!("bitrate client {mbps} Mbps -> {bps} bps");
+                                println!("[xydesk-host] {line}");
+                            }
                         }
                     }
                     continue;

@@ -1,7 +1,7 @@
 name: Release
 
 # Release stabil dibuat hanya setelah workflow Build pada main sukses.
-# Perubahan versi di pubspec.yaml (contoh 1.1.0+3) menjadi tag v1.1.0.
+# Perubahan versi di VERSION (contoh 1.1.0+3) menjadi tag v1.1.0.
 # Jika tag/release untuk versi itu sudah ada, workflow berhenti tanpa duplikasi.
 on:
   workflow_run:
@@ -50,13 +50,13 @@ jobs:
       release_sha: ${{ steps.release.outputs.release_sha }}
       build_run_id: ${{ steps.release.outputs.build_run_id }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 2
 
       - id: release
-        name: Cocokkan pubspec dan Build
+        name: Cocokkan VERSION dan Build
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -69,9 +69,9 @@ jobs:
           # menghindari rilis yang salah menunjuk SHA tanpa Build.
           release_sha="${RELEASE_SHA_INPUT:-${WORKFLOW_SHA:-$GITHUB_SHA}}"
 
-          version_full="$(awk '/^version:[[:space:]]*/ { print $2; exit }' pubspec.yaml)"
+          version_full="$(tr -d '[:space:]' < VERSION)"
           if ! [[ "$version_full" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\+([1-9][0-9]*)$ ]]; then
-            echo "::error::version pubspec harus berbentuk SemVer+build, contoh 1.1.0+3"
+            echo "::error::version VERSION harus berbentuk SemVer+build, contoh 1.1.0+3"
             exit 1
           fi
           version="${BASH_REMATCH[1]}"
@@ -208,15 +208,15 @@ jobs:
             --name XyDesk-Android-APK --dir incoming/android
           gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" \
             --name XyDesk-Windows-x64 --dir incoming/windows-x64
-          cp incoming/android/XyDesk-Android-arm64-v8a.apk dist/
-          cp incoming/android/XyDesk-Android-armeabi-v7a.apk dist/
+          cp incoming/android/XyDesk-arm64-v8a.apk dist/
+          cp incoming/android/XyDesk-armeabi-v7a.apk dist/
           # Satu paket Windows native C++ + engine Rust sebagai bahan installer.
           (cd incoming/windows-x64 && zip -q -r ../../dist/app-windows-x64.zip .)
-          test -s dist/XyDesk-Android-arm64-v8a.apk
-          test -s dist/XyDesk-Android-armeabi-v7a.apk
+          test -s dist/XyDesk-arm64-v8a.apk
+          test -s dist/XyDesk-armeabi-v7a.apk
           test -s dist/app-windows-x64.zip
 
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-client-assets
           path: dist/*
@@ -234,10 +234,10 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.release_sha }}
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-client-assets
           path: incoming/clients
@@ -273,8 +273,26 @@ jobs:
             exit 0
           }
 
-          # Tag rilis ge9/IddSampleDriver TIDAK memakai awalan "v".
-          # URL lama (v0.0.1.4) selalu 404 dan try/catch menelannya diam-diam.
+          # 1. Unduh MttVDD (VirtualDrivers/Virtual-Display-Driver 24.10.27 HDR IddCx)
+          $mttZip = "$env:RUNNER_TEMP\mttvdd.zip"
+          $mttUrl = "https://github.com/VirtualDrivers/Virtual-Display-Driver/releases/download/24.10.27/VirtualDisplayDriver-x64.zip"
+          try {
+            Invoke-WebRequest -Uri $mttUrl -OutFile $mttZip -UseBasicParsing -ErrorAction Stop
+            $mttStage = Join-Path $env:RUNNER_TEMP "mtt-stage"
+            Remove-Item $mttStage -Recurse -Force -ErrorAction SilentlyContinue
+            Expand-Archive $mttZip -DestinationPath $mttStage -Force
+            $mttInner = Join-Path $mttStage "VirtualDisplayDriver"
+            if (Test-Path $mttInner) {
+              Copy-Item "$mttInner\*" $driverIDD -Recurse -Force
+            } else {
+              Copy-Item "$mttStage\*" $driverIDD -Recurse -Force
+            }
+            Write-Host "[OK] Driver MttVDD 24.10.27 HDR berhasil disertakan."
+          } catch {
+            Write-Host "[WARN] Gagal unduh MttVDD ($mttUrl): $($_.Exception.Message)"
+          }
+
+          # 2. Unduh ge9/IddSampleDriver 0.0.1.4 (fallback universal Win10 1607+)
           $hasDriver = $false
           $iddZip = "$env:RUNNER_TEMP\idd.zip"
           $urls = @(
@@ -301,7 +319,7 @@ jobs:
             }
           }
           # Unduhan gagal = bug (URL/tag salah), bukan kondisi normal.
-          if (-not $hasDriver) {
+          if (-not $hasDriver -and -not (Test-Path (Join-Path $driverIDD "MttVDD.inf"))) {
             Write-Host "::error::Driver VDD gagal diunduh dari semua URL."
             exit 1
           }
@@ -317,16 +335,21 @@ jobs:
 
 
           $copy = @(
-            @{ src = "packaging/windows/drivers/IddSampleDriver/install.bat";   dst = "IddSampleDriver/install.bat" },
-            @{ src = "packaging/windows/drivers/IddSampleDriver/uninstall.bat"; dst = "IddSampleDriver/uninstall.bat" },
-            @{ src = "packaging/windows/drivers/IddSampleDriver/option.txt";    dst = "IddSampleDriver/option.txt" },
-            @{ src = "packaging/windows/drivers/license-ge9.txt";                dst = "license-ge9.txt" },
-            @{ src = "packaging/windows/drivers/README-VDD.txt";                dst = "README-VDD.txt" }
+            @{ src = "packaging/windows/drivers/IddSampleDriver/install.bat";      dst = "IddSampleDriver/install.bat" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/uninstall.bat";    dst = "IddSampleDriver/uninstall.bat" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/option.txt";       dst = "IddSampleDriver/option.txt" },
+            @{ src = "packaging/windows/drivers/IddSampleDriver/vdd_settings.xml"; dst = "IddSampleDriver/vdd_settings.xml" },
+            @{ src = "packaging/windows/drivers/install-all-drivers.bat";          dst = "install-all-drivers.bat" },
+            @{ src = "packaging/windows/drivers/license-ge9.txt";                  dst = "license-ge9.txt" },
+            @{ src = "packaging/windows/drivers/README-VDD.txt";                  dst = "README-VDD.txt" }
           )
           foreach ($s in $copy) {
             if (Test-Path $s.src) {
               Copy-Item $s.src (Join-Path $driverRoot $s.dst) -Force
             }
+          }
+          if (Test-Path (Join-Path $bundle "xydesk-vdd-ctl.exe")) {
+            Copy-Item (Join-Path $bundle "xydesk-vdd-ctl.exe") (Join-Path $driverIDD "xydesk-vdd-ctl.exe") -Force
           }
 
           # Bundle Driver Virtual Audio & Mic (VB-CABLE)
@@ -432,7 +455,7 @@ jobs:
             "$hash  $($_.Name)" | Set-Content "$($_.FullName).sha256" -Encoding ascii
           }
           "INSTALLER_OUT=$out" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-installer-${{ matrix.arch }}
           path: |
@@ -455,11 +478,11 @@ jobs:
       RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
       ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.release_sha }}
 
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
 
@@ -474,8 +497,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp artifacts/release-client-assets/XyDesk-Android-arm64-v8a.apk dist/
-          cp artifacts/release-client-assets/XyDesk-Android-armeabi-v7a.apk dist/
+          cp artifacts/release-client-assets/XyDesk-arm64-v8a.apk dist/
+          cp artifacts/release-client-assets/XyDesk-armeabi-v7a.apk dist/
           # Changelog rilis ikut dilampirkan — wajib ada di setiap rilis.
           cp CHANGELOG.md dist/CHANGELOG.md
           # Dua installer x64 dari payload yang sama: EXE NSIS untuk pengguna
@@ -490,19 +513,19 @@ jobs:
             --version "$VERSION" \
             --build "$BUILD_NUMBER" \
             --out dist/xydesk_update_banner_1024x512.jpg
-          test -s dist/XyDesk-Android-arm64-v8a.apk
-          test -s dist/XyDesk-Android-armeabi-v7a.apk
+          test -s dist/XyDesk-arm64-v8a.apk
+          test -s dist/XyDesk-armeabi-v7a.apk
           cd dist
-          sha256sum XyDesk-Android-arm64-v8a.apk \
-            XyDesk-Android-armeabi-v7a.apk \
+          sha256sum XyDesk-arm64-v8a.apk \
+            XyDesk-armeabi-v7a.apk \
             XyDesk-x64.exe \
             XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg \
             > SHA256SUMS.txt
-          arm64_sha="$(sha256sum XyDesk-Android-arm64-v8a.apk | cut -d' ' -f1)"
-          arm64_bytes="$(stat -c%s XyDesk-Android-arm64-v8a.apk)"
-          armv7_sha="$(sha256sum XyDesk-Android-armeabi-v7a.apk | cut -d' ' -f1)"
-          armv7_bytes="$(stat -c%s XyDesk-Android-armeabi-v7a.apk)"
+          arm64_sha="$(sha256sum XyDesk-arm64-v8a.apk | cut -d' ' -f1)"
+          arm64_bytes="$(stat -c%s XyDesk-arm64-v8a.apk)"
+          armv7_sha="$(sha256sum XyDesk-armeabi-v7a.apk | cut -d' ' -f1)"
+          armv7_bytes="$(stat -c%s XyDesk-armeabi-v7a.apk)"
           winx64_sha="$(sha256sum XyDesk-x64.exe | cut -d' ' -f1)"
           winx64_bytes="$(stat -c%s XyDesk-x64.exe)"
           winx64_msi_sha="$(sha256sum XyDesk-x64.msi | cut -d' ' -f1)"
@@ -533,12 +556,12 @@ jobs:
               ],
               "apks": {
                   "arm64-v8a": {
-                      "url": f"{base}/XyDesk-Android-arm64-v8a.apk",
+                      "url": f"{base}/XyDesk-arm64-v8a.apk",
                       "sha256": os.environ["arm64_sha"],
                       "bytes": int(os.environ["arm64_bytes"]),
                   },
                   "armeabi-v7a": {
-                      "url": f"{base}/XyDesk-Android-armeabi-v7a.apk",
+                      "url": f"{base}/XyDesk-armeabi-v7a.apk",
                       "sha256": os.environ["armv7_sha"],
                       "bytes": int(os.environ["armv7_bytes"]),
                   },
@@ -576,7 +599,7 @@ jobs:
           set -euo pipefail
           for asset in \
             CHANGELOG.md SHA256SUMS.txt update.json \
-            XyDesk-Android-arm64-v8a.apk XyDesk-Android-armeabi-v7a.apk \
+            XyDesk-arm64-v8a.apk XyDesk-armeabi-v7a.apk \
             XyDesk-x64.exe XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg
           do
@@ -592,7 +615,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Publikasikan GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           # `GITHUB_TOKEN` bawaan ditolak 403 "Resource not accessible by
           # integration" saat membuat Release, walau job sudah punya
@@ -625,8 +648,8 @@ jobs:
             |---|---|---|
             | Windows x64 EXE | `XyDesk-x64.exe` | Installer NSIS direct download |
             | Windows x64 MSI | `XyDesk-x64.msi` | Deployment Windows/enterprise |
-            | Android 64-bit | `XyDesk-Android-arm64-v8a.apk` | HP Android modern |
-            | Android 32-bit | `XyDesk-Android-armeabi-v7a.apk` | Perangkat ARMv7 lama |
+            | Android 64-bit | `XyDesk-arm64-v8a.apk` | HP Android modern |
+            | Android 32-bit | `XyDesk-armeabi-v7a.apk` | Perangkat ARMv7 lama |
 
             Installer Windows sudah memuat aplikasi dan engine Host sekaligus —
             tidak ada berkas terpisah yang perlu diunduh. Client web tersedia
