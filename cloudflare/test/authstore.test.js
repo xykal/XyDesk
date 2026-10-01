@@ -49,7 +49,7 @@ test('nama profil baru hanya disimpan setelah OTP benar', async () => {
     expires_at: Math.floor(Date.now() / 1000) + 600,
     attempts: 0,
     created_at: Math.floor(Date.now() / 1000),
-    pending_name: 'Kall XySpace',
+    pending_name: 'Kall XyVerse',
   });
   const store = new AuthStore({ storage }, { AUTH_SECRET: secret });
   const request = new Request('https://signal.example/auth/verify-otp', {
@@ -61,8 +61,8 @@ test('nama profil baru hanya disimpan setelah OTP benar', async () => {
   const response = await store.verifyOtp(request);
   const body = await response.json();
   assert.equal(response.status, 200);
-  assert.equal(body.user.name, 'Kall XySpace');
-  assert.equal([...storage.values.values()].some((row) => row?.name === 'Kall XySpace'), true);
+  assert.equal(body.user.name, 'Kall XyVerse');
+  assert.equal([...storage.values.values()].some((row) => row?.name === 'Kall XyVerse'), true);
 });
 
 test('sesi tamu berumur pendek dan tidak menyimpan identitas', async () => {

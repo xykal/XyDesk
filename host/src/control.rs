@@ -212,6 +212,8 @@ pub struct VirtualDisplayStatus {
     pub virtual_index: Option<usize>,
     pub backend: String,
     pub displays: usize,
+    pub adapter_name: String,
+    pub monitor_name: String,
 }
 
 /// Status virtual mic driver — biar mic denyut di Control Panel
@@ -295,6 +297,8 @@ impl ControlState {
                     virtual_index: vd.as_ref().map(|d| d.index),
                     backend: crate::screen::backend_label().to_string(),
                     displays: displays.len(),
+                    adapter_name: crate::virtual_display::active_adapter_name(),
+                    monitor_name: crate::virtual_display::MONITOR_FRIENDLY_NAME.to_string(),
                 }
             },
             virtual_mic: {
@@ -416,9 +420,23 @@ pub struct ActionRequest {
     /// Tinggi virtual display.
     #[serde(default)]
     pub height: Option<u32>,
+    /// Refresh rate virtual display (Hz).
+    #[serde(default, alias = "refreshRate", alias = "hz")]
+    pub refresh_rate: Option<u32>,
     /// Jumlah display.
     #[serde(default)]
     pub count: Option<u32>,
+    /// Opsi DSP XyDesk Virtual Microphone (`mic-dsp`).
+    #[serde(default, alias = "noiseSuppression")]
+    pub noise_suppression: Option<bool>,
+    #[serde(default, alias = "highPass")]
+    pub high_pass: Option<bool>,
+    #[serde(default, alias = "agcLimiter")]
+    pub agc_limiter: Option<bool>,
+    #[serde(default, alias = "noiseGateDb")]
+    pub noise_gate_db: Option<f32>,
+    #[serde(default, alias = "gainDb")]
+    pub gain_db: Option<f32>,
 }
 
 /// Jawaban aksi. `password` berisi nilai baru untuk `new-password` dan
@@ -711,30 +729,74 @@ async fn action(
                 Ok(Json(ActionResponse::err(format!("gagal set quality {q}"))))
             }
         }
-        // Install virtual display driver (butuh admin)
+        // Install virtual display / audio driver (otomatis minta elevasi UAC bila belum admin)
         "driver-install" => {
             let driver_type = req.driver_type.as_deref().unwrap_or("display");
-            if driver_type != "display" && driver_type != "virtual" {
-                return Ok(Json(ActionResponse::err(
-                    "driver_type harus display/virtual",
-                )));
-            }
-            match crate::virtual_display::try_install_driver() {
-                Ok(_msg) => Ok(Json(ActionResponse {
-                    ok: true,
-                    error: None,
-                    password: None,
-                    stopped: None,
-                })),
-                Err(e) => Ok(Json(ActionResponse::err(e))),
+            match driver_type {
+                "display" | "virtual" => match crate::virtual_display::try_install_driver() {
+                    Ok(_msg) => Ok(Json(ActionResponse {
+                        ok: true,
+                        error: None,
+                        password: None,
+                        stopped: None,
+                    })),
+                    Err(e) => Ok(Json(ActionResponse::err(e))),
+                },
+                "audio" | "mic" => match crate::virtual_mic::try_install_driver() {
+                    Ok(_msg) => Ok(Json(ActionResponse {
+                        ok: true,
+                        error: None,
+                        password: None,
+                        stopped: None,
+                    })),
+                    Err(e) => Ok(Json(ActionResponse::err(e))),
+                },
+                "all" => {
+                    let vdd_res = crate::virtual_display::try_install_driver();
+                    let _aud_res = crate::virtual_mic::try_install_driver();
+                    match vdd_res {
+                        Ok(_msg) => Ok(Json(ActionResponse {
+                            ok: true,
+                            error: None,
+                            password: None,
+                            stopped: None,
+                        })),
+                        Err(e) => Ok(Json(ActionResponse::err(e))),
+                    }
+                }
+                _ => Ok(Json(ActionResponse::err(
+                    "driver_type harus display/virtual/audio/all",
+                ))),
             }
         }
-        // Buat virtual display baru (width, height, count opsional)
-        "virtual-display-create" => {
+        "mic-dsp" => {
+            let cur = crate::mic_dsp::get_config();
+            crate::mic_dsp::set_config(crate::mic_dsp::MicDspConfig {
+                noise_suppression: req.noise_suppression.unwrap_or(cur.noise_suppression),
+                high_pass: req.high_pass.unwrap_or(cur.high_pass),
+                agc_limiter: req.agc_limiter.unwrap_or(cur.agc_limiter),
+                noise_gate_db: req.noise_gate_db.unwrap_or(cur.noise_gate_db),
+                gain_db: req.gain_db.unwrap_or(cur.gain_db),
+            });
+            Ok(Json(ActionResponse {
+                ok: true,
+                error: None,
+                password: None,
+                stopped: None,
+            }))
+        }
+        // Buat / atur mode virtual display (width, height, refresh_rate, count opsional)
+        "virtual-display-create" | "virtual-display-mode" => {
             let w = req.width.unwrap_or(1920);
             let h = req.height.unwrap_or(1080);
+            let hz = req.refresh_rate.unwrap_or(60);
             let c = req.count.unwrap_or(1);
-            match crate::virtual_display::create_virtual_display(w, h, c) {
+            let res = if req.action == "virtual-display-mode" || req.refresh_rate.is_some() {
+                crate::virtual_display::set_virtual_display_mode(w, h, hz, c)
+            } else {
+                crate::virtual_display::create_virtual_display(w, h, c)
+            };
+            match res {
                 Ok(_msg) => Ok(Json(ActionResponse {
                     ok: true,
                     error: None,

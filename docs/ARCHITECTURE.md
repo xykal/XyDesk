@@ -50,8 +50,8 @@
 
 ```
 DXGI AcquireNextFrame (8ms budget)      // d3d11 texture
-   → copy ke NVENC input (cudaMemcpy)   // zero-copy bila mungkin
-   → NVENC encode (H264/HEVC/AV1)       // <10ms @1080p60
+   → RGBA -> NV12 (pixfmt.rs)           // zero-copy DXGI masih backlog
+   → NVENC > MFT (AMD/Intel) > openh264 // host/src/screen.rs pick_hardware_encoder
    → frame ke webrtc-rs (RTP)           // pacing + NACK + FEC
    → kirim
 ```

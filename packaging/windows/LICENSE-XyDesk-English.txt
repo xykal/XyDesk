@@ -1,12 +1,12 @@
 XYDESK SOFTWARE LICENSE
 End User License Agreement — Copyright Protected
 
-Copyright © 2026 XySpace Tech (xykalnotkel). All rights reserved.
+Copyright © 2026 XyVerse Technology Global (xykal). All rights reserved.
 
 1. LICENSE GRANT
 
-XyDesk is proprietary software owned by XySpace Tech. Subject to this
-Agreement, XySpace Tech grants you a limited, non-exclusive, non-transferable
+XyDesk is proprietary software owned by XyVerse Technology Global. Subject to this
+Agreement, XyVerse Technology Global grants you a limited, non-exclusive, non-transferable
 license to install and use the XyDesk binaries on devices that you own or are
 authorized to administer.
 
@@ -21,7 +21,7 @@ authorized devices;
 
 3. RESTRICTIONS
 
-Without prior written permission from XySpace Tech, you may not:
+Without prior written permission from XyVerse Technology Global, you may not:
 
 - copy, modify, adapt, translate, or create derivative works from XyDesk;
 - reverse engineer, decompile, disassemble, or attempt to extract source code;
@@ -46,20 +46,20 @@ device without authorization.
 
 6. UPDATES AND AVAILABILITY
 
-XySpace Tech may publish updates, security fixes, or changes to supported
+XyVerse Technology Global may publish updates, security fixes, or changes to supported
 platforms and services. A feature or service may be unavailable, limited, or
 changed without notice.
 
 7. DISCLAIMER
 
 XyDesk is provided “AS IS” and “AS AVAILABLE”, without warranties of any kind,
-to the maximum extent permitted by law. XySpace Tech does not warrant that
+to the maximum extent permitted by law. XyVerse Technology Global does not warrant that
 remote access, capture, encoding, networking, or input will work on every
 hardware, driver, Windows, RDP, or network configuration.
 
 8. LIMITATION OF LIABILITY
 
-To the maximum extent permitted by law, XySpace Tech is not liable for
+To the maximum extent permitted by law, XyVerse Technology Global is not liable for
 indirect, incidental, special, consequential, or loss-of-data damages arising
 from use of the software. Nothing in this Agreement limits liability that
 cannot legally be limited.

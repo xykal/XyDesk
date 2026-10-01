@@ -40,8 +40,8 @@ mod tests {
 }
 
 pub mod audio;
-pub mod brand;
 pub mod audio_forward;
+pub mod brand;
 pub mod clipboard;
 pub mod control;
 pub mod control_ipc;
@@ -77,6 +77,12 @@ pub mod virtual_mic;
 
 // Tipe data FFI NVENC (layout diverifikasi vs header C — test jalan di semua
 // platform). Driver NVENC sendiri hanya untuk Windows.
+/// Encoder H.264 hardware lewat Media Foundation (AMD/Intel/NVIDIA) —
+/// fallback kedua setelah NVENC, sebelum openh264.
+#[cfg(target_os = "windows")]
+pub mod mft;
+#[cfg(target_os = "windows")]
+pub mod mft_setup;
 #[cfg(target_os = "windows")]
 pub mod nvenc;
 /// Konstanta, status, dan perakit konfigurasi NVENC — lintas platform, teruji.
@@ -110,5 +116,9 @@ pub mod abs_capture_time;
 pub mod host_auth;
 /// Kredensial relay TURN host + sebabnya bila tidak ada (dipakai `/status`).
 pub mod leadership;
+/// Mesin DSP mikrofon virtual XyDesk (Noise Suppression, Gate, Gain, High-Pass, AGC).
+pub mod mic_dsp;
 pub mod relay;
 pub mod remembered;
+/// libxyadapt sisi host: penghalus bitrate dari client.
+pub mod xyadapt;

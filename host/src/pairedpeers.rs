@@ -241,6 +241,36 @@ impl PairedPeers {
         self.labels.remove(peer);
     }
 
+    /// Bila `peer` baru saja lulus pairing (`Granted`) dan sesi aktif lama
+    /// sudah terputus (`active_disconnected`) ATAU berasal dari perangkat
+    /// bernama sama (`PeerLabel.name` identik), cabut slot sesi lama agar
+    /// `authorize_offer` mengizinkan sambung ulang instan tanpa menunggu
+    /// `DISCONNECT_GRACE` 15 detik.
+    pub fn takeover_if_reconnecting(
+        &mut self,
+        peer: &str,
+        active_disconnected: bool,
+    ) -> Option<String> {
+        if !matches!(self.peers.get(peer), Some(PeerPhase::Granted { .. })) {
+            return None;
+        }
+        let other = self.active_peer()?.to_string();
+        if other == peer {
+            return None;
+        }
+        let same_device_name = self
+            .labels
+            .get(peer)
+            .and_then(|l| l.name.as_deref())
+            .zip(self.labels.get(&other).and_then(|l| l.name.as_deref()))
+            .is_some_and(|(a, b)| !a.is_empty() && a == b);
+        if active_disconnected || same_device_name {
+            self.revoke(&other);
+            return Some(other);
+        }
+        None
+    }
+
     /// Buang izin `Granted` yang sudah kedaluwarsa. Aman dipanggil kapan saja;
     /// peer `Active` tidak pernah tersentuh.
     pub fn sweep_expired(&mut self, now: Instant) {
@@ -508,5 +538,41 @@ mod label_tests {
         p.set_label("lambat", PeerLabel::new(Some("HP lama".into()), None));
         p.sweep_expired(now + OFFER_WINDOW + Duration::from_secs(1));
         assert!(p.label_of("lambat").is_none());
+    }
+
+    #[test]
+    fn sambung_ulang_perangkat_sama_atau_sesi_putus_mengambil_alih_slot() {
+        let now = Instant::now();
+        let mut p = PairedPeers::new();
+        p.grant("app-100", now);
+        p.set_label(
+            "app-100",
+            PeerLabel::new(Some("Xiaomi 23049PCD8G".into()), Some("android".into())),
+        );
+        assert!(p.authorize_offer("app-100", now).is_ok());
+
+        // Perangkat yang sama menyambung ulang dengan ID baru setelah pairing
+        p.grant("app-101", now);
+        p.set_label(
+            "app-101",
+            PeerLabel::new(Some("Xiaomi 23049PCD8G".into()), Some("android".into())),
+        );
+        assert_eq!(
+            p.takeover_if_reconnecting("app-101", false),
+            Some("app-100".into())
+        );
+        assert!(p.authorize_offer("app-101", now).is_ok());
+
+        // Perangkat berbeda tidak boleh mengambil alih saat sesi aktif masih Connected
+        p.grant("app-200", now);
+        p.set_label(
+            "app-200",
+            PeerLabel::new(Some("Samsung SM-S918B".into()), Some("android".into())),
+        );
+        assert_eq!(p.takeover_if_reconnecting("app-200", false), None);
+        assert_eq!(
+            p.authorize_offer("app-200", now),
+            Err(RejectReason::HostBusy)
+        );
     }
 }

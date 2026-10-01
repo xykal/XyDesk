@@ -1,0 +1,338 @@
+[
+ {
+  "key": "connect_need_login",
+  "id": "Masuk dengan akun untuk menyambung ke PC.",
+  "en": "Sign in to connect to a PC.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_qr_scanned",
+  "id": "QR berhasil dipindai.",
+  "en": "QR scanned.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_intro",
+  "id": "Masukkan ID dan kata sandi dari aplikasi host di PC kamu.",
+  "en": "Enter the ID and password from the host app on your PC.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_device_id",
+  "id": "ID Perangkat",
+  "en": "Device ID",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_history",
+  "id": "Riwayat",
+  "en": "History",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_password",
+  "id": "Kata sandi",
+  "en": "Password",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_scan_qr",
+  "id": "Pindai QR",
+  "en": "Scan QR",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_dont_know",
+  "id": "Belum tahu caranya?",
+  "en": "Not sure how?",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_go_here",
+  "id": "Ke sini",
+  "en": "Start here",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_last_device",
+  "id": "Perangkat terakhir",
+  "en": "Last device",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_pw_not_saved",
+  "id": "sandi tidak disimpan",
+  "en": "password not saved",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_pw_saved",
+  "id": "sandi tersimpan",
+  "en": "password saved",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_clear_history",
+  "id": "Hapus riwayat",
+  "en": "Clear history",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_torch",
+  "id": "Senter",
+  "en": "Torch",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_camera_rationale",
+  "id": "XyDesk butuh izin kamera untuk memindai QR pairing. Bila izin sudah ditolak permanen, buka pengaturan aplikasi atau masukkan ID secara manual.",
+  "en": "XyDesk needs camera permission to scan the pairing QR. If it was denied permanently, open the app settings or enter the ID manually.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_grant_camera",
+  "id": "Beri izin kamera",
+  "en": "Grant camera permission",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_camera_unavailable",
+  "id": "Kamera tidak tersedia. Beri izin kamera untuk XyDesk, atau masukkan ID secara manual.",
+  "en": "Camera unavailable. Grant camera permission to XyDesk, or enter the ID manually.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_point_camera",
+  "id": "Arahkan kamera ke QR pada aplikasi XyDesk Host di PC.",
+  "en": "Point the camera at the QR in the XyDesk Host app on the PC.",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "connect_support_us",
+  "id": "Dukung kami di",
+  "en": "Support us on",
+  "files": [
+   "lib/features/connect/connect_page.dart"
+  ]
+ },
+ {
+  "key": "guide_title",
+  "id": "Panduan XyDesk",
+  "en": "XyDesk guide",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_headline",
+  "id": "Hubungkan perangkat tanpa bingung",
+  "en": "Connect your devices without guesswork",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_sub",
+  "id": "Ikuti langkah sesuai sisi yang sedang kamu siapkan.",
+  "en": "Follow the steps for the side you are setting up.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_client_is",
+  "id": "Client adalah HP yang dipakai untuk mengendalikan PC.",
+  "en": "The client is the phone used to control the PC.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_host_is",
+  "id": "Host adalah PC yang layarnya akan dikendalikan dari HP.",
+  "en": "The host is the PC whose screen is controlled from the phone.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c1",
+  "id": "Pasang aplikasi client",
+  "en": "Install the client app",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c1_sub",
+  "id": "Buka XyDesk di HP yang akan kamu gunakan sebagai remote.",
+  "en": "Open XyDesk on the phone you will use as the remote.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c2",
+  "id": "Dapatkan ID dari host",
+  "en": "Get the ID from the host",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c2_sub",
+  "id": "Minta ID perangkat dan kata sandi dari aplikasi XyDesk Host.",
+  "en": "Get the device ID and password from the XyDesk Host app.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c3",
+  "id": "Masukkan ID atau scan QR",
+  "en": "Enter the ID or scan the QR",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c3_sub",
+  "id": "Buka menu Connect, masukkan data host, atau gunakan Pindai QR.",
+  "en": "Open Connect, enter the host details, or use Scan QR.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c4",
+  "id": "Mulai sesi",
+  "en": "Start the session",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_c4_sub",
+  "id": "Tekan Hubungkan, tunggu pairing selesai, lalu tekan Mulai sesi.",
+  "en": "Tap Connect, wait for pairing, then tap Start session.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h1",
+  "id": "Pasang aplikasi host",
+  "en": "Install the host app",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h1_sub",
+  "id": "Jalankan XyDesk Host di PC yang ingin kamu akses dari HP.",
+  "en": "Run XyDesk Host on the PC you want to reach from your phone.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h2",
+  "id": "Aktifkan akses remote",
+  "en": "Enable remote access",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h2_sub",
+  "id": "Pastikan aplikasi host aktif dan PC tidak masuk sleep.",
+  "en": "Keep the host app running and the PC out of sleep.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h3",
+  "id": "Bagikan ID atau QR",
+  "en": "Share the ID or QR",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h3_sub",
+  "id": "Tampilkan ID dan QR pairing dari halaman host untuk client.",
+  "en": "Show the pairing ID and QR from the host page to the client.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h4",
+  "id": "Terima koneksi",
+  "en": "Accept the connection",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_h4_sub",
+  "id": "Saat client masuk, periksa permintaan lalu izinkan sesi remote.",
+  "en": "When the client arrives, review the request and allow the session.",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_im_phone",
+  "id": "Saya di HP",
+  "en": "I am on the phone",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ },
+ {
+  "key": "guide_im_pc",
+  "id": "Saya di PC",
+  "en": "I am on the PC",
+  "files": [
+   "lib/features/connect/guide_page.dart"
+  ]
+ }
+]

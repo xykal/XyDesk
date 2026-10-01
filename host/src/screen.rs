@@ -220,10 +220,10 @@ impl EncodedFrame {
 pub fn encoder_label() -> &'static str {
     #[cfg(target_os = "windows")]
     {
-        if nvenc_active() {
-            "nvenc"
-        } else {
-            "openh264"
+        match HW_ENCODER.load(std::sync::atomic::Ordering::Relaxed) {
+            HW_NVENC => "nvenc",
+            HW_MFT => "mft",
+            _ => "openh264",
         }
     }
     #[cfg(not(target_os = "windows"))]
@@ -1282,10 +1282,17 @@ pub fn wanted_display() -> usize {
 /// Benar bila encoder NVENC hardware sedang dipakai (hanya bisa di Windows).
 /// Dibaca oleh control API (`control::VideoStats`) untuk ditampilkan shell
 /// desktop. Ditulis oleh modul `windows` saat encoder dipilih.
-static NVENC_ACTIVE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static HW_ENCODER: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(HW_NONE);
+const HW_NONE: u8 = 0;
+#[cfg(target_os = "windows")]
+const HW_NVENC: u8 = 1;
+#[cfg(target_os = "windows")]
+const HW_MFT: u8 = 2;
 
+/// Benar bila encoder hardware mana pun (NVENC atau MFT) yang aktif; nama
+/// lama dipertahankan karena control API sudah memakai field `nvenc`.
 pub fn nvenc_active() -> bool {
-    NVENC_ACTIVE.load(std::sync::atomic::Ordering::Relaxed)
+    HW_ENCODER.load(std::sync::atomic::Ordering::Relaxed) != HW_NONE
 }
 
 // ── Implementasi Windows: DXGI Desktop Duplication + encode ──────────────
@@ -1303,12 +1310,50 @@ mod windows {
         MinimumUpdateIntervalSettings, SecondaryWindowSettings, Settings,
     };
 
-    /// Encoder aktif: NVENC (hardware) bila tersedia, openh264 (software)
-    /// sebagai fallback. Dibuat lazy di frame pertama karena resolusi baru
-    /// diketahui saat itu.
+    /// Encoder aktif, urutan pilihan: NVENC → MFT (AMD/Intel/NVIDIA lewat
+    /// Media Foundation) → openh264 (software). Dibuat lazy di frame pertama
+    /// karena resolusi baru diketahui saat itu.
     enum EncoderKind {
         Nvenc(crate::nvenc::NvEnc),
+        Mft(crate::mft::Mft),
         Soft(Box<SoftwareEncoder>),
+    }
+
+    /// Coba encoder hardware untuk resolusi ini; `None` = tetap openh264.
+    /// Satu tempat untuk ketiga jalur capture (WGC, GDI, DXGI) supaya urutan
+    /// fallback dan label `HW_ENCODER` tidak bisa berbeda antar jalur.
+    fn pick_hardware_encoder(source: &str, width: usize, height: usize) -> Option<EncoderKind> {
+        super::HW_ENCODER.store(super::HW_NONE, std::sync::atomic::Ordering::Relaxed);
+        if !width.is_multiple_of(2) || !height.is_multiple_of(2) {
+            eprintln!("[xydesk-host] {source}: resolusi ganjil {width}x{height}, pakai openh264");
+            return None;
+        }
+        let (w, h, bps) = (width as u32, height as u32, super::target_bitrate_bps());
+        match crate::nvenc::NvEnc::new(w, h, bps) {
+            Ok(enc) => {
+                println!(
+                    "[xydesk-host] {source}: NVENC aktif {w}x{h} @ {} kbps CBR",
+                    bps / 1000
+                );
+                super::HW_ENCODER.store(super::HW_NVENC, std::sync::atomic::Ordering::Relaxed);
+                return Some(EncoderKind::Nvenc(enc));
+            }
+            Err(e) => eprintln!("[xydesk-host] {source}: NVENC tidak tersedia: {e}"),
+        }
+        match crate::mft::Mft::new(w, h, bps) {
+            Ok(enc) => {
+                println!(
+                    "[xydesk-host] {source}: MFT aktif {w}x{h} @ {} kbps CBR",
+                    bps / 1000
+                );
+                super::HW_ENCODER.store(super::HW_MFT, std::sync::atomic::Ordering::Relaxed);
+                Some(EncoderKind::Mft(enc))
+            }
+            Err(e) => {
+                eprintln!("[xydesk-host] {source}: MFT tidak tersedia, pakai openh264: {e}");
+                None
+            }
+        }
     }
 
     impl EncoderKind {
@@ -1320,15 +1365,19 @@ mod windows {
             nv12: &mut Vec<u8>,
         ) -> Result<Vec<u8>, String> {
             let out = match self {
-                EncoderKind::Nvenc(enc) => {
+                EncoderKind::Soft(enc) => enc.encode(rgba_tight, width, height),
+                hardware => {
                     crate::pixfmt::rgba_to_nv12(rgba_tight, width, height, nv12)?;
-                    let result = enc.encode(nv12);
+                    let result = match hardware {
+                        EncoderKind::Nvenc(enc) => enc.encode(nv12),
+                        EncoderKind::Mft(enc) => enc.encode(nv12),
+                        EncoderKind::Soft(_) => unreachable!(),
+                    };
                     if result.is_ok() {
                         crate::video_policy::record(Some((width, height)));
                     }
                     result
                 }
-                EncoderKind::Soft(enc) => enc.encode(rgba_tight, width, height),
             };
             // Satu tempat untuk kedua encoder: IDR disimpan sebagai penyelamat
             // layar hitam (lihat `remember_keyframe`). Frame yang dihasilkan
@@ -1473,38 +1522,11 @@ mod windows {
                 raw
             };
 
-            // Lazy init encoder: frame pertama menentukan resolusi. NVENC
-            // butuh dimensi genap; kalau tidak cocok atau gagal (tidak ada
-            // GPU NVIDIA / driver < R550), tetap di openh264 — tidak crash.
+            // Lazy init encoder: frame pertama menentukan resolusi. Gagal
+            // hardware = tetap di openh264, tidak crash.
             if self.frames == 0 {
-                super::NVENC_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
-                if width.is_multiple_of(2) && height.is_multiple_of(2) {
-                    match crate::nvenc::NvEnc::new(
-                        width as u32,
-                        height as u32,
-                        super::target_bitrate_bps(),
-                    ) {
-                        Ok(enc) => {
-                            println!(
-                                "[xydesk-host] NVENC aktif: H264 hardware {}x{} @ {} kbps CBR",
-                                width,
-                                height,
-                                super::target_bitrate_bps() / 1000
-                            );
-                            super::NVENC_ACTIVE.store(true, std::sync::atomic::Ordering::Relaxed);
-                            self.encoder = EncoderKind::Nvenc(enc);
-                        }
-                        Err(e) => {
-                            eprintln!(
-                                "[xydesk-host] NVENC tidak tersedia, pakai openh264 (software): {e}"
-                            );
-                        }
-                    }
-                } else {
-                    eprintln!(
-                        "[xydesk-host] resolusi ganjil {}x{}, NVENC dilewati (butuh dimensi genap)",
-                        width, height
-                    );
+                if let Some(enc) = pick_hardware_encoder("WGC", width, height) {
+                    self.encoder = enc;
                 }
             }
 
@@ -1646,21 +1668,8 @@ mod windows {
         // Resolusi sudah diketahui di depan (beda dari WGC yang baru tahu di
         // frame pertama), jadi NVENC bisa dicoba sekali di sini.
         let mut encoder = EncoderKind::Soft(Box::new(SoftwareEncoder::new()?));
-        super::NVENC_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
-        if w % 2 == 0 && h % 2 == 0 {
-            match crate::nvenc::NvEnc::new(w as u32, h as u32, super::target_bitrate_bps()) {
-                Ok(enc) => {
-                    println!(
-                        "[xydesk-host] GDI: NVENC aktif: H264 hardware {w}x{h} @ {} kbps CBR",
-                        super::target_bitrate_bps() / 1000
-                    );
-                    super::NVENC_ACTIVE.store(true, std::sync::atomic::Ordering::Relaxed);
-                    encoder = EncoderKind::Nvenc(enc);
-                }
-                Err(e) => eprintln!(
-                    "[xydesk-host] GDI: NVENC tidak tersedia, pakai openh264 (software): {e}"
-                ),
-            }
+        if let Some(hw) = pick_hardware_encoder("GDI", w, h) {
+            encoder = hw;
         }
 
         let mut nv12: Vec<u8> = Vec::new();
@@ -1799,21 +1808,8 @@ mod windows {
         let h = cap.height();
 
         let mut encoder = EncoderKind::Soft(Box::new(SoftwareEncoder::new()?));
-        super::NVENC_ACTIVE.store(false, std::sync::atomic::Ordering::Relaxed);
-        if w % 2 == 0 && h % 2 == 0 {
-            match crate::nvenc::NvEnc::new(w as u32, h as u32, super::target_bitrate_bps()) {
-                Ok(enc) => {
-                    println!(
-                        "[xydesk-host] DXGI: NVENC aktif: H264 hardware {w}x{h} @ {} kbps CBR",
-                        super::target_bitrate_bps() / 1000
-                    );
-                    super::NVENC_ACTIVE.store(true, std::sync::atomic::Ordering::Relaxed);
-                    encoder = EncoderKind::Nvenc(enc);
-                }
-                Err(e) => eprintln!(
-                    "[xydesk-host] DXGI: NVENC tidak tersedia, pakai openh264 (software): {e}"
-                ),
-            }
+        if let Some(hw) = pick_hardware_encoder("DXGI", w, h) {
+            encoder = hw;
         }
 
         let mut nv12: Vec<u8> = Vec::new();

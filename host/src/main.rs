@@ -466,6 +466,7 @@ async fn main() -> Result<()> {
         "[xydesk-host] sumber video: {}",
         xydesk_host::screen::capture_status()
     );
+    tokio::task::spawn_blocking(xydesk_host::virtual_mic::ensure_virtual_mic);
     println!();
     println!("  ╔══════════════════════════════════════════╗");
     println!("  ║   XyDesk Host — memulai layanan akun    ║");
@@ -851,6 +852,24 @@ async fn main() -> Result<()> {
                 "offer" => {
                     let client = msg.from.clone().unwrap_or_default();
                     let now = std::time::Instant::now();
+
+                    // Bila peer baru saja lulus pairing ulang (mis. ReconnectPolicy
+                    // di client native merotasi ID `app-...` setelah putus jaringan),
+                    // cabut sesi lama yang sudah Disconnected/Failed/Closed atau
+                    // berasal dari nama perangkat yang sama agar tidak tertolak `host-sibuk`.
+                    let active_disconnected = active.as_ref().is_some_and(|s| {
+                        matches!(
+                            s.peer().connection_state(),
+                            RTCPeerConnectionState::Disconnected
+                                | RTCPeerConnectionState::Failed
+                                | RTCPeerConnectionState::Closed
+                        )
+                    });
+                    let stale = recover_lock(&paired)
+                        .takeover_if_reconnecting(&client, active_disconnected);
+                    if let Some(stale) = stale {
+                        println!("[xydesk-host] ambil alih sesi lama {stale} -> {client}");
+                    }
 
                     // GERBANG WAJIB. Tanpa ini, penyerang cukup mengirim `offer`
                     // tanpa pernah menebak password: host akan menjawab, membuka

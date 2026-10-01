@@ -79,10 +79,10 @@ hangat, jelas, nggak menggurui — tapi TUNTAS. Jangan pelit informasi.
 | Sebutan | Untuk apa |
 |---|---|
 | **XyDesk** | nama aplikasinya |
-| **XySpace** | nama tim/studio yang menulis |
-| **Haekal Saputra** | penulis artikel (isi kolom `author`) — label resmi `XySpace` tampil sebagai badge |
+| **XyVerse** | nama tim/studio yang menulis |
+| **Haekal Saputra** | penulis artikel (isi kolom `author`) — label resmi `XyVerse` tampil sebagai badge |
 
-Kata "XySpace" dipakai untuk timnya, bukan produknya. Jangan ketukar.
+Kata "XyVerse" dipakai untuk timnya, bukan produknya. Jangan ketukar.
 
 ---
 
@@ -315,7 +315,7 @@ Salin ke PR kalau perlu.
 [ ] Setiap gambar punya keterangan yang menjelaskan isinya
 [ ] Tidak ada mockup, gambar stok, atau gambar hasil AI sebagai "screenshot"
 [ ] Penulis: "Haekal Saputra"
-[ ] Sebutan merek benar: XyDesk = aplikasi, XySpace = tim
+[ ] Sebutan merek benar: XyDesk = aplikasi, XyVerse = tim
 [ ] Excerpt ≤ 150 karakter dan enak dibaca sendiri
 [ ] Sudah dibaca keras-keras: terdengar seperti orang, bukan seperti bot
 [ ] Sampul 1424×752 ada di web/public/news/covers/
@@ -385,7 +385,7 @@ diganti tanpa persetujuan Founder.
 ### 11.3 Kata-kata seperti Founder/CEO menyampaikan
 
 - Semua teks di banner (jika ada) dan di artikel harus **nyata**,
-  seperti Haekal Saputra (Founder/CEO XySpace) berbicara langsung ke
+  seperti Haekal Saputra (Founder/CEO XyVerse Technology Global) berbicara langsung ke
   pengguna — jujur, hangat, tanpa jargon, tanpa buzzword.
 - Larang: "revolutionary", "cutting-edge", "game-changer", "terbaik di
   kelasnya", "solusi terdepan".

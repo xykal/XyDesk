@@ -39,6 +39,8 @@ export interface AutoInput {
   rttMs?: number;
   recentLossPct?: number;
   jitterBufferMs?: number;
+  /** Waktu decode rata-rata per frame (ms) dari getStats. */
+  decodeMs?: number;
   /** FPS yang benar-benar tiba di client. */
   deliveredFps?: number;
   /** Estimasi glass-to-glass (ms) dari probe latensi, bila ada. */
@@ -75,6 +77,9 @@ export function ceilingTier(input: AutoInput): { tier: number; reason: string } 
 export function overloaded(input: AutoInput, current: AutoDecision, baselineRttMs: number): string | null {
   if ((input.recentLossPct ?? 0) > 2) return 'kehilangan paket';
   if ((input.jitterBufferMs ?? 0) > 90) return 'antrean jitter tinggi';
+  // Decoder client (HP tanpa H264 hardware) yang butuh >20 ms/frame akan
+  // menumpuk antrean sendiri; tidak ada gunanya mengirim piksel lebih banyak.
+  if ((input.decodeMs ?? 0) > 20) return 'decode client lambat';
   const rtt = input.rttMs ?? 0;
   if (rtt > 0 && Number.isFinite(baselineRttMs) && rtt > baselineRttMs + 80 && rtt > baselineRttMs * 1.4) return 'RTT membengkak';
   const fps = input.deliveredFps;

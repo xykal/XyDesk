@@ -27,7 +27,7 @@ VIProductVersion "6.8.5.0"
 VIAddVersionKey /LANG=1033 "ProductName" "XyDesk Host Test"
 VIAddVersionKey /LANG=1033 "FileDescription" "Installer NSIS untuk paket uji engine Windows x64"
 VIAddVersionKey /LANG=1033 "FileVersion" "6.8.5"
-VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright 2026 XySpace Tech"
+VIAddVersionKey /LANG=1033 "LegalCopyright" "Copyright 2026 XyVerse Technology Global"
 
 !define MUI_ICON "..\windows\xydesk.ico"
 !define MUI_UNICON "..\windows\xydesk.ico"
@@ -114,7 +114,7 @@ safe:
   IfErrors failed
   WriteRegStr HKCU "${UNKEY}" "DisplayName" "${PRODUCT}"
   WriteRegStr HKCU "${UNKEY}" "DisplayVersion" "6.8.5"
-  WriteRegStr HKCU "${UNKEY}" "Publisher" "XySpace Tech"
+  WriteRegStr HKCU "${UNKEY}" "Publisher" "XyVerse Technology Global"
   WriteRegStr HKCU "${UNKEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNKEY}" "UninstallString" '$\"$INSTDIR\Uninstall-XyDesk-Host-Test.exe$\"'
   WriteRegStr HKCU "${UNKEY}" "QuietUninstallString" '$\"$INSTDIR\Uninstall-XyDesk-Host-Test.exe$\" /S'

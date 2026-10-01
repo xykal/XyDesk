@@ -1,0 +1,722 @@
+[
+ {
+  "key": "account_badge_guest",
+  "id": "MODE TAMU",
+  "en": "GUEST MODE",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_badge_active",
+  "id": "AKUN AKTIF · ketuk untuk ganti nama & foto",
+  "en": "ACTIVE ACCOUNT · tap to change name & photo",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_preferences",
+  "id": "Preferensi",
+  "en": "Preferences",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_appearance_lang",
+  "id": "Tampilan & bahasa",
+  "en": "Appearance & language",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_appearance_sub",
+  "id": "Bahasa tampilan aplikasi",
+  "en": "App display language",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_behavior_a11y",
+  "id": "Perilaku & aksesibilitas",
+  "en": "Behavior & accessibility",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_behavior_sub",
+  "id": "Getaran, kehalusan layar, dan animasi",
+  "en": "Vibration, refresh rate, and animation",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_streaming",
+  "id": "Streaming & kontrol",
+  "en": "Streaming & control",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_streaming_sub",
+  "id": "Kualitas gambar, suara, dan cara mengontrol",
+  "en": "Picture quality, sound, and how you control",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_notifications",
+  "id": "Notifikasi",
+  "en": "Notifications",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_notifications_sub",
+  "id": "Atur pemberitahuan dari XyDesk",
+  "en": "Manage notifications from XyDesk",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_system_privacy",
+  "id": "Sistem & privasi",
+  "en": "System & privacy",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_system_sub",
+  "id": "Izin aplikasi, pembaruan, dan catatan teknis",
+  "en": "App permissions, updates, and technical logs",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_account_info",
+  "id": "Akun & informasi",
+  "en": "Account & information",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_subscription",
+  "id": "Langganan",
+  "en": "Subscription",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_subscription_sub",
+  "id": "Status keanggotaan & riwayat sewa",
+  "en": "Membership status & rental history",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_control_mapping",
+  "id": "Control Mapping",
+  "en": "Control Mapping",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_control_mapping_sub",
+  "id": "Keyboard, joystick, mouse — mapping & profil kontrol",
+  "en": "Keyboard, joystick, mouse — mapping & control profiles",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_legal_about",
+  "id": "Legal & tentang XyDesk",
+  "en": "Legal & about XyDesk",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_legal_about_sub",
+  "id": "Ketentuan, privasi, dan lisensi",
+  "en": "Terms, privacy, and licenses",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_delete",
+  "id": "Hapus akun",
+  "en": "Delete account",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_delete_sub",
+  "id": "Akun dan semua datanya hilang, tidak bisa dibalikkan",
+  "en": "The account and all its data are gone, irreversibly",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "appearance_desc",
+  "id": "XyDesk cuma punya satu tampilan terang. Mode gelap memang tidak disediakan — bukan belum jadi.",
+  "en": "XyDesk has a single light theme. Dark mode is intentionally not offered — it is not unfinished.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_language_section",
+  "id": "Bahasa",
+  "en": "Language",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_language_sub",
+  "id": "Ganti bahasa tampilan",
+  "en": "Change display language",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "behavior_desc",
+  "id": "Atur getaran, animasi, dan catatan teknis.",
+  "en": "Vibration, animation, and technical logs.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "behavior_vibration_sub",
+  "id": "HP bergetar tiap kali kamu menekan tombol",
+  "en": "The phone vibrates every time you press a button",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "behavior_keep_on",
+  "id": "Layar tetap menyala saat sesi",
+  "en": "Keep screen on during a session",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "behavior_keep_on_sub",
+  "id": "Layar tidak akan mati selama kamu tersambung ke PC. Matikan kalau mau hemat baterai.",
+  "en": "The screen stays on while you are connected to the PC. Turn off to save battery.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "settings_developer",
+  "id": "Pengembang",
+  "en": "Developer",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_desc",
+  "id": "Kualitas sesi dapat disesuaikan dengan GPU dan jaringan.",
+  "en": "Session quality can be tuned to your GPU and network.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_video",
+  "id": "Video",
+  "en": "Video",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_codec",
+  "id": "Codec video",
+  "en": "Video codec",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_codec_sub",
+  "id": "Cara PC memproses gambar sebelum dikirim",
+  "en": "How the PC processes the picture before sending",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_resolution",
+  "id": "Resolusi & target FPS",
+  "en": "Resolution & target FPS",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_resolution_sub",
+  "id": "Makin tinggi makin jernih, tapi makin berat",
+  "en": "Higher is sharper, but heavier",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_bitrate",
+  "id": "Bitrate maksimal",
+  "en": "Maximum bitrate",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_bitrate_sub",
+  "id": "Batas pemakaian internet selama sesi",
+  "en": "Internet usage cap during a session",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_input_media",
+  "id": "Input & media",
+  "en": "Input & media",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_fps_mode",
+  "id": "Mode FPS / trackpad relatif",
+  "en": "FPS mode / relative trackpad",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_fps_mode_sub",
+  "id": "Buat main game FPS — kursor dikunci di tengah layar",
+  "en": "For FPS games — the cursor is locked to the screen center",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_pc_audio",
+  "id": "Audio PC",
+  "en": "PC audio",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_phone_mic",
+  "id": "Mikrofon HP",
+  "en": "Phone microphone",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_clipboard",
+  "id": "Sinkronisasi papan klip",
+  "en": "Clipboard sync",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_clipboard_sub",
+  "id": "Salin di HP, lalu tekan Ctrl+V di PC. Arah sebaliknya lewat tombol ambil di layar sesi.",
+  "en": "Copy on the phone, then press Ctrl+V on the PC. The other direction uses the fetch button on the session screen.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "streaming_clipboard_unavailable",
+  "id": "Belum bisa dipakai. Aplikasi XyDesk di PC belum mendukung fitur ini.",
+  "en": "Not available yet. The XyDesk app on the PC does not support this feature.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_desc",
+  "id": "Izin aplikasi, pembaruan, dan catatan teknis.",
+  "en": "App permissions, updates, and technical logs.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_device_access",
+  "id": "Akses perangkat",
+  "en": "Device access",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_permissions_sub",
+  "id": "Lihat izin yang dipakai XyDesk dan alasannya",
+  "en": "See the permissions XyDesk uses and why",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_app",
+  "id": "Aplikasi",
+  "en": "App",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_update_center",
+  "id": "Pusat pembaruan",
+  "en": "Update center",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_update_center_sub",
+  "id": "Cek dan pasang versi terbaru",
+  "en": "Check and install the latest version",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_devlog_sub",
+  "id": "Catatan teknis untuk melaporkan masalah",
+  "en": "Technical logs for reporting problems",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_recovery",
+  "id": "Pemulihan",
+  "en": "Recovery",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset",
+  "id": "Reset pengaturan ke bawaan",
+  "en": "Reset settings to defaults",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset_sub",
+  "id": "Semua pengaturan kembali seperti baru dipasang. Akun, bahasa, dan daftar PC tidak ikut hilang.",
+  "en": "Every setting goes back to a fresh install. Account, language, and PC list are kept.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset_title",
+  "id": "Reset pengaturan?",
+  "en": "Reset settings?",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset_body",
+  "id": "Kualitas gambar, suara, dan cara mengontrol kembali ke setelan awal.\\n\\nAkun, bahasa, dan daftar PC kamu tidak berubah.",
+  "en": "Picture quality, sound, and control settings return to their defaults.\n\nYour account, language, and PC list stay unchanged.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "cancel",
+  "id": "Batal",
+  "en": "Cancel",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset_action",
+  "id": "Reset",
+  "en": "Reset",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "system_reset_done",
+  "id": "Pengaturan dikembalikan ke bawaan",
+  "en": "Settings restored to defaults",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "legal_title",
+  "id": "Legal & tentang",
+  "en": "Legal & about",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "legal_desc",
+  "id": "Ketentuan pakai, privasi, dan lisensi.",
+  "en": "Terms of use, privacy, and licenses.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "legal_section",
+  "id": "Legal",
+  "en": "Legal",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "about_sub",
+  "id": "Versi aplikasi dan apa saja yang berubah",
+  "en": "App version and what changed",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "about_diagnostics",
+  "id": "Diagnostik",
+  "en": "Diagnostics",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_rename_title",
+  "id": "Ganti nama tampilan",
+  "en": "Change display name",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_new_name",
+  "id": "Nama baru",
+  "en": "New name",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "save",
+  "id": "Simpan",
+  "en": "Save",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_edit",
+  "id": "Edit profil",
+  "en": "Edit profile",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_rename",
+  "id": "Ganti nama",
+  "en": "Change name",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_change_photo",
+  "id": "Ganti foto profil",
+  "en": "Change profile photo",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_pick_preset",
+  "id": "Pilih dari preset",
+  "en": "Pick from presets",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_upload_gallery",
+  "id": "Unggah dari galeri",
+  "en": "Upload from gallery",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_custom_url",
+  "id": "Pakai URL gambar sendiri",
+  "en": "Use your own image URL",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_reset_initial",
+  "id": "Kembalikan ke inisial",
+  "en": "Back to initials",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "profile_image_url",
+  "id": "URL gambar",
+  "en": "Image URL",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_delete_title",
+  "id": "Hapus akun?",
+  "en": "Delete account?",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_delete_body",
+  "id": "Akun dan data profil di server dihapus permanen. Tindakan ini tidak dapat dibatalkan.",
+  "en": "The account and profile data on the server are deleted permanently. This cannot be undone.",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "account_delete_forever",
+  "id": "Hapus permanen",
+  "en": "Delete permanently",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "codec_av1_sub",
+  "id": "Latensi rendah dan bandwidth efisien",
+  "en": "Low latency and efficient bandwidth",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "codec_hevc_sub",
+  "id": "Warna visual dan dukungan HDR",
+  "en": "Rich color and HDR support",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "codec_h264_sub",
+  "id": "Kompatibilitas GPU paling luas",
+  "en": "Widest GPU compatibility",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "res_720_sub",
+  "id": "Hemat data",
+  "en": "Saves data",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "res_1080_sub",
+  "id": "Seimbang untuk gaming",
+  "en": "Balanced for gaming",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "res_1440_sub",
+  "id": "Esport latensi rendah",
+  "en": "Low-latency esports",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "res_4k_sub",
+  "id": "Kualitas visual tertinggi",
+  "en": "Highest visual quality",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "bitrate_10_sub",
+  "id": "Hemat bandwidth",
+  "en": "Saves bandwidth",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "bitrate_25_sub",
+  "id": "Kualitas seimbang",
+  "en": "Balanced quality",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ },
+ {
+  "key": "bitrate_50_sub",
+  "id": "LAN gigabit",
+  "en": "Gigabit LAN",
+  "files": [
+   "lib/features/account/account_page.dart"
+  ]
+ }
+]

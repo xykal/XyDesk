@@ -3,11 +3,11 @@ import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-// baca version dari pubspec.yaml biar sinkron
+// baca version dari berkas VERSION biar sinkron
 let appVersion = '6.8.1'
 try {
-  const pubspec = readFileSync(fileURLToPath(new URL('../pubspec.yaml', import.meta.url)), 'utf8')
-  appVersion = (pubspec.match(/^version:\s*([0-9]+\.[0-9]+\.[0-9]+)/m) || [])[1] || appVersion
+  const versionFile = readFileSync(fileURLToPath(new URL('../VERSION', import.meta.url)), 'utf8')
+  appVersion = (versionFile.match(/^([0-9]+\.[0-9]+\.[0-9]+)/) || [])[1] || appVersion
 } catch {}
 
 export default defineConfig({
