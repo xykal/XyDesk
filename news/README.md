@@ -21,7 +21,7 @@ Setiap rilis WAJIB punya artikel berita.
 **Baca dulu [`docs/NEWS_STYLE.md`](../docs/NEWS_STYLE.md) sebelum menulis.**
 Berita bukan changelog: tulis dampaknya untuk pengguna, bukan daftar
 pekerjaan. Tidak ada nama berkas, nama modul, atau nomor versi di judul.
-Penulis artikel selalu `Haekal Saputra` (identitas resmi; label `XySpace`
+Penulis artikel selalu `Haekal Saputra` (identitas resmi; label `XyVerse`
 tampil otomatis sebagai badge di klien).
 
 **Pembagian penulisan (sejak 3 Sep 2026):** tiap agent menulis bahan

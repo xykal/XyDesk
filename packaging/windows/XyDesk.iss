@@ -28,11 +28,11 @@
 AppId={{9F3DEB68-65B5-48C9-A92D-5A3E7B2CB304}
 AppName=XyDesk
 AppVersion={#Version}
-AppPublisher=XySpace Tch
+AppPublisher=XyVerse Tch
 AppPublisherURL=https://www.xydesk.my.id
 AppSupportURL=https://github.com/xykal/XyDesk/issues
 AppUpdatesURL=https://github.com/xykal/XyDesk/releases
-AppCopyright=Copyright (C) 2024-2026 XySpace Tch
+AppCopyright=Copyright (C) 2024-2026 XyVerse Tch
 DefaultDirName={autopf}\XyDesk
 DefaultGroupName=XyDesk
 DisableProgramGroupPage=yes
@@ -154,7 +154,7 @@ Filename: "{app}\drivers\audio\uninstall-audio.bat"; \
   RunOnceId: "audiouninstall"
 
 [Messages]
-BeveledLabel=XyDesk by XySpace Tch
+BeveledLabel=XyDesk by XyVerse Tch
 SetupWindowTitle=XyDesk Setup (versi {#Version})
 WelcomeLabel2=Ini akan memasang XyDesk versi {#Version} di komputer kamu.%n%nDisarankan menutup aplikasi lain sebelum melanjutkan.
 FinishedHeadingLabel=Instalasi XyDesk selesai

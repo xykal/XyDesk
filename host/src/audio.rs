@@ -346,10 +346,93 @@ mod windows {
             .collect()
     }
 
-    /// Daftar (ID, friendly name) output — dipakai virtual_mic.rs untuk deteksi VB-CABLE
-    pub fn list_outputs_detailed() -> Vec<(String, String)> {
-        use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
+    fn is_virtual_audio_name(name: &str) -> bool {
+        let n = name.to_ascii_lowercase();
+        n.contains("cable")
+            || n.contains("vb-audio")
+            || n.contains("voicemeeter")
+            || n.contains("vac")
+            || n.contains("virtual")
+    }
+
+    fn collect_endpoints(
+        enumerator: &IMMDeviceEnumerator,
+        flow: windows::Win32::Media::Audio::EDataFlow,
+        mask: windows::Win32::Media::Audio::DEVICE_STATE,
+        only_virtual: bool,
+        out: &mut Vec<(String, String)>,
+    ) {
         use windows::Win32::System::Com::STGM_READ;
+        let Ok(collection) = (unsafe { enumerator.EnumAudioEndpoints(flow, mask) }) else {
+            return;
+        };
+        let Ok(count) = (unsafe { collection.GetCount() }) else {
+            return;
+        };
+        for i in 0..count {
+            let Ok(item) = (unsafe { collection.Item(i) }) else {
+                continue;
+            };
+            let Ok(id_pw) = (unsafe { item.GetId() }) else {
+                continue;
+            };
+            let Ok(id) = (unsafe { id_pw.to_string() }) else {
+                continue;
+            };
+            if out.iter().any(|(existing_id, _)| existing_id == &id) {
+                continue;
+            }
+            let name = unsafe {
+                if let Ok(props) = item.OpenPropertyStore(STGM_READ) {
+                    let friendly_key = windows::Win32::Foundation::PROPERTYKEY {
+                        fmtid: windows::core::GUID::from_u128(
+                            0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
+                        ),
+                        pid: 14,
+                    };
+                    if let Ok(var) = props.GetValue(&friendly_key) {
+                        let pwsz = var.Anonymous.Anonymous.Anonymous.pwszVal;
+                        if !pwsz.is_null() && var.Anonymous.Anonymous.vt.0 == 31 {
+                            pwsz.to_string().unwrap_or_else(|_| id.clone())
+                        } else {
+                            let desc_key = windows::Win32::Foundation::PROPERTYKEY {
+                                fmtid: windows::core::GUID::from_u128(
+                                    0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
+                                ),
+                                pid: 2,
+                            };
+                            if let Ok(var2) = props.GetValue(&desc_key) {
+                                let pwsz2 = var2.Anonymous.Anonymous.Anonymous.pwszVal;
+                                if !pwsz2.is_null() && var2.Anonymous.Anonymous.vt.0 == 31 {
+                                    pwsz2.to_string().unwrap_or_else(|_| id.clone())
+                                } else {
+                                    id.clone()
+                                }
+                            } else {
+                                id.clone()
+                            }
+                        }
+                    } else {
+                        id.clone()
+                    }
+                } else {
+                    id.clone()
+                }
+            };
+            if !only_virtual || is_virtual_audio_name(&name) {
+                out.push((id, name));
+            }
+        }
+    }
+
+    /// Daftar (ID, friendly name) output — dipakai virtual_mic.rs untuk deteksi VB-CABLE.
+    /// Di sesi RDP dengan pengalihan Remote Audio aktif, Windows menandai endpoint lokal
+    /// (termasuk CABLE Input) sebagai UNPLUGGED/NOTPRESENT; pass kedua memastikan
+    /// endpoint virtual tetap terdeteksi.
+    pub fn list_outputs_detailed() -> Vec<(String, String)> {
+        use windows::Win32::Media::Audio::{
+            DEVICE_STATE, DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE,
+        };
         let Ok(_com) = init_com() else {
             return Vec::new();
         };
@@ -358,87 +441,23 @@ mod windows {
                 Ok(e) => e,
                 Err(_) => return Vec::new(),
             };
-        let collection =
-            match unsafe { enumerator.EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE) } {
-                Ok(c) => c,
-                Err(_) => return Vec::new(),
-            };
-        let count = match unsafe { collection.GetCount() } {
-            Ok(c) => c,
-            Err(_) => return Vec::new(),
-        };
         let mut out = Vec::new();
-        for i in 0..count {
-            if let Ok(item) = unsafe { collection.Item(i) } {
-                if let Ok(id_pw) = unsafe { item.GetId() } {
-                    if let Ok(id) = unsafe { id_pw.to_string() } {
-                        // Friendly name via property store
-                        let name = unsafe {
-                            if let Ok(props) = item.OpenPropertyStore(STGM_READ) {
-                                // PKEY_Device_FriendlyName = {A45C254E-DF1C-4EFD-8020-67D146A850E0},14
-                                // PKEY_Device_DeviceDesc = {A45C254E-DF1C-4EFD-8020-67D146A850E0},2
-                                // Kita coba baca friendly name, fallback ke DeviceDesc
-                                let friendly_key = windows::Win32::Foundation::PROPERTYKEY {
-                                    fmtid: windows::core::GUID::from_u128(
-                                        0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
-                                    ),
-                                    pid: 14,
-                                };
-                                if let Ok(var) = props.GetValue(&friendly_key) {
-                                    // VT_LPWSTR property; fall back to the device ID.
-                                    let pwsz = var.Anonymous.Anonymous.Anonymous.pwszVal;
-                                    if !pwsz.is_null() && var.Anonymous.Anonymous.vt.0 == 31 {
-                                        let ws = pwsz;
-                                        if let Ok(str) = ws.to_string() {
-                                            str
-                                        } else {
-                                            id.clone()
-                                        }
-                                    } else {
-                                        // Fallback: coba baca DeviceDesc (pid 2)
-                                        let desc_key = windows::Win32::Foundation::PROPERTYKEY {
-                                            fmtid: windows::core::GUID::from_u128(
-                                                0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
-                                            ),
-                                            pid: 2,
-                                        };
-                                        if let Ok(var2) = props.GetValue(&desc_key) {
-                                            let pwsz2 = var2.Anonymous.Anonymous.Anonymous.pwszVal;
-                                            if !pwsz2.is_null()
-                                                && var2.Anonymous.Anonymous.vt.0 == 31
-                                            {
-                                                let ws2 = pwsz2;
-                                                if let Ok(str2) = ws2.to_string() {
-                                                    str2
-                                                } else {
-                                                    id.clone()
-                                                }
-                                            } else {
-                                                id.clone()
-                                            }
-                                        } else {
-                                            id.clone()
-                                        }
-                                    }
-                                } else {
-                                    id.clone()
-                                }
-                            } else {
-                                id.clone()
-                            }
-                        };
-                        out.push((id, name));
-                    }
-                }
-            }
-        }
+        collect_endpoints(&enumerator, eRender, DEVICE_STATE_ACTIVE, false, &mut out);
+        collect_endpoints(
+            &enumerator,
+            eRender,
+            DEVICE_STATE(DEVICE_STATEMASK_ALL),
+            true,
+            &mut out,
+        );
         out
     }
 
     /// Daftar (ID, friendly name) input (capture) — untuk deteksi virtual mic
     pub fn list_inputs_detailed() -> Vec<(String, String)> {
-        use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
-        use windows::Win32::System::Com::STGM_READ;
+        use windows::Win32::Media::Audio::{
+            DEVICE_STATE, DEVICE_STATEMASK_ALL, DEVICE_STATE_ACTIVE,
+        };
         let Ok(_com) = init_com() else {
             return Vec::new();
         };
@@ -447,52 +466,15 @@ mod windows {
                 Ok(e) => e,
                 Err(_) => return Vec::new(),
             };
-        let collection =
-            match unsafe { enumerator.EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE) } {
-                Ok(c) => c,
-                Err(_) => return Vec::new(),
-            };
-        let count = match unsafe { collection.GetCount() } {
-            Ok(c) => c,
-            Err(_) => return Vec::new(),
-        };
         let mut out = Vec::new();
-        for i in 0..count {
-            if let Ok(item) = unsafe { collection.Item(i) } {
-                if let Ok(id_pw) = unsafe { item.GetId() } {
-                    if let Ok(id) = unsafe { id_pw.to_string() } {
-                        let name = unsafe {
-                            if let Ok(props) = item.OpenPropertyStore(STGM_READ) {
-                                let friendly_key = windows::Win32::Foundation::PROPERTYKEY {
-                                    fmtid: windows::core::GUID::from_u128(
-                                        0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
-                                    ),
-                                    pid: 14,
-                                };
-                                if let Ok(var) = props.GetValue(&friendly_key) {
-                                    let pwsz = var.Anonymous.Anonymous.Anonymous.pwszVal;
-                                    if !pwsz.is_null() && var.Anonymous.Anonymous.vt.0 == 31 {
-                                        let ws = pwsz;
-                                        if let Ok(str) = ws.to_string() {
-                                            str
-                                        } else {
-                                            id.clone()
-                                        }
-                                    } else {
-                                        id.clone()
-                                    }
-                                } else {
-                                    id.clone()
-                                }
-                            } else {
-                                id.clone()
-                            }
-                        };
-                        out.push((id, name));
-                    }
-                }
-            }
-        }
+        collect_endpoints(&enumerator, eCapture, DEVICE_STATE_ACTIVE, false, &mut out);
+        collect_endpoints(
+            &enumerator,
+            eCapture,
+            DEVICE_STATE(DEVICE_STATEMASK_ALL),
+            true,
+            &mut out,
+        );
         out
     }
 

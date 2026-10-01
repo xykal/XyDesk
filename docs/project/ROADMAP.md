@@ -168,8 +168,8 @@ dengan TURN, stabil 30 menit tanpa re-buffer.
 - Splash revisi ulang (cahaya ungu lembut + tile + wordmark gradient).
 - `CHANGELOG.md` wajib per rilis — dilampirkan otomatis ke GitHub Release;
   isi rilis juga dimuat di Release Notes.
-- Email berita kini bertanda tangan premium: badge XySpace + **Haekal
-  Saputra (Founder, XySpace)**.
+- Email berita kini bertanda tangan premium: badge XyVerse + **Haekal
+  Saputra (Founder, XyVerse Technology Global)**.
 - Versi: Android 6.1.0+21 · Web 6.1.0 · Desktop 6.1.0 · Host 6.1.0.
 - **Uji berikutnya (lab Windows)**: bunyi loopback terdengar di Android/Web,
   mic terdengar di speaker PC, pindah monitor saat sesi berjalan, volume

@@ -16,7 +16,7 @@
 [![News Status](https://img.shields.io/github/actions/workflow/status/xykal/XyDesk/deploy-news.yml?label=News%20Worker&logo=cloudflarepages&logoColor=white&style=flat-square)](https://news.xydesk.my.id)
 [![Web Client](https://img.shields.io/badge/Web_Client-Live-success?logo=googlechrome&logoColor=white&style=flat-square)](https://app.xydesk.my.id)
 
-[![Flutter](https://img.shields.io/badge/Client-Flutter_3.44+-02569B?logo=flutter&logoColor=white&style=flat-square)](https://flutter.dev)
+[![Android](https://img.shields.io/badge/Client-Kotlin_%2B_C%2B%2B_native-3DDC84?logo=android&logoColor=white&style=flat-square)](android-native/README.md)
 [![Rust](https://img.shields.io/badge/Host_Engine-Rust_1.80+-000000?logo=rust&logoColor=white&style=flat-square)](host/)
 [![Win32](https://img.shields.io/badge/Panel_Windows-Win32_C++-0078D6?logo=windows&logoColor=white&style=flat-square)](packaging/native-host/)
 [![TypeScript](https://img.shields.io/badge/Web_&_Edge-TypeScript_5-3178C6?logo=typescript&logoColor=white&style=flat-square)](web/)
@@ -37,7 +37,7 @@
 - **🎮 In-Session Gaming HUD & Haptic Virtual Controller**: Kontrol overlay ABXY & D-pad virtual berhaptik mikro, keyboard mekanis virtual dengan modifier sticky, dan gesture switch intuitif.
 - **🔄 In-App Update Experience (AI Portrait Modal)**: Dialog visual pembaruan rasio 3:4 portrait AI modern, progress unduh di latar belakang via Android system tray push notification, dan instalasi instan direct-to-package-installer.
 - **🖥️ Multi-Platform Native Architecture**:
-  - **Android Client**: Flutter native dengan rendering WebRTC hardware decoder, Picture-in-Picture (PiP), dan sensor adaptif.
+  - **Android Client**: Kotlin + Jetpack Compose (tanpa Material) dengan pustaka C++ sendiri `libstreamxy` (protokol input, telemetri) dan decoder H.264 low-latency langsung ke Surface.
   - **Windows Host & Desktop Shell**: Rust supervisor engine yang ringan dipadukan dengan cangkang modern Tauri v2 + Next.js.
   - **Web Client**: Aplikasi web PWA modern di `https://app.xydesk.my.id` yang siap diakses dari peramban mana pun tanpa instalasi.
 - **📺 Multi-Monitor & Audio Loopback**: Pindah layar live antar monitor tanpa memutus sesi, capture audio loopback WASAPI stereo berdefinisi tinggi, dan mikrofon passthrough dua arah.
@@ -77,7 +77,7 @@ Seluruh artefak rilis resmi otomatis diverifikasi dengan checksum `SHA256SUMS.tx
 ┌───────────────────────────┐         ┌───────────────────────────┐
 │     XyDesk Client         │         │      XyDesk Host          │
 │   (Android / Web / PC)    │◄───────►│  (Windows Rust Engine)    │
-│  - Flutter WebRTC Video   │  P2P    │  - DXGI Desktop Dupl.     │
+│  - Native WebRTC + LL dec │  P2P    │  - DXGI Desktop Dupl.     │
 │  - Audio Track Renderer   │  DTLS   │  - WASAPI Audio Capture   │
 │  - Gaming HUD / Virtual KB│  SRTP   │  - Virtual Display & Mic  │
 └───────────────────────────┘  Media  └───────────────────────────┘
@@ -88,21 +88,15 @@ Seluruh artefak rilis resmi otomatis diverifikasi dengan checksum `SHA256SUMS.tx
 ## 💻 Memulai Pengembangan Lokal
 
 ### Prasyarat
-- **Flutter SDK**: `3.44.9+` (Channel Stable) & **Dart**: `3.12+`
+- **JDK 17**, **Android SDK 35**, **NDK + CMake 3.22** (diunduh Gradle otomatis)
 - **Rust**: `1.80+` (Toolchain stable with `x86_64-pc-windows-msvc` / `aarch64-pc-windows-msvc`)
 - **Node.js**: `v20+` atau `v24` & **npm**: `10+`
 
-### 1. Menjalankan Aplikasi Flutter (Android)
+### 1. Membangun Aplikasi Android (native)
 ```bash
-# Pasang dependensi Flutter
-flutter pub get
-
-# Jalankan pengujian unit & analisis statis
-flutter analyze --fatal-infos --fatal-warnings
-flutter test
-
-# Jalankan di emulator / perangkat fisik
-flutter run
+cd android-native
+gradle assembleDebug          # APK debug per ABI + universal
+# Rilis bertanda tangan dibangun di CI (Build → Release). Lihat android-native/README.md.
 ```
 
 ### 2. Membangun Host Engine (Rust)

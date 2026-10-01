@@ -228,7 +228,10 @@ function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{devi
             </button>
           </div>
         ) : (
-          <span>Mode tamu siap digunakan</span>
+          <div className="mode-switch" role="tablist" aria-label="Mode akses">
+            <button type="button" role="tab" aria-selected="true" className="active">Mode tamu</button>
+            <button type="button" role="tab" aria-selected="false" onClick={() => setAuthStep('login')}>Masuk akun</button>
+          </div>
         )}
         {profile ? (
           <span className="account-actions">
@@ -252,9 +255,7 @@ function RemoteApp({reconnectDevice,restoreScreen=false}:{reconnectDevice?:{devi
             </button>
             <button className="text-action" onClick={signOut}>Keluar</button>
           </span>
-        ) : (
-          <button className="text-action" onClick={() => setAuthStep('login')}>Masuk akun</button>
-        )}
+        ) : null}
       </div>
       <ConnectScreen
         initialHostId={reconnectDevice?.deviceId}

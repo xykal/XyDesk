@@ -1,0 +1,893 @@
+[
+ {
+  "key": "st_live_stats",
+  "id": "Statistik langsung",
+  "en": "Live Stats",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Live Stats"
+ },
+ {
+  "key": "st_live_sub",
+  "id": "Realtime dari koneksi — ms, fps, bitrate",
+  "en": "Realtime from connection — ms, fps, bitrate",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Realtime from connection — ms, fps, bitrate"
+ },
+ {
+  "key": "st_no_session",
+  "id": "Belum ada sesi. Angka kualitas muncul begitu PC tersambung.",
+  "en": "No session yet. Quality numbers appear once the PC is connected.",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Belum ada sesi. Angka kualitas muncul begitu PC tersambung."
+ },
+ {
+  "key": "st_resolution",
+  "id": "Resolusi",
+  "en": "Resolution",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Resolution"
+ },
+ {
+  "key": "st_bitrate",
+  "id": "Bitrate",
+  "en": "Bitrate",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Bitrate"
+ },
+ {
+  "key": "st_ping",
+  "id": "Ping (realtime)",
+  "en": "Ping (realtime)",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Ping (realtime)"
+ },
+ {
+  "key": "st_buffer",
+  "id": "Buffer video",
+  "en": "Video buffer",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Buffer video"
+ },
+ {
+  "key": "st_decode",
+  "id": "Decode / frame",
+  "en": "Decode / frame",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Decode / frame"
+ },
+ {
+  "key": "st_loss",
+  "id": "Packet loss",
+  "en": "Packet loss",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Packet loss"
+ },
+ {
+  "key": "st_turn",
+  "id": "Relay TURN",
+  "en": "TURN relay",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Relay TURN"
+ },
+ {
+  "key": "st_codec",
+  "id": "Codec",
+  "en": "Codec",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Codec"
+ },
+ {
+  "key": "st_quality",
+  "id": "Kualitas",
+  "en": "Quality",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Quality"
+ },
+ {
+  "key": "st_quality_sub",
+  "id": "Otomatis menyesuaikan jaringan — atau pilih tetap",
+  "en": "Auto adapts to network — or pick fixed",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Auto adapts to network — or pick fixed"
+ },
+ {
+  "key": "st_auto",
+  "id": "Otomatis",
+  "en": "Auto",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Auto"
+ },
+ {
+  "key": "st_medium",
+  "id": "Sedang",
+  "en": "Medium",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Medium"
+ },
+ {
+  "key": "st_high",
+  "id": "Tinggi",
+  "en": "High",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "High"
+ },
+ {
+  "key": "st_ultra",
+  "id": "Ultra",
+  "en": "Ultra",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Ultra"
+ },
+ {
+  "key": "st_bitrate_sub",
+  "id": "Otomatis = host menentukan, atau batas manual",
+  "en": "Auto = host decides, or manual limit",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Auto = host decides, or manual limit"
+ },
+ {
+  "key": "st_custom_bitrate",
+  "id": "Batas bitrate kustom",
+  "en": "Custom bitrate limit",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Custom bitrate limit"
+ },
+ {
+  "key": "st_pairing",
+  "id": "Sedang menghubungi PC",
+  "en": "Contacting PC",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Sedang menghubungi PC"
+ },
+ {
+  "key": "st_negotiating",
+  "id": "Sedang menyiapkan koneksi",
+  "en": "Setting up connection",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Sedang menyiapkan koneksi"
+ },
+ {
+  "key": "st_rejected",
+  "id": "PC menolak sambungan",
+  "en": "PC rejected the connection",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "PC menolak sambungan"
+ },
+ {
+  "key": "st_offline",
+  "id": "PC tidak online",
+  "en": "PC is offline",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "PC tidak online"
+ },
+ {
+  "key": "st_busy",
+  "id": "PC sedang dipakai sesi lain",
+  "en": "PC is in use by another session",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "PC sedang dipakai sesi lain"
+ },
+ {
+  "key": "st_ended",
+  "id": "Sesi sudah ditutup",
+  "en": "Session closed",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Sesi sudah ditutup"
+ },
+ {
+  "key": "st_failed",
+  "id": "Koneksi gagal",
+  "en": "Connection failed",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Koneksi gagal"
+ },
+ {
+  "key": "st_connected",
+  "id": "Tersambung",
+  "en": "Connected",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Tersambung"
+ },
+ {
+  "key": "st_not_connected",
+  "id": "Belum tersambung",
+  "en": "Not connected",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Belum tersambung"
+ },
+ {
+  "key": "st_start_from_list",
+  "id": "Belum ada sesi berjalan. Mulai dari daftar perangkat.",
+  "en": "No session running. Start from the device list.",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Belum ada sesi berjalan. Mulai dari daftar perangkat."
+ },
+ {
+  "key": "st_pc_screen",
+  "id": "Layar PC",
+  "en": "PC screen",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "Layar PC"
+ },
+ {
+  "key": "st_multi_monitor",
+  "id": "PC ini punya lebih dari satu monitor.",
+  "en": "This PC has more than one monitor.",
+  "files": [
+   "lib/features/session/panel_stream.dart"
+  ],
+  "literal": "PC ini punya lebih dari satu monitor."
+ },
+ {
+  "key": "ss_guest_ended",
+  "id": "Sesi tamu berakhir",
+  "en": "Guest session ended",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesi tamu berakhir"
+ },
+ {
+  "key": "ss_guest_soon",
+  "id": "Sesaat lagi berakhir!",
+  "en": "Ending very soon!",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesaat lagi berakhir!"
+ },
+ {
+  "key": "ss_guest",
+  "id": "Sesi tamu",
+  "en": "Guest session",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesi tamu"
+ },
+ {
+  "key": "ss_guest_ended_body",
+  "id": "Sesi tamu telah berakhir. Silakan login untuk melanjutkan.",
+  "en": "The guest session has ended. Please sign in to continue.",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesi tamu telah berakhir. Silakan login untuk melanjutkan."
+ },
+ {
+  "key": "ss_guest_soon_body",
+  "id": "Sesi akan berakhir dalam kurang dari 5 menit. Segera simpan pekerjaanmu.",
+  "en": "The session ends in under 5 minutes. Save your work now.",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesi akan berakhir dalam kurang dari 5 menit. Segera simpan pekerjaanmu."
+ },
+ {
+  "key": "ss_this_session",
+  "id": "Sesi ini",
+  "en": "This session",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sesi ini"
+ },
+ {
+  "key": "ss_device",
+  "id": "Perangkat",
+  "en": "Device",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Perangkat"
+ },
+ {
+  "key": "ss_duration",
+  "id": "Durasi",
+  "en": "Duration",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Durasi"
+ },
+ {
+  "key": "ss_link",
+  "id": "Sambungan",
+  "en": "Connection",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sambungan"
+ },
+ {
+  "key": "ss_direct",
+  "id": "Langsung ke PC",
+  "en": "Direct to PC",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Langsung ke PC"
+ },
+ {
+  "key": "ss_pairing",
+  "id": "Menghubungi PC",
+  "en": "Contacting PC",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Menghubungi PC"
+ },
+ {
+  "key": "ss_negotiating",
+  "id": "Menyiapkan koneksi",
+  "en": "Setting up connection",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Menyiapkan koneksi"
+ },
+ {
+  "key": "ss_busy",
+  "id": "PC dipakai sesi lain",
+  "en": "PC in use by another session",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "PC dipakai sesi lain"
+ },
+ {
+  "key": "ss_offline",
+  "id": "PC tidak online",
+  "en": "PC is offline",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "PC tidak online"
+ },
+ {
+  "key": "ss_rejected",
+  "id": "Ditolak PC",
+  "en": "Rejected by PC",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Ditolak PC"
+ },
+ {
+  "key": "ss_failed",
+  "id": "Gagal",
+  "en": "Failed",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Gagal"
+ },
+ {
+  "key": "ss_closed",
+  "id": "Sudah ditutup",
+  "en": "Closed",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Sudah ditutup"
+ },
+ {
+  "key": "ss_not_connected",
+  "id": "Belum tersambung",
+  "en": "Not connected",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Belum tersambung"
+ },
+ {
+  "key": "ss_video",
+  "id": "Gambar",
+  "en": "Video",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Gambar"
+ },
+ {
+  "key": "ss_no_video",
+  "id": "Belum ada gambar",
+  "en": "No video yet",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Belum ada gambar"
+ },
+ {
+  "key": "ss_audio_from_pc",
+  "id": "Suara dari PC",
+  "en": "Audio from PC",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Suara dari PC"
+ },
+ {
+  "key": "ss_no_audio",
+  "id": "Tidak ada suara masuk",
+  "en": "No incoming audio",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Tidak ada suara masuk"
+ },
+ {
+  "key": "ss_mic_to_pc",
+  "id": "Mik ke PC",
+  "en": "Mic to PC",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Mik ke PC"
+ },
+ {
+  "key": "ss_on",
+  "id": "Aktif",
+  "en": "On",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Aktif"
+ },
+ {
+  "key": "ss_off",
+  "id": "Mati",
+  "en": "Off",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Mati"
+ },
+ {
+  "key": "ss_disconnect",
+  "id": "Putuskan sesi",
+  "en": "Disconnect session",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Putuskan sesi"
+ },
+ {
+  "key": "ss_audio_engine",
+  "id": "Engine audio belum terhubung",
+  "en": "Audio engine not connected",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Engine audio belum terhubung"
+ },
+ {
+  "key": "ss_free_beta",
+  "id": "GRATIS BETA",
+  "en": "FREE BETA",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "GRATIS BETA"
+ },
+ {
+  "key": "ss_audio_note",
+  "id": "Kontrol di bawah menyiapkan preferensi sesi; pilihan audio dan mikrofon utama disimpan. Tidak ada audio yang dikirim atau diputar pada build ini.",
+  "en": "The controls below set session preferences; the audio and primary microphone choices are saved. No audio is sent or played in this build.",
+  "files": [
+   "lib/features/session/panel_session.dart"
+  ],
+  "literal": "Kontrol di bawah menyiapkan preferensi sesi; pilihan audio dan mikrofon utama disimpan. Tidak ada audio yang dikirim atau diputar pada build ini."
+ },
+ {
+  "key": "ct_gaming",
+  "id": "Kontrol Gaming",
+  "en": "Gaming Controls",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Gaming Controls"
+ },
+ {
+  "key": "ct_desktop",
+  "id": "Kontrol Desktop",
+  "en": "Desktop Controls",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Desktop Controls"
+ },
+ {
+  "key": "ct_gaming_sub",
+  "id": "HUD sentuh, joystick, keypad, keyboard — lega & lengkap",
+  "en": "Touch HUD, joystick, keypad, keyboard — spacious & complete",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Touch HUD, joystick, keypad, keyboard — spacious & complete"
+ },
+ {
+  "key": "ct_desktop_sub",
+  "id": "Pointer, klik, keyboard, clipboard — semua bisa diatur",
+  "en": "Pointer, click, keyboard, clipboard — all adjustable",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Pointer, click, keyboard, clipboard — all adjustable"
+ },
+ {
+  "key": "ct_kb_select",
+  "id": "Pilihan Keyboard",
+  "en": "Keyboard Selection",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Keyboard Selection"
+ },
+ {
+  "key": "ct_kb_select_sub",
+  "id": "Pilih sumber input — XyDesk penuh atau IME sistem",
+  "en": "Pick input source — XyDesk full or system IME",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Pick input source — XyDesk full or system IME"
+ },
+ {
+  "key": "ct_kb_full",
+  "id": "XyDesk Penuh",
+  "en": "XyDesk Full",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "XyDesk Full"
+ },
+ {
+  "key": "ct_kb_ime",
+  "id": "IME Sistem",
+  "en": "System IME",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "System IME"
+ },
+ {
+  "key": "ct_kb_ime_desc",
+  "id": "Keyboard sistem (IME) — untuk formulir, pencarian, mengetik cepat. Mendukung keyboard fisik via Bluetooth/USB.",
+  "en": "System keyboard (IME) — for forms, search, fast typing. Supports physical keyboard via Bluetooth/USB.",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "System keyboard (IME) — for forms, search, fast typing. Supports physical keyboard via Bluetooth/USB."
+ },
+ {
+  "key": "ct_kb_full_desc",
+  "id": "Keyboard virtual XyDesk (F1-F12, modifier, split/penuh/ringkas) — untuk game & kontrol presisi. Mendukung pemetaan keyboard fisik.",
+  "en": "XyDesk virtual keyboard (F1-F12, modifiers, split/full/compact) — for games & precise control. Supports physical keyboard mapping.",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "XyDesk virtual keyboard (F1-F12, modifiers, split/full/compact) — for games & precise control. Supports physical keyboard mapping."
+ },
+ {
+  "key": "ct_kb_layout",
+  "id": "Tata letak keyboard",
+  "en": "Keyboard layout",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Keyboard layout"
+ },
+ {
+  "key": "ct_kb_layout_sub",
+  "id": "Split / Penuh / Ringkas",
+  "en": "Split / Full / Compact",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Split / Full / Compact"
+ },
+ {
+  "key": "ct_kb_layout_desc",
+  "id": "Tata letak keyboard: Split (dua jempol), Penuh, Ringkas — ubah di header keyboard virtual",
+  "en": "Keyboard layout: Split (two thumbs), Full, Compact — change in virtual keyboard header",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Keyboard layout: Split (two thumbs), Full, Compact — change in virtual keyboard header"
+ },
+ {
+  "key": "ct_phys_kb",
+  "id": "Keyboard fisik",
+  "en": "Physical keyboard",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Physical keyboard"
+ },
+ {
+  "key": "ct_auto_detected",
+  "id": "Terdeteksi otomatis",
+  "en": "Auto-detected",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Auto-detected"
+ },
+ {
+  "key": "ct_phys_kb_desc",
+  "id": "Keyboard fisik: QWERTY terdeteksi otomatis, Bluetooth/USB didukung",
+  "en": "Physical keyboard: QWERTY auto-detected, Bluetooth/USB supported",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Physical keyboard: QWERTY auto-detected, Bluetooth/USB supported"
+ },
+ {
+  "key": "ct_joy_title",
+  "id": "Joystick, Gamepad & Keypad",
+  "en": "Joystick, Gamepad & Keypad",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Joystick & Gamepad & Keypad"
+ },
+ {
+  "key": "ct_joy_sub",
+  "id": "Pemetaan lengkap — belum sempurna, kini lebih lega",
+  "en": "Complete mapping — not yet perfect, now more spacious",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Complete mapping — not yet perfect, now more spacious"
+ },
+ {
+  "key": "ct_show_touch",
+  "id": "Tampilkan kontrol sentuh",
+  "en": "Show touch controls",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Show touch controls"
+ },
+ {
+  "key": "ct_show_touch_sub",
+  "id": "D-pad, joystick, tombol aksi — lega",
+  "en": "D-pad, joystick, action buttons — spacious",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "D-pad, joystick, action buttons — spacious"
+ },
+ {
+  "key": "ct_joystick",
+  "id": "Joystick aktif",
+  "en": "Joystick enabled",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Joystick enabled"
+ },
+ {
+  "key": "ct_joystick_sub",
+  "id": "Stik kiri untuk gerak, kanan untuk kamera",
+  "en": "Left stick for movement, right for camera",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Left stick for movement, right for camera"
+ },
+ {
+  "key": "ct_gamepad",
+  "id": "Dukungan gamepad",
+  "en": "Gamepad support",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Gamepad support"
+ },
+ {
+  "key": "ct_gamepad_sub",
+  "id": "Gamepad Bluetooth/USB → WASD + mouse",
+  "en": "Bluetooth/USB gamepad → WASD + mouse",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Bluetooth/USB gamepad → WASD + mouse"
+ },
+ {
+  "key": "ct_keypad",
+  "id": "Keypad / Numpad",
+  "en": "Keypad / Numpad",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Keypad / Numpad"
+ },
+ {
+  "key": "ct_keypad_sub",
+  "id": "Numpad 0-9, panah, untuk game & desktop",
+  "en": "Numpad 0-9, arrows, for games & desktop",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Numpad 0-9, arrows, for games & desktop"
+ },
+ {
+  "key": "ct_mapping",
+  "id": "Pemetaan kontrol",
+  "en": "Control mapping",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Control mapping"
+ },
+ {
+  "key": "ct_mapping_sub",
+  "id": "Profil Gaming & Desktop",
+  "en": "Gaming & Desktop profiles",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Gaming & Desktop profiles"
+ },
+ {
+  "key": "ct_pointer",
+  "id": "Pointer & Haptik",
+  "en": "Pointer & Haptics",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Pointer & Haptics"
+ },
+ {
+  "key": "ct_pointer_sub",
+  "id": "Sensitivitas, tap-to-click, scroll, haptik",
+  "en": "Sensitivity, tap-to-click, scroll, haptics",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Sensitivity, tap-to-click, scroll, haptics"
+ },
+ {
+  "key": "ct_haptic",
+  "id": "Umpan balik haptik",
+  "en": "Haptic feedback",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Haptic feedback"
+ },
+ {
+  "key": "ct_aim",
+  "id": "Sensitivitas bidik",
+  "en": "Aim sensitivity",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Aim sensitivity"
+ },
+ {
+  "key": "ct_pointer_speed",
+  "id": "Kecepatan pointer",
+  "en": "Pointer speed",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Pointer speed"
+ },
+ {
+  "key": "ct_tap_click",
+  "id": "Ketuk untuk klik",
+  "en": "Tap to click",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Tap to click"
+ },
+ {
+  "key": "ct_reverse_scroll",
+  "id": "Balik arah scroll",
+  "en": "Reverse scroll",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Reverse scroll"
+ },
+ {
+  "key": "ct_relative",
+  "id": "Pointer relatif",
+  "en": "Relative pointer",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Relative pointer"
+ },
+ {
+  "key": "ct_relative_sub",
+  "id": "Untuk game 3D & FPS",
+  "en": "For 3D & FPS games",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "For 3D & FPS games"
+ },
+ {
+  "key": "ct_ready",
+  "id": "Kontrol siap",
+  "en": "Controls ready",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "Controls ready"
+ },
+ {
+  "key": "ct_ready_body",
+  "id": "Semua kontrol (keyboard, joystick, gamepad, keypad, mouse) bisa dipetakan ulang di halaman Pemetaan Kontrol.",
+  "en": "All controls (keyboard, joystick, gamepad, keypad, mouse) can be remapped in Control Mapping page.",
+  "files": [
+   "lib/features/session/panel_controls.dart"
+  ],
+  "literal": "All controls (keyboard, joystick, gamepad, keypad, mouse) can be remapped in Control Mapping page."
+ }
+]

@@ -1,0 +1,87 @@
+name: Bersihkan Actions
+
+on:
+  workflow_run:
+    workflows: ["Release", "Deploy Web App (Cloudflare)", "CodeQL", "Android Native"]
+    types: [completed]
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-actions
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    name: Hapus run, artifact & cache lama
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'skipped'
+    steps:
+      - name: Pangkas riwayat run, artifact, dan cache Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEEP_RUNS: "2"
+        run: |
+          set -euo pipefail
+          python3 - << 'PY'
+          import json, os, subprocess
+
+          repo = os.environ.get("GITHUB_REPOSITORY", "xykal/XyDesk")
+          keep = int(os.environ.get("KEEP_RUNS", "2"))
+
+          print("=== 1. Prune Workflow Runs ===")
+          out = subprocess.check_output(["gh", "api", f"repos/{repo}/actions/runs?per_page=100"])
+          runs = json.loads(out).get("workflow_runs", [])
+          active_others = [
+              r for r in runs
+              if r.get("status") != "completed" and r.get("name") != "Bersihkan Actions"
+          ]
+          by_wf = {}
+          for r in runs:
+              if r.get("status") != "completed":
+                  continue
+              by_wf.setdefault(r.get("workflow_id"), []).append(r)
+          for wf_id, items in by_wf.items():
+              items.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+              for old in items[keep:]:
+                  rid = old.get("id")
+                  subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/runs/{rid}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  print("hapus run", rid)
+
+          print("=== 2. Prune Artifacts (hapus semua artifact selesai build) ===")
+          if active_others:
+              print("lewati prune artifact karena masih ada workflow aktif:", [r.get("name") for r in active_others])
+          else:
+              out = subprocess.check_output(["gh", "api", f"repos/{repo}/actions/artifacts?per_page=100"])
+              arts = json.loads(out).get("artifacts", [])
+              for a in arts:
+                  if not a.get("expired", False):
+                      aid = a.get("id")
+                      subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/artifacts/{aid}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                      print("hapus artifact", aid, a.get("name"))
+
+          print("=== 3. Prune Caches (simpan 1 terbaru per prefix aktif) ===")
+          out = subprocess.check_output(["gh", "api", f"repos/{repo}/actions/caches?per_page=100"])
+          caches = json.loads(out).get("actions_caches", [])
+          caches.sort(key=lambda x: x.get("last_accessed_at") or x.get("created_at") or "", reverse=True)
+          seen = set()
+          prefixes = ("gradle-", "cargo-", "rust-", "vcpkg-", "msys2-", "node-", "npm-")
+          for c in caches:
+              cid = c.get("id")
+              k = c.get("key", "")
+              if k.startswith(("flutter-", "pub-", "Linux-flutter", "Windows-flutter", "codeql-")):
+                  p = "__DROP__"
+              else:
+                  p = next((px for px in prefixes if k.startswith(px)), k.split("-")[0])
+              if p == "__DROP__" or p in seen:
+                  subprocess.run(["gh", "api", "-X", "DELETE", f"repos/{repo}/actions/caches/{cid}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                  print("hapus cache", cid, k)
+              else:
+                  seen.add(p)
+          PY

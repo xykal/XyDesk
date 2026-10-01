@@ -57,8 +57,8 @@ export function AuthorName({
     <span className={`author-name official ${size}`}>
       {avatar && <img className="author-badge" src="/team/founder.jpg" alt="" aria-hidden="true" />}
       <strong>{name}</strong>
-      <span className="official-tag" title="Akun resmi XySpace — Haekal Saputra">
-        XySpace
+      <span className="official-tag" title="Akun resmi XyVerse — Haekal Saputra">
+        XyVerse
       </span>
     </span>
   );
@@ -291,7 +291,7 @@ export function NewsDetailPage({
     setNotice('');
     try {
       // Username acak per perangkat — kecuali mode founder yang terverifikasi
-      // server: tampil sebagai Haekal Saputra + badge XySpace.
+      // server: tampil sebagai Haekal Saputra + badge XyVerse.
       // Cek ulang id_token saat kirim (bisa saja kedaluwarsa sejak halaman
       // dibuka). Kalau kosong, komentar jatuh ke mode publik biasa.
       const gt = getStoredGoogleIdToken();
@@ -538,7 +538,7 @@ export function NewsDetailPage({
                   <img src="/team/founder.jpg" alt="" />
                   <span>
                     Membalas sebagai <strong>Haekal Saputra</strong>
-                    <em className="official-tag">XySpace</em>
+                    <em className="official-tag">XyVerse</em>
                   </span>
                   <button
                     type="button"
