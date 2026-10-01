@@ -22,10 +22,6 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
-## [6.10.0] — 2026-10-01
-
-- Satu update besar klien Android native: Berita tersambung ke news worker (komentar, suka, notifikasi), riwayat grid/daftar + detail sesi bergrafik, host alias/favorit/online-offline realtime, mic HP ke PC dengan DSP di host, mode presentasi, pengaturan lengkap, peramban internal. Rincian: `changelogs/6.10.0.md`.
-
 ## [Belum terbit]
 
 - **Keamanan dan kebersihan repo (28 September):** (1) Worker signaling menolak upgrade `/ws` dari Origin browser yang tidak terdaftar di `CORS_ORIGINS` (native host/APK tanpa Origin tetap lolos) — token yang bocor tidak bisa dipakai lintas situs; server Go cadangan mendapat `XYDESK_ALLOWED_ORIGINS` dengan bawaan same-origin, menggantikan `CheckOrigin: true`. (2) `release.yml` memaku zip VB-CABLE vendor ke SHA-256; hash berbeda menghentikan rilis. Salinan `VBCABLE_Setup_x64.exe` (900 KB) dihapus dari repo — sudah diunduh dari vendor saat rilis. (3) Sepuluh workflow eksperimen `workflow_dispatch` tanpa pemakai dihapus; tersisa `build`, `release`, `deploy-web`, `deploy-signaling`, `deploy-news`. (4) GitHub Release lama dan 14 tag eksperimen dihapus; tersisa v6.8.7. (5) Dokumen proyek pindah: `AGENT_BOARD/HANDOFF/ROADMAP/SETUP/CONTRIBUTORS` → `docs/project/`, audit lama → `docs/archive/`; semua tautan diperbarui, `AGENT.md`, `README.md`, `CHANGELOG.md`, `LICENSE` tetap di root. Komentar "Founder request ..." di kode diganti kalimat teknis. Audit yang TIDAK menemukan masalah: tidak ada secret di seluruh history git; `npm audit` web/worker 0 kerentanan; JWT HS256 memeriksa `alg`; PBKDF2 + perbandingan waktu-konstan untuk admin; control API host hanya `127.0.0.1` + bearer; lockout pairing per-peer dan global.
@@ -168,6 +164,10 @@ Kebijakan rilis:
 - Endpoint admin health read-only untuk Worker/AuthStore/Hub; status engine dinyatakan belum tersedia.
 - Panduan konfigurasi dan rollout di `admin/README.md`; total 28 tes backend admin baru dan 3 tes API panel tambahan.
 - Dua belas tes regresi API admin memakai Node test runner dan TypeScript yang sudah tersedia.
+
+## [6.10.0] - 2026-10-01
+
+- Satu update besar klien Android native: Berita tersambung ke news worker (komentar, suka, notifikasi), riwayat grid/daftar + detail sesi bergrafik, host alias/favorit/online-offline realtime, mic HP ke PC dengan DSP di host, mode presentasi, pengaturan lengkap, peramban internal. Rincian: `changelogs/6.10.0.md`.
 
 ## [6.9.0] - 2026-09-30
 
