@@ -65,6 +65,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var showStats = true
     private var presenting = false
     private var lastBack = 0L
+    private var micInput: Boolean? = null
     private var hostName = ""
     private var specs = HostSpecs()
     private var startedAt = 0L
@@ -101,7 +102,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                 val now = System.currentTimeMillis()
                 when {
                     presenting -> setPresenting(false)
-                    now - lastBack < 2000 -> { outcome = if (connected) "putus" else "batal"; finish() }
+                    now - lastBack < 2000 || !store.confirmDisconnect -> { outcome = if (connected) "putus" else "batal"; finish() }
                     else -> { lastBack = now; Toast.makeText(this@SessionActivity, "Tekan sekali lagi untuk memutus sesi".tr(store.lang), Toast.LENGTH_SHORT).show() }
                 }
             }
@@ -200,7 +201,14 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         trackpadSpeed = { store.trackpadSpeed = it; touch.config = touch.config.copy(speed = it) },
                         naturalScroll = { store.naturalScroll = it; touch.config = touch.config.copy(naturalScroll = it) },
                         audioMute = { session.setAudioMuted(it) },
-                        mic = { on -> if (!on) session.setMicEnabled(false) else if (hasMic()) session.setMicEnabled(true) else requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7) },
+                        mic = { on ->
+                            when {
+                                !on -> session.setMicEnabled(false)
+                                micInput == false -> Toast.makeText(this, "PC belum punya input mic virtual. Perbarui XyDesk Host ke versi terbaru.".tr(store.lang), Toast.LENGTH_LONG).show()
+                                hasMic() -> session.setMicEnabled(true)
+                                else -> requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7)
+                            }
+                        },
                         clipboardSync = { on -> clipboardSync = on; session.clipboardSync = on },
                         sendQuickKey = { keys.quick(it) },
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
@@ -257,6 +265,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (!connected || !KeyMap.isPhysical(event) || event.keyCode == KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
         return keys.physical(event) || super.dispatchKeyEvent(event)
     }
+
+    override fun onMicInput(available: Boolean) { micInput = available }
 
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
 

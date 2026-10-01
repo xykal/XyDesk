@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -57,6 +58,7 @@ fun HomeShell(
     onLogout: () -> Unit,
 ) {
     var tab by remember { mutableStateOf(startTab) }
+    BackHandler(tab != Tab.HOME) { tab = Tab.HOME }
     var prefill by remember { mutableStateOf(lastHost) }
     var asking by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf<String?>(null) }
@@ -90,7 +92,7 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, { quickConnect(it) }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
@@ -115,7 +117,11 @@ fun HomeShell(
                 }
                 Tab.HISTORY -> Page("Riwayat", "Sesi terakhir, durasi, dan hasilnya.") {
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
-                    else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
+                    else {
+                        UsageStrip(history)
+                        Spacer(Modifier.height(16.dp))
+                        HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
+                    }
                 }
                 Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), email, googleToken, onShare) { reading = null } }
                     ?: Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {

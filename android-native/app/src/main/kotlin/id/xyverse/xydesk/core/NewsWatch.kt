@@ -47,7 +47,10 @@ class NewsWatch(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, p
     companion object {
         private const val CHANNEL = "news"
 
+        fun cancel(ctx: Context) = WorkManager.getInstance(ctx).cancelUniqueWork("news-watch")
+
         fun schedule(ctx: Context) {
+            if (!Store(ctx).newsNotify) return
             val req = PeriodicWorkRequestBuilder<NewsWatch>(6, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build()
             WorkManager.getInstance(ctx).enqueueUniquePeriodicWork("news-watch", ExistingPeriodicWorkPolicy.KEEP, req)

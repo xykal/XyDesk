@@ -44,6 +44,7 @@ interface RtcListener {
     fun onHostName(name: String) {}
     fun onRemoteClipboard(text: String) {}
     fun onHostSpecs(specs: HostSpecs) {}
+    fun onMicInput(available: Boolean) {}
 }
 
 /**
@@ -250,8 +251,11 @@ class RtcSession(
 
     /** Pesan JSON dari host di kanal input; saat ini hanya `meta.hardware` yang dipakai. */
     private fun onText(text: String) {
-        if (specsSent || !text.startsWith("{")) return
-        val hw = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" }?.optJSONObject("hardware") ?: return
+        if (!text.startsWith("{")) return
+        val meta = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" } ?: return
+        meta.optJSONObject("micInput")?.let { listener.onMicInput(it.optBoolean("available", true)) }
+        if (specsSent) return
+        val hw = meta.optJSONObject("hardware") ?: return
         val specs = HostSpecs.from(hw)
         if (specs.isEmpty) return
         specsSent = true

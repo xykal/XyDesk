@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -69,7 +70,7 @@ class Settings(
     val store: Store? = null,
 )
 
-private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS, SESSION }
+private enum class Sub { ROOT, PROFILE, SECURITY, PERMISSIONS, SESSION, ABOUT }
 
 private data class SocialLink(val kind: Social, val name: String, val url: String, val color: Long)
 
@@ -84,6 +85,7 @@ private val socials = listOf(
 @Composable
 fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings, onLogout: () -> Unit) {
     var sub by remember { mutableStateOf(Sub.ROOT) }
+    BackHandler(sub != Sub.ROOT) { sub = Sub.ROOT }
     AnimatedContent(
         sub,
         transitionSpec = {
@@ -97,6 +99,7 @@ fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings
             Sub.PROFILE -> SubPage("Profil", { sub = Sub.ROOT }) { ProfileBody(email, settings) }
             Sub.SECURITY -> SubPage("Keamanan", { sub = Sub.ROOT }) { SecurityBody(settings, onLogout) }
             Sub.PERMISSIONS -> SubPage("Izin", { sub = Sub.ROOT }) { PermissionsBody(settings) }
+            Sub.ABOUT -> SubPage("Tentang", { sub = Sub.ROOT }) { AboutBody(settings.appVersion, onOpenUrl) }
             Sub.SESSION -> SubPage("Sesi", { sub = Sub.ROOT }) { settings.store?.let { SessionDefaults(it) } }
         }
     }
@@ -134,7 +137,8 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
                 Segmented(listOf("ID" to Lang.ID, "EN" to Lang.EN), settings.lang, settings.onLang)
             }
             Box(Modifier.padding(horizontal = 6.dp)) { XyToggle("Getaran halus", "Umpan balik saat geser dan tekan.", settings.haptics, settings.onHaptics) }
-            XyRow(Icon.CONTROLS, "Sesi & trackpad", "Kualitas, fps, kecepatan kursor, scroll.", onClick = { go(Sub.SESSION) })
+            settings.store?.let { PreferencesSection(it) }
+            XyRow(Icon.CONTROLS, "Sesi & trackpad", "Kualitas, fps, kecepatan kursor, scroll, gestur.", onClick = { go(Sub.SESSION) })
             XyRow(Icon.PHONE, "Putar intro lagi", "Splash dan panduan awal.", onClick = settings.onReplayIntro)
         }
         Spacer(Modifier.height(16.dp))
@@ -143,6 +147,7 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
             Spacer(Modifier.height(8.dp))
             XyRow(Icon.SHIELD, "Keamanan", "Token, password host, riwayat.", onClick = { go(Sub.SECURITY) })
             XyRow(Icon.KEY, "Izin", "Apa saja yang diakses aplikasi.", onClick = { go(Sub.PERMISSIONS) })
+            XyRow(Icon.NEWS, "Tentang", "Versi, catatan rilis, lisensi.", onClick = { go(Sub.ABOUT) })
         }
         Spacer(Modifier.height(16.dp))
         XyCard {
