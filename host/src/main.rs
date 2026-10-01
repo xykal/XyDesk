@@ -466,6 +466,7 @@ async fn main() -> Result<()> {
         "[xydesk-host] sumber video: {}",
         xydesk_host::screen::capture_status()
     );
+    tokio::task::spawn_blocking(xydesk_host::virtual_mic::ensure_virtual_mic);
     println!();
     println!("  ╔══════════════════════════════════════════╗");
     println!("  ║   XyDesk Host — memulai layanan akun    ║");

@@ -72,6 +72,10 @@ VIAddVersionKey /LANG=1033 "CompanyName" "${COMPANY}"
 
 Section "XyDesk"
   SectionIn RO
+  ${If} ${RunningX64}
+    ${DisableX64FSRedirection}
+    SetRegView 64
+  ${EndIf}
   SetShellVarContext current
   SetOutPath "$INSTDIR"
   ; The bundle is produced by the verified Windows build. Keep every EXE,
@@ -122,8 +126,10 @@ Section "XyDesk"
   # Pasang XyDesk Virtual Display Adapter (IddCx UMDF2 + PnP Device Node + Custom EDID)
   # dan driver Virtual Audio & Mic (VB-CABLE) secara langsung saat instalasi.
   IfFileExists "$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" 0 skip_vdd_ctl
-    DetailPrint "Installing XyDesk Virtual Display Adapter (native SetupAPI controller)..."
+    DetailPrint "Installing XyDesk Virtual Display Adapter & Virtual Audio (native SetupAPI controller)..."
     nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" install --dir "$INSTDIR\drivers\IddSampleDriver"'
+    Pop $0
+    nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" install-audio --dir "$INSTDIR\drivers\audio"'
     Pop $0
   skip_vdd_ctl:
 
@@ -150,6 +156,10 @@ Section "XyDesk"
 SectionEnd
 
 Section "Uninstall"
+  ${If} ${RunningX64}
+    ${DisableX64FSRedirection}
+    SetRegView 64
+  ${EndIf}
   SetShellVarContext current
   IfFileExists "$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" 0 +3
     nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" uninstall'

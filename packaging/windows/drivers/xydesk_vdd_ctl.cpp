@@ -156,7 +156,7 @@ bool isProcessElevated() {
     return ok && elev.TokenIsElevated != 0;
 }
 
-int runCommandSilent(const std::wstring& cmdLine) {
+int runCommandSilent(const std::wstring& cmdLine, const wchar_t* workDir = nullptr) {
     STARTUPINFOW si = {};
     si.cb = sizeof(si);
     si.dwFlags = STARTF_USESHOWWINDOW;
@@ -164,7 +164,7 @@ int runCommandSilent(const std::wstring& cmdLine) {
     PROCESS_INFORMATION pi = {};
     std::wstring mutableCmd = cmdLine;
     if (!CreateProcessW(nullptr, mutableCmd.data(), nullptr, nullptr, FALSE,
-                        CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi)) {
+                        CREATE_NO_WINDOW, nullptr, workDir, &si, &pi)) {
         return -1;
     }
     WaitForSingleObject(pi.hProcess, 60000);
@@ -367,16 +367,27 @@ bool installCertificateToStore(const std::wstring& cerPath, const wchar_t* store
     DWORD encoding = 0, contentType = 0, formatType = 0;
     BOOL ok = CryptQueryObject(
         CERT_QUERY_OBJECT_FILE, cerPath.c_str(),
-        CERT_QUERY_CONTENT_FLAG_CERT | CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED,
+        CERT_QUERY_CONTENT_FLAG_ALL,
         CERT_QUERY_FORMAT_FLAG_ALL, 0,
         &encoding, &contentType, &formatType, &hFileStore, nullptr,
         reinterpret_cast<const void**>(&pCert));
 
     bool added = false;
     if (ok && pCert) {
-        added = CertAddCertificateContextToStore(hStore, pCert, CERT_STORE_ADD_REPLACE_EXISTING, nullptr) != FALSE;
+        if (CertAddCertificateContextToStore(hStore, pCert, CERT_STORE_ADD_REPLACE_EXISTING, nullptr)) {
+            added = true;
+        }
         CertFreeCertificateContext(pCert);
-    } else {
+    }
+    if (ok && hFileStore) {
+        PCCERT_CONTEXT pEnum = nullptr;
+        while ((pEnum = CertEnumCertificatesInStore(hFileStore, pEnum)) != nullptr) {
+            if (CertAddCertificateContextToStore(hStore, pEnum, CERT_STORE_ADD_REPLACE_EXISTING, nullptr)) {
+                added = true;
+            }
+        }
+    }
+    if (!added) {
         std::ifstream ifs(cerPath, std::ios::binary | std::ios::ate);
         if (ifs) {
             auto sz = ifs.tellg();
@@ -730,6 +741,190 @@ std::wstring locateDriverDir(const std::wstring& explicitDir) {
     return explicitDir.empty() ? base : explicitDir;
 }
 
+std::wstring locateAudioDriverDir(const std::wstring& explicitDir) {
+    auto hasVb = [](const std::wstring& d) {
+        return !d.empty() &&
+               (fileExists(d + L"\\vbMmeCable64_win10.inf") ||
+                fileExists(d + L"\\vbMmeCable64_win7.inf") ||
+                fileExists(d + L"\\VBCABLE_Setup_x64.exe"));
+    };
+    if (hasVb(explicitDir)) return explicitDir;
+    std::wstring base = exeDir();
+    const std::wstring candidates[] = {
+        base,
+        base + L"\\..\\audio",
+        base + L"\\drivers\\audio",
+        base + L"\\..\\drivers\\audio",
+        L"C:\\Program Files\\XyDesk\\drivers\\audio",
+    };
+    for (const auto& c : candidates) {
+        if (hasVb(c)) return c;
+    }
+    return explicitDir.empty() ? (base + L"\\..\\audio") : explicitDir;
+}
+
+int countVirtualAudioPnPNodes() {
+    HDEVINFO hDevInfo = SetupDiGetClassDevsW(&GUID_DEVCLASS_MEDIA, nullptr, nullptr, DIGCF_PRESENT);
+    if (hDevInfo == INVALID_HANDLE_VALUE) return 0;
+
+    int count = 0;
+    SP_DEVINFO_DATA devData = {};
+    devData.cbSize = sizeof(devData);
+    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devData); ++i) {
+        wchar_t hwidBuf[1024] = {};
+        if (SetupDiGetDeviceRegistryPropertyW(
+                hDevInfo, &devData, SPDRP_HARDWAREID, nullptr,
+                reinterpret_cast<PBYTE>(hwidBuf), sizeof(hwidBuf) - sizeof(wchar_t), nullptr)) {
+            std::wstring hwid = toLower(hwidBuf);
+            if (hwid.find(L"vbaudiovacwdm") != std::wstring::npos ||
+                hwid.find(L"vb-audio") != std::wstring::npos) {
+                ++count;
+            }
+        }
+    }
+    SetupDiDestroyDeviceInfoList(hDevInfo);
+    return count;
+}
+
+bool createRootAudioPnPNode() {
+    HDEVINFO hDevInfo = SetupDiCreateDeviceInfoList(&GUID_DEVCLASS_MEDIA, nullptr);
+    if (hDevInfo == INVALID_HANDLE_VALUE) return false;
+
+    SP_DEVINFO_DATA devInfoData = {};
+    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    if (!SetupDiCreateDeviceInfoW(
+            hDevInfo, L"VBAudioVACWDM", &GUID_DEVCLASS_MEDIA,
+            L"VB-Audio Virtual Cable", nullptr, DICD_GENERATE_ID, &devInfoData)) {
+        SetupDiDestroyDeviceInfoList(hDevInfo);
+        return false;
+    }
+
+    const wchar_t hwid[] = L"VBAudioVACWDM";
+    std::vector<wchar_t> multiSz(hwid, hwid + wcslen(hwid));
+    multiSz.push_back(L'\0');
+    multiSz.push_back(L'\0');
+
+    if (!SetupDiSetDeviceRegistryPropertyW(
+            hDevInfo, &devInfoData, SPDRP_HARDWAREID,
+            reinterpret_cast<const BYTE*>(multiSz.data()),
+            static_cast<DWORD>(multiSz.size() * sizeof(wchar_t)))) {
+        SetupDiDestroyDeviceInfoList(hDevInfo);
+        return false;
+    }
+
+    if (!SetupDiCallClassInstaller(DIF_REGISTERDEVICE, hDevInfo, &devInfoData)) {
+        SetupDiDestroyDeviceInfoList(hDevInfo);
+        return false;
+    }
+
+    SetupDiDestroyDeviceInfoList(hDevInfo);
+    return true;
+}
+
+void enableRdpAudioPolicies() {
+    const wchar_t* keys[] = {
+        L"SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
+        L"SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+    };
+    for (const wchar_t* k : keys) {
+        HKEY hKey = nullptr;
+        if (RegCreateKeyExW(HKEY_LOCAL_MACHINE, k, 0, nullptr, 0,
+                            KEY_SET_VALUE | KEY_WOW64_64KEY, nullptr, &hKey, nullptr) == ERROR_SUCCESS) {
+            DWORD zero = 0;
+            RegSetValueExW(hKey, L"fDisableAudio", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&zero), sizeof(zero));
+            RegSetValueExW(hKey, L"fDisableAudioCapture", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&zero), sizeof(zero));
+            RegCloseKey(hKey);
+        }
+    }
+}
+
+int cmdInstallAudio(const std::wstring& audioDirArg) {
+    if (!isProcessElevated()) {
+        std::fprintf(stderr, "[XyDesk Audio] Butuh hak Administrator untuk memasang VB-CABLE.\n");
+        return 4;
+    }
+
+    enableRdpAudioPolicies();
+
+    std::wstring audioDir = locateAudioDriverDir(audioDirArg);
+    wchar_t fullAudioDir[MAX_PATH * 2] = {};
+    if (GetFullPathNameW(audioDir.c_str(), MAX_PATH * 2 - 1, fullAudioDir, nullptr)) {
+        audioDir = fullAudioDir;
+    }
+
+    // 1. Ekstrak & pasang sertifikat Authenticode VB-Audio dari .cat, .sys, dan .exe
+    const wchar_t* signedBins[] = {
+        L"vbaudio_cable64_win10.cat",
+        L"vbaudio_cable64_win10.sys",
+        L"vbaudio_cable64_win7.cat",
+        L"vbaudio_cable64_win7.sys",
+        L"VBCABLE_Setup_x64.exe",
+    };
+    for (const wchar_t* name : signedBins) {
+        std::wstring p = audioDir + L"\\" + name;
+        if (fileExists(p)) {
+            installCertificateToStore(p, L"Root");
+            installCertificateToStore(p, L"TrustedPublisher");
+        }
+    }
+
+    // 2. Pilih INF Windows 10/11 x64 (JANGAN pasang INF xp/2003/vista/win7 jika win10 ada!)
+    std::wstring infPath = audioDir + L"\\vbMmeCable64_win10.inf";
+    if (!fileExists(infPath)) {
+        infPath = audioDir + L"\\vbMmeCable64_win7.inf";
+    }
+
+    bool ok = (countVirtualAudioPnPNodes() > 0);
+    if (fileExists(infPath)) {
+        wchar_t fullInf[MAX_PATH * 2] = {};
+        GetFullPathNameW(infPath.c_str(), MAX_PATH * 2 - 1, fullInf, nullptr);
+
+        // Stage INF ke DriverStore
+        std::wstring pnpCmd = L"pnputil.exe /add-driver \"" + std::wstring(fullInf) + L"\" /install";
+        runCommandSilent(pnpCmd, audioDir.c_str());
+
+        // Buat Root PnP Node VBAudioVACWDM bila belum ada, lalu ikat driver via SetupAPI
+        if (countVirtualAudioPnPNodes() == 0) {
+            createRootAudioPnPNode();
+        }
+        BOOL rebootRequired = FALSE;
+        if (UpdateDriverForPlugAndPlayDevicesW(
+                nullptr, L"VBAudioVACWDM", fullInf, INSTALLFLAG_FORCE, &rebootRequired)) {
+            ok = true;
+        }
+    }
+
+    // 3. Fallback: jalankan VBCABLE_Setup_x64.exe -i -h dengan working directory = audioDir
+    std::wstring setupExe = audioDir + L"\\VBCABLE_Setup_x64.exe";
+    if (!ok && fileExists(setupExe)) {
+        std::wstring cmd = L"\"" + setupExe + L"\" -i -h";
+        runCommandSilent(cmd, audioDir.c_str());
+        if (fileExists(infPath) && countVirtualAudioPnPNodes() == 0) {
+            wchar_t fullInf[MAX_PATH * 2] = {};
+            GetFullPathNameW(infPath.c_str(), MAX_PATH * 2 - 1, fullInf, nullptr);
+            createRootAudioPnPNode();
+            BOOL rebootRequired = FALSE;
+            UpdateDriverForPlugAndPlayDevicesW(
+                nullptr, L"VBAudioVACWDM", fullInf, INSTALLFLAG_FORCE, &rebootRequired);
+        }
+        ok = (countVirtualAudioPnPNodes() > 0);
+    }
+
+    // 4. Pastikan layanan AudioEndpointBuilder & Audiosrv menyala dan me-refresh endpoint
+    runCommandSilent(L"sc.exe config AudioEndpointBuilder start= auto");
+    runCommandSilent(L"sc.exe config Audiosrv start= auto");
+    runCommandSilent(L"net.exe start AudioEndpointBuilder");
+    runCommandSilent(L"net.exe start Audiosrv");
+
+    if (ok || countVirtualAudioPnPNodes() > 0) {
+        std::printf("[XyDesk Audio] VB-Audio Virtual Cable (CABLE Input / CABLE Output) aktif.\n");
+        return 0;
+    }
+    std::fprintf(stderr, "[XyDesk Audio] Gagal memasang VB-CABLE dari: %s\n",
+                 narrowUtf8(audioDir).c_str());
+    return 1;
+}
+
 int cmdInstall(const std::wstring& drvDirArg, int width, int height, int hz, int count) {
     if (!isProcessElevated()) {
         std::fprintf(stderr, "[XyDesk VDD] Butuh hak Administrator untuk memasang XyDesk Virtual Display Adapter.\n");
@@ -764,6 +959,9 @@ int cmdInstall(const std::wstring& drvDirArg, int width, int height, int hz, int
     notifyMttPipe(L"RELOAD_DRIVER");
     Sleep(400);
     applyVirtualDisplayMode(width, height, hz);
+
+    // Sekaligus pasang/pastikan VB-Audio Virtual Cable aktif saat install
+    cmdInstallAudio(L"");
 
     std::printf("[XyDesk VDD] XyDesk Virtual Display Adapter berhasil dipasang dan diaktifkan (%dx%d @ %dHz).\n",
                 width, height, hz);
@@ -879,6 +1077,9 @@ int wmain(int argc, wchar_t* argv[]) {
 
     if (cmd == L"install") {
         return cmdInstall(drvDir, width, height, hz, count);
+    }
+    if (cmd == L"install-audio") {
+        return cmdInstallAudio(drvDir);
     }
     if (cmd == L"set-mode") {
         if (argc >= 5 && argv[2][0] != L'-') {
