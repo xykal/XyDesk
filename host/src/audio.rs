@@ -212,7 +212,7 @@ pub fn spawn_mic_source() -> CaptureSource {
 pub fn spawn_audio_sink() -> mpsc::SyncSender<Vec<u8>> {
     #[cfg(target_os = "windows")]
     {
-        let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(4);
+        let (tx, rx) = mpsc::sync_channel::<Vec<u8>>(64);
         std::thread::spawn(move || {
             if let Err(e) = windows::render_loop(rx) {
                 eprintln!("[xydesk-host] audio render gagal: {e}");
@@ -222,7 +222,7 @@ pub fn spawn_audio_sink() -> mpsc::SyncSender<Vec<u8>> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        let (tx, _rx) = mpsc::sync_channel::<Vec<u8>>(4);
+        let (tx, _rx) = mpsc::sync_channel::<Vec<u8>>(64);
         tx
     }
 }
@@ -271,12 +271,15 @@ mod windows {
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)
                 .map_err(|e| anyhow::anyhow!("MMDeviceEnumerator: {e:?}"))?
         };
-        let device = unsafe {
-            enumerator
-                .GetDefaultAudioEndpoint(eRender, eMultimedia)
-                .map_err(|e| anyhow::anyhow!("GetDefaultAudioEndpoint: {e:?}"))?
-        };
-        Ok(device)
+        if let Ok(dev) = unsafe { enumerator.GetDefaultAudioEndpoint(eRender, eMultimedia) } {
+            return Ok(dev);
+        }
+        if let Some((id, _)) = list_outputs_detailed().into_iter().next() {
+            return device_by_id(&id);
+        }
+        Err(anyhow::anyhow!(
+            "GetDefaultAudioEndpoint: tidak ada perangkat output"
+        ))
     }
 
     fn device_by_id(id: &str) -> anyhow::Result<windows::Win32::Media::Audio::IMMDevice> {
@@ -308,25 +311,11 @@ mod windows {
         Ok(device)
     }
 
-    /// Benar bila ada minimal satu perangkat capture aktif (mikrofon).
+    /// Benar bila ada minimal satu mikrofon fisik aktif (bukan virtual cable).
     pub fn mic_available() -> bool {
-        use windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE;
-        let Ok(_com) = init_com() else { return false };
-        let enumerator: IMMDeviceEnumerator =
-            match unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) } {
-                Ok(e) => e,
-                Err(_) => return false,
-            };
-        let collection =
-            match unsafe { enumerator.EnumAudioEndpoints(eCapture, DEVICE_STATE_ACTIVE) } {
-                Ok(c) => c,
-                Err(_) => return false,
-            };
-        let count = match unsafe { collection.GetCount() } {
-            Ok(c) => c,
-            Err(_) => return false,
-        };
-        count > 0
+        list_inputs_detailed()
+            .into_iter()
+            .any(|(_, name)| !is_virtual_audio_name(&name))
     }
 
     fn client(device: &windows::Win32::Media::Audio::IMMDevice) -> anyhow::Result<IAudioClient> {
@@ -578,11 +567,63 @@ mod windows {
         microphone: bool,
     ) -> anyhow::Result<()> {
         let _com = init_com()?;
+        let mut sequence = 0u64;
+        while !stop.load(std::sync::atomic::Ordering::Acquire) {
+            if let Err(e) = capture_once(&tx, &stop, microphone, &mut sequence) {
+                if stop.load(std::sync::atomic::Ordering::Acquire) {
+                    break;
+                }
+                eprintln!("[xydesk-host] capture audio di-reset ({e}), mencoba lagi...");
+                std::thread::sleep(std::time::Duration::from_millis(500));
+            }
+        }
+        Ok(())
+    }
+
+    fn capture_once(
+        tx: &SyncSender<super::AudioPacket>,
+        stop: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+        microphone: bool,
+        sequence: &mut u64,
+    ) -> anyhow::Result<()> {
         let device = if microphone {
             capture_device()?
         } else {
             device()?
         };
+        // Pada endpoint virtual (mis. CABLE Input) tanpa aplikasi yang sedang
+        // memutar suara, Windows Audio Engine menghentikan detak clock loopback
+        // kecuali ada minimal satu render stream aktif di endpoint tersebut.
+        let keepalive = if !microphone {
+            if let Ok(ka) = client(&device) {
+                if let Ok(ka_mix) = mix_format(&ka) {
+                    let ok = unsafe {
+                        ka.Initialize(
+                            AUDCLNT_SHAREMODE_SHARED,
+                            windows::Win32::Media::Audio::AUDCLNT_STREAMFLAGS_NOPERSIST,
+                            1_000_000,
+                            0,
+                            ka_mix.ptr,
+                            None,
+                        )
+                        .is_ok()
+                            && ka.Start().is_ok()
+                    };
+                    if ok {
+                        Some(ka)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         let client = client(&device)?;
         let mix = mix_format(&client)?;
         let block = unsafe { usize::from((*mix.ptr).nBlockAlign) };
@@ -607,9 +648,7 @@ mod windows {
         let mut encoder = crate::opus_ffi::Encoder::new(SAMPLE_RATE, usize::from(channels))
             .map_err(|e| anyhow::anyhow!("opus encoder: {e}"))?;
         unsafe { client.Start()? };
-        let mut sequence = 0u64;
         while !stop.load(std::sync::atomic::Ordering::Acquire) {
-            // The return value is FRAMES in the next packet, not packet count.
             while !stop.load(std::sync::atomic::Ordering::Acquire)
                 && unsafe { capture.GetNextPacketSize()? } != 0
             {
@@ -622,7 +661,6 @@ mod windows {
                 } else {
                     unsafe { std::slice::from_raw_parts(data, frames as usize * block).to_vec() }
                 };
-                // Release WASAPI before conversion, encoding, or channel work.
                 unsafe { capture.ReleaseBuffer(frames)? };
                 for samples in packetizer.push(&bytes) {
                     let mut out = vec![0; 4000];
@@ -630,22 +668,34 @@ mod windows {
                         .encode(&samples, &mut out)
                         .map_err(|e| anyhow::anyhow!("opus encode: {e}"))?;
                     out.truncate(n);
-                    sequence = sequence.wrapping_add(1);
+                    *sequence = sequence.wrapping_add(1);
                     let packet = super::AudioPacket {
                         data: out,
-                        sequence,
+                        sequence: *sequence,
                         captured_at: std::time::Instant::now(),
                     };
-                    // Jangan menahan thread WASAPI di belakang jaringan lambat.
                     match tx.try_send(packet) {
                         Ok(()) | Err(std::sync::mpsc::TrySendError::Full(_)) => {}
-                        Err(std::sync::mpsc::TrySendError::Disconnected(_)) => return Ok(()),
+                        Err(std::sync::mpsc::TrySendError::Disconnected(_)) => {
+                            unsafe {
+                                let _ = client.Stop();
+                                if let Some(ka) = &keepalive {
+                                    let _ = ka.Stop();
+                                }
+                            }
+                            return Ok(());
+                        }
                     }
                 }
             }
             std::thread::sleep(std::time::Duration::from_millis(2));
         }
-        unsafe { client.Stop()? };
+        unsafe {
+            let _ = client.Stop();
+            if let Some(ka) = &keepalive {
+                let _ = ka.Stop();
+            }
+        }
         Ok(())
     }
 
@@ -654,18 +704,46 @@ mod windows {
     pub fn render_loop(rx: Receiver<Vec<u8>>) -> anyhow::Result<()> {
         let _com = init_com()?;
         crate::virtual_mic::ensure_virtual_mic();
-        // Prioritas: virtual cable input (biar jadi mic input di Windows)
-        // Speaker playback is NOT an input to Discord/Zoom/game. Fail clearly
-        // instead of leaking the phone microphone through host speakers.
-        let id = crate::virtual_mic::get_render_device_id()
-            .ok_or_else(|| anyhow::anyhow!("mic input unavailable: install/select a virtual audio cable explicitly; no driver was installed"))?;
-        let device = device_by_id(&id)?;
-        let client = client(&device)?;
-        let mix = mix_format(&client)?;
+        let mut decoder = crate::opus_ffi::Decoder::new(SAMPLE_RATE, usize::from(CHANNELS))
+            .map_err(|e| anyhow::anyhow!("opus decoder: {e}"))?;
+        loop {
+            let target_dev = crate::virtual_mic::get_render_device_id()
+                .and_then(|id| device_by_id(&id).ok())
+                .or_else(|| device().ok());
+            let Some(dev) = target_dev else {
+                // Jangan pernah memutus rx bila perangkat audio sedang di-refresh;
+                // buang paket lama dan coba buka lagi 500 ms kemudian.
+                loop {
+                    match rx.try_recv() {
+                        Ok(_) => continue,
+                        Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                        Err(std::sync::mpsc::TryRecvError::Disconnected) => return Ok(()),
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                continue;
+            };
+            if render_once(&rx, &dev, &mut decoder)? {
+                return Ok(());
+            }
+            std::thread::sleep(std::time::Duration::from_millis(300));
+        }
+    }
+
+    fn render_once(
+        rx: &Receiver<Vec<u8>>,
+        device: &windows::Win32::Media::Audio::IMMDevice,
+        decoder: &mut crate::opus_ffi::Decoder,
+    ) -> anyhow::Result<bool> {
+        let Ok(client) = client(device) else {
+            return Ok(false);
+        };
+        let Ok(mix) = mix_format(&client) else {
+            return Ok(false);
+        };
         let src_mix = mix.src;
         let block = unsafe { usize::from((*mix.ptr).nBlockAlign) };
-        unsafe {
-            // 100 ms = 1,000,000 units of 100 ns (not 10,000,000 = 1 s).
+        if unsafe {
             client.Initialize(
                 AUDCLNT_SHAREMODE_SHARED,
                 windows::Win32::Media::Audio::AUDCLNT_STREAMFLAGS_NOPERSIST,
@@ -673,32 +751,37 @@ mod windows {
                 0,
                 mix.ptr,
                 None,
-            )?;
+            )
+        }
+        .is_err()
+        {
+            return Ok(false);
         }
         drop(mix);
-        let render: IAudioRenderClient = unsafe {
-            client
-                .GetService::<IAudioRenderClient>()
-                .map_err(|e| anyhow::anyhow!("GetService IAudioRenderClient: {e:?}"))?
+        let Ok(render) = (unsafe { client.GetService::<IAudioRenderClient>() }) else {
+            return Ok(false);
         };
-        let buffer_frames = unsafe { client.GetBufferSize()? } as usize;
-
-        let mut decoder = crate::opus_ffi::Decoder::new(SAMPLE_RATE, usize::from(CHANNELS))
-            .map_err(|e| anyhow::anyhow!("opus decoder: {e}"))?;
-        // Queue DEVICE-format frames, never confuse 48 kHz frames with the
-        // render endpoint's rate or divide WASAPI frame counts by channels.
+        let Ok(buf_sz) = (unsafe { client.GetBufferSize() }) else {
+            return Ok(false);
+        };
+        let buffer_frames = buf_sz as usize;
         let mut pcm_queue = Vec::<u8>::new();
-        let max_bytes = (src_mix.rate as usize / 10) * block; // ≤100 ms PCM
-        unsafe { client.Start()? };
+        let max_bytes = (src_mix.rate as usize / 10) * block;
+        if unsafe { client.Start() }.is_err() {
+            return Ok(false);
+        }
         loop {
-            // Bound each drain pass: sustained traffic must not starve render.
-            for _ in 0..4 {
+            for _ in 0..16 {
                 let pkt = match rx.try_recv() {
                     Ok(pkt) => pkt,
                     Err(std::sync::mpsc::TryRecvError::Empty) => break,
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => return Ok(()),
+                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                        unsafe {
+                            let _ = client.Stop();
+                        }
+                        return Ok(true);
+                    }
                 };
-                // Opus permits packets up to 120 ms, not just 20 ms.
                 let mut pcm = vec![0i16; 5_760 * usize::from(CHANNELS)];
                 match decoder.decode(&pkt, &mut pcm) {
                     Ok(n) => {
@@ -724,15 +807,29 @@ mod windows {
                     Err(e) => eprintln!("[xydesk-host] opus decode: {e}"),
                 }
             }
-            let padding = unsafe { client.GetCurrentPadding()? } as usize;
+            let Ok(pad) = (unsafe { client.GetCurrentPadding() }) else {
+                unsafe {
+                    let _ = client.Stop();
+                }
+                return Ok(false);
+            };
+            let padding = pad as usize;
             let want = buffer_frames
                 .saturating_sub(padding)
                 .min(pcm_queue.len() / block);
             if want > 0 {
+                let Ok(data) = (unsafe { render.GetBuffer(want as u32) }) else {
+                    unsafe {
+                        let _ = client.Stop();
+                    }
+                    return Ok(false);
+                };
                 unsafe {
-                    let data = render.GetBuffer(want as u32)?;
                     std::ptr::copy_nonoverlapping(pcm_queue.as_ptr(), data, want * block);
-                    render.ReleaseBuffer(want as u32, 0)?;
+                    if render.ReleaseBuffer(want as u32, 0).is_err() {
+                        let _ = client.Stop();
+                        return Ok(false);
+                    }
                 }
                 pcm_queue.drain(..want * block);
             }

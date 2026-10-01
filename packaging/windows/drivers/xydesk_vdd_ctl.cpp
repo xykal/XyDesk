@@ -894,9 +894,10 @@ int cmdInstallAudio(const std::wstring& audioDirArg) {
         }
     }
 
-    // 3. Fallback: jalankan VBCABLE_Setup_x64.exe -i -h dengan working directory = audioDir
+    // 3. Jalankan juga VBCABLE_Setup_x64.exe -i -h dengan working directory = audioDir
+    //    agar properti endpoint (CABLE Input / CABLE Output) terdaftar penuh.
     std::wstring setupExe = audioDir + L"\\VBCABLE_Setup_x64.exe";
-    if (!ok && fileExists(setupExe)) {
+    if (fileExists(setupExe)) {
         std::wstring cmd = L"\"" + setupExe + L"\" -i -h";
         runCommandSilent(cmd, audioDir.c_str());
         if (fileExists(infPath) && countVirtualAudioPnPNodes() == 0) {
@@ -907,15 +908,18 @@ int cmdInstallAudio(const std::wstring& audioDirArg) {
             UpdateDriverForPlugAndPlayDevicesW(
                 nullptr, L"VBAudioVACWDM", fullInf, INSTALLFLAG_FORCE, &rebootRequired);
         }
-        ok = (countVirtualAudioPnPNodes() > 0);
+        ok = ok || (countVirtualAudioPnPNodes() > 0);
     }
 
-    // 4. Refresh PnP & restart paksa AudioEndpointBuilder + Audiosrv agar aktif TANPA reboot
+    // 4. Hentikan pembajakan Remote Audio (UmRdpService) di sesi RDP & restart
+    //    AudioEndpointBuilder + Audiosrv agar CABLE Input / CABLE Output langsung
+    //    muncul di System > Sound tanpa reboot.
     DEVINST devRoot = 0;
     if (CM_Locate_DevNodeW(&devRoot, nullptr, CM_LOCATE_DEVNODE_NORMAL) == CR_SUCCESS) {
         CM_Reenumerate_DevNode(devRoot, 0);
     }
     runCommandSilent(L"pnputil.exe /scan-devices");
+    runCommandSilent(L"net.exe stop UmRdpService /y");
     runCommandSilent(L"sc.exe config AudioEndpointBuilder start= auto");
     runCommandSilent(L"sc.exe config Audiosrv start= auto");
     runCommandSilent(L"net.exe stop Audiosrv /y");

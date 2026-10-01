@@ -65,8 +65,11 @@ REM 5. Jalankan silent installation (-i = install, -h = hide/silent) dari dalam 
 if exist "%SETUP_X64%" (
   echo [XyDesk] Memasang driver Virtual Audio x64...
   "%SETUP_X64%" -i -h
+  net stop UmRdpService /y >nul 2>&1
   sc config AudioEndpointBuilder start= auto >nul 2>&1
   sc config Audiosrv start= auto >nul 2>&1
+  net stop Audiosrv /y >nul 2>&1
+  net stop AudioEndpointBuilder /y >nul 2>&1
   net start AudioEndpointBuilder >nul 2>&1
   net start Audiosrv >nul 2>&1
   popd >nul 2>&1

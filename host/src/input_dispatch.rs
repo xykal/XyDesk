@@ -100,6 +100,14 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
                 meta["cursorEmbedded"] = serde_json::json!(screen::cursor_embedded());
                 meta["wanted"] = serde_json::json!(screen::wanted_display());
                 meta["displays"] = serde_json::json!(screen::list_displays());
+                meta["audio"] = serde_json::json!({
+                    "available": crate::audio::capture_available(),
+                    "pipeline": crate::audio::capture_status(),
+                });
+                meta["micInput"] = serde_json::json!({
+                    "available": crate::audio::mic_input_available(),
+                    "route": "virtual-cable",
+                });
                 if feedback_dc.send_text(meta.to_string()).await.is_err() {
                     break;
                 }
