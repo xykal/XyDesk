@@ -88,7 +88,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
                 if (!sent) run {
                     Api.requestOtp(email); sent = true; notice = t0("Kode dikirim ke") + " " + email; tone = Xy.success
                 } else run {
-                    val jwt = Api.verifyOtp(email, otp); onLoggedIn(jwt, email)
+                    val jwt = Api.verifyOtp(email, otp); sfx.confirm(); onLoggedIn(jwt, email)
                 }
             }
             Spacer(Modifier.height(14.dp))
