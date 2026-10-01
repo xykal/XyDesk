@@ -83,6 +83,14 @@ export class Hub {
     const url = new URL(request.url);
     // HTTP admin query (bukan WebSocket) — untuk dashboard realtime nyata
     if (request.headers.get('Upgrade') !== 'websocket') {
+      // Hanya admin.js (stub.fetch + x-internal-admin). Worker publik tidak
+      // merutekan path ini; header menahan fetch DO langsung bila binding bocor.
+      if (request.headers.get('x-internal-admin') !== '1') {
+        return new Response(JSON.stringify({ error: 'unauthorized' }), {
+          status: 401,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
       if (url.pathname === '/stats' || url.pathname === '/hub/stats') {
         const all = this.sockets();
         const hosts = all.filter(ws => {

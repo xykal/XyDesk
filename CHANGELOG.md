@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Hub HTTP admin:** `/stats`, `/hub/devices`, `/kick` menolak permintaan tanpa header `x-internal-admin` (selaras AuthStore). `admin.js` mengirim header itu. Belum deploy worker.
+
 - **HANDOFF + README diselaraskan ke stack aktual (2026-10-01):** antrian Flutter/Electron dicoret; klien = Kotlin native, panel = Win32. README tidak lagi menyebut Tauri v2 + Next.js sebagai shell Windows.
 
 - **Native presence: rotasi ID bila hello ditolak sebelum welcome:** soket beranda memakai ID tetap `app-presence-*`; setelah putus kotor, hub membalas `id sudah online` dan loop tetap menganggap soket terbuka tanpa daftar online. Kini error pra-welcome memutar ID dan menutup soket; `RtcSession` sudah punya jalur yang sama.

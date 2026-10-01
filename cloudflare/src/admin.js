@@ -132,7 +132,7 @@ async function handleAdminRequest(request, env, url) {
     try {
       const id = env.HUB.idFromName('global')
       const stub = env.HUB.get(id)
-      const r = await stub.fetch(new Request('https://hub/stats'))
+      const r = await stub.fetch(new Request('https://hub/stats', { headers: { 'x-internal-admin': '1' } }))
       if (!r.ok) throw new Error('upstream-failed')
       if (r.ok) {
         const hj = await r.json()
@@ -192,7 +192,7 @@ async function handleAdminRequest(request, env, url) {
     try {
       const id = env.HUB.idFromName('global')
       const stub = env.HUB.get(id)
-      const r = await stub.fetch(new Request('https://hub/hub/devices'))
+      const r = await stub.fetch(new Request('https://hub/hub/devices', { headers: { 'x-internal-admin': '1' } }))
       if (r.ok) {
         const devices = await r.json()
         // devices = [{ id, name, since }]
@@ -282,7 +282,7 @@ async function handleAdminRequest(request, env, url) {
     try {
       const hid = env.HUB.idFromName('global')
       const stub = env.HUB.get(hid)
-      const r = await stub.fetch(new Request('https://hub/kick', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, by: payload.email }) }))
+      const r = await stub.fetch(new Request('https://hub/kick', { method: 'POST', headers: { 'content-type': 'application/json', 'x-internal-admin': '1' }, body: JSON.stringify({ id, by: payload.email }) }))
       return json(await r.json(), r.status, env, request)
     } catch (e) { return json({ error: String(e) }, 500, env, request) }
   }
