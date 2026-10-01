@@ -31,9 +31,10 @@ Tertutup sebagai usang: shell Electron/`desktop/` (dihapus 2026-09-23).
 - [ ] **Keystore Android dirotasi** — APK lama tidak update-in-place; artikel
   rilis berikutnya harus jujur: uninstall dulu. Verifikasi
   `apksigner verify --print-certs` pada APK pertama keystore baru.
-- [ ] `update.json` hanya aset GitHub Release, bukan di domain app/signal.
-  Pastikan klien native membaca URL rilis yang benar sebelum mengandalkan
-  in-app update.
+- [ ] `update.json` hanya aset GitHub Release (`.../releases/latest/download/`),
+  bukan di domain app/signal. Klien Kotlin native **belum** mengambil manifes
+  itu (updater lama di Flutter). Web unduhan memakai URL GitHub yang sama —
+  rilis **draft** membuat `latest` 404, itu disengaja sampai rilis publik.
 - [ ] Versi, berita, `workflow_dispatch` Build/Release = keputusan operator.
   Jangan terbitkan ulang nomor build yang sama.
 
@@ -41,8 +42,9 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 
 ## Untuk: Backend / Edge
 
-- [ ] Defense-in-depth: HTTP DO Hub (`/kick`, `/stats`, `/hub/devices`)
-  hanya tidak dirutekan `worker.js`. Pertimbangkan header `x-internal-admin`.
+- [x] HTTP DO Hub (`/kick`, `/stats`, `/hub/devices`) menuntut
+  `x-internal-admin: 1` (sama seperti AuthStore). Worker publik tetap tidak
+  merutekan path itu. Tertutup 2026-10-01, belum deploy signaling.
 - [ ] Relay produksi satu penyedia (ExpressTurn). Cadangan
   `OPENRELAY_API_KEY` / `TURN_REST_*` masih kosong. Deploy CI tidak menimpa
   secret TURN Worker bila triplet GitHub kosong (disengaja).

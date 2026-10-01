@@ -236,9 +236,23 @@ test('kick client mencabut media meski tidak ada callback close dari client', as
   const out = [];
   const { hub, host, hostOut } = harness([{ id: 'c1', out }]);
   await hub.relay(host, answerMsg('c1'));
-  const res = await hub.fetch(new Request('https://internal/kick', { method: 'POST', body: JSON.stringify({ id: 'c1' }) }));
+  const denied = await hub.fetch(new Request('https://internal/kick', { method: 'POST', body: JSON.stringify({ id: 'c1' }) }));
+  assert.equal(denied.status, 401);
+  const res = await hub.fetch(new Request('https://internal/kick', {
+    method: 'POST',
+    headers: { 'x-internal-admin': '1' },
+    body: JSON.stringify({ id: 'c1' }),
+  }));
   assert.equal(res.status, 200);
   assert.deepEqual(hostOut, [{ type: 'bye', from: 'c1', reason: 'admin-disconnect' }]);
+});
+
+test('HTTP admin hub tanpa x-internal-admin ditolak', async () => {
+  const hub = new Hub({ getWebSockets: () => [] }, {});
+  const stats = await hub.fetch(new Request('https://internal/stats'));
+  assert.equal(stats.status, 401);
+  const devices = await hub.fetch(new Request('https://internal/hub/devices'));
+  assert.equal(devices.status, 401);
 });
 
 test('offer saja tidak menciptakan ikatan media', async () => {
