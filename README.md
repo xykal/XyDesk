@@ -38,7 +38,7 @@
 - **🔄 In-App Update Experience (AI Portrait Modal)**: Dialog visual pembaruan rasio 3:4 portrait AI modern, progress unduh di latar belakang via Android system tray push notification, dan instalasi instan direct-to-package-installer.
 - **🖥️ Multi-Platform Native Architecture**:
   - **Android Client**: Kotlin + Jetpack Compose (tanpa Material) dengan pustaka C++ sendiri `libstreamxy` (protokol input, telemetri) dan decoder H.264 low-latency langsung ke Surface.
-  - **Windows Host & Desktop Shell**: Rust supervisor engine yang ringan dipadukan dengan cangkang modern Tauri v2 + Next.js.
+  - **Windows Host & Desktop Shell**: engine Rust (capture/encode/WebRTC) plus panel Win32 C++ (`packaging/native-host/`). Shell Tauri/Electron sudah dihapus.
   - **Web Client**: Aplikasi web PWA modern di `https://app.xydesk.my.id` yang siap diakses dari peramban mana pun tanpa instalasi.
 - **📺 Multi-Monitor & Audio Loopback**: Pindah layar live antar monitor tanpa memutus sesi, capture audio loopback WASAPI stereo berdefinisi tinggi, dan mikrofon passthrough dua arah.
 - **🔒 Keamanan & Zero-Trust Pairing**: Autentikasi OTP email, Google OAuth terverifikasi, HMAC token gerbang signaling, perlindungan anti brute-force pairing (*PairGuard*), dan sesi tunggal anti-ambil alih.
@@ -138,8 +138,8 @@ Kami menyambut hangat kontribusi, diskusi teknis, pelaporan bug, dan ide fitur d
 ### Cara Berkontribusi:
 1. **Fork Repositori**: Buat salinan repo di akun GitHub Anda.
 2. **Buat Branch Fitur**: `git checkout -b feature/fitur-keren-anda`
-3. **Patuhi Standar Mutu**: Pastikan `flutter analyze`, `cargo clippy`, dan seluruh test suite lulus 100%.
-4. **Format Kode**: Jalankan `dart format lib tool` dan `cargo fmt`.
+3. **Patuhi Standar Mutu**: `cargo clippy` (host), tes web yang sudah ada, dan cek native sesuai `android-native/README.md`. Jangan klaim 100% tanpa menjalankan gerbang itu.
+4. **Format Kode**: `cargo fmt`; Kotlin mengikuti konvensi folder `android-native/`.
 5. **Kirim Pull Request**: Buka PR dengan deskripsi yang jelas dan alasan perubahan.
 
 ---
