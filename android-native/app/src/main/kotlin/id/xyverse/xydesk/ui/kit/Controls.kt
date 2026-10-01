@@ -37,6 +37,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -48,8 +49,8 @@ import androidx.compose.ui.unit.sp
 
 /** Teks diterjemahkan otomatis menurut LocalLang. */
 @Composable
-fun XyText(text: String, style: TextStyle = Xy.body, modifier: Modifier = Modifier, color: Color? = null) =
-    BasicText(text.tr(LocalLang.current), modifier, style = if (color != null) style.copy(color = color) else style)
+fun XyText(text: String, style: TextStyle = Xy.body, modifier: Modifier = Modifier, color: Color? = null, maxLines: Int = Int.MAX_VALUE) =
+    BasicText(text.tr(LocalLang.current), modifier, style = if (color != null) style.copy(color = color) else style, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 
 @Composable
 fun t(text: String): String = text.tr(LocalLang.current)

@@ -10,6 +10,10 @@ sealed interface Act {
     data class Button(val button: Int, val down: Boolean) : Act
     data class Click(val button: Int) : Act
     data class Scroll(val dx: Int, val dy: Int) : Act
+    /** Zoom: langkah positif = perbesar (Ctrl+roda ke atas). */
+    data class Zoom(val steps: Int) : Act
+    /** Geser tiga jari: -1 kiri, +1 kanan (ganti jendela), -2 atas (tampilkan tugas). */
+    data class Swipe3(val dir: Int) : Act
     data object Haptic : Act
 }
 
@@ -23,6 +27,8 @@ data class TrackpadConfig(
     val slopPx: Float = 8f,
     val scrollStepPx: Float = 10f,
     val scrollUnit: Int = 40,
+    val pinchStepPx: Float = 28f,
+    val swipe3Px: Float = 90f,
 )
 
 /**
@@ -47,6 +53,11 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
     private var remX = 0f
     private var remY = 0f
     private var scrollAcc = 0f
+    private var pinchDist = -1f
+    private var pinchAcc = 0f
+    private var swipeX = 0f
+    private var swipeY = 0f
+    private var swiped = false
 
     val isDragging get() = dragging
 
@@ -55,6 +66,7 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
         downAt = t; lastT = t
         lastX = x; lastY = y; startX = x; startY = y
         moved = false; holdFired = false; scrollAcc = 0f; remX = 0f; remY = 0f
+        pinchDist = -1f; pinchAcc = 0f; swipeX = 0f; swipeY = 0f; swiped = false
         dragging = t - lastTapUp <= config.doubleTapMs
         if (dragging) out(Act.Button(0, true))
     }
@@ -68,6 +80,20 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
         fingers = (fingers - 1).coerceAtLeast(1)
     }
 
+    /** Jarak antar dua jari pertama; panggil tiap MOVE saat dua jari menempel. */
+    fun pinch(distance: Float) {
+        if (maxFingers != 2 || dragging) return
+        if (pinchDist < 0f) { pinchDist = distance; return }
+        pinchAcc += distance - pinchDist
+        pinchDist = distance
+        val steps = (pinchAcc / config.pinchStepPx).toInt()
+        if (steps != 0) {
+            pinchAcc -= steps * config.pinchStepPx
+            moved = true
+            out(Act.Zoom(steps))
+        }
+    }
+
     fun move(t: Long, x: Float, y: Float) {
         val dx = x - lastX
         val dy = y - lastY
@@ -75,6 +101,20 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
         moved = true
         val dt = (t - lastT).coerceAtLeast(1)
         lastT = t; lastX = x; lastY = y
+        if (maxFingers >= 3) {
+            swipeX += dx; swipeY += dy
+            if (!swiped) {
+                val dir = when {
+                    swipeX > config.swipe3Px -> 1
+                    swipeX < -config.swipe3Px -> -1
+                    swipeY < -config.swipe3Px -> -2
+                    else -> 0
+                }
+                if (dir != 0) { swiped = true; out(Act.Haptic); out(Act.Swipe3(dir)) }
+            }
+            return
+        }
+        if (pinchDist >= 0f && abs(pinchAcc) > config.pinchStepPx * 0.5f) return
         if (maxFingers >= 2 && !dragging) {
             scrollAcc += if (config.naturalScroll) dy else -dy
             val steps = (scrollAcc / config.scrollStepPx).toInt()

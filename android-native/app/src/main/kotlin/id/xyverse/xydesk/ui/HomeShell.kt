@@ -5,7 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +17,13 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.platform.LocalContext
+import id.xyverse.xydesk.core.News
+import id.xyverse.xydesk.core.NewsFeed
+import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.R
 import id.xyverse.xydesk.core.SessionRecord
 import id.xyverse.xydesk.ui.kit.BottomNav
 import id.xyverse.xydesk.ui.kit.Icon
@@ -43,25 +53,71 @@ fun HomeShell(
 ) {
     var tab by remember { mutableStateOf(Tab.HOME) }
     var prefill by remember { mutableStateOf(lastHost) }
-    val devices = history.distinctBy { it.host }
-    Box(Modifier.fillMaxSize()) {
+    var asking by remember { mutableStateOf<String?>(null) }
+    var editing by remember { mutableStateOf<String?>(null) }
+    var detail by remember { mutableStateOf<SessionRecord?>(null) }
+    var query by remember { mutableStateOf("") }
+    var sort by remember { mutableStateOf("Terakhir") }
+    val store = settings.store
+    val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
+    val meta = remember(metaTick, store) { HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }) }
+    var grid by remember { mutableStateOf(store?.historyGrid ?: false) }
+    var feed by remember { mutableStateOf<NewsFeed?>(null) }
+    var seen by remember { mutableStateOf(store?.newsSeen.orEmpty()) }
+    val ctx = LocalContext.current
+    LaunchedEffect(Unit) { feed = News.load(ctx) }
+    val devices = remember(history, metaTick) { history.distinctBy { it.host }.sortedByDescending { meta.favorite(it.host) } }
+    val unread = (feed?.items?.firstOrNull()?.id ?: "").let { it.isNotEmpty() && it != seen }
+    fun quickConnect(host: String) {
+        val saved = store?.hostPin(host)
+        if (saved != null) onConnect(host, saved) else asking = host
+    }
+    CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, if (unread) feed?.items?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
-                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan") { tab = Tab.HOME }
-                    } else DevicesSection(devices.take(10)) { host -> prefill = host; tab = Tab.HOME }
+                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
+                    } else {
+                        DeviceSearch(query) { query = it }
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            XyText("Urutkan", Xy.caption, Modifier.align(Alignment.CenterVertically))
+                            listOf("Terakhir", "Nama", "Favorit").forEach { Chip(it, it == sort) { sort = it } }
+                        }
+                        Spacer(Modifier.height(16.dp))
+                        val filtered = devices.filter { d -> query.isBlank() || hostTitle(d).contains(query, true) || d.host.contains(query.filter(Char::isDigit).ifEmpty { "\u0000" }) }
+                        val names = filtered.associate { it.host to hostTitle(it) }
+                        val shown = when (sort) {
+                            "Nama" -> filtered.sortedBy { names[it.host]?.lowercase() }
+                            "Favorit" -> filtered.sortedByDescending { meta.favorite(it.host) }
+                            else -> filtered.sortedByDescending { it.startedAt }
+                        }
+                        if (shown.isEmpty()) XyText("Tidak ada host yang cocok.", Xy.caption)
+                        else DevicesSection(shown.take(20), onLong = { editing = it }) { host -> quickConnect(host) }
+                    }
                 }
                 Tab.HISTORY -> Page("Riwayat", "Sesi terakhir, durasi, dan hasilnya.") {
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
-                    else HistorySection(history)
+                    else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
+                }
+                Tab.NEWS -> Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
+                    NewsScreen(feed, settings.appVersion, seen, onOpenUrl) { seen = it; store?.newsSeen = it }
                 }
                 Tab.ACCOUNT -> AccountScreen(email, onOpenUrl, settings, onLogout)
             }
         }
-        Box(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) { BottomNav(tab) { tab = it } }
-    }
+        Box(Modifier.align(Alignment.BottomCenter).safeDrawingPadding()) { BottomNav(tab, badge = if (unread) Tab.NEWS else null) { tab = it } }
+        PinSheet(asking, remembered = false, onDismiss = { asking = null }) { pin, keep ->
+            val host = asking ?: return@PinSheet
+            store?.setHostPin(host, if (keep) pin else null)
+            asking = null
+            onConnect(host, pin)
+        }
+        store?.let { HostSheet(editing, it) { editing = null } }
+        SessionDetailSheet(detail, onDismiss = { detail = null }) { host -> detail = null; quickConnect(host) }
+    } }
 }
 
 @Composable

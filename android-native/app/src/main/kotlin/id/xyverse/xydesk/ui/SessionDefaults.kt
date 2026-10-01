@@ -30,6 +30,8 @@ fun SessionDefaults(store: Store) {
     var natural by remember { mutableStateOf(store.naturalScroll) }
     var direct by remember { mutableStateOf(store.directTouch) }
     var stats by remember { mutableStateOf(store.showStats) }
+    var retry by remember { mutableStateOf(store.autoReconnect) }
+    var awake by remember { mutableStateOf(store.keepAwake) }
     XyCard {
         XyText("VIDEO", Xy.label)
         Spacer(Modifier.height(8.dp))
@@ -56,6 +58,39 @@ fun SessionDefaults(store: Store) {
         }
         Box(Modifier.padding(horizontal = 6.dp)) {
             XyToggle("Scroll alami", "Dua jari ke bawah = halaman ikut ke bawah.", natural) { natural = it; store.naturalScroll = it }
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+    XyCard {
+        XyText("KONEKSI", Xy.label)
+        Spacer(Modifier.height(8.dp))
+        Box(Modifier.padding(horizontal = 6.dp)) {
+            XyToggle("Sambung ulang otomatis", "Coba lagi sampai 3 kali bila sesi putus mendadak.", retry) { retry = it; store.autoReconnect = it }
+        }
+        Box(Modifier.padding(horizontal = 6.dp)) {
+            XyToggle("Layar tetap menyala", "HP tidak mengunci selama sesi berjalan.", awake) { awake = it; store.keepAwake = it }
+        }
+    }
+    Spacer(Modifier.height(16.dp))
+    GestureGuide()
+}
+
+/** Contekan gestur trackpad supaya fitur sesi mudah ditemukan. */
+@Composable
+fun GestureGuide() {
+    val rows = listOf(
+        "Ketuk 1 jari" to "Klik kiri", "Tahan 1 jari" to "Klik kanan", "Ketuk 2x lalu geser" to "Seret / blok teks",
+        "Geser 2 jari" to "Scroll", "Cubit 2 jari" to "Zoom (Ctrl + roda)", "Geser 3 jari kiri/kanan" to "Alt+Tab",
+        "Geser 3 jari ke atas" to "Win+Tab (semua jendela)", "Tombol kanan" to "Keyboard, tombol cepat, kualitas, putus",
+    )
+    XyCard {
+        XyText("GESTUR", Xy.label)
+        Spacer(Modifier.height(8.dp))
+        rows.forEach { (g, a) ->
+            Row(Modifier.padding(horizontal = 6.dp, vertical = 6.dp)) {
+                XyText(g, Xy.body, Modifier.weight(1f))
+                XyText(a, Xy.caption.copy(color = Xy.textMid))
+            }
         }
     }
 }

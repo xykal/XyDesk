@@ -64,6 +64,58 @@ class Store(context: Context) {
         get() = prefs.getBoolean("directTouch", false)
         set(v) = prefs.edit().putBoolean("directTouch", v).apply()
 
+    /** Password host tersimpan per ID (opt-in, terenkripsi bersama token). */
+    var autoReconnect: Boolean
+        get() = prefs.getBoolean("autoReconnect", true)
+        set(v) = prefs.edit().putBoolean("autoReconnect", v).apply()
+
+    var keepAwake: Boolean
+        get() = prefs.getBoolean("keepAwake", true)
+        set(v) = prefs.edit().putBoolean("keepAwake", v).apply()
+
+    var historyGrid: Boolean
+        get() = prefs.getBoolean("historyGrid", false)
+        set(v) = prefs.edit().putBoolean("historyGrid", v).apply()
+
+    var newsSeen: String
+        get() = prefs.getString("newsSeen", "").orEmpty()
+        set(v) = prefs.edit().putString("newsSeen", v).apply()
+
+    fun alias(host: String): String = prefs.getString("alias." + host.filter(Char::isDigit), "").orEmpty()
+
+    fun setAlias(host: String, name: String) {
+        val k = "alias." + host.filter(Char::isDigit)
+        if (name.isBlank()) prefs.edit().remove(k).apply() else prefs.edit().putString(k, name.trim()).apply()
+        bump()
+    }
+
+    fun favorite(host: String): Boolean = prefs.getBoolean("fav." + host.filter(Char::isDigit), false)
+
+    fun setFavorite(host: String, on: Boolean) {
+        prefs.edit().putBoolean("fav." + host.filter(Char::isDigit), on).apply()
+        bump()
+    }
+
+    fun forgetHost(host: String) {
+        val d = host.filter(Char::isDigit)
+        prefs.edit().remove("pin.$d").remove("alias.$d").remove("fav.$d").apply()
+        history = history.filter { it.host.filter(Char::isDigit) != d }
+        bump()
+    }
+
+    fun hostPin(host: String): String? = prefs.getString("pin." + host.filter(Char::isDigit), null)
+
+    fun setHostPin(host: String, pin: String?) {
+        val k = "pin." + host.filter(Char::isDigit)
+        prefs.edit().apply { if (pin.isNullOrEmpty()) remove(k) else putString(k, pin) }.apply()
+    }
+
+    fun forgetAllPins() {
+        val e = prefs.edit()
+        prefs.all.keys.filter { it.startsWith("pin.") }.forEach { e.remove(it) }
+        e.apply()
+    }
+
     var onboarded: Boolean
         get() = prefs.getBoolean("onboarded", false)
         set(v) = prefs.edit().putBoolean("onboarded", v).apply()
@@ -96,8 +148,14 @@ class Store(context: Context) {
         return historyFlow
     }
 
+    /** Naik tiap alias/favorit berubah supaya daftar host ikut segar. */
+    fun observeHostMeta(): StateFlow<Int> = metaFlow
+
+    private fun bump() { metaFlow.value++ }
+
     companion object {
         private val historyFlow = MutableStateFlow<List<SessionRecord>>(emptyList())
+        private val metaFlow = MutableStateFlow(0)
         private var primed = false
     }
 
@@ -114,16 +172,17 @@ data class SessionRecord(
     val durationSec: Long,
     val outcome: String,
     val specs: HostSpecs = HostSpecs(),
+    val trace: String = "",
 ) {
     fun json(): JSONObject = JSONObject()
         .put("host", host).put("name", name).put("startedAt", startedAt)
-        .put("durationSec", durationSec).put("outcome", outcome).put("specs", specs.json())
+        .put("durationSec", durationSec).put("outcome", outcome).put("specs", specs.json()).put("trace", trace)
 
     companion object {
         fun from(o: JSONObject) = SessionRecord(
             o.getString("host"), o.optString("name"), o.getLong("startedAt"),
             o.optLong("durationSec"), o.optString("outcome", "ok"),
-            o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(),
+            o.optJSONObject("specs")?.let(HostSpecs::from) ?: HostSpecs(), o.optString("trace"),
         )
     }
 }

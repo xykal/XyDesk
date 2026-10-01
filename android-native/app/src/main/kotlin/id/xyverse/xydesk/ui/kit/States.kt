@@ -1,6 +1,8 @@
 package id.xyverse.xydesk.ui.kit
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -27,12 +29,13 @@ import androidx.compose.ui.unit.dp
 
 /** Keadaan kosong: ikon dalam lingkaran lembut, judul, keterangan, aksi opsional. */
 @Composable
-fun XyEmpty(icon: Icon, title: String, caption: String, action: String? = null, onAction: () -> Unit = {}) {
+fun XyEmpty(icon: Icon, title: String, caption: String, action: String? = null, image: Int? = null, onAction: () -> Unit = {}) {
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusL)).background(Xy.overlay).padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(Modifier.size(72.dp).background(Color.White, CircleShape).border(1.dp, Xy.line, CircleShape), contentAlignment = Alignment.Center) {
+        if (image != null) Image(painterResource(image), null, Modifier.size(150.dp).clip(RoundedCornerShape(Xy.radiusL)))
+        else Box(Modifier.size(72.dp).background(Color.White, CircleShape).border(1.dp, Xy.line, CircleShape), contentAlignment = Alignment.Center) {
             XyIcon(icon, tint = Xy.accent, size = 30.dp)
         }
         Spacer(Modifier.height(16.dp))

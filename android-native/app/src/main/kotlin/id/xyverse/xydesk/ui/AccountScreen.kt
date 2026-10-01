@@ -217,14 +217,16 @@ private fun SecurityBody(settings: Settings, onLogout: () -> Unit) {
         XyText("DATA DI HP INI", Xy.label)
         Spacer(Modifier.height(8.dp))
         XyRow(Icon.SHIELD, "Token login terenkripsi", "AES-256, hanya bisa dibuka oleh aplikasi ini.", chevron = false, tint = Xy.success)
-        XyRow(Icon.KEY, "Password host tidak disimpan", "Diminta setiap kali menyambung.", chevron = false, tint = Xy.success)
+        XyRow(Icon.KEY, "Password host", "Tidak disimpan kecuali kamu memilih \"Ingat\" saat menyambung dari riwayat.", chevron = false, tint = Xy.success)
         XyRow(Icon.MONITOR, "Cuplikan layar host", "Disimpan lokal untuk kartu perangkat; tidak diunggah.", chevron = false, tint = Xy.success)
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("TINDAKAN", Xy.label)
         Spacer(Modifier.height(8.dp))
+        settings.store?.let { ExportHistoryRow(it) }
         XyRow(Icon.TRASH, "Hapus riwayat & cuplikan", "${settings.historyCount} sesi akan dihapus.", tint = Xy.warning, onClick = settings.onClearHistory)
+        XyRow(Icon.KEY, "Lupakan password host tersimpan", "Semua host akan minta password lagi.", tint = Xy.warning, onClick = { settings.store?.forgetAllPins() })
         XyRow(Icon.POWER, "Keluar dari HP ini", "Token dihapus, harus login ulang.", tint = Xy.danger, onClick = onLogout)
     }
 }

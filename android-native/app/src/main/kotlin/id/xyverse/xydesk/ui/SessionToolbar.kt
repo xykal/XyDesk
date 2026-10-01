@@ -45,6 +45,7 @@ class SessionActions(
     val quality: (preset: Int) -> Unit,
     val resolution: (mode: Int) -> Unit,
     val fps: (target: Int) -> Unit = {},
+    val bitrate: (mbps: Int) -> Unit = {},
     val display: (index: Int) -> Unit,
     val touchMode: (direct: Boolean) -> Unit = {},
     val trackpadSpeed: (speed: Float) -> Unit = {},
@@ -53,6 +54,8 @@ class SessionActions(
     val clipboardSync: (on: Boolean) -> Unit = {},
     val sendQuickKey: (combo: QuickKey) -> Unit = {},
     val stats: (show: Boolean) -> Unit = {},
+    val centerCursor: () -> Unit = {},
+    val present: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -66,7 +69,10 @@ data class SessionPrefs(
     val showStats: Boolean = true,
 )
 
-enum class QuickKey(val label: String) { ESC("Esc"), TAB("Tab"), WIN("Win"), COPY("Ctrl+C"), PASTE("Ctrl+V"), CAD("CAD") }
+enum class QuickKey(val label: String) {
+    ESC("Esc"), TAB("Tab"), WIN("Win"), ENTER("Enter"), COPY("Ctrl+C"), PASTE("Ctrl+V"), UNDO("Ctrl+Z"),
+    ALT_TAB("Alt+Tab"), ALT_F4("Alt+F4"), F11("F11"), PRTSC("PrtSc"), CAD("CAD"),
+}
 
 private enum class Panel { NONE, CONTROLS, SETTINGS }
 
@@ -83,6 +89,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var quality by remember { mutableStateOf(prefs.quality) }
     var fps by remember { mutableStateOf(prefs.fps) }
     var res by remember { mutableStateOf(-1) }
+    var mbps by remember { mutableStateOf(0) }
     var monitor by remember { mutableStateOf(0) }
     var directTouch by remember { mutableStateOf(prefs.directTouch) }
     var speed by remember { mutableFloatStateOf(prefs.trackpadSpeed) }
@@ -105,6 +112,10 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 if (panel == Panel.CONTROLS) {
                     XyText("KONTROL", Xy.label)
                     Wrap { QuickKey.entries.forEach { k -> Pill(k.label) { actions.sendQuickKey(k) } } }
+                    Wrap {
+                        Pill("Pusatkan kursor") { actions.centerCursor() }
+                        Pill("Mode presentasi") { panel = Panel.NONE; actions.present() }
+                    }
                     XyText("MODE SENTUH", Xy.label)
                     Wrap {
                         Pill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
@@ -117,7 +128,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         Pill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
                         Pill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
                     }
-                    XyText("Ketuk klik kiri · tahan klik kanan · 2 jari scroll · ketuk-ketuk-tahan seret · 3 jari klik tengah", Xy.caption)
+                    XyText("Ketuk klik kiri · tahan klik kanan · 2 jari scroll / cubit zoom · ketuk-ketuk-tahan seret · 3 jari geser Alt+Tab", Xy.caption)
                 } else {
                     XyText("KUALITAS", Xy.label)
                     Wrap { qLabels.forEachIndexed { i, l -> Pill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
@@ -125,6 +136,10 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                     Wrap {
                         listOf(30, 60).forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
                         listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; quality = 3.coerceAtMost(quality.coerceAtLeast(1)); actions.resolution(i) } }
+                    }
+                    if (quality != 0) {
+                        XyText("BITRATE", Xy.label)
+                        Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> Pill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
                     }
                     XyText("MONITOR · SESI", Xy.label)
                     Wrap {
