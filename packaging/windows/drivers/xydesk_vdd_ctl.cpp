@@ -910,9 +910,16 @@ int cmdInstallAudio(const std::wstring& audioDirArg) {
         ok = (countVirtualAudioPnPNodes() > 0);
     }
 
-    // 4. Pastikan layanan AudioEndpointBuilder & Audiosrv menyala dan me-refresh endpoint
+    // 4. Refresh PnP & restart paksa AudioEndpointBuilder + Audiosrv agar aktif TANPA reboot
+    DEVINST devRoot = 0;
+    if (CM_Locate_DevNodeW(&devRoot, nullptr, CM_LOCATE_DEVNODE_NORMAL) == CR_SUCCESS) {
+        CM_Reenumerate_DevNode(devRoot, 0);
+    }
+    runCommandSilent(L"pnputil.exe /scan-devices");
     runCommandSilent(L"sc.exe config AudioEndpointBuilder start= auto");
     runCommandSilent(L"sc.exe config Audiosrv start= auto");
+    runCommandSilent(L"net.exe stop Audiosrv /y");
+    runCommandSilent(L"net.exe stop AudioEndpointBuilder /y");
     runCommandSilent(L"net.exe start AudioEndpointBuilder");
     runCommandSilent(L"net.exe start Audiosrv");
 
