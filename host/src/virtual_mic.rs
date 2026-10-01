@@ -39,7 +39,10 @@ fn kernel_driver_installed() -> bool {
     if sys10.is_file() || sys7.is_file() {
         return true;
     }
-    if let Ok(out) = Command::new("sc.exe").args(["query", "VBAudioVACMME"]).output() {
+    if let Ok(out) = Command::new("sc.exe")
+        .args(["query", "VBAudioVACMME"])
+        .output()
+    {
         if out.status.success() {
             return true;
         }

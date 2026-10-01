@@ -385,7 +385,9 @@ mod windows {
             let name = unsafe {
                 if let Ok(props) = item.OpenPropertyStore(STGM_READ) {
                     let friendly_key = windows::Win32::Foundation::PROPERTYKEY {
-                        fmtid: windows::core::GUID::from_u128(0xA45C254E_DF1C_4EFD_8020_67D146A850E0),
+                        fmtid: windows::core::GUID::from_u128(
+                            0xA45C254E_DF1C_4EFD_8020_67D146A850E0,
+                        ),
                         pid: 14,
                     };
                     if let Ok(var) = props.GetValue(&friendly_key) {
