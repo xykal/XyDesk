@@ -116,8 +116,8 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
             XyText("Dengan masuk, kamu menyetujui:", Xy.caption)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LegalPill("Syarat & Ketentuan") { onOpenUrl("https://xydesk.my.id/legal#syarat") }
-                LegalPill("Kebijakan Privasi") { onOpenUrl("https://xydesk.my.id/legal#privasi") }
+                LegalPill("Syarat & Ketentuan") { Legal.open = Legal.TERMS }
+                LegalPill("Kebijakan Privasi") { Legal.open = Legal.PRIVACY }
             }
             Spacer(Modifier.height(20.dp))
             XyText("XyVerse Technology Global", Xy.label)

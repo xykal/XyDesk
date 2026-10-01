@@ -75,7 +75,6 @@ fun HomeShell(
     val meta = remember(metaTick, store, online) {
         HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }, { h -> online?.let { Presence.hostKey(h) in it } })
     }
-    var grid by remember { mutableStateOf(store?.historyGrid ?: false) }
     var posts by remember { mutableStateOf<List<NewsPost>?>(null) }
     var offline by remember { mutableStateOf(false) }
     var reading by remember { mutableStateOf<NewsPost?>(null) }
@@ -99,7 +98,7 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, { quickConnect(it) }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(prefill, devices, { quickConnect(it) }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
@@ -122,12 +121,12 @@ fun HomeShell(
                         else DevicesSection(shown.take(20), onLong = { editing = it }) { host -> quickConnect(host) }
                     }
                 }
-                Tab.HISTORY -> Page("Riwayat", "Sesi terakhir, durasi, dan hasilnya.") {
+                Tab.HISTORY -> Page("Riwayat", "Satu baris per PC: sesi terakhir, durasi, dan jumlah sesi.") {
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
                     else {
                         UsageStrip(history)
                         Spacer(Modifier.height(16.dp))
-                        HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
+                        HistoryBrowser(history) { detail = it }
                     }
                 }
                 Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), email, googleToken, onShare) { reading = null } }

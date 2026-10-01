@@ -122,7 +122,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             onNativeSize = { w, h -> runOnUiThread { fitSurface(w, h) } },
             onDecodeMode = { ll -> runOnUiThread { applyDecodeMode(ll) } },
         )
-        metrics = SessionMetrics(this, session, ::showLine, ::applyVideoCmd)
+        metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
         metrics.targetFps = store.targetFps
         metrics.auto = store.quality == 0
         touch = SessionTouch(TrackpadConfig(speed = store.trackpadSpeed, naturalScroll = store.naturalScroll), session::send) {
@@ -150,8 +150,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
-    private fun showLine(text: String) = runOnUiThread {
-        if (connected && showStats && !presenting) { b.status.text = text; b.status.visibility = View.VISIBLE }
+    private fun showHud(items: List<Pair<String, String>>) = runOnUiThread {
+        if (!connected || !showStats || presenting) return@runOnUiThread
+        b.status.text = SessionHud.render(items.filter { it.first in store.hudItems && it.second.isNotEmpty() })
+        b.status.visibility = View.VISIBLE
     }
 
     private fun applyDecodeMode(ll: Boolean) {

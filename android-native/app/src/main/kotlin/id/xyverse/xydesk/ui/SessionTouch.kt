@@ -8,11 +8,11 @@ import id.xyverse.xyadapt.Act
 import id.xyverse.xyadapt.Trackpad
 import id.xyverse.xyadapt.TrackpadConfig
 import id.xyverse.xydesk.core.StreamXy
-import kotlin.math.hypot
 
 /**
  * Menjembatani MotionEvent ke mesin gestur `libxyadapt` (mode trackpad) atau
- * ke koordinat absolut 0..1 (mode sentuh langsung: ketuk klik kiri, tahan klik kanan).
+ * ke koordinat absolut 0..1 (mode sentuh langsung). Trackpad: 1 jari gerak, ketuk klik kiri,
+ * ketuk 2 jari klik kanan, geser 2 jari gulir; tanpa cubit dan tanpa tahan-klik-kanan.
  */
 class SessionTouch(
     config: TrackpadConfig,
@@ -22,7 +22,6 @@ class SessionTouch(
     var directTouch = false
     private val handler = Handler(Looper.getMainLooper())
     private val pad = Trackpad(config) { apply(it) }
-    private val hold = Runnable { pad.tick(now()) }
     private var downAt = 0L
     private var moved = false
     private var lastX = 0f
@@ -37,18 +36,12 @@ class SessionTouch(
     private fun trackpad(e: MotionEvent): Boolean {
         val t = now()
         when (e.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                pad.down(t, e.x, e.y)
-                handler.postDelayed(hold, pad.config.holdRightClickMs + 10)
-            }
-            MotionEvent.ACTION_POINTER_DOWN -> { pad.pointerDown(); handler.removeCallbacks(hold) }
+            MotionEvent.ACTION_DOWN -> pad.down(t, e.x, e.y)
+            MotionEvent.ACTION_POINTER_DOWN -> pad.pointerDown()
             MotionEvent.ACTION_POINTER_UP -> pad.pointerUp()
-            MotionEvent.ACTION_MOVE -> {
-                if (e.pointerCount == 2) pad.pinch(hypot(e.getX(1) - e.getX(0), e.getY(1) - e.getY(0)))
-                pad.move(t, e.x, e.y)
-            }
-            MotionEvent.ACTION_UP -> { handler.removeCallbacks(hold); pad.up(t) }
-            MotionEvent.ACTION_CANCEL -> { handler.removeCallbacks(hold); pad.cancel() }
+            MotionEvent.ACTION_MOVE -> pad.move(t, e.x, e.y)
+            MotionEvent.ACTION_UP -> pad.up(t)
+            MotionEvent.ACTION_CANCEL -> pad.cancel()
         }
         return true
     }
@@ -69,7 +62,7 @@ class SessionTouch(
             }
             MotionEvent.ACTION_UP -> {
                 send(StreamXy.moveAbs(nx, ny))
-                if (!moved) click(if (now() - downAt > 420) 1 else 0)
+                if (!moved) click(0)
             }
         }
         return true

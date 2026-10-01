@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class Tab(val label: String) { HOME("Beranda"), DEVICES("Perangkat"), HISTORY("Riwayat"), NEWS("Berita"), ACCOUNT("Akun") }
+enum class Tab(val label: String) { HOME("Koneksi"), DEVICES("Perangkat"), HISTORY("Riwayat"), NEWS("Berita"), ACCOUNT("Akun") }
 
 /** Bar bawah mengambang berbentuk pil; ikon garis digambar sendiri. */
 @Composable

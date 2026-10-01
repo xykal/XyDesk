@@ -32,7 +32,7 @@ fun HostSheet(host: String?, store: Store, onDismiss: () -> Unit) {
         Spacer(Modifier.height(16.dp))
         XyField(alias, { alias = it.take(24) }, "Nama panggilan", hint = "PC Kamar, Kantor, …")
         Spacer(Modifier.height(8.dp))
-        XyToggle("Favorit", "Selalu tampil paling atas di Perangkat dan Beranda.", fav) { fav = it }
+        XyToggle("Favorit", "Selalu tampil paling atas di Perangkat dan Koneksi.", fav) { fav = it }
         Spacer(Modifier.height(4.dp))
         XyRow(Icon.KEY, "Password tersimpan", if (hasPin) "Ada; dipakai otomatis saat ketuk sambung." else "Belum; akan ditanya saat menyambung.", chevron = false)
         Spacer(Modifier.height(12.dp))

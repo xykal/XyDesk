@@ -85,3 +85,18 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("io.github.webrtc-sdk:android:125.6422.07")
 }
+
+abstract class CopyLegalTask : DefaultTask() {
+    @get:InputFile abstract val source: RegularFileProperty
+    @get:OutputDirectory abstract val outDir: DirectoryProperty
+    @TaskAction fun run() { source.get().asFile.copyTo(outDir.get().asFile.resolve("legal.md"), overwrite = true) }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val task = tasks.register<CopyLegalTask>("copyLegal${variant.name.replaceFirstChar(Char::uppercase)}") {
+            source.set(rootProject.file("../docs/LEGAL.md"))
+        }
+        variant.sources.assets?.addGeneratedSourceDirectory(task, CopyLegalTask::outDir)
+    }
+}

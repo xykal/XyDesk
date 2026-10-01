@@ -42,6 +42,7 @@
         android:shadowDy="1"
         android:shadowRadius="3"
         android:textColor="#F2FFFFFF"
-        android:textSize="11sp"
+        android:textSize="13sp"
+        android:lineSpacingExtra="1dp"
         android:visibility="gone" />
 </FrameLayout>
