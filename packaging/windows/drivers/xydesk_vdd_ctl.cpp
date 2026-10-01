@@ -821,6 +821,123 @@ bool createRootAudioPnPNode() {
     return true;
 }
 
+void enableBackupRestorePrivileges() {
+    HANDLE token = nullptr;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
+        return;
+    }
+    const wchar_t* privs[] = {SE_BACKUP_NAME, SE_RESTORE_NAME, SE_TAKE_OWNERSHIP_NAME};
+    for (const wchar_t* name : privs) {
+        TOKEN_PRIVILEGES tp = {};
+        if (LookupPrivilegeValueW(nullptr, name, &tp.Privileges[0].Luid)) {
+            tp.PrivilegeCount = 1;
+            tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+            AdjustTokenPrivileges(token, FALSE, &tp, sizeof(tp), nullptr, nullptr);
+        }
+    }
+    CloseHandle(token);
+}
+
+void brandVirtualAudioEndpoints() {
+    enableBackupRestorePrivileges();
+
+    // 1. Brand PnP Device Node di GUID_DEVCLASS_MEDIA menjadi "XyDesk Virtual Microphone & Audio Adapter"
+    constexpr wchar_t kAudioAdapterName[] = L"XyDesk Virtual Microphone & Audio Adapter";
+    HDEVINFO hDevInfo = SetupDiGetClassDevsW(&GUID_DEVCLASS_MEDIA, nullptr, nullptr, DIGCF_PRESENT);
+    if (hDevInfo != INVALID_HANDLE_VALUE) {
+        SP_DEVINFO_DATA devData = {};
+        devData.cbSize = sizeof(devData);
+        for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devData); ++i) {
+            wchar_t hwidBuf[1024] = {};
+            if (SetupDiGetDeviceRegistryPropertyW(
+                    hDevInfo, &devData, SPDRP_HARDWAREID, nullptr,
+                    reinterpret_cast<PBYTE>(hwidBuf), sizeof(hwidBuf) - sizeof(wchar_t), nullptr)) {
+                std::wstring hwid = toLower(hwidBuf);
+                if (hwid.find(L"vbaudiovacwdm") != std::wstring::npos ||
+                    hwid.find(L"vb-audio") != std::wstring::npos) {
+                    SetupDiSetDeviceRegistryPropertyW(
+                        hDevInfo, &devData, SPDRP_FRIENDLYNAME,
+                        reinterpret_cast<const BYTE*>(kAudioAdapterName),
+                        static_cast<DWORD>((wcslen(kAudioAdapterName) + 1) * sizeof(wchar_t)));
+                    SetupDiSetDeviceRegistryPropertyW(
+                        hDevInfo, &devData, SPDRP_DEVICEDESC,
+                        reinterpret_cast<const BYTE*>(kAudioAdapterName),
+                        static_cast<DWORD>((wcslen(kAudioAdapterName) + 1) * sizeof(wchar_t)));
+                    SetupDiSetDeviceRegistryPropertyW(
+                        hDevInfo, &devData, SPDRP_MFG,
+                        reinterpret_cast<const BYTE*>(kManufacturerName),
+                        static_cast<DWORD>((wcslen(kManufacturerName) + 1) * sizeof(wchar_t)));
+                }
+            }
+        }
+        SetupDiDestroyDeviceInfoList(hDevInfo);
+    }
+
+    // 2. Rename endpoint MMDevices\Audio\Capture -> "XyDesk Virtual Microphone"
+    //    dan MMDevices\Audio\Render -> "XyDesk Virtual Audio" menggunakan REG_OPTION_BACKUP_RESTORE
+    struct FlowBrand {
+        const wchar_t* rootKey;
+        const wchar_t* descName;
+        const wchar_t* ifaceName;
+        const wchar_t* fullFriendly;
+    };
+    const FlowBrand flows[] = {
+        {L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Capture",
+         L"XyDesk Virtual Microphone",
+         L"XyDesk Audio Engine",
+         L"XyDesk Virtual Microphone (XyDesk Audio Engine)"},
+        {L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\MMDevices\\Audio\\Render",
+         L"XyDesk Virtual Audio",
+         L"XyDesk Audio Engine",
+         L"XyDesk Virtual Audio (XyDesk Audio Engine)"},
+    };
+
+    for (const auto& fb : flows) {
+        HKEY hRoot = nullptr;
+        if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, fb.rootKey, REG_OPTION_BACKUP_RESTORE,
+                          KEY_ENUMERATE_SUB_KEYS | KEY_READ | KEY_WOW64_64KEY, &hRoot) != ERROR_SUCCESS) {
+            continue;
+        }
+        wchar_t subName[256] = {};
+        for (DWORD idx = 0;; ++idx) {
+            DWORD subLen = 255;
+            if (RegEnumKeyExW(hRoot, idx, subName, &subLen, nullptr, nullptr, nullptr, nullptr) != ERROR_SUCCESS) {
+                break;
+            }
+            std::wstring propPath = std::wstring(fb.rootKey) + L"\\" + subName + L"\\Properties";
+            HKEY hProps = nullptr;
+            if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, propPath.c_str(), REG_OPTION_BACKUP_RESTORE,
+                              KEY_READ | KEY_SET_VALUE | KEY_WOW64_64KEY, &hProps) != ERROR_SUCCESS) {
+                continue;
+            }
+            wchar_t val1[256] = {};
+            wchar_t val2[256] = {};
+            DWORD sz1 = sizeof(val1) - sizeof(wchar_t);
+            DWORD sz2 = sizeof(val2) - sizeof(wchar_t);
+            RegQueryValueExW(hProps, L"{a45c254e-df1c-4efd-8020-67d146a850e0},2", nullptr, nullptr,
+                             reinterpret_cast<LPBYTE>(val1), &sz1);
+            RegQueryValueExW(hProps, L"{b3f8fa53-0004-438e-9003-51a46e139bfc},6", nullptr, nullptr,
+                             reinterpret_cast<LPBYTE>(val2), &sz2);
+            std::wstring combined = toLower(std::wstring(val1) + L" " + std::wstring(val2));
+            if (combined.find(L"cable") != std::wstring::npos ||
+                combined.find(L"vb-audio") != std::wstring::npos ||
+                combined.find(L"xydesk") != std::wstring::npos) {
+                RegSetValueExW(hProps, L"{a45c254e-df1c-4efd-8020-67d146a850e0},2", 0, REG_SZ,
+                               reinterpret_cast<const BYTE*>(fb.descName),
+                               static_cast<DWORD>((wcslen(fb.descName) + 1) * sizeof(wchar_t)));
+                RegSetValueExW(hProps, L"{b3f8fa53-0004-438e-9003-51a46e139bfc},6", 0, REG_SZ,
+                               reinterpret_cast<const BYTE*>(fb.ifaceName),
+                               static_cast<DWORD>((wcslen(fb.ifaceName) + 1) * sizeof(wchar_t)));
+                RegSetValueExW(hProps, L"{a45c254e-df1c-4efd-8020-67d146a850e0},14", 0, REG_SZ,
+                               reinterpret_cast<const BYTE*>(fb.fullFriendly),
+                               static_cast<DWORD>((wcslen(fb.fullFriendly) + 1) * sizeof(wchar_t)));
+            }
+            RegCloseKey(hProps);
+        }
+        RegCloseKey(hRoot);
+    }
+}
+
 void enableRdpAudioPolicies() {
     const wchar_t* keys[] = {
         L"SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp",
@@ -926,9 +1043,13 @@ int cmdInstallAudio(const std::wstring& audioDirArg) {
     runCommandSilent(L"net.exe stop AudioEndpointBuilder /y");
     runCommandSilent(L"net.exe start AudioEndpointBuilder");
     runCommandSilent(L"net.exe start Audiosrv");
+    Sleep(400);
+    brandVirtualAudioEndpoints();
+    runCommandSilent(L"net.exe stop Audiosrv /y");
+    runCommandSilent(L"net.exe start Audiosrv");
 
     if (ok || countVirtualAudioPnPNodes() > 0) {
-        std::printf("[XyDesk Audio] VB-Audio Virtual Cable (CABLE Input / CABLE Output) aktif.\n");
+        std::printf("[XyDesk Audio] XyDesk Virtual Microphone (Input) & XyDesk Virtual Audio (Output) aktif.\n");
         return 0;
     }
     std::fprintf(stderr, "[XyDesk Audio] Gagal memasang VB-CABLE dari: %s\n",

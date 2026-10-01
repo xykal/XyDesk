@@ -6,6 +6,8 @@ use std::process::Command;
 
 #[cfg(target_os = "windows")]
 const VIRTUAL_MIC_KEYWORDS: &[&str] = &[
+    "xydesk virtual microphone",
+    "xydesk",
     "cable",       // VB-CABLE
     "voicemeeter", // VoiceMeeter
     "virtual",     // generic virtual
@@ -15,6 +17,8 @@ const VIRTUAL_MIC_KEYWORDS: &[&str] = &[
 
 #[cfg(target_os = "windows")]
 const VIRTUAL_SPEAKER_KEYWORDS: &[&str] = &[
+    "xydesk virtual audio",
+    "xydesk",
     "cable input",       // VB-CABLE Input (render)
     "cable in",          // VB-CABLE In 16 Ch
     "voicemeeter input", // VoiceMeeter Input
@@ -74,14 +78,16 @@ pub fn get_status() -> VirtualMicStatus {
 
     let render_target = if let Some((id, name)) = outputs.iter().find(|(_, name)| {
         let n = name.to_lowercase();
-        n.contains("cable input")
+        n.contains("xydesk virtual audio")
+            || n.contains("xydesk")
+            || n.contains("cable input")
             || n.contains("cable in")
             || n.contains("voicemeeter input")
             || n.contains("vb-audio")
     }) {
         format!("{} ({})", name, id)
     } else if sys_driver {
-        "CABLE Input (VB-Audio Virtual Cable)".to_string()
+        "XyDesk Virtual Microphone (CABLE Input -> CABLE Output)".to_string()
     } else if let Some((id, name)) = outputs.first() {
         format!("{} ({}) [default speaker]", name, id)
     } else {
@@ -127,7 +133,8 @@ pub fn get_render_device_id() -> Option<String> {
 
     for (id, name) in &outputs {
         let n = name.to_lowercase();
-        if n.contains("cable input") || n.contains("cable in") {
+        if n.contains("xydesk virtual audio") || n.contains("cable input") || n.contains("cable in")
+        {
             return Some(id.clone());
         }
     }
@@ -138,7 +145,10 @@ pub fn get_render_device_id() -> Option<String> {
     }
     for (id, name) in &outputs {
         let n = name.to_lowercase();
-        if (n.contains("virtual") && n.contains("input")) || n.contains("vb-audio") {
+        if (n.contains("virtual") && n.contains("input"))
+            || n.contains("vb-audio")
+            || n.contains("xydesk")
+        {
             return Some(id.clone());
         }
     }

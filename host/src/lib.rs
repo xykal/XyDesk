@@ -116,6 +116,8 @@ pub mod abs_capture_time;
 pub mod host_auth;
 /// Kredensial relay TURN host + sebabnya bila tidak ada (dipakai `/status`).
 pub mod leadership;
+/// Mesin DSP mikrofon virtual XyDesk (Noise Suppression, Gate, Gain, High-Pass, AGC).
+pub mod mic_dsp;
 pub mod relay;
 pub mod remembered;
 /// libxyadapt sisi host: penghalus bitrate dari client.

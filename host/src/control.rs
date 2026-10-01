@@ -426,6 +426,17 @@ pub struct ActionRequest {
     /// Jumlah display.
     #[serde(default)]
     pub count: Option<u32>,
+    /// Opsi DSP XyDesk Virtual Microphone (`mic-dsp`).
+    #[serde(default, alias = "noiseSuppression")]
+    pub noise_suppression: Option<bool>,
+    #[serde(default, alias = "highPass")]
+    pub high_pass: Option<bool>,
+    #[serde(default, alias = "agcLimiter")]
+    pub agc_limiter: Option<bool>,
+    #[serde(default, alias = "noiseGateDb")]
+    pub noise_gate_db: Option<f32>,
+    #[serde(default, alias = "gainDb")]
+    pub gain_db: Option<f32>,
 }
 
 /// Jawaban aksi. `password` berisi nilai baru untuk `new-password` dan
@@ -757,6 +768,22 @@ async fn action(
                     "driver_type harus display/virtual/audio/all",
                 ))),
             }
+        }
+        "mic-dsp" => {
+            let cur = crate::mic_dsp::get_config();
+            crate::mic_dsp::set_config(crate::mic_dsp::MicDspConfig {
+                noise_suppression: req.noise_suppression.unwrap_or(cur.noise_suppression),
+                high_pass: req.high_pass.unwrap_or(cur.high_pass),
+                agc_limiter: req.agc_limiter.unwrap_or(cur.agc_limiter),
+                noise_gate_db: req.noise_gate_db.unwrap_or(cur.noise_gate_db),
+                gain_db: req.gain_db.unwrap_or(cur.gain_db),
+            });
+            Ok(Json(ActionResponse {
+                ok: true,
+                error: None,
+                password: None,
+                stopped: None,
+            }))
         }
         // Buat / atur mode virtual display (width, height, refresh_rate, count opsional)
         "virtual-display-create" | "virtual-display-mode" => {

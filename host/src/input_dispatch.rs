@@ -33,7 +33,12 @@ pub fn meta_json() -> serde_json::Value {
             "available": crate::audio::capture_available(),
             "pipeline": crate::audio::capture_status(),
         },
-        "micInput": { "available": crate::audio::mic_input_available(), "route": "virtual-cable" },
+        "micInput": {
+            "available": crate::audio::mic_input_available(),
+            "device": "XyDesk Virtual Microphone",
+            "route": "virtual-cable",
+            "dsp": crate::mic_dsp::telemetry(),
+        },
         "mic": {
             "available": crate::audio::mic_capture_available(),
             "pipeline": crate::audio::mic_capture_status(),
@@ -106,7 +111,9 @@ fn spawn_feedback(feedback_dc: Arc<RTCDataChannel>, base_meta: serde_json::Value
                 });
                 meta["micInput"] = serde_json::json!({
                     "available": crate::audio::mic_input_available(),
+                    "device": "XyDesk Virtual Microphone",
                     "route": "virtual-cable",
+                    "dsp": crate::mic_dsp::telemetry(),
                 });
                 if feedback_dc.send_text(meta.to_string()).await.is_err() {
                     break;
@@ -242,6 +249,20 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
     while let Some(data) =
         tokio::select! {biased; _=closed_rx.changed()=>None, data=rx.recv()=>data}
     {
+        if data.len() == 4 && data[0] == 0x10 {
+            let flags = data[1];
+            let gain_db = (data[2] as i8) as f32;
+            let gate_db = -((data[3] as f32).clamp(15.0, 70.0));
+            crate::mic_dsp::set_config(crate::mic_dsp::MicDspConfig {
+                noise_suppression: (flags & 0x01) != 0,
+                high_pass: (flags & 0x02) != 0,
+                agc_limiter: (flags & 0x04) != 0,
+                noise_gate_db: gate_db,
+                gain_db,
+            });
+            let _ = dc.send_text(meta_json().to_string()).await;
+            continue;
+        }
         if data.len() == 2 && data[0] == 0x0f {
             if data[1] >= 60 {
                 video_policy::promote_level(51);

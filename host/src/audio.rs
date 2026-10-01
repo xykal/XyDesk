@@ -342,6 +342,7 @@ mod windows {
             || n.contains("voicemeeter")
             || n.contains("vac")
             || n.contains("virtual")
+            || n.contains("xydesk")
     }
 
     fn collect_endpoints(
@@ -785,10 +786,9 @@ mod windows {
                 let mut pcm = vec![0i16; 5_760 * usize::from(CHANNELS)];
                 match decoder.decode(&pkt, &mut pcm) {
                     Ok(n) => {
-                        let bytes: Vec<u8> = pcm[..n * usize::from(CHANNELS)]
-                            .iter()
-                            .flat_map(|s| s.to_le_bytes())
-                            .collect();
+                        let slice = &mut pcm[..n * usize::from(CHANNELS)];
+                        crate::mic_dsp::process_frame(slice, usize::from(CHANNELS));
+                        let bytes: Vec<u8> = slice.iter().flat_map(|s| s.to_le_bytes()).collect();
                         pcm_queue.extend(crate::pcmconv::konversi(
                             &bytes,
                             &Sumber {
