@@ -73,6 +73,19 @@ class Store(context: Context) {
         get() = prefs.getBoolean("keepAwake", true)
         set(v) = prefs.edit().putBoolean("keepAwake", v).apply()
 
+    var confirmDisconnect: Boolean
+        get() = prefs.getBoolean("confirmDisconnect", true)
+        set(v) = prefs.edit().putBoolean("confirmDisconnect", v).apply()
+
+    var newsNotify: Boolean
+        get() = prefs.getBoolean("newsNotify", true)
+        set(v) = prefs.edit().putBoolean("newsNotify", v).apply()
+
+    /** 0 Beranda, 1 Perangkat, 2 Berita. */
+    var startTab: Int
+        get() = prefs.getInt("startTab", 0)
+        set(v) = prefs.edit().putInt("startTab", v).apply()
+
     var historyGrid: Boolean
         get() = prefs.getBoolean("historyGrid", false)
         set(v) = prefs.edit().putBoolean("historyGrid", v).apply()

@@ -194,6 +194,14 @@ private val en = mapOf(
     "Mikrofon" to "Microphone", "Notifikasi" to "Notifications",
     "Hanya saat tombol Mic di sesi dinyalakan; suara dikirim ke host." to "Only while the Mic button is on in a session; audio goes to the host.",
     "Satu pemberitahuan saat ada berita baru; bisa dimatikan di sistem." to "One notification per new post; can be turned off in system settings.",
+    "PC belum punya input mic virtual. Perbarui XyDesk Host ke versi terbaru." to "The PC has no virtual mic input yet. Update XyDesk Host to the latest version.",
+    "SAMBUNG CEPAT" to "QUICK CONNECT", "Tanya sebelum putus" to "Ask before disconnecting",
+    "Tombol Kembali perlu ditekan dua kali untuk mengakhiri sesi." to "Back must be pressed twice to end a session.",
+    "Notifikasi berita" to "News notifications", "Cek artikel baru di latar tiap beberapa jam." to "Check for new posts in the background every few hours.",
+    "Tab awal" to "Start tab", "Tentang" to "About", "Versi, catatan rilis, lisensi." to "Version, release notes, licenses.",
+    "Catatan rilis" to "Release notes", "Lisensi pihak ketiga" to "Third-party licenses", "Situs web" to "Website",
+    "Syarat & Ketentuan" to "Terms & Conditions", "Kebijakan Privasi" to "Privacy Policy",
+    "Remote gaming, dari HP." to "Remote gaming, from your phone.",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

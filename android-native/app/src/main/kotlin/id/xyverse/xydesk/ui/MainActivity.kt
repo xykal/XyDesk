@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
                         HomeShell(
                             email = store.email.orEmpty(),
                             lastHost = store.lastHost,
-                            startTab = if (openNews) Tab.NEWS else Tab.HOME,
+                            startTab = if (openNews) Tab.NEWS else listOf(Tab.HOME, Tab.DEVICES, Tab.NEWS).getOrElse(store.startTab) { Tab.HOME },
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
                             onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
