@@ -10,9 +10,9 @@
 ## 0. Ritual awal sesi (urut, jangan dilompati)
 
 1. Baca `AGENT.md` (file ini) sampai habis.
-2. Baca `docs/project/AGENT_BOARD.md` — papan koordinasi. Ini yang membuat agent-agent
-   **saling tahu**: siapa lagi mengunci area mana, siapa yang sedang kerja
-   apa, dan push siapa yang sudah diizinkan.
+2. Baca issue/PR terbuka berlabel `koordinasi` di repo ini dan di
+   `xykal/XyDesk-Remote` (bagian 5). Itu yang membuat agent-agent **saling
+   tahu**: kontrak apa yang sedang berubah dan siapa menunggu siapa.
 3. Baca `docs/project/ROADMAP.md` bagian fase yang aktif, lalu `CHANGELOG.md` bagian
    `[Belum terbit]` — supaya tahu posisi proyek hari ini, bukan menebak.
    Baca juga `docs/project/HANDOFF.md`: kalau ada item untuk role-mu, itu antrian
@@ -81,9 +81,9 @@ Haknya mengikuti pemilik repo, bukan mengikuti role area biasa:
    tidak berlaku untuknya — itu justru tugasnya: menyelesaikan pekerjaan
    yang menyentuh banyak folder sekaligus.
 2. **Tidak perlu antrean izin push.** Commit darinya sah seperti commit
-   operator sendiri (bagian 5). Jejaknya tetap wajib: baris sesi di
-   `docs/project/AGENT_BOARD.md` dan penanda `Izin: <ID-SESI>` di body setiap commit,
-   supaya audit tetap bisa membaca siapa mengerjakan apa.
+   operator sendiri (bagian 5). Jejaknya tetap wajib: PR dengan deskripsi
+   lengkap dan komentar di issue `koordinasi`, supaya audit tetap bisa
+   membaca siapa mengerjakan apa.
 3. **Boleh mengambil alih area yang sedang dikunci** bila operator
    memerintahkannya langsung, asal baris `LAGI KERJA` milik agent lain di
    papan ditulis ulang (status `DITINGGALKAN` + alasan) agar tidak ada dua
@@ -178,66 +178,43 @@ operator yang menang** — role ini wakil, bukan pengganti.
 - Commit message ditulis seperti engineer manusia: singkat, spesifik,
   bahasa Indonesia (mengikuti kebiasaan repo), tanpa menyebut AI/agent/
   prompt/sesi. Contoh baik: `perbaiki urutan add_video_track sebelum
-  create_answer`. Contoh buruk: `AI update files as requested` — kecuali
-  satu pengecualian teknis: penanda `Izin: <ID-SESI>` pada body commit
-  (lihat bagian 5), yang memang wajib ada.
+  create_answer`. Contoh buruk: `AI update files as requested`.
 
 ---
 
-## 5. Koordinasi antar agent — saling tahu, tidak tabrakan
+## 5. Koordinasi antar agent — lewat GitHub, bukan tebakan
 
-`docs/project/AGENT_BOARD.md` adalah papan bersama. Tujuannya satu: **tidak ada dua
-agent yang mengerjakan area yang sama, dan semua orang tahu siapa lagi
-kerja apa.** Aturannya:
+Sejak 1 Okt 2026 `main` dipasangi branch protection: wajib PR, berlaku juga
+untuk admin, tanpa force-push. Papan `docs/project/AGENT_BOARD.md` tidak lagi
+jadi sumber kebenaran; koordinasi pindah ke issue GitHub.
 
-- **Satu area = satu agent pada satu waktu.** Area = role (bagian 2).
-  Kalau papan menunjukkan `LAGI KERJA` untuk areamu, jangan masuk.
-- **Izin push per sesi — bukan izin tetap.** Sejak 3 Sep 2026, tidak ada
-  lagi "langsung push kalau CI hijau". Alurnya:
-  1. Kamu mengklaim sesi (langkah 0.6) dan menyelesaikan pekerjaan,
-     termasuk menjalankan pemeriksaan area-mu sampai hijau.
-  2. Kamu mengirim **permintaan izin push** ke operator: ID sesi,
-     ringkasan perubahan, dan bukti CI hijau. Sampaikan di chat dan
-     tulis baris `MENUNGGU` di tabel *Antrean izin push* papan (baris ini
-     ikut di push pertamamu — lihat catatan di bawah).
-  3. Operator menandai baris itu `DISETUJUI` (atau `DITOLAK` + alasan)
-     lewat commit kecil di `main`. **Inilah izinnya.**
-  4. Kamu push. **Setiap commit pada sesi wajib memuat penanda di body:**
-     `Izin: SESI-<YYYYMMDD>-<NAMA>-<AREA>` (contoh:
-     `Izin: SESI-20260903-CAKRA-CI`).
-  5. **Sejak 5 Sep 2026 langkah ini tidak lagi diawasi mesin.**
-     `verify-push-auth.yml` dihapus operator sendiri pada commit `b4ce4a4`,
-     dan branch `main` tidak dipasangi branch protection. Jadi tidak ada
-     workflow yang memeriksa penanda `Izin:` dan tidak ada pemeriksaan
-     yang menolak push. **Aturannya tetap berlaku sebagai kebiasaan tim**,
-     bukan sebagai gerbang: klaim sesi, baris di papan, dan penanda
-     `Izin:` di body commit tetap wajib ditulis, karena itu satu-satunya
-     jejak yang tersisa untuk audit. Operator bisa menghidupkan kembali
-     gerbangnya kapan saja — resepnya ada di `docs/CI.md`.
-- **Kapan pun ragu soal tabrakan: baca `docs/project/AGENT_BOARD.md` dulu.** Papan lebih
-  baru daripada percakapan.
-- **Commit merge dianggap sah** (itu tindakan operator menggabungkan PR).
-  Commit dengan alamat `users.noreply.github.com` milik operator
-  (variabel repo `OPERATOR_LOGIN`) juga dikecualikan — operator tidak
-  perlu izin ke dirinya sendiri. **Commit dari `Operator - XyDesk Team`
-  dikecualikan dengan alasan yang sama** (bagian 2.1): ia mewakili
-  operator, jadi tidak mengantre `DISETUJUI`. Baris sesinya tetap wajib
-  ada di papan — yang dilewati hanya tahap persetujuan, bukan jejaknya.
-- **CI sudah difilter per area** (`docs/CI.md`): push-mu hanya menjalankan
-  job untuk area yang kau sentuh. Area lain tidak ikut membayar waktu
-  buildmu — dan sebaliknya. Setelah push, cek run di Actions: job
-  `skipped` berarti bukan areamu, itu normal.
-- **Gerbang persetujuan berlapis**: operator menyetujui → papan mencatat
-  → workflow memverifikasi → CI area hijau. Semua lapisan harus lulus
-  sebelum kerjaan dianggap selesai.
-
-> Catatan praktis (dilema kunci sebelum push): kamu belum bisa push
-> sebelum diizinkan, jadi baris `LAGI KERJA` dan `MENUNGGU` baru terbit
-> bersama push pertamamu yang sudah diizinkan. Itu sebabnya klaim dimulai
-> dari chat ke operator, dan operator yang menulis baris `DISETUJUI`
-> terlebih dahulu (dari ringkasan yang kamu kirim). Setelah push pertama,
-> papan sudah bisa dibaca semua agent — jadikan kebiasaan: baca papan
-> sebelum mulai, dan tutup sesi di papan sebelum selesai.
+- **Satu issue `koordinasi` per kontrak bersama.** Kontrak = protokol
+  signaling/DataChannel, nama endpoint audio/mic (`XyDesk Virtual
+  Microphone`, `CABLE Input`), field `meta` host, `VERSION` + kebijakan
+  `changelogs/`, perilaku installer. Issue aktif saat ini:
+  `xykal/XyDesk#34` (audio/mic XyDesk <-> XyDesk-Remote) dan
+  `xykal/XyDesk-Remote#8` (cermin dari sisi Remote). Perubahan kontrak
+  diusulkan di issue dulu, PR pelaksananya di-link ke sana.
+- **Baca sebelum menulis.** Di awal sesi cek issue/PR terbuka berlabel
+  `koordinasi` di repo ini dan di `xykal/XyDesk-Remote`. Kalau agent lain
+  punya PR di path yang sama, komentar di PR itu; jangan buat perubahan
+  saingan.
+- **Hanya PR.** Deskripsi PR memuat: apa yang berubah, kontrak/issue mana
+  yang kena, apa yang harus dilakukan agent lain (kalau ada), dan run CI
+  yang memverifikasi. Merge setelah build area-mu hijau.
+- **Lapor di issue, bukan hanya di chat.** Setelah merge yang menyentuh
+  kontrak: komentar SHA, apa yang berubah, apa yang diharapkan dari sisi
+  lain, minta konfirmasi. Balas pertanyaan agent lain di sesi yang sama.
+- **Nilai bersama tidak diubah diam-diam.** `VERSION`, nama endpoint, tag
+  protokol, default DSP mic, URL layanan, nama secret. Mengubahnya tanpa
+  komentar di issue adalah cacat walau CI hijau.
+- **Sebut peranmu** di awal komentar, contoh `[XyDesk host+native]` atau
+  `[XyDesk-Remote]`. Commit tetap memakai identitas `xykal`.
+- **Beda desain diputuskan kall.** Masing-masing tulis satu opsi dengan
+  trade-off di issue; jangan selesaikan dengan menimpa kode pihak lain.
+- **Catatan ringan.** Satu issue per kontrak, satu komentar per perubahan
+  status, tanpa issue ganda lintas repo (cross-link saja). Tutup issue hanya
+  setelah kedua sisi mengonfirmasi tertulis.
 
 ---
 
@@ -263,13 +240,9 @@ kerja apa.** Aturannya:
 - **Lisensi**: proprietary. Jangan menambah dependensi tanpa mencatatnya di
   `docs/THIRD-PARTY-LICENSES.md`, dan hanya yang gratis tanpa kartu kredit
   (aturan #2 ROADMAP).
-- **Izin push per sesi (aturan baru 3 Sep 2026, tanpa pengawas mesin sejak
-  5 Sep 2026)**: push ke `main` WAJIB lewat alur di bagian 5 — klaim sesi
-  → kerja + CI area hijau → minta izin → `DISETUJUI` di `docs/project/AGENT_BOARD.md`
-  → push dengan penanda `Izin: <ID-SESI>` di body setiap commit.
-  `verify-push-auth.yml` sudah dihapus operator, jadi pelanggaran tidak
-  lagi ditandai merah oleh mesin — yang menilai sekarang hanya papan dan
-  operator. **Kecuali** selain
+- **Push ke `main` ditolak branch protection (1 Okt 2026)**: semua
+  perubahan lewat PR; perubahan kontrak bersama lewat issue `koordinasi`
+  dulu (bagian 5). **Kecuali** selain
   izin biasa, perubahan berisiko produksi besar — menghapus/migrasi data,
   mengubah auth/keamanan, mengubah harga/lisensi, atau apa pun yang tidak
   bisa di-rollback dengan revert biasa — tetap wajib konfirmasi khusus ke
@@ -282,13 +255,10 @@ kerja apa.** Aturannya:
 
 Sebelum pamit:
 
-0. **Tutup sesimu di `docs/project/AGENT_BOARD.md`**: hapus baris sesimu dari
-   *Sesi aktif*; baris *Antrean izin push* diberi status `SELESAI` + tautan
-   run CI, lalu dipindah ke `docs/archive/AGENT_BOARD-2026-09.md` (arsip
-   berjalan). Hasil kerja dicatat di `CHANGELOG.md` `[Belum terbit]` — itu
-   jejak buktinya, bukan papan. Kalau pekerjaan belum tuntas, tulis ulang klaim (status `LAGI KERJA`
-   dengan catatan apa yang tersisa) atau serahkan ke `docs/project/HANDOFF.md`.
-   **Jangan pamit dengan papan masih menyatakan kamu sedang kerja.**
+0. **Tutup jejak sesimu**: PR sudah merge atau ditandai draft dengan
+   catatan status; komentar penutup di issue `koordinasi` yang kau sentuh
+   (SHA, apa yang berubah, apa yang ditunggu dari sisi lain). Hasil kerja
+   dicatat di `CHANGELOG.md` `[Belum terbit]` — itu jejak buktinya.
 1. Tulis **laporan akhir sesi** ke operator (di chat, bukan ke file
    proyek) berisi:
 2. Role + identitas yang dipakai.
