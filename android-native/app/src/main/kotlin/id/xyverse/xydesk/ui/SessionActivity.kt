@@ -216,7 +216,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     private fun hasMic() = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
-    override fun onRequestPermissionsResult(code: Int, perms: Array<out String>, res: IntArray) {
+    override fun onRequestPermissionsResult(code: Int, perms: Array<String>, res: IntArray) {
         super.onRequestPermissionsResult(code, perms, res)
         if (code == 7) {
             val ok = res.firstOrNull() == PackageManager.PERMISSION_GRANTED
