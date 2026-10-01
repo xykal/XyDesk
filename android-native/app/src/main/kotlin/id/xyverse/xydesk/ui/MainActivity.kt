@@ -77,7 +77,7 @@ class MainActivity : ComponentActivity() {
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
-                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this, it) }) { token, email ->
+                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                         }
                     } else {
@@ -89,7 +89,7 @@ class MainActivity : ComponentActivity() {
                             lastHost = store.lastHost,
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
-                            onOpenUrl = { BrowserActivity.open(this, it) },
+                            onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
                             onShare = { shareText(it) },
                             settings = Settings(
                                 lang = lang,
