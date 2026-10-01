@@ -20,9 +20,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.platform.LocalContext
 import id.xyverse.xydesk.core.News
-import id.xyverse.xydesk.core.NewsFeed
+import id.xyverse.xydesk.core.NewsPost
 import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -48,6 +47,7 @@ fun HomeShell(
     history: List<SessionRecord>,
     onConnect: (host: String, pin: String) -> Unit,
     onOpenUrl: (String) -> Unit,
+    onShare: (String) -> Unit = onOpenUrl,
     settings: Settings,
     onLogout: () -> Unit,
 ) {
@@ -62,12 +62,18 @@ fun HomeShell(
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
     val meta = remember(metaTick, store) { HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }) }
     var grid by remember { mutableStateOf(store?.historyGrid ?: false) }
-    var feed by remember { mutableStateOf<NewsFeed?>(null) }
+    var posts by remember { mutableStateOf<List<NewsPost>?>(null) }
+    var offline by remember { mutableStateOf(false) }
+    var reading by remember { mutableStateOf<NewsPost?>(null) }
     var seen by remember { mutableStateOf(store?.newsSeen.orEmpty()) }
-    val ctx = LocalContext.current
-    LaunchedEffect(Unit) { feed = News.load(ctx) }
+    LaunchedEffect(Unit) {
+        val cached = store?.newsCache.orEmpty()
+        if (cached.isNotEmpty()) posts = runCatching { News.parseList(cached) }.getOrNull()
+        runCatching { News.list() }.onSuccess { list -> posts = list; offline = false; store?.newsCache = org.json.JSONObject().put("posts", org.json.JSONArray(list.map { p -> postJson(p) })).toString() }
+            .onFailure { offline = true; if (posts == null) posts = emptyList() }
+    }
     val devices = remember(history, metaTick) { history.distinctBy { it.host }.sortedByDescending { meta.favorite(it.host) } }
-    val unread = (feed?.items?.firstOrNull()?.id ?: "").let { it.isNotEmpty() && it != seen }
+    val unread = (posts?.firstOrNull()?.slug ?: "").let { it.isNotEmpty() && it != seen }
     fun quickConnect(host: String) {
         val saved = store?.hostPin(host)
         if (saved != null) onConnect(host, saved) else asking = host
@@ -75,7 +81,7 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, if (unread) feed?.items?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
+                Tab.HOME -> key(prefill) { ConnectScreen(email, prefill, devices, history, { tab = Tab.HISTORY }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
                 Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
@@ -102,9 +108,10 @@ fun HomeShell(
                     if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
                     else HistoryBrowser(history, grid, { grid = it; store?.historyGrid = it }) { detail = it }
                 }
-                Tab.NEWS -> Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
-                    NewsScreen(feed, settings.appVersion, seen, onOpenUrl) { seen = it; store?.newsSeen = it }
-                }
+                Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), onShare) { reading = null } }
+                    ?: Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
+                        NewsScreen(posts, offline, seen) { p -> reading = p; seen = p.slug; store?.newsSeen = p.slug }
+                    }
                 Tab.ACCOUNT -> AccountScreen(email, onOpenUrl, settings, onLogout)
             }
         }
@@ -131,3 +138,7 @@ private fun Page(title: String, caption: String, content: @Composable () -> Unit
         Spacer(Modifier.height(96.dp))
     }
 }
+
+private fun postJson(p: NewsPost) = org.json.JSONObject()
+    .put("slug", p.slug).put("title", p.title).put("excerpt", p.excerpt).put("content", p.content).put("cover", p.cover)
+    .put("category", p.category).put("author", p.author).put("createdAt", p.createdAt).put("likeCount", p.likeCount).put("commentCount", p.commentCount)

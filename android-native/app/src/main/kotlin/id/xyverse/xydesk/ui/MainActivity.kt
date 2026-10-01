@@ -3,6 +3,9 @@ package id.xyverse.xydesk.ui
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.addCallback
+import id.xyverse.xydesk.core.tr
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,10 +41,19 @@ private enum class Stage { SPLASH, ONBOARDING, AUTH }
 
 class MainActivity : ComponentActivity() {
     private val store by lazy { Store(applicationContext) }
+    private var lastBack = 0L
+
+    private fun shareText(text: String) =
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        onBackPressedDispatcher.addCallback(this) {
+            val now = System.currentTimeMillis()
+            if (now - lastBack < 2000) finish()
+            else { lastBack = now; Toast.makeText(this@MainActivity, "Tekan sekali lagi untuk keluar".tr(store.lang), Toast.LENGTH_SHORT).show() }
+        }
         setContent {
             var jwt by remember { mutableStateOf(store.jwt) }
             var stage by remember { mutableStateOf(Stage.SPLASH) }
@@ -65,7 +77,7 @@ class MainActivity : ComponentActivity() {
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
-                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) }) { token, email ->
+                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                         }
                     } else {
@@ -77,7 +89,8 @@ class MainActivity : ComponentActivity() {
                             lastHost = store.lastHost,
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
-                            onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
+                            onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
+                            onShare = { shareText(it) },
                             settings = Settings(
                                 lang = lang,
                                 onLang = { lang = it; store.lang = it },

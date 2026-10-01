@@ -77,6 +77,13 @@ class Store(context: Context) {
         get() = prefs.getBoolean("historyGrid", false)
         set(v) = prefs.edit().putBoolean("historyGrid", v).apply()
 
+    var newsCache: String
+        get() = prefs.getString("newsCache", "").orEmpty()
+        set(v) = prefs.edit().putString("newsCache", v).apply()
+
+    val newsFp: String
+        get() = prefs.getString("newsFp", null) ?: News.newFingerprint().also { prefs.edit().putString("newsFp", it).apply() }
+
     var newsSeen: String
         get() = prefs.getString("newsSeen", "").orEmpty()
         set(v) = prefs.edit().putString("newsSeen", v).apply()

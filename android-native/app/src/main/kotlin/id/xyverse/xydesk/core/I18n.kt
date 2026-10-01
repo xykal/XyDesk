@@ -183,6 +183,13 @@ private val en = mapOf(
     "Berita baru" to "New post", "Urutkan" to "Sort", "Terakhir" to "Recent", "Nama" to "Name",
     "Ekspor riwayat" to "Export history", "Simpan riwayat sesi sebagai berkas JSON." to "Save session history as a JSON file.",
     "Riwayat tersimpan." to "History saved.",
+    "Tekan sekali lagi untuk keluar" to "Press back again to exit",
+    "Tekan sekali lagi untuk memutus sesi" to "Press back again to end the session",
+    "Offline: menampilkan berita yang terakhir tersimpan." to "Offline: showing the last saved news.",
+    "Belum ada berita di kategori ini." to "No posts in this category yet.",
+    "Belum ada komentar. Jadilah yang pertama." to "No comments yet. Be the first.",
+    "Membalas" to "Replying to", "Balas" to "Reply", "Bagikan" to "Share", "Kirim komentar" to "Send comment", "Mengirim…" to "Sending…",
+    "Komentar minimal 2 huruf" to "At least 2 characters", "Memuat…" to "Loading…", "BARU" to "NEW",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this
