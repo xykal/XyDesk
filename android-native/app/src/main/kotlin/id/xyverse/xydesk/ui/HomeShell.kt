@@ -21,6 +21,9 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.Lifecycle
 import androidx.compose.runtime.DisposableEffect
 import id.xyverse.xydesk.core.Presence
 import androidx.compose.runtime.CompositionLocalProvider
@@ -68,12 +71,23 @@ fun HomeShell(
     var query by remember { mutableStateOf("") }
     var sort by remember { mutableStateOf("Terakhir") }
     val store = settings.store
+    var grid by remember { mutableStateOf(store?.devicesGrid ?: false) }
     val metaTick by (store?.observeHostMeta() ?: remember { MutableStateFlow(0) }).collectAsState()
     val presence = remember { store?.jwt?.let { Presence(it) } }
     DisposableEffect(presence) { presence?.start(); onDispose { presence?.stop() } }
+    val lifecycle = LocalLifecycleOwner.current
+    DisposableEffect(lifecycle, presence) {
+        val obs = LifecycleEventObserver { _, e -> if (e == Lifecycle.Event.ON_RESUME) presence?.refresh() }
+        lifecycle.lifecycle.addObserver(obs); onDispose { lifecycle.lifecycle.removeObserver(obs) }
+    }
     val online by (presence?.online ?: remember { MutableStateFlow<Set<String>?>(null) }).collectAsState()
-    val meta = remember(metaTick, store, online) {
-        HostMeta({ store?.alias(it).orEmpty() }, { store?.favorite(it) ?: false }, { h -> online?.let { Presence.hostKey(h) in it } })
+    val meta = remember(metaTick, store, online, history) {
+        HostMeta(
+            alias = { store?.alias(it).orEmpty() },
+            favorite = { store?.favorite(it) ?: false },
+            online = { h -> online?.let { Presence.hostKey(h) in it } },
+            sessions = { h -> history.filter { it.host == h } },
+        )
     }
     var posts by remember { mutableStateOf<List<NewsPost>?>(null) }
     var offline by remember { mutableStateOf(false) }
@@ -98,17 +112,24 @@ fun HomeShell(
     CompositionLocalProvider(LocalHostMeta provides meta) { Box(Modifier.fillMaxSize()) {
         AnimatedContent(tab, transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(120)) }, label = "tab") { t ->
             when (t) {
-                Tab.HOME -> key(prefill) { ConnectScreen(prefill, devices, { quickConnect(it) }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }, onConnect) }
-                Tab.DEVICES -> Page("Perangkat", "Host yang pernah tersambung, lengkap dengan cuplikan dan spesifikasinya.") {
+                Tab.HOME -> key(prefill) { ConnectScreen(prefill, devices, { quickConnect(it) }, if (unread) posts?.firstOrNull()?.title else null, { tab = Tab.NEWS }) { host, pin, keep ->
+                    store?.setHostPin(host, if (keep) pin else null)
+                    onConnect(host, pin)
+                } }
+                Tab.DEVICES -> Page("Perangkat", "Semua PC yang pernah tersambung: cuplikan, spesifikasi, dan riwayat sesinya.") {
                     if (devices.isEmpty()) {
-                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, host tersimpan di sini beserta spesifikasinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
+                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, PC tersimpan di sini beserta spesifikasi dan riwayat sesinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
                     } else {
                         DeviceSearch(query) { query = it }
                         Spacer(Modifier.height(12.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            XyText("Urutkan", Xy.caption, Modifier.align(Alignment.CenterVertically))
-                            listOf("Terakhir", "Nama", "Favorit").forEach { Chip(it, it == sort) { sort = it } }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf("Terakhir", "Nama", "Favorit").forEach { Chip(it, it == sort) { sort = it } }
+                            }
+                            ViewSwitch(grid) { grid = it; store?.devicesGrid = it }
                         }
+                        Spacer(Modifier.height(12.dp))
+                        UsageStrip(history)
                         Spacer(Modifier.height(16.dp))
                         val filtered = devices.filter { d -> query.isBlank() || hostTitle(d).contains(query, true) || d.host.contains(query.filter(Char::isDigit).ifEmpty { "\u0000" }) }
                         val names = filtered.associate { it.host to hostTitle(it) }
@@ -118,15 +139,7 @@ fun HomeShell(
                             else -> filtered.sortedByDescending { it.startedAt }
                         }
                         if (shown.isEmpty()) XyText("Tidak ada host yang cocok.", Xy.caption)
-                        else DevicesSection(shown.take(20), onLong = { editing = it }) { host -> quickConnect(host) }
-                    }
-                }
-                Tab.HISTORY -> Page("Riwayat", "Satu baris per PC: sesi terakhir, durasi, dan jumlah sesi.") {
-                    if (history.isEmpty()) XyEmpty(Icon.CLOCK, "Belum ada sesi", "Riwayat muncul setelah sesi pertama selesai.")
-                    else {
-                        UsageStrip(history)
-                        Spacer(Modifier.height(16.dp))
-                        HistoryBrowser(history) { detail = it }
+                        else DevicesSection(shown.take(30), grid = grid, onLong = { editing = it }, onSession = { detail = it }) { host -> quickConnect(host) }
                     }
                 }
                 Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), email, googleToken, onShare) { reading = null } }

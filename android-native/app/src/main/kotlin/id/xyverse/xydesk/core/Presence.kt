@@ -27,6 +27,7 @@ class Presence(private val jwt: String) : SignalingListener {
     private var signaling: Signaling? = null
     private var loop: Job? = null
     private val _online = MutableStateFlow<Set<String>?>(null)
+    private var previous: Set<String> = emptySet()
     /** null = belum tahu (soket belum menjawab); jangan tampilkan apa pun. */
     val online: StateFlow<Set<String>?> = _online
 
@@ -40,7 +41,7 @@ class Presence(private val jwt: String) : SignalingListener {
                 val ok = runCatching { s.connect(Api.signalToken(jwt, id)) }.isSuccess
                 if (!ok) { delay(backoff); backoff = (backoff * 2).coerceAtMost(60_000); continue }
                 backoff = 2000
-                while (isActive && s.open) { delay(25_000); s.list() }
+                while (isActive && s.open) { delay(12_000); s.list() }
                 delay(backoff)
             }
         }
@@ -54,14 +55,24 @@ class Presence(private val jwt: String) : SignalingListener {
 
     override fun onOpen() { signaling?.list() }
 
+    /** Minta daftar ulang sekarang, mis. saat kembali dari sesi. */
+    fun refresh() { signaling?.takeIf { it.open }?.list() }
+
+    /**
+     * Host dianggap offline hanya bila absen di dua daftar berturut-turut: host yang
+     * baru saja memutus sesi sering mendaftar ulang beberapa detik kemudian.
+     */
     override fun onMessage(m: SignalMessage) {
         if (m.type != "devices") return
         val arr = m.json.optJSONArray("devices") ?: return
-        _online.value = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
+        val now = (0 until arr.length()).mapNotNull { arr.optJSONObject(it) }
             .filter { it.optString("role") == "host" }.map { it.optString("id").filter(Char::isDigit) }.toSet()
+        val shown = _online.value
+        _online.value = if (shown == null) now else now + (shown - now).filter { it in previous }
+        previous = now
     }
 
-    override fun onClosed(reason: String) { _online.value = null }
+    override fun onClosed(reason: String) { _online.value = null; previous = emptySet() }
 
     companion object {
         fun hostKey(host: String) = host.filter(Char::isDigit)

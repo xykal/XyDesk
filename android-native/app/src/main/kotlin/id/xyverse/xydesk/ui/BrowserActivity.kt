@@ -69,12 +69,14 @@ class BrowserActivity : ComponentActivity() {
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
+                        settings.allowFileAccess = false
+                        settings.allowContentAccess = false
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(v: WebView, u: String, favicon: Bitmap?) { progress = true; url = u }
                             override fun onPageFinished(v: WebView, u: String) { progress = false; title = v.title.orEmpty(); url = u }
                             override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
                                 val s = r.url.scheme.orEmpty()
-                                return if (s == "http" || s == "https") false else runCatching { startActivity(Intent(Intent.ACTION_VIEW, r.url)); true }.getOrDefault(true)
+                                return if (s == "http" || s == "https") false else if (s == "mailto" || s == "tel") runCatching { startActivity(Intent(Intent.ACTION_VIEW, r.url)); true }.getOrDefault(true) else true
                             }
                         }
                         loadUrl(start)

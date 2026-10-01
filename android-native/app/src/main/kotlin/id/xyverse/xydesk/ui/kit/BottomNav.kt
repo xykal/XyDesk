@@ -33,7 +33,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class Tab(val label: String) { HOME("Koneksi"), DEVICES("Perangkat"), HISTORY("Riwayat"), NEWS("Berita"), ACCOUNT("Akun") }
+enum class Tab(val label: String) { HOME("Koneksi"), DEVICES("Perangkat"), NEWS("Berita"), ACCOUNT("Akun") }
 
 /** Bar bawah mengambang berbentuk pil; ikon garis digambar sendiri. */
 @Composable
@@ -87,11 +87,6 @@ private fun DrawScope.icon(t: Tab, c: Color) {
         Tab.DEVICES -> {
             drawRoundRect(c, Offset(w * 0.1f, w * 0.1f), Size(w * 0.5f, w * 0.8f), CornerRadius(w * 0.1f), style = s)
             drawRoundRect(c, Offset(w * 0.55f, w * 0.35f), Size(w * 0.35f, w * 0.55f), CornerRadius(w * 0.08f), style = s)
-        }
-        Tab.HISTORY -> {
-            drawCircle(c, w * 0.4f, Offset(w / 2, w / 2), style = s)
-            drawLine(c, Offset(w / 2, w * 0.28f), Offset(w / 2, w / 2), s.width)
-            drawLine(c, Offset(w / 2, w / 2), Offset(w * 0.68f, w * 0.62f), s.width)
         }
         Tab.NEWS -> {
             drawRoundRect(c, Offset(w * 0.1f, w * 0.14f), Size(w * 0.8f, w * 0.72f), CornerRadius(w * 0.08f), style = s)

@@ -40,11 +40,19 @@ import id.xyverse.xydesk.ui.kit.XyText
 object Legal {
     const val TERMS = "syarat"
     const val PRIVACY = "privasi"
+    const val LICENSES = "lisensi"
+    const val CHANGELOG = "rilis"
     var open by mutableStateOf<String?>(null)
 
-    fun title(kind: String) = if (kind == TERMS) "Syarat & Ketentuan" else "Kebijakan Privasi"
+    fun title(kind: String) = when (kind) {
+        TERMS -> "Syarat & Ketentuan"; PRIVACY -> "Kebijakan Privasi"; LICENSES -> "Lisensi pihak ketiga"; else -> "Catatan rilis"
+    }
+
+    fun asset(kind: String) = when (kind) { LICENSES -> "attribution.md"; CHANGELOG -> "changelog.md"; else -> "legal.md" }
 
     fun section(markdown: String, kind: String): String {
+        if (kind == LICENSES) return markdown.lines().filterNot { it.startsWith("|---") }.joinToString("\n") { l -> if (l.startsWith("|")) "- " + l.trim('|').split("|").joinToString(" — ") { it.trim() } else l }
+        if (kind == CHANGELOG) return markdown.lines().take(400).joinToString("\n")
         val head = if (kind == TERMS) "## 3." else "## 2."
         val start = markdown.indexOf(head).takeIf { it >= 0 } ?: return markdown
         val body = markdown.substring(markdown.indexOf('\n', start) + 1)
@@ -59,7 +67,7 @@ fun LegalOverlay() {
     val kind = Legal.open ?: return
     val ctx = LocalContext.current
     val text = remember(kind) {
-        val md = runCatching { ctx.assets.open("legal.md").bufferedReader().readText() }.getOrDefault("Dokumen belum tersedia.")
+        val md = runCatching { ctx.assets.open(Legal.asset(kind)).bufferedReader().readText() }.getOrDefault("Dokumen belum tersedia.")
         Legal.section(md, kind)
     }
     BackHandler { Legal.open = null }
@@ -73,7 +81,7 @@ fun LegalOverlay() {
             Spacer(Modifier.width(12.dp))
             XyText(Legal.title(kind), Xy.display)
         }
-        XyText("DRAFT · XyVerse Technology Global", Xy.label)
+        XyText(if (kind == Legal.TERMS || kind == Legal.PRIVACY) "DRAFT · XyVerse Technology Global" else "XyVerse Technology Global", Xy.label)
         Spacer(Modifier.height(20.dp))
         XyMarkdown(text)
         Spacer(Modifier.height(48.dp))
