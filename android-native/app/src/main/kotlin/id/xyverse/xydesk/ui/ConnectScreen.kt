@@ -1,5 +1,11 @@
 package id.xyverse.xydesk.ui
 
+import androidx.compose.foundation.shape.CircleShape
+
+import androidx.compose.foundation.layout.size
+
+import androidx.compose.foundation.layout.Box
+
 import id.xyverse.xydesk.ui.kit.XyIcon
 
 import androidx.compose.ui.draw.clip
@@ -113,6 +119,7 @@ private fun QuickConnect(devices: List<SessionRecord>, onQuick: (String) -> Unit
             ) {
                 XyIcon(if (meta.favorite(d.host)) Icon.STAR else Icon.MONITOR, tint = Xy.accent, size = 16.dp)
                 Spacer(Modifier.width(8.dp))
+                meta.online(d.host)?.let { on -> Box(Modifier.size(7.dp).clip(CircleShape).background(if (on) Xy.success else Xy.textLow)); Spacer(Modifier.width(6.dp)) }
                 XyText(hostTitle(d), Xy.label.copy(color = Xy.textHi), maxLines = 1)
             }
         }
