@@ -332,7 +332,8 @@ pub fn ensure_virtual_mic() {
         let first_uac = !admin && !marker.exists();
         if admin || first_uac {
             if !admin {
-                let _ = std::fs::create_dir_all(marker.parent().unwrap_or(std::path::Path::new(".")));
+                let _ =
+                    std::fs::create_dir_all(marker.parent().unwrap_or(std::path::Path::new(".")));
                 let _ = std::fs::write(&marker, b"1");
             }
             match try_install_driver() {
