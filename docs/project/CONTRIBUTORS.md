@@ -19,3 +19,4 @@ baris milik orang lain. Format nama agent: `Nama - XyVerse Team`
 | Bhre - XyVerse Team | CI / Release | 2026-09 |
 | Raka - XyVerse Team | News & Konten | 2026-09 |
 | Operator - XyDesk Team | Operator (semua area) | 2026-09 |
+| Arka - XyVerse Team | Client Android native | 2026-10 |
