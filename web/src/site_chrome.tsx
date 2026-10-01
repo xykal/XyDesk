@@ -2,6 +2,7 @@ import { RELEASE_BASE, Route, WHATSAPP_CHANNEL } from './app_routes';
 import {PUBLIC_ORIGIN} from './site_routes';
 import { useEffect, useRef, useState } from 'react';
 import { BRAND_POWERED_BY } from './config/brand';
+import { XyDeskMark } from './xydesk_mark';
 
 import {
   APP_VERSION,
@@ -12,10 +13,8 @@ import {
   STAGE_LABEL,
 } from './version';
 
-export function Logo({ size = 30 }: { size?: number }) {
-  return (
-    <img src="/logo.png" alt="XyDesk" width={size} height={size} aria-hidden="true" />
-  );
+export function Logo({ size = 30, variant = 'header' }: { size?: number; variant?: 'header' | 'footer' }) {
+  return <XyDeskMark size={size} variant={variant} />;
 }
 
 export function SiteHeader({
@@ -173,7 +172,7 @@ export function SiteFooter({ navigate }: { navigate: (r: Route) => void }) {
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-brand">
-          <img src="/logo-white.png" alt="XyDesk" />
+          <Logo size={32} variant="footer" />
           <strong>XyDesk</strong>
           <p>Remote desktop ringan untuk kerja, bermain, dan mengakses PC dari mana saja.</p>
         </div>
