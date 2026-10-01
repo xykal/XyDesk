@@ -3029,7 +3029,88 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .session-frame-actions button:hover{background:#ffffff24}
 .connect-cta:not(:disabled):hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
 
-/* ── Halaman "belum rilis" (kunci akses sementara) ── */
+/* ── Halaman "belum rilis" (kunci akses sementara) & animasi logo ── */
+.xydesk-mark {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.xydesk-mark-img,
+.xydesk-mark-svg {
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.xydesk-mark-svg {
+  pointer-events: none;
+  overflow: visible;
+}
+.xydesk-mark-img {
+  animation: xy-logo-fill 4.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.xydesk-contour {
+  stroke-width: 20;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: xy-logo-draw 4.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.xydesk-contour.c2 { animation-delay: 0.08s; }
+.xydesk-contour.c3 { animation-delay: 0.16s; }
+.xydesk-contour.c4 { stroke-width: 14; animation-delay: 0.22s; }
+.xydesk-mark-sheen {
+  opacity: 0;
+  animation: xy-logo-sheen 4.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+.xydesk-glint {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.xydesk-glint.g1 { animation: xy-logo-glint-1 4.8s ease-out infinite; }
+.xydesk-glint.g2 { animation: xy-logo-glint-2 4.8s ease-out infinite; }
+.xydesk-glint.g3 { animation: xy-logo-glint-3 4.8s ease-out infinite; }
+
+@keyframes xy-logo-draw {
+  0% { stroke-dashoffset: 100; opacity: 1; }
+  24% { stroke-dashoffset: 0; opacity: 1; }
+  38%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes xy-logo-fill {
+  0%, 12% { opacity: 0; transform: scale(0.92); }
+  32%, 90% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.96); }
+}
+@keyframes xy-logo-sheen {
+  0%, 30% { opacity: 0; transform: rotate(-28deg) translateX(0); }
+  36% { opacity: 1; }
+  56% { opacity: 1; transform: rotate(-28deg) translateX(1650px); }
+  62%, 100% { opacity: 0; transform: rotate(-28deg) translateX(1650px); }
+}
+@keyframes xy-logo-glint-1 {
+  0%, 33%, 50%, 100% { opacity: 0; transform: scale(0.2) rotate(-20deg); }
+  41% { opacity: 1; transform: scale(1.05) rotate(0deg); }
+}
+@keyframes xy-logo-glint-2 {
+  0%, 38%, 55%, 100% { opacity: 0; transform: scale(0.2) rotate(-20deg); }
+  46% { opacity: 1; transform: scale(1.1) rotate(0deg); }
+}
+@keyframes xy-logo-glint-3 {
+  0%, 43%, 60%, 100% { opacity: 0; transform: scale(0.2) rotate(-20deg); }
+  51% { opacity: 1; transform: scale(1.05) rotate(0deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .xydesk-mark-img,
+  .xydesk-contour,
+  .xydesk-mark-sheen,
+  .xydesk-glint {
+    animation: none !important;
+  }
+  .xydesk-mark-img { opacity: 1; }
+  .xydesk-contour, .xydesk-mark-sheen, .xydesk-glint { opacity: 0; }
+}
+
 .coming-soon {
   min-height: 100dvh;
   display: grid;

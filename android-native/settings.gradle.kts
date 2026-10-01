@@ -4,6 +4,7 @@ pluginManagement {
         id("com.android.application") version "8.7.3"
         id("org.jetbrains.kotlin.android") version "2.1.0"
         id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
+        id("org.jetbrains.kotlin.jvm") version "2.1.0"
     }
 }
 dependencyResolutionManagement {
@@ -11,4 +12,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "xydesk-native"
-include(":app")
+include(":app", ":xyadapt")

@@ -234,13 +234,17 @@ impl Session {
         with_audio: bool,
         with_mic: bool,
     ) -> Result<MediaTracks> {
+        let audio_mlines = offer_sdp
+            .lines()
+            .filter(|l| l.trim().starts_with("m=audio "))
+            .count();
         let video = self.add_video_track().await?;
-        let audio = if with_audio {
+        let audio = if with_audio && audio_mlines >= 1 {
             Some(self.add_audio_track().await?)
         } else {
             None
         };
-        let mic = if with_mic {
+        let mic = if with_mic && audio_mlines >= 2 {
             Some(self.add_mic_track().await?)
         } else {
             None

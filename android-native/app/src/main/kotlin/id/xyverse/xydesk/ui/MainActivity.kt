@@ -3,6 +3,12 @@ package id.xyverse.xydesk.ui
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.addCallback
+import id.xyverse.xydesk.core.tr
+import id.xyverse.xydesk.core.Images
+import id.xyverse.xydesk.core.NewsWatch
+import id.xyverse.xydesk.ui.kit.Tab
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +21,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -28,17 +35,32 @@ import androidx.credentials.GetCredentialRequest
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import id.xyverse.xydesk.BuildConfig
+import id.xyverse.xydesk.core.Previews
 import id.xyverse.xydesk.core.Store
+import android.os.Build
 import id.xyverse.xydesk.ui.kit.XyTheme
 
 private enum class Stage { SPLASH, ONBOARDING, AUTH }
 
 class MainActivity : ComponentActivity() {
     private val store by lazy { Store(applicationContext) }
+    private var lastBack = 0L
+    private var openNews = false
+
+    private fun shareText(text: String) =
+        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        Images.attach(applicationContext)
+        NewsWatch.schedule(applicationContext)
+        if (intent.getStringExtra("tab") == "news") openNews = true
+        onBackPressedDispatcher.addCallback(this) {
+            val now = System.currentTimeMillis()
+            if (now - lastBack < 2000) finish()
+            else { lastBack = now; Toast.makeText(this@MainActivity, "Tekan sekali lagi untuk keluar".tr(store.lang), Toast.LENGTH_SHORT).show() }
+        }
         setContent {
             var jwt by remember { mutableStateOf(store.jwt) }
             var stage by remember { mutableStateOf(Stage.SPLASH) }
@@ -62,25 +84,36 @@ class MainActivity : ComponentActivity() {
                     } else if (st == Stage.ONBOARDING) {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
-                        LoginScreen(onGoogle = ::googleIdToken) { token, email ->
+                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                         }
                     } else {
                         var refresh by remember { mutableStateOf(0) }
                         LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
-                        val history = remember(refresh) { store.history }
+                        val history by store.observeHistory().collectAsState()
                         HomeShell(
                             email = store.email.orEmpty(),
                             lastHost = store.lastHost,
+                            startTab = if (openNews) Tab.NEWS else listOf(Tab.HOME, Tab.DEVICES, Tab.NEWS).getOrElse(store.startTab) { Tab.HOME },
                             history = history,
                             onConnect = { host, pin -> openSession(host, pin) },
-                            onOpenUrl = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(it))) },
+                            onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
+                            onShare = { shareText(it) },
+                            googleToken = { runCatching { googleIdToken() }.getOrNull() },
                             settings = Settings(
                                 lang = lang,
                                 onLang = { lang = it; store.lang = it },
                                 haptics = haptics,
                                 onHaptics = { haptics = it; store.haptics = it },
                                 onReplayIntro = { replay = true; stage = Stage.SPLASH },
+                                deviceLabel = "${Build.MANUFACTURER} ${Build.MODEL}",
+                                appVersion = BuildConfig.VERSION_NAME,
+                                historyCount = history.size,
+                                onClearHistory = { store.clearHistory(); Previews.clear(applicationContext); Images.clearDisk(); refresh++ },
+                                store = store,
+                                onOpenAppSettings = {
+                                    startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                                },
                             ),
                             onLogout = { store.clear(); jwt = null },
                         )

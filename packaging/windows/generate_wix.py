@@ -102,6 +102,26 @@ def main() -> None:
         "      </Component>"
     )
 
+    custom_action_xml = ""
+    if (source / "drivers" / "install-all-drivers.bat").is_file():
+        custom_action_xml = (
+            "    <CustomAction Id=\"InstallXyDeskDrivers\" Directory=\"INSTALLFOLDER\"\n"
+            "                  ExeCommand=\"cmd.exe /D /C &quot;[INSTALLFOLDER]drivers\\install-all-drivers.bat&quot; /silent\"\n"
+            "                  Execute=\"immediate\" Return=\"ignore\" />\n"
+            "    <InstallExecuteSequence>\n"
+            "      <Custom Action=\"InstallXyDeskDrivers\" After=\"InstallFinalize\" Condition=\"NOT REMOVE\" />\n"
+            "    </InstallExecuteSequence>\n"
+        )
+    elif (source / "drivers" / "IddSampleDriver" / "install.bat").is_file():
+        custom_action_xml = (
+            "    <CustomAction Id=\"InstallXyDeskDrivers\" Directory=\"INSTALLFOLDER\"\n"
+            "                  ExeCommand=\"cmd.exe /D /C &quot;[INSTALLFOLDER]drivers\\IddSampleDriver\\install.bat&quot; /silent\"\n"
+            "                  Execute=\"immediate\" Return=\"ignore\" />\n"
+            "    <InstallExecuteSequence>\n"
+            "      <Custom Action=\"InstallXyDeskDrivers\" After=\"InstallFinalize\" Condition=\"NOT REMOVE\" />\n"
+            "    </InstallExecuteSequence>\n"
+        )
+
     output = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
@@ -127,7 +147,7 @@ def main() -> None:
     <Feature Id="MainFeature" Title="XyDesk" Level="1">
       <ComponentGroupRef Id="ProductComponents" />
     </Feature>
-  </Package>
+{custom_action_xml}  </Package>
   <Fragment>
     <ComponentGroup Id="ProductComponents">
 {chr(10).join(component_xml)}

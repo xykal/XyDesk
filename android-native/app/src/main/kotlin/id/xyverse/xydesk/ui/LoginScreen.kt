@@ -1,6 +1,13 @@
 package id.xyverse.xydesk.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -38,7 +45,7 @@ import id.xyverse.xydesk.ui.kit.SlideToGoogle
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email: String) -> Unit) {
+fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {}, onLoggedIn: (jwt: String, email: String) -> Unit) {
     var email by remember { mutableStateOf("") }
     var otp by remember { mutableStateOf("") }
     var sent by remember { mutableStateOf(false) }
@@ -61,13 +68,13 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
         }
     }
 
-    Column(
-        Modifier.fillMaxSize().safeDrawingPadding().imePadding().padding(Xy.pad),
-        verticalArrangement = Arrangement.Center,
-    ) {
+    Box(Modifier.fillMaxSize()) {
+        LoginHero()
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).safeDrawingPadding().imePadding().padding(Xy.pad)) {
+        Spacer(Modifier.height(300.dp))
         XyText("XyDesk", Xy.display)
         XyText("Kendalikan PC dari mana saja — latensi rendah, jalur langsung.", Xy.caption)
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(20.dp))
         XyCard {
             XyField(email, { email = it.trim() }, "Email", keyboard = KeyboardType.Email, hint = "nama@domain.com")
             if (sent) {
@@ -81,7 +88,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
                 if (!sent) run {
                     Api.requestOtp(email); sent = true; notice = t0("Kode dikirim ke") + " " + email; tone = Xy.success
                 } else run {
-                    val jwt = Api.verifyOtp(email, otp); onLoggedIn(jwt, email)
+                    val jwt = Api.verifyOtp(email, otp); sfx.confirm(); onLoggedIn(jwt, email)
                 }
             }
             Spacer(Modifier.height(14.dp))
@@ -105,6 +112,25 @@ fun LoginScreen(onGoogle: suspend () -> String?, onLoggedIn: (jwt: String, email
             }
         }
         Spacer(Modifier.height(16.dp))
-        XyText("XyVerse Technology Global", Xy.label)
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+            XyText("Dengan masuk, kamu menyetujui:", Xy.caption)
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LegalPill("Syarat & Ketentuan") { onOpenUrl("https://xydesk.my.id/legal#syarat") }
+                LegalPill("Kebijakan Privasi") { onOpenUrl("https://xydesk.my.id/legal#privasi") }
+            }
+            Spacer(Modifier.height(20.dp))
+            XyText("XyVerse Technology Global", Xy.label)
+        }
+        Spacer(Modifier.height(24.dp))
+        }
     }
+}
+
+@Composable
+private fun LegalPill(text: String, onClick: () -> Unit) {
+    Box(
+        Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay).border(1.dp, Xy.line, RoundedCornerShape(Xy.pill))
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
+    ) { XyText(text, Xy.caption.copy(color = Xy.accent)) }
 }

@@ -79,6 +79,8 @@ class Signaling(
 
     fun bye(hostId: String) = send(JSONObject().put("type", "bye").put("to", hostId))
 
+    fun list() = send(JSONObject().put("type", "list"))
+
     fun close() {
         open = false
         ws?.close(1000, "selesai")

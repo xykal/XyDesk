@@ -33,6 +33,8 @@ import org.webrtc.VideoTrack
 import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
+import org.json.JSONObject
+import id.xyverse.xydesk.core.HostSpecs
 import kotlin.random.Random
 
 enum class Phase { PAIRING, NEGOTIATING, CONNECTED, REJECTED, PEER_OFFLINE, BUSY, ENDED, ERROR }
@@ -41,6 +43,8 @@ interface RtcListener {
     fun onPhase(phase: Phase, message: String?)
     fun onHostName(name: String) {}
     fun onRemoteClipboard(text: String) {}
+    fun onHostSpecs(specs: HostSpecs) {}
+    fun onMicInput(available: Boolean) {}
 }
 
 /**
@@ -69,6 +73,8 @@ class RtcSession(
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
     private var remoteAudioTrack: AudioTrack? = null
+    private var micTrack: AudioTrack? = null
+    private var micSrc: org.webrtc.AudioSource? = null
 
     /** Sinkron clipboard opt-in: default mati agar isi clipboard HP tidak bocor ke PC tanpa sengaja. */
     @Volatile var clipboardSync = false
@@ -213,10 +219,10 @@ class RtcSession(
             org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_VIDEO,
             RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY),
         )
-        conn.addTransceiver(
-            org.webrtc.MediaStreamTrack.MediaType.MEDIA_TYPE_AUDIO,
-            RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.RECV_ONLY),
-        )
+        val micSource = factory.createAudioSource(org.webrtc.MediaConstraints())
+        val mic = factory.createAudioTrack("xy-mic", micSource).apply { setEnabled(false) }
+        micTrack = mic; micSrc = micSource
+        conn.addTransceiver(mic, RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_RECV))
         val ch = conn.createDataChannel("input", DataChannel.Init().apply { ordered = false; maxRetransmits = 0 })
         ch?.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
@@ -228,6 +234,7 @@ class RtcSession(
             override fun onMessage(buffer: DataChannel.Buffer) {
                 val data = ByteArray(buffer.data.remaining())
                 buffer.data.get(data)
+                if (!buffer.binary) { onText(String(data, Charsets.UTF_8)); return }
                 if (clipboardSync) StreamXy.clipboardText(data)?.takeIf { it.isNotEmpty() }?.let(listener::onRemoteClipboard)
             }
         })
@@ -238,6 +245,37 @@ class RtcSession(
                 signaling.offer(Signaling.normalizeId(hostId), desc.description)
             }
         }, MediaConstraints())
+    }
+
+    private var specsSent = false
+
+    /** Pesan JSON dari host di kanal input; saat ini hanya `meta.hardware` yang dipakai. */
+    private fun onText(text: String) {
+        if (!text.startsWith("{")) return
+        val meta = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" } ?: return
+        meta.optJSONObject("micInput")?.let { listener.onMicInput(it.optBoolean("available", true)) }
+        if (specsSent) return
+        val hw = meta.optJSONObject("hardware") ?: return
+        val specs = HostSpecs.from(hw)
+        if (specs.isEmpty) return
+        specsSent = true
+        listener.onHostSpecs(specs)
+    }
+
+    /** Mic HP ke host; jalur sendrecv seperti web, track hanya di-enable saat pengguna menyalakan. */
+    fun setMicEnabled(on: Boolean) { micOn = on; micTrack?.setEnabled(on) }
+
+    @Volatile var micOn = false
+        private set
+
+    /** Level mic lokal 0..1 dari stats `media-source`; hanya berarti saat micOn. */
+    fun micLevel(cb: (Double) -> Unit) {
+        val conn = pc ?: return
+        conn.getStats { report ->
+            val lvl = report.statsMap.values.firstOrNull { it.type == "media-source" && it.members["kind"] == "audio" }
+                ?.members?.get("audioLevel") as? Number
+            cb(lvl?.toDouble() ?: 0.0)
+        }
     }
 
     fun setAudioMuted(muted: Boolean) {
@@ -292,6 +330,8 @@ class RtcSession(
         pc?.close()
         pc = null
         remoteAudioTrack = null
+        micTrack?.dispose(); micTrack = null
+        micSrc?.dispose(); micSrc = null
         scope.cancel()
         listener.onPhase(phase, message)
     }
