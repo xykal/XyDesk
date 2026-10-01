@@ -182,39 +182,23 @@ operator yang menang** — role ini wakil, bukan pengganti.
 
 ---
 
-## 5. Koordinasi antar agent — lewat GitHub, bukan tebakan
+## 5. Satu agen untuk host + klien (sejak 1 Okt 2026 malam)
 
-Sejak 1 Okt 2026 `main` dipasangi branch protection: wajib PR, berlaku juga
-untuk admin, tanpa force-push. Papan `docs/project/AGENT_BOARD.md` tidak lagi
-jadi sumber kebenaran; koordinasi pindah ke issue GitHub.
+Atas keputusan kall, agen XyDesk-Remote tidak lagi menyentuh repo ini. Satu
+agen memegang host Rust, klien Android native, web, signaling, dan rilis —
+supaya kontrak (field `meta`, tag DataChannel, endpoint audio/mic, `VERSION`)
+konsisten tanpa negosiasi. `main` tetap diproteksi: wajib PR, tanpa
+force-push.
 
-- **Satu issue `koordinasi` per kontrak bersama.** Kontrak = protokol
-  signaling/DataChannel, nama endpoint audio/mic (`XyDesk Virtual
-  Microphone`, `CABLE Input`), field `meta` host, `VERSION` + kebijakan
-  `changelogs/`, perilaku installer. Issue aktif saat ini:
-  `xykal/XyDesk#34` (audio/mic XyDesk <-> XyDesk-Remote) dan
-  `xykal/XyDesk-Remote#8` (cermin dari sisi Remote). Perubahan kontrak
-  diusulkan di issue dulu, PR pelaksananya di-link ke sana.
-- **Baca sebelum menulis.** Di awal sesi cek issue/PR terbuka berlabel
-  `koordinasi` di repo ini dan di `xykal/XyDesk-Remote`. Kalau agent lain
-  punya PR di path yang sama, komentar di PR itu; jangan buat perubahan
-  saingan.
-- **Hanya PR.** Deskripsi PR memuat: apa yang berubah, kontrak/issue mana
-  yang kena, apa yang harus dilakukan agent lain (kalau ada), dan run CI
-  yang memverifikasi. Merge setelah build area-mu hijau.
-- **Lapor di issue, bukan hanya di chat.** Setelah merge yang menyentuh
-  kontrak: komentar SHA, apa yang berubah, apa yang diharapkan dari sisi
-  lain, minta konfirmasi. Balas pertanyaan agent lain di sesi yang sama.
-- **Nilai bersama tidak diubah diam-diam.** `VERSION`, nama endpoint, tag
-  protokol, default DSP mic, URL layanan, nama secret. Mengubahnya tanpa
-  komentar di issue adalah cacat walau CI hijau.
-- **Sebut peranmu** di awal komentar, contoh `[XyDesk host+native]` atau
-  `[XyDesk-Remote]`. Commit tetap memakai identitas `xykal`.
-- **Beda desain diputuskan kall.** Masing-masing tulis satu opsi dengan
-  trade-off di issue; jangan selesaikan dengan menimpa kode pihak lain.
-- **Catatan ringan.** Satu issue per kontrak, satu komentar per perubahan
-  status, tanpa issue ganda lintas repo (cross-link saja). Tutup issue hanya
-  setelah kedua sisi mengonfirmasi tertulis.
+- **Hanya PR**, satu PR per putaran kerja; deskripsi berisi apa yang berubah
+  dan run CI yang memverifikasi. Merge setelah `build` + `android-native`
+  hijau, lalu dispatch `build.yml` di `main` (release menyusul otomatis).
+- **Kontrak tetap dicatat** di `CHANGELOG.md` dan `changelogs/<versi>.md`
+  walau tidak ada pihak lain — ini sumber kebenaran untuk sesi berikutnya.
+- **Issue lama** `#31`/`#34` dan `xykal/XyDesk-Remote#8` ditutup sebagai arsip;
+  jangan dibuka lagi kecuali kall meminta kerja lintas agen.
+- Bila XyDesk-Remote perlu kompatibel dengan XyDesk, perubahan diusulkan di
+  repo Remote oleh agen yang sama dan diuji terhadap host versi rilis terbaru.
 
 ---
 
