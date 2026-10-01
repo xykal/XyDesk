@@ -1,43 +1,100 @@
 package id.xyverse.xydesk.core
 
-import android.content.Context
-import id.xyverse.xyadapt.Semver
-import id.xyverse.xydesk.R
 import id.xyverse.xydesk.net.Api
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
+import java.security.SecureRandom
 
-data class NewsItem(val id: String, val date: String, val tag: String, val title: String, val body: String, val url: String)
+data class NewsPost(
+    val slug: String, val title: String, val excerpt: String, val content: String, val cover: String,
+    val category: String, val author: String, val createdAt: String, val likeCount: Int, val commentCount: Int,
+)
 
-data class NewsFeed(val latest: String, val items: List<NewsItem>, val fromNetwork: Boolean)
+data class NewsComment(val id: Long, val author: String, val content: String, val parentId: Long?, val createdAt: String, val official: Boolean)
 
-/** Berita produk: diambil dari repo publik, jatuh ke salinan bawaan bila offline. */
+data class NewsDetail(val post: NewsPost, val comments: List<NewsComment>, val liked: Boolean)
+
+/** Klien berita yang sama dengan web: news.xydesk.my.id (D1 Worker). Tanpa akun; identitas = sidik jari perangkat. */
 object News {
-    private const val URL = "https://raw.githubusercontent.com/xykal/XyDesk/main/docs/news.json"
+    const val BASE = "https://news.xydesk.my.id"
+    val categories = listOf("semua", "rilis", "teknik", "umum")
+    private val json = "application/json".toMediaType()
 
-    fun bundled(ctx: Context): NewsFeed =
-        parse(ctx.resources.openRawResource(R.raw.news).bufferedReader().use { it.readText() }, false)
+    fun shareUrl(slug: String) = "$BASE/n/$slug"
 
-    suspend fun load(ctx: Context): NewsFeed = withContext(Dispatchers.IO) {
-        runCatching {
-            Api.http.newCall(Request.Builder().url(URL).header("Cache-Control", "no-cache").build()).execute().use { res ->
-                if (!res.isSuccessful) error("HTTP ${res.code}")
-                parse(res.body?.string().orEmpty(), true)
-            }
-        }.getOrElse { bundled(ctx) }
+    suspend fun list(category: String = "semua", limit: Int = 30): List<NewsPost> {
+        val q = if (category == "semua") "" else "&category=$category"
+        return parseList(get("$BASE/api/news?limit=$limit$q"))
     }
 
-    fun parse(text: String, network: Boolean): NewsFeed {
-        val o = JSONObject(text)
-        val arr = o.optJSONArray("items")
-        val items = (0 until (arr?.length() ?: 0)).map { i ->
-            val it = arr!!.getJSONObject(i)
-            NewsItem(it.optString("id"), it.optString("date"), it.optString("tag"), it.optString("title"), it.optString("body"), it.optString("url"))
+    fun parseList(text: String): List<NewsPost> {
+        val arr = JSONObject(text).optJSONArray("posts") ?: JSONArray()
+        return (0 until arr.length()).map { post(arr.getJSONObject(it)) }
+    }
+
+    suspend fun detail(slug: String, fp: String): NewsDetail {
+        val o = JSONObject(get("$BASE/api/news/$slug?fp=$fp"))
+        val arr = o.optJSONArray("comments") ?: JSONArray()
+        return NewsDetail(post(o.getJSONObject("post")), (0 until arr.length()).map { comment(arr.getJSONObject(it)) }, o.optBoolean("liked"))
+    }
+
+    suspend fun like(slug: String, fp: String): Pair<Boolean, Int> {
+        val o = JSONObject(post("$BASE/api/news/$slug/like", JSONObject().put("fp", fp)))
+        return o.optBoolean("liked") to o.optInt("likeCount")
+    }
+
+    suspend fun comment(slug: String, fp: String, author: String, content: String, parentId: Long?): NewsComment {
+        val body = JSONObject().put("fp", fp).put("author", author).put("content", content)
+        if (parentId != null) body.put("parentId", parentId)
+        return comment(JSONObject(post("$BASE/api/news/$slug/comments", body)).getJSONObject("comment"))
+    }
+
+    /** Nama tampilan deterministik dari sidik jari — algoritma sama dengan web agar identitas konsisten. */
+    fun displayName(fp: String): String {
+        var h = 0L
+        for (c in fp) h = (h * 31 + c.code) and 0xFFFFFFFFL
+        return first[(h % first.size).toInt()] + " " + last[((h / first.size) % last.size).toInt()]
+    }
+
+    fun newFingerprint(): String = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
+
+    private suspend fun get(url: String): String = withContext(Dispatchers.IO) {
+        Api.http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+            val text = res.body?.string().orEmpty()
+            if (!res.isSuccessful) error(JSONObject(text.ifBlank { "{}" }).optString("error").ifBlank { "HTTP ${res.code}" })
+            text
         }
-        return NewsFeed(o.optString("latest"), items, network)
     }
 
-    fun newer(latest: String, installed: String) = Semver.newer(latest, installed)
+    private suspend fun post(url: String, body: JSONObject): String = withContext(Dispatchers.IO) {
+        Api.http.newCall(Request.Builder().url(url).post(body.toString().toRequestBody(json)).build()).execute().use { res ->
+            val text = res.body?.string().orEmpty()
+            if (!res.isSuccessful) error(JSONObject(text.ifBlank { "{}" }).optString("error").ifBlank { "HTTP ${res.code}" })
+            text
+        }
+    }
+
+    private fun post(o: JSONObject) = NewsPost(
+        o.optString("slug"), o.optString("title"), o.optString("excerpt"), o.optString("content"), o.optString("cover"),
+        o.optString("category"), o.optString("author"), o.optString("createdAt"), o.optInt("likeCount"), o.optInt("commentCount"),
+    )
+
+    private fun comment(o: JSONObject) = NewsComment(
+        o.optLong("id"), o.optString("author"), o.optString("content"),
+        if (o.isNull("parentId")) null else o.optLong("parentId"), o.optString("createdAt"), o.optBoolean("official"),
+    )
+
+    private val first = listOf(
+        "Raka", "Sinta", "Bima", "Dewi", "Aldi", "Nadia", "Fajar", "Laras", "Galih", "Ayu", "Reza", "Putri", "Dimas", "Ratna", "Yoga", "Salsa",
+        "Ilham", "Maya", "Rio", "Tania", "Bagus", "Intan", "Eka", "Wulan", "Arif", "Citra", "Damar", "Nirmala", "Panji", "Kirana", "Satria", "Anggi",
+    )
+    private val last = listOf(
+        "Saputra", "Pratama", "Lestari", "Wijaya", "Ramadhan", "Maharani", "Nugroho", "Anggraini", "Santoso", "Utami", "Firmansyah", "Puspita",
+        "Hidayat", "Safitri", "Kurniawan", "Melati", "Gunawan", "Andini", "Prasetyo", "Rahayu", "Mahendra", "Paramita", "Wibowo", "Larasati",
+    )
 }

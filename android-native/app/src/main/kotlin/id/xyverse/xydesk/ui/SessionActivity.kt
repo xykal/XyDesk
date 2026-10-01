@@ -62,6 +62,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var lowLatency = false
     private var showStats = true
     private var presenting = false
+    private var lastBack = 0L
     private var hostName = ""
     private var specs = HostSpecs()
     private var startedAt = 0L
@@ -95,7 +96,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (store.keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                if (presenting) setPresenting(false) else { isEnabled = false; onBackPressedDispatcher.onBackPressed() }
+                val now = System.currentTimeMillis()
+                when {
+                    presenting -> setPresenting(false)
+                    now - lastBack < 2000 -> { outcome = if (connected) "putus" else "batal"; finish() }
+                    else -> { lastBack = now; Toast.makeText(this@SessionActivity, "Tekan sekali lagi untuk memutus sesi".tr(store.lang), Toast.LENGTH_SHORT).show() }
+                }
             }
         })
         hideSystemBars()
