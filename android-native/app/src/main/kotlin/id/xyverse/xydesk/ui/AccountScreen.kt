@@ -238,6 +238,8 @@ private fun PermissionsBody(settings: Settings) {
         Spacer(Modifier.height(8.dp))
         XyRow(Icon.PLUG, "Internet", "Signaling dan jalur WebRTC ke host.", value = "Aktif", chevron = false, tint = Xy.success)
         XyRow(Icon.CONTROLS, "Clipboard", "Hanya saat kamu menyalakannya di dalam sesi.", value = "Opsional", chevron = false)
+        XyRow(Icon.KEYBOARD, "Mikrofon", "Hanya saat tombol Mic di sesi dinyalakan; suara dikirim ke host.", value = "Opsional", chevron = false)
+        XyRow(Icon.NEWS, "Notifikasi", "Satu pemberitahuan saat ada berita baru; bisa dimatikan di sistem.", value = "Opsional", chevron = false)
         XyRow(Icon.MONITOR, "Penyimpanan internal", "Riwayat dan cuplikan; tidak menyentuh galeri.", value = "Aktif", chevron = false, tint = Xy.success)
     }
     Spacer(Modifier.height(16.dp))

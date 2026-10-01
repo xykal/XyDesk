@@ -25,7 +25,14 @@ object News {
     val categories = listOf("semua", "rilis", "teknik", "umum")
     private val json = "application/json".toMediaType()
 
+    const val ADMIN_EMAIL = "xycdigital@gmail.com"
+    const val ADMIN_NAME = "Haekal Saputra"
+
     fun shareUrl(slug: String) = "$BASE/n/$slug"
+
+    /** Avatar DiceBear dari nama (sama dengan web), format PNG supaya bisa didekode Android. */
+    fun avatarUrl(author: String) =
+        "https://api.dicebear.com/9.x/adventurer/png?size=96&seed=" + java.net.URLEncoder.encode(author, "UTF-8") + "&backgroundColor=ede9fe,fde68a,bbf7d0,bae6fd"
 
     suspend fun list(category: String = "semua", limit: Int = 30): List<NewsPost> {
         val q = if (category == "semua") "" else "&category=$category"
@@ -48,10 +55,12 @@ object News {
         return o.optBoolean("liked") to o.optInt("likeCount")
     }
 
-    suspend fun comment(slug: String, fp: String, author: String, content: String, parentId: Long?): NewsComment {
+    /** `adminToken` = Google ID token founder; badge resmi tetap diputuskan server. */
+    suspend fun comment(slug: String, fp: String, author: String, content: String, parentId: Long?, adminToken: String? = null): NewsComment {
         val body = JSONObject().put("fp", fp).put("author", author).put("content", content)
         if (parentId != null) body.put("parentId", parentId)
-        return comment(JSONObject(post("$BASE/api/news/$slug/comments", body)).getJSONObject("comment"))
+        val headers = if (adminToken != null) mapOf("x-admin-google-token" to adminToken) else emptyMap()
+        return comment(JSONObject(post("$BASE/api/news/$slug/comments", body, headers)).getJSONObject("comment"))
     }
 
     /** Nama tampilan deterministik dari sidik jari — algoritma sama dengan web agar identitas konsisten. */
@@ -71,8 +80,9 @@ object News {
         }
     }
 
-    private suspend fun post(url: String, body: JSONObject): String = withContext(Dispatchers.IO) {
-        Api.http.newCall(Request.Builder().url(url).post(body.toString().toRequestBody(json)).build()).execute().use { res ->
+    private suspend fun post(url: String, body: JSONObject, headers: Map<String, String> = emptyMap()): String = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url).post(body.toString().toRequestBody(json)).apply { headers.forEach { (k, v) -> header(k, v) } }.build()
+        Api.http.newCall(req).execute().use { res ->
             val text = res.body?.string().orEmpty()
             if (!res.isSuccessful) error(JSONObject(text.ifBlank { "{}" }).optString("error").ifBlank { "HTTP ${res.code}" })
             text

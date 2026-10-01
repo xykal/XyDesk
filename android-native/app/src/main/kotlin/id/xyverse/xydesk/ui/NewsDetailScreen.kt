@@ -53,7 +53,12 @@ import kotlinx.coroutines.launch
 
 /** Artikel penuh seperti di web: sampul, isi markdown, suka, komentar + balasan, bagikan. */
 @Composable
-fun NewsDetailScreen(post: NewsPost, fp: String, onShare: (String) -> Unit, onBack: () -> Unit) {
+fun NewsDetailScreen(
+    post: NewsPost, fp: String, email: String = "", googleToken: (suspend () -> String?)? = null,
+    onShare: (String) -> Unit, onBack: () -> Unit,
+) {
+    val founder = email.equals(News.ADMIN_EMAIL, true) && googleToken != null
+    var asFounder by remember { mutableStateOf(founder) }
     BackHandler(onBack = onBack)
     val scope = rememberCoroutineScope()
     var detail by remember(post.slug) { mutableStateOf<NewsDetail?>(null) }
@@ -110,12 +115,16 @@ fun NewsDetailScreen(post: NewsPost, fp: String, onShare: (String) -> Unit, onBa
                 }
                 Spacer(Modifier.height(6.dp))
             }
-            XyField(draft, { draft = it.take(1000) }, "Tulis sebagai ${News.displayName(fp)}", hint = t("Komentar minimal 2 huruf"))
+            if (founder) { Chip(if (asFounder) "Sebagai ${News.ADMIN_NAME} · XyVerse" else "Sebagai ${News.displayName(fp)}", asFounder) { asFounder = !asFounder }; Spacer(Modifier.height(8.dp)) }
+            XyField(draft, { draft = it.take(1000) }, "Tulis sebagai " + (if (asFounder) News.ADMIN_NAME else News.displayName(fp)), hint = t("Komentar minimal 2 huruf"))
             Spacer(Modifier.height(10.dp))
             XyButton(if (sending) "Mengirim…" else "Kirim komentar", enabled = draft.trim().length >= 2 && !sending) {
                 sending = true
                 scope.launch {
-                    runCatching { News.comment(post.slug, fp, News.displayName(fp), draft.trim(), replyTo?.id) }
+                    runCatching {
+                        val tok = if (asFounder) googleToken?.invoke() else null
+                        News.comment(post.slug, fp, if (tok != null) News.ADMIN_NAME else News.displayName(fp), draft.trim(), replyTo?.id, tok)
+                    }
                         .onSuccess { comments = comments + it; draft = ""; replyTo = null }
                         .onFailure { error = it.message ?: "Gagal mengirim" }
                     sending = false
@@ -129,9 +138,9 @@ fun NewsDetailScreen(post: NewsPost, fp: String, onShare: (String) -> Unit, onBa
 @Composable
 private fun CommentRow(c: NewsComment, onReply: () -> Unit) {
     Row(Modifier.padding(vertical = 8.dp)) {
-        Box(Modifier.size(32.dp).clip(CircleShape).background(if (c.official) Xy.accent else Xy.accent.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
-            XyText(c.author.take(1).uppercase(), Xy.label.copy(color = if (c.official) Color.White else Xy.accent))
-        }
+        if (c.official) Box(Modifier.size(32.dp).clip(CircleShape).background(Xy.accent), contentAlignment = Alignment.Center) {
+            XyText("X", Xy.label.copy(color = Color.White))
+        } else RemoteImage(News.avatarUrl(c.author), Modifier.size(32.dp).clip(CircleShape))
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

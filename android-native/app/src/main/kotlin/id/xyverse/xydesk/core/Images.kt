@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.core
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
@@ -20,6 +21,8 @@ import id.xyverse.xydesk.ui.kit.Xy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.io.File
+import java.security.MessageDigest
 
 /** Pemuat gambar kecil: OkHttp + cache memori; cukup untuk sampul berita, tanpa pustaka tambahan. */
 object Images {
@@ -27,18 +30,26 @@ object Images {
 
     fun peek(url: String): Bitmap? = cache.get(url)
 
+    @Volatile private var dir: File? = null
+
+    /** Panggil sekali dari Application/Activity supaya gambar juga tersimpan di disk (offline). */
+    fun attach(ctx: Context) { dir = File(ctx.cacheDir, "img").apply { mkdirs() } }
+
     suspend fun load(url: String, maxWidth: Int = 1080): Bitmap? = cache.get(url) ?: withContext(Dispatchers.IO) {
-        runCatching {
-            Api.http.newCall(Request.Builder().url(url).build()).execute().use { res ->
-                val bytes = res.body?.bytes() ?: return@use null
-                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-                var sample = 1
-                while (bounds.outWidth / (sample * 2) >= maxWidth) sample *= 2
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
-            }
-        }.getOrNull()?.also { cache.put(url, it) }
+        val file = dir?.let { File(it, sha1(url)) }
+        val bytes = file?.takeIf { it.length() > 0 }?.readBytes() ?: runCatching {
+            Api.http.newCall(Request.Builder().url(url).build()).execute().use { res -> if (res.isSuccessful) res.body?.bytes() else null }
+        }.getOrNull()?.also { b -> runCatching { file?.writeBytes(b) } } ?: return@withContext null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= maxWidth) sample *= 2
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })?.also { cache.put(url, it) }
     }
+
+    fun clearDisk() { dir?.listFiles()?.forEach { it.delete() } }
+
+    private fun sha1(s: String) = MessageDigest.getInstance("SHA-1").digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
 }
 
 @Composable
