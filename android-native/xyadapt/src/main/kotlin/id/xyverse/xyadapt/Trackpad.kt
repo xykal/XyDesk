@@ -154,7 +154,7 @@ class Trackpad(var config: TrackpadConfig = TrackpadConfig(), private val out: (
         if (!moved && quick) {
             when (maxFingers) {
                 1 -> { out(Act.Click(0)); lastTapUp = t }
-                2 -> if (cfg.twoFingerTap) out(Act.Click(1))
+                2 -> if (config.twoFingerTap) out(Act.Click(1))
                 else -> out(Act.Click(2))
             }
         }
