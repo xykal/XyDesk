@@ -28,11 +28,11 @@
 AppId={{9F3DEB68-65B5-48C9-A92D-5A3E7B2CB304}
 AppName=XyDesk
 AppVersion={#Version}
-AppPublisher=XyVerse Tch
+AppPublisher=XyVerse Technology Global
 AppPublisherURL=https://www.xydesk.my.id
 AppSupportURL=https://github.com/xykal/XyDesk/issues
 AppUpdatesURL=https://github.com/xykal/XyDesk/releases
-AppCopyright=Copyright (C) 2024-2026 XyVerse Tch
+AppCopyright=Copyright (C) 2024-2026 XyVerse Technology Global
 DefaultDirName={autopf}\XyDesk
 DefaultGroupName=XyDesk
 DisableProgramGroupPage=yes
@@ -51,9 +51,10 @@ PrivilegesRequiredOverridesAllowed=dialog
 CloseApplications=yes
 RestartApplications=no
 AllowNoIcons=yes
-ShowLanguageDialog=no
+ShowLanguageDialog=yes
+LicenseForceSelection=yes
 DisableWelcomePage=no
-LicenseFile={#SourcePath}\..\..\LICENSE
+LicenseFile={#SourcePath}\LICENSE-XyDesk-English.txt
 InfoAfterFile={#SourcePath}\README-postinstall.md
 UninstallDisplayName=XyDesk (Uninstall)
 
@@ -76,24 +77,24 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; \
-  Description: "Buat shortcut di Desktop"; \
-  GroupDescription: "Shortcut tambahan:"; \
-  Flags: unchecked
+  Description: "Create a Desktop shortcut"; \
+  GroupDescription: "Shortcuts:"; \
+  Flags: checkedonce
 
 ; Driver bawaan (Display Virtual + Audio & Mic) otomatis terpasang secara silent
 Name: "driverinstall"; \
-  Description: "Pasang driver display virtual & audio/mic terintegrasi (otomatis & silent)"; \
-  GroupDescription: "Driver bawaan:"; \
+  Description: "Install virtual display driver (skip virtual audio if already present)"; \
+  GroupDescription: "Drivers:"; \
   Check: DriversAvailable
 
 Name: "quicklaunch"; \
-  Description: "Jalankan XyDesk saat Windows startup"; \
-  GroupDescription: "Perilaku startup:"; \
+  Description: "Start XyDesk when Windows starts"; \
+  GroupDescription: "Startup:"; \
   Flags: unchecked
 
 Name: "launchapp"; \
-  Description: "Buka XyDesk setelah instalasi selesai"; \
-  GroupDescription: "Setelah instalasi:"
+  Description: "Open XyDesk when Setup finishes"; \
+  GroupDescription: "After setup:"
 
 [Files]
 ; Aplikasi utama (panel native C++ + engine Rust) — selalu dipasang.
@@ -154,11 +155,11 @@ Filename: "{app}\drivers\audio\uninstall-audio.bat"; \
   RunOnceId: "audiouninstall"
 
 [Messages]
-BeveledLabel=XyDesk by XyVerse Tch
-SetupWindowTitle=XyDesk Setup (versi {#Version})
-WelcomeLabel2=Ini akan memasang XyDesk versi {#Version} di komputer kamu.%n%nDisarankan menutup aplikasi lain sebelum melanjutkan.
-FinishedHeadingLabel=Instalasi XyDesk selesai
-ClickFinish=Klik Finish untuk menutup Setup.
+BeveledLabel=XyDesk by XyVerse Technology Global
+SetupWindowTitle=XyDesk Setup ({#Version})
+WelcomeLabel2=This will install XyDesk {#Version} on your computer.%n%nClose other applications before continuing.
+FinishedHeadingLabel=XyDesk setup completed
+ClickFinish=Click Finish to close Setup.
 
 [Code]
 var
@@ -178,6 +179,12 @@ end;
 function AudioFilesInstalled: Boolean;
 begin
   Result := FileExists(ExpandConstant('{app}\drivers\audio\install-audio.bat'));
+end;
+
+function VirtualAudioPresent: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{win}\System32\drivers\vbaudio_cable64_win10.sys')) or
+            FileExists(ExpandConstant('{win}\System32\drivers\vbaudio_cable64_win7.sys'));
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
@@ -217,10 +224,14 @@ begin
       // 2. Install driver audio & virtual mic bila berkas tersedia
       if AudioFilesInstalled then
       begin
-        WizardForm.StatusLabel.Caption := 'Menginstal driver virtual audio & mic (silent)...';
-        Exec(ExpandConstant('{app}\drivers\audio\install-audio.bat'),
-             '', ExpandConstant('{app}\drivers\audio'),
-             SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        if VirtualAudioPresent then
+          WizardForm.StatusLabel.Caption := 'Virtual audio already present — skipping VB-CABLE.'
+        else begin
+          WizardForm.StatusLabel.Caption := 'Installing virtual audio & mic (silent)...';
+          Exec(ExpandConstant('{app}\drivers\audio\install-audio.bat'),
+               '', ExpandConstant('{app}\drivers\audio'),
+               SW_HIDE, ewWaitUntilTerminated, ResultCode);
+        end;
       end;
     end;
     WizardForm.StatusLabel.Caption := 'Menyelesaikan instalasi...';
