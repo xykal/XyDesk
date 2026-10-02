@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **TURN produksi:** ExpressTurn (`TURN_DIRECT_*`) terpasang di Worker signaling. Cadangan Open Relay bukan syarat. GitHub Secrets TURN tetap kosong supaya deploy tidak menimpa Worker.
+
 - **Native Tentang: cek pembaruan dari GitHub Releases** (`update.json` di `latest/download`). Draft tidak dihitung sebagai rilis. Belum memasang APK sendiri.
 
 - **Hub HTTP admin:** `/stats`, `/hub/devices`, `/kick` menolak permintaan tanpa header `x-internal-admin` (selaras AuthStore). `admin.js` mengirim header itu. Belum deploy worker.

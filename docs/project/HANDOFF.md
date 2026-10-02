@@ -45,9 +45,13 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 - [x] HTTP DO Hub (`/kick`, `/stats`, `/hub/devices`) menuntut
   `x-internal-admin: 1` (sama seperti AuthStore). Worker publik tetap tidak
   merutekan path itu. Tertutup 2026-10-01, belum deploy signaling.
-- [ ] Relay produksi satu penyedia (ExpressTurn). Cadangan
-  `OPENRELAY_API_KEY` / `TURN_REST_*` masih kosong. Deploy CI tidak menimpa
-  secret TURN Worker bila triplet GitHub kosong (disengaja).
+- [x] **ExpressTurn hidup di Worker** sebagai triplet `TURN_DIRECT_*`
+  (bukan GitHub Secrets). Dicek 2026-10-02: nama secret ada di
+  `xydesk-signaling`; nilai tidak di-log. GitHub Secrets TURN kosong =
+  disengaja: deploy CI **melewati** secret kosong, tidak menimpa Worker.
+  Cadangan Open Relay / REST **opsional**, bukan blocker. Satu penyedia
+  tetap risiko kuota/outage — jangan deploy-signaling hanya untuk “isi
+  cadangan” tanpa kunci baru.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
 
