@@ -22,6 +22,10 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
+## [6.11.2] — 2026-10-02
+
+- **APK:** overlay pass-through memakai FrameLayout (ComposeView final); keep `XyHid`.
+
 ## [Belum terbit]
 
 - **UX sesi native:** editor overlay lebih mudah diketuk (chip 36dp, pustaka wrap), tombol overlay lebih kontras, keyboard PC lebih tinggi, salinan HID/sambung lebih singkat.
