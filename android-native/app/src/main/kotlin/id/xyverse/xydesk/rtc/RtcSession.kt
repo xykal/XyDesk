@@ -288,29 +288,57 @@ class RtcSession(
         }
     }
 
-    /** Statistik ringkas dari getStats: fps, frame terdekode, total waktu dekode (s), RTT ms, relay? */
-    fun stats(cb: (fps: Double, frames: Long, decodeSec: Double, rttMs: Double, relay: Boolean) -> Unit) {
+    data class LinkStats(
+        val fps: Double,
+        val frames: Long,
+        val decodeSec: Double,
+        val rttMs: Double,
+        val path: String,
+        val lossPct: Double,
+    )
+
+    /** Statistik ringkas: fps, dekode, RTT, jalur ICE (UDP RELAY/P2P), loss. */
+    fun stats(cb: (LinkStats) -> Unit) {
         val conn = pc ?: return
         conn.getStats { report ->
-            var fps = 0.0; var frames = 0L; var decode = 0.0; var rtt = 0.0; var relay = false
-            val locals = HashMap<String, String>()
+            var fps = 0.0; var frames = 0L; var decode = 0.0; var rtt = 0.0
+            var lost = 0.0; var recv = 0.0
+            val type = HashMap<String, String>()
+            val proto = HashMap<String, String>()
             report.statsMap.values.forEach { s ->
-                if (s.type == "local-candidate") locals[s.id] = s.members["candidateType"]?.toString().orEmpty()
+                if (s.type == "local-candidate") {
+                    type[s.id] = s.members["candidateType"]?.toString().orEmpty()
+                    proto[s.id] = s.members["protocol"]?.toString().orEmpty()
+                }
             }
+            var kind = "host"
+            var protocol = "udp"
             report.statsMap.values.forEach { s ->
                 when (s.type) {
                     "inbound-rtp" -> if (s.members["kind"] == "video") {
                         fps = (s.members["framesPerSecond"] as? Number)?.toDouble() ?: fps
                         frames = (s.members["framesDecoded"] as? Number)?.toLong() ?: frames
                         decode = (s.members["totalDecodeTime"] as? Number)?.toDouble() ?: decode
+                        lost = (s.members["packetsLost"] as? Number)?.toDouble() ?: lost
+                        recv = (s.members["packetsReceived"] as? Number)?.toDouble() ?: recv
                     }
                     "candidate-pair" -> if (s.members["nominated"] == true || s.members["state"] == "succeeded") {
                         rtt = (s.members["currentRoundTripTime"] as? Number)?.toDouble()?.times(1000) ?: rtt
-                        relay = locals[s.members["localCandidateId"]?.toString()] == "relay"
+                        val id = s.members["localCandidateId"]?.toString().orEmpty()
+                        kind = type[id] ?: kind
+                        protocol = proto[id].orEmpty().ifBlank { protocol }
                     }
                 }
             }
-            cb(fps, frames, decode, rtt, relay)
+            val udp = protocol.equals("tcp", true).not()
+            val path = when (kind) {
+                "relay" -> if (udp) "UDP RELAY" else "TCP RELAY"
+                "srflx", "prflx" -> if (udp) "UDP STUN" else "TCP STUN"
+                else -> if (udp) "UDP P2P" else "TCP P2P"
+            }
+            val total = lost + recv
+            val loss = if (total > 0) lost / total * 100.0 else 0.0
+            cb(LinkStats(fps, frames, decode, rtt, path, loss))
         }
     }
 

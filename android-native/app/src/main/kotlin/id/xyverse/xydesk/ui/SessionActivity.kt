@@ -403,8 +403,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (!connected || !store.bool(P.SAVE_PREVIEW, true)) return
         val view: SurfaceView = if (lowLatency) b.raw else b.video
         if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
-        val w = 1280
-        val bmp = Bitmap.createBitmap(w, (w * view.height / view.width).coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+        val w = 1920
+        val h = (w * view.height / view.width).coerceIn(1, 1080)
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         runCatching {
             PixelCopy.request(view, bmp, { r -> if (r == PixelCopy.SUCCESS) Thread { Previews.save(applicationContext, hostId, bmp) }.start() }, ui)
         }

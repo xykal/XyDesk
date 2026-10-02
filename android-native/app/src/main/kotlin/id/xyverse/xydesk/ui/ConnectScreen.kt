@@ -58,7 +58,7 @@ import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
-import id.xyverse.xydesk.ui.kit.XyToggle
+import id.xyverse.xydesk.ui.kit.XyCheck
 import id.xyverse.xydesk.ui.kit.t
 
 @Composable
@@ -91,7 +91,7 @@ fun ConnectScreen(
             Spacer(Modifier.height(Xy.gap))
             XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = t("sesuai di aplikasi host"), transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
-            XyToggle("Ingat perangkat ini", "Password disimpan terenkripsi; lain kali cukup satu ketuk. Diminta lagi hanya bila password di PC diganti.", keep) { keep = it }
+            XyCheck("Ingat perangkat ini", "Password disimpan terenkripsi; lain kali cukup satu ketuk. Diminta lagi hanya bila password di PC diganti.", keep) { keep = it }
             Spacer(Modifier.height(Xy.gap))
             XyNotice(notice, Xy.warning)
             Spacer(Modifier.height(Xy.gap))

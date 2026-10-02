@@ -40,13 +40,13 @@ class SessionMetrics(
     }
 
     fun tick() {
-        session.stats { fps, frames, decodeSec, rttMs, relay ->
-            val shownFps = if (lowLatency) (nativeFrames - lastNativeFrames).toDouble() else fps
+        session.stats { st ->
+            val shownFps = if (lowLatency) (nativeFrames - lastNativeFrames).toDouble() else st.fps
             lastNativeFrames = nativeFrames
-            val d = frames - lastFrames
-            if (!lowLatency && d > 0) decodeRing.push(((decodeSec - lastDecodeSec) / d * 1000).toFloat())
-            lastFrames = frames; lastDecodeSec = decodeSec
-            if (rttMs > 0) rttRing.push(rttMs.toFloat())
+            val d = st.frames - lastFrames
+            if (!lowLatency && d > 0) decodeRing.push(((st.decodeSec - lastDecodeSec) / d * 1000).toFloat())
+            lastFrames = st.frames; lastDecodeSec = st.decodeSec
+            if (st.rttMs > 0) rttRing.push(st.rttMs.toFloat())
             val decode = decodeRing.p(50f).toDouble()
             val rtt = rttRing.p(50f).toDouble()
             if (auto) adaptive.sample(shownFps, rtt, decode, targetFps).forEach(onCmd)
@@ -55,8 +55,9 @@ class SessionMetrics(
             val items = mutableListOf(
                 "FPS" to "%.0f".format(shownFps),
                 "MS" to "%.0f".format(rtt),
-                "JALUR" to if (relay) "relay" else "langsung",
+                "JALUR" to st.path,
                 "JARINGAN" to network(),
+                "LOSS" to "%.1f%%".format(st.lossPct),
                 "KUALITAS" to score.grade(targetFps).label,
             )
             if (session.micOn) session.micLevel { lvl -> onHud(items + ("MIC" to bars(lvl))) } else onHud(items)
@@ -74,7 +75,7 @@ class SessionMetrics(
         return when {
             caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
             caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "Ethernet"
-            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Seluler"
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "Data seluler"
             else -> ""
         }
     }

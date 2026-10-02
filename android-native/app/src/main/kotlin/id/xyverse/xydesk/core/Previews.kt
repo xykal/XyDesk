@@ -27,7 +27,7 @@ object Previews {
 
     fun save(context: Context, host: String, bitmap: Bitmap) {
         val tmp = File(dir(context), "tmp.jpg")
-        tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+        tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }
         tmp.renameTo(file(context, host))
         memory.remove(Presence.hostKey(host))
     }

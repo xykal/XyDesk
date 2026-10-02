@@ -10,6 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
@@ -44,6 +46,7 @@ import id.xyverse.xydesk.ui.kit.XyText
 import id.xyverse.xydesk.ui.kit.SlideToGoogle
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {}, onLoggedIn: (jwt: String, email: String) -> Unit) {
     var email by remember { mutableStateOf("") }
@@ -113,11 +116,13 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
         }
         Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            XyText("Dengan masuk, kamu menyetujui:", Xy.caption)
+            XyText("Dengan masuk, kamu menyetujui dokumen berikut:", Xy.caption)
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 LegalPill("Syarat & Ketentuan") { Legal.open = Legal.TERMS }
                 LegalPill("Kebijakan Privasi") { Legal.open = Legal.PRIVACY }
+                LegalPill("Kebijakan Cookie") { Legal.open = Legal.COOKIE }
+                LegalPill("Lisensi pihak ketiga") { Legal.open = Legal.LICENSES }
             }
             Spacer(Modifier.height(20.dp))
             XyText("XyVerse Technology Global", Xy.label)

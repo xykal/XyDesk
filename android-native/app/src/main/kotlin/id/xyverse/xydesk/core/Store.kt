@@ -270,8 +270,8 @@ object P {
 }
 
 val DOCK_DEFAULT = listOf("lmb", "rmb", "sup", "sdn", "esc", "win", "alttab", "enter")
-val HUD_ALL = listOf("FPS", "MS", "JALUR", "JARINGAN", "KUALITAS", "MIC")
-val HUD_DEFAULT = setOf("FPS", "MS", "JALUR", "JARINGAN")
+val HUD_ALL = listOf("FPS", "MS", "JALUR", "JARINGAN", "LOSS", "KUALITAS", "MIC")
+val HUD_DEFAULT = setOf("FPS", "MS", "JALUR", "JARINGAN", "LOSS")
 
 /** Spesifikasi host dari blok `meta.hardware`; string kosong = tidak terbaca. */
 data class HostSpecs(
