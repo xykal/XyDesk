@@ -326,6 +326,13 @@ fn uac_attempt_marker() -> std::path::PathBuf {
 #[cfg(target_os = "windows")]
 pub fn ensure_virtual_mic() {
     let mut status = get_status();
+    if status.installed || get_render_device_id().is_some() {
+        eprintln!(
+            "[xydesk-host] virtual audio sudah ada ({}) — skip pasang driver",
+            status.render_target
+        );
+        return;
+    }
     if !status.installed {
         let admin = crate::virtual_display::is_admin();
         let marker = uac_attempt_marker();
@@ -350,12 +357,6 @@ pub fn ensure_virtual_mic() {
         status.needed, status.installed, status.has_virtual_input, status.has_virtual_output, status.render_target
     );
 
-    if status.installed {
-        println!(
-            "[xydesk-host] virtual audio driver ada — client mic akan di-render ke {}",
-            status.render_target
-        );
-    }
 }
 
 #[cfg(not(target_os = "windows"))]

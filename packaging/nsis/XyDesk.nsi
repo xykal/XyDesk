@@ -60,8 +60,12 @@ VIAddVersionKey /LANG=1033 "CompanyName" "${COMPANY}"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\XyDesk.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Run XyDesk Control Panel now"
 !define MUI_FINISHPAGE_RUN_CHECKED
+!define MUI_LICENSEPAGE_CHECKBOX
+!define MUI_LICENSEPAGE_CHECKBOX_TEXT "I accept the terms of the License Agreement"
+!define MUI_COMPONENTSPAGE_NODESC
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${SourceDir}\LICENSE-XyDesk.txt"
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -69,6 +73,12 @@ VIAddVersionKey /LANG=1033 "CompanyName" "${COMPANY}"
 !insertmacro MUI_UNPAGE_INSTFILES
 !insertmacro MUI_UNPAGE_FINISH
 !insertmacro MUI_LANGUAGE "English"
+!insertmacro MUI_LANGUAGE "Indonesian"
+!insertmacro MUI_RESERVEFILE_LANGDLL
+
+Function .onInit
+  !insertmacro MUI_LANGDLL_DISPLAY
+FunctionEnd
 
 Section "XyDesk"
   SectionIn RO
@@ -112,28 +122,19 @@ Section "XyDesk"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Run" "XyDeskHost" '"$INSTDIR\xydesk-host.exe" --managed-auth --autostart'
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "XyDeskHost" '"$INSTDIR\xydesk-host.exe" --managed-auth --autostart'
 
-  DetailPrint "Creating Desktop and Start Menu shortcuts for all sessions (Admin & RDP User)..."
-  SetShellVarContext all
-  CreateDirectory "$SMPROGRAMS\${PRODUCT}"
-  CreateShortCut "$DESKTOP\XyDesk Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk" "$INSTDIR\LICENSE-XyDesk.txt"
-  Delete "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk.exe"
-  IfFileExists "$INSTDIR\drivers\IddSampleDriver\install.bat" 0 +2
-    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Display Driver.lnk" "$INSTDIR\drivers\IddSampleDriver\install.bat" "/silent" "$INSTDIR\xydesk.ico"
-  IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 +2
-    CreateShortCut "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk" "$INSTDIR\drivers\audio\install-audio.bat" "" "$INSTDIR\xydesk.ico"
-  SetShellVarContext current
-
   # Pasang XyDesk Virtual Display Adapter (IddCx UMDF2 + PnP Device Node + Custom EDID)
   # dan driver Virtual Audio & Mic (VB-CABLE) secara langsung saat instalasi.
   IfFileExists "$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" 0 skip_vdd_ctl
     DetailPrint "Installing XyDesk Virtual Display Adapter & Virtual Audio (native SetupAPI controller)..."
     nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" install --dir "$INSTDIR\drivers\IddSampleDriver"'
     Pop $0
+    IfFileExists "$WINDIR\System32\drivers\vbaudio_cable64_win10.sys" skip_vdd_audio
+    IfFileExists "$WINDIR\System32\drivers\vbaudio_cable64_win7.sys" skip_vdd_audio
     nsExec::ExecToLog '"$INSTDIR\drivers\IddSampleDriver\xydesk-vdd-ctl.exe" install-audio --dir "$INSTDIR\drivers\audio"'
     Pop $0
+    Goto skip_vdd_ctl
+    skip_vdd_audio:
+      DetailPrint "Virtual audio already present — skipping install-audio."
   skip_vdd_ctl:
 
   IfFileExists "$INSTDIR\drivers\install-all-drivers.bat" 0 fallback_individual_drivers
@@ -148,14 +149,34 @@ Section "XyDesk"
     nsExec::ExecToLog '"$SYSDIR\cmd.exe" /D /C "call "$INSTDIR\drivers\IddSampleDriver\install.bat" /silent"'
     Pop $0
   skip_vdd_bat:
+  IfFileExists "$WINDIR\System32\drivers\vbaudio_cable64_win10.sys" skip_audio_already
+  IfFileExists "$WINDIR\System32\drivers\vbaudio_cable64_win7.sys" skip_audio_already
   IfFileExists "$INSTDIR\drivers\audio\install-audio.bat" 0 done_drivers
     DetailPrint "Running XyDesk Virtual Audio & Mic driver setup..."
     nsExec::ExecToLog '"$SYSDIR\cmd.exe" /D /C "call "$INSTDIR\drivers\audio\install-audio.bat" /silent"'
     Pop $0
+    Goto done_drivers
+  skip_audio_already:
+    DetailPrint "Virtual audio already present — skipping VB-CABLE setup."
   done_drivers:
 
   WriteUninstaller "$INSTDIR\Uninstall-XyDesk.exe"
   DetailPrint "Done. XyDesk ${Version} is installed in $INSTDIR."
+SectionEnd
+
+Section "Create Desktop shortcut" SecDesk
+  SetShellVarContext all
+  CreateShortCut "$DESKTOP\XyDesk Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
+  SetShellVarContext current
+SectionEnd
+
+Section "Create Start Menu shortcuts" SecStart
+  SetShellVarContext all
+  CreateDirectory "$SMPROGRAMS\${PRODUCT}"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk" "$INSTDIR\LICENSE-XyDesk.txt"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk.exe"
+  SetShellVarContext current
 SectionEnd
 
 Section "Uninstall"
