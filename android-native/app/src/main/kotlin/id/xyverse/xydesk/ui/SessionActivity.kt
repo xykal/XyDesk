@@ -65,6 +65,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var lowLatency = false
     private var showStats = true
     private var presenting = false
+    private var pcKeysOpen = false
     private var lastBack = 0L
     private var micInput: Boolean? = null
     private var micReason = ""
@@ -108,6 +109,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             override fun handleOnBackPressed() {
                 val now = System.currentTimeMillis()
                 when {
+                    pcKeysOpen -> setPcKeys(false)
                     presenting -> setPresenting(false)
                     now - lastBack < 2000 || !store.confirmDisconnect -> { outcome = if (connected) "putus" else "batal"; finish() }
                     else -> { lastBack = now; Toast.makeText(this@SessionActivity, "Tekan sekali lagi untuk memutus sesi".tr(store.lang), Toast.LENGTH_SHORT).show() }
@@ -154,6 +156,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.video.setOnTouchListener { v, e -> touch.onTouch(v, e) }
         connectState = ConnectState(Phase.PAIRING, null, hostId, attempt = intent.getIntExtra("attempt", 0))
         setupToolbar()
+        setupPcKeys()
         setupOverlay()
         setupDock()
         startedAt = System.currentTimeMillis()
@@ -234,6 +237,25 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
+    private fun setupPcKeys() {
+        b.pcKeys.setContent {
+            CompositionLocalProvider(LocalLang provides store.lang) {
+                SessionPcKeyboard(
+                    onKey = { vk -> session.send(StreamXy.key(vk, true)); session.send(StreamXy.key(vk, false)) },
+                    onIme = { keys.toggle() },
+                    onClose = { setPcKeys(false) },
+                )
+            }
+        }
+    }
+
+    private fun setPcKeys(on: Boolean) {
+        pcKeysOpen = on
+        b.pcKeys.visibility = if (on && !presenting) View.VISIBLE else View.GONE
+        if (on) b.dock.visibility = View.GONE
+        else b.dock.visibility = if (connected && dockOn && !presenting) View.VISIBLE else View.GONE
+    }
+
     private fun setupToolbar() {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
         val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, dockOn, dockSize, dockKeys, autohide)
@@ -241,7 +263,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
                     SessionActions(
-                        keyboard = { keys.toggle() },
+                        keyboard = { setPcKeys(!pcKeysOpen) },
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },
@@ -290,6 +312,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun setPresenting(on: Boolean) {
         presenting = on
         b.toolbar.visibility = if (on) View.GONE else View.VISIBLE
+        if (on) setPcKeys(false)
         b.dock.visibility = if (!on && dockOn && connected) View.VISIBLE else View.GONE
         if (on) b.status.visibility = View.GONE
         if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
