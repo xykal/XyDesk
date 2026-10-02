@@ -122,8 +122,11 @@ fun XyCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 
 @Composable
 fun XyCheck(text: String, caption: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.985f else 1f, label = "chk")
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onChange(!checked) }.padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().scale(scale).clip(RoundedCornerShape(Xy.radiusS)).clickable(source, null) { onChange(!checked) }.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -143,9 +146,12 @@ fun XyCheck(text: String, caption: String, checked: Boolean, onChange: (Boolean)
 
 @Composable
 fun XyToggle(text: String, caption: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.985f else 1f, label = "tog")
     val knob by animateFloatAsState(if (checked) 1f else 0f, label = "knob")
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onChange(!checked) }.padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().scale(scale).clip(RoundedCornerShape(Xy.radiusS)).clickable(source, null) { onChange(!checked) }.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {

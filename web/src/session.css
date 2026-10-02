@@ -529,6 +529,7 @@ visibility:hidden }
  }
 .video-surface>.srail .srail-btn { width:48px!important; height:48px!important; min-height:48px!important; flex-basis:48px; padding:0!important; background:transparent!important; color:#efe9fb!important; border:1px solid transparent!important; border-radius:9px!important }
 .video-surface>.srail .srail-btn.on { background:#ffffff12!important; border-color:#a89aB7!important }
+.video-surface>.srail .srail-btn:active { background:#ffffff22!important; opacity:.88 }
 .video-surface>.srail .srail-btn:hover {
 background:#ffffff18!important }
 .video-surface>.srail .srail-btn svg { width:25px!important; height:25px!important }

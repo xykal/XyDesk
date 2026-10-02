@@ -1032,23 +1032,29 @@ void workspaceText(HDC dc,const std::wstring& text,Rect rect,HFONT font,COLORREF
 void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card,bool detailed){
     const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
     paintCard(surface,card,layout.radiusCard);
-    const int pad=px(24);int x=card.x+pad,y=card.y+pad;int width=card.w-2*pad;
-    workspaceText(dc,L"KONEKSI AKTIF",{x,y,width,px(20)},g.fontCaps,kMuted);y+=px(34);
+    const int pad=px(20);int x=card.x+pad,y=card.y+pad;int width=card.w-2*pad;
+    workspaceText(dc,L"PERANGKAT TERHUBUNG",{x,y,width,px(20)},g.fontCaps,kMuted);y+=px(28);
     const bool known=sessionView.known;
-    const std::wstring title=!known?L"Status koneksi belum tersedia":sessionView.active?(sessionView.name.empty()?L"Perangkat tanpa nama":sessionView.name):L"Belum ada perangkat terhubung";
-    int photoWidth=0;
-    if(detailed&&sessionView.active&&xydesk::session_view::redmiNote12(sessionView.name)){
-        static HBITMAP photo=LoadBitmapW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDB_REDMI_NOTE12));
-        if(photo){BITMAP bitmap{};GetObjectW(photo,sizeof(bitmap),&bitmap);const int h=px(220),w=bitmap.bmWidth*h/bitmap.bmHeight;HDC source=CreateCompatibleDC(dc);auto old=SelectObject(source,photo);
-            SetStretchBltMode(dc,HALFTONE);StretchBlt(dc,card.right()-pad-w,y,w,h,source,0,0,bitmap.bmWidth,bitmap.bmHeight,SRCCOPY);SelectObject(source,old);DeleteDC(source);photoWidth=w+pad;}
+    if(!(sessionView.active&&known)){
+        workspaceText(dc,!known?L"Menunggu status engine…":L"Belum ada HP/browser terhubung.",{x,y,width,px(40)},g.fontBody,kMuted);
+        if(detailed) workspaceText(dc,L"Remote HP dari PC adalah fitur Premium — belum aktif di sesi ini.",{x,y+px(48),width,px(40)},g.fontSmall,kMuted);
+        return;
     }
-    workspaceText(dc,title,{x,y,width-photoWidth,px(56)},g.fontTitle);y+=px(64);
-    if(sessionView.active&&known){
-        workspaceText(dc,L"Platform: "+(sessionView.platform.empty()?L"Tidak dilaporkan":sessionView.platform),{x,y,width-photoWidth,px(28)},g.fontBody);y+=px(32);
-        workspaceText(dc,L"Durasi sesi: "+std::to_wstring(sessionView.seconds/60)+L" menit "+std::to_wstring(sessionView.seconds%60)+L" detik",{x,y,width-photoWidth,px(28)},g.fontBody);y+=px(32);
-        if(detailed){workspaceText(dc,L"ID klien: "+sessionView.id,{x,y,width-photoWidth,px(44)},g.fontSmall,kMuted);y+=px(48);
-            workspaceText(dc,photoWidth?L"Foto produk Xiaomi. Warna ilustratif; bukan warna HP yang terdeteksi.":L"Foto model belum tersedia. Nama atau jenis browser saja tidak menentukan model HP.",{x,y,width,px(48)},g.fontSmall,kMuted);}
-    }else workspaceText(dc,known?L"Buka Akses host, bagikan link atau scan QR, lalu izinkan koneksi dengan password.":L"Menunggu status dari kanal privat engine. Ini bukan berarti tidak ada koneksi.",{x,y,width,px(60)},g.fontBody,kMuted);
+    // Baris ringkas: ikon HP · nama/model · status · durasi. Bukan foto produk besar.
+    Rect row{x,y,width,px(56)};
+    fillRoundedOpaque(surface,row,px(12),kSurface3);
+    drawTextCentered(dc,L"\uE8EA",{x,y,px(48),px(56)},g.fontIcons,kText);
+    const std::wstring title=sessionView.name.empty()?L"Perangkat tanpa nama":sessionView.name;
+    workspaceText(dc,title,{x+px(52),y+px(8),width-px(160),px(24)},g.fontSemi);
+    const std::wstring plat=sessionView.platform.empty()?L"klien":sessionView.platform;
+    workspaceText(dc,plat+L" · streaming",{x+px(52),y+px(30),width-px(160),px(20)},g.fontSmall,kMuted);
+    const std::wstring dur=std::to_wstring(sessionView.seconds/60)+L"m "+std::to_wstring(sessionView.seconds%60)+L"s";
+    workspaceText(dc,dur,{x+width-px(96),y+px(16),px(88),px(24)},g.fontSmall,kMuted);
+    y+=px(68);
+    if(detailed){
+        workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,y,width,px(22)},g.fontSmall,kMuted);
+        workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,y+px(24),width,px(40)},g.fontSmall,kMuted);
+    }
 }
 void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
     const auto px=[&](int n){return xydesk::panel::scaled(n,l.scalePct);};
@@ -1105,14 +1111,14 @@ void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
 // jalur yang sama dipakai `--panel-snapshot` untuk memeriksa hasil gambar
 // tanpa membuka jendela (dipakai CI).
 void paintPageHeading(HDC dc, const PanelLayout& layout, Page page){
-    const wchar_t* title=L"Semua di satu tempat.";
-    const wchar_t* detail=L"Akses perangkat, lihat koneksi, dan kelola host lu.";
+    const wchar_t* title=L"Beranda host";
+    const wchar_t* detail=L"Status PC, akses, dan daftar HP yang terhubung — ringkas.";
     switch(page){
-    case Page::Connections:title=L"Koneksi perangkat";detail=L"Perangkat yang sedang terhubung ke PC ini.";break;
+    case Page::Connections:title=L"Koneksi perangkat";detail=L"Daftar ringkas: model, status, durasi. Foto produk tidak dipakai.";break;
     case Page::Pairing:title=L"Akses ke PC ini";detail=L"Bagikan link atau QR. Password tetap di bawah kendali lu.";break;
     case Page::Control:title=L"Kontrol host";detail=L"Kelola proses host tanpa keluar dari workspace.";break;
-    case Page::Settings:title=L"Pengaturan host";detail=L"Preferensi host dan keamanan akses dalam satu halaman.";break;
-    case Page::Account:title=L"Profil & akun";detail=L"Akun XyDesk tetap terpisah dari identitas host Windows.";break;
+    case Page::Settings:title=L"Pengaturan host";detail=L"Password, bitrate, dan keamanan akses — satu halaman, tanpa pengaturan tersembunyi.";break;
+    case Page::Account:title=L"Profil & akun";detail=L"Akun XyDesk terpisah dari login Windows. Keluar tidak menghapus cookie Google.";break;
     case Page::Help:title=L"Bantuan";detail=L"Langkah singkat untuk mulai terhubung dengan aman.";break;
     default:break;
     }

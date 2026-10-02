@@ -24,6 +24,14 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+## [6.11.7] — 2026-10-02
+
+- Host: daftar HP ringkas (ikon+status), bukan foto besar. Remote HP dari PC = Premium.
+- Rail web: umpan tekan. Connecting APK pakai fase pairing. Banner installer baru.
+- Tombol/toggle APK tekan halus.
+
+
+
 ## [6.11.6] — 2026-10-02
 
 - Wallpaper Windows ke kartu APK; libxypreview/libxyscroll/libxygamepad.
