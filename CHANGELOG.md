@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK HUD keyboard PC:** tombol Keyboard di rel membuka papan ABC / 123 / F1–F12 / Numpad / Penuh (bukan IME HP). Numpad juga bisa dipasang di dok. Rel samping tidak diubah.
+
 - **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.
 
 - **TURN produksi:** ExpressTurn (`TURN_DIRECT_*`) terpasang di Worker signaling. Cadangan Open Relay bukan syarat. GitHub Secrets TURN tetap kosong supaya deploy tidak menimpa Worker.
