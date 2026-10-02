@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Native Tentang: cek pembaruan dari GitHub Releases** (`update.json` di `latest/download`). Draft tidak dihitung sebagai rilis. Belum memasang APK sendiri.
+
 - **Hub HTTP admin:** `/stats`, `/hub/devices`, `/kick` menolak permintaan tanpa header `x-internal-admin` (selaras AuthStore). `admin.js` mengirim header itu. Belum deploy worker.
 
 - **HANDOFF + README diselaraskan ke stack aktual (2026-10-01):** antrian Flutter/Electron dicoret; klien = Kotlin native, panel = Win32. README tidak lagi menyebut Tauri v2 + Next.js sebagai shell Windows.

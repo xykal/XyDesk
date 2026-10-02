@@ -75,4 +75,37 @@ object Api {
             }
         }.getOrDefault(emptyList())
     }
+
+    /**
+     * Manifes rilis resmi di GitHub Releases (bukan domain app/signal).
+     * `latest` hanya menunjuk rilis **publik**; draft mengembalikan 404.
+     */
+    const val UPDATE_JSON =
+        "https://github.com/xykal/XyDesk/releases/latest/download/update.json"
+
+    data class PublicUpdate(
+        val version: String,
+        val build: Int,
+        val releaseUrl: String,
+    )
+
+    suspend fun publicUpdate(): PublicUpdate? = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url(UPDATE_JSON)
+            .header("Accept", "application/json")
+            .header("User-Agent", "XyDesk-Android/${BuildConfig.VERSION_NAME}")
+            .build()
+        http.newCall(req).execute().use { res ->
+            if (res.code == 404) return@use null
+            if (!res.isSuccessful) throw ApiException(res.code, "update.json HTTP ${res.code}")
+            val o = JSONObject(res.body?.string().orEmpty())
+            PublicUpdate(
+                version = o.optString("version"),
+                build = o.optInt("build"),
+                releaseUrl = o.optString("release_url").ifBlank {
+                    "https://github.com/xykal/XyDesk/releases"
+                },
+            )
+        }
+    }
 }

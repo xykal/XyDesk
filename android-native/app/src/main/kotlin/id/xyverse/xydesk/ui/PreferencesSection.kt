@@ -10,7 +10,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import id.xyverse.xydesk.BuildConfig
+import id.xyverse.xydesk.net.Api
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -55,10 +59,29 @@ fun DisconnectPref(store: Store) {
 /** Halaman Tentang: versi, catatan rilis, legal, lisensi; semuanya dibaca di dalam aplikasi. */
 @Composable
 fun AboutBody(appVersion: String, onOpenUrl: (String) -> Unit) {
+    val scope = rememberCoroutineScope()
+    var updateCaption by remember { mutableStateOf("Cek GitHub Releases (bukan domain app). Draft tidak terhitung.") }
     XyCard {
         XyText("APLIKASI", Xy.label)
         Spacer(Modifier.height(8.dp))
         XyRow(Icon.MONITOR, "XyDesk $appVersion", "libstreamxy ${StreamXy.version()} · XyVerse Technology Global", chevron = false)
+        XyRow(Icon.NEWS, "Cek pembaruan", updateCaption, onClick = {
+            scope.launch {
+                updateCaption = "Mengecek…"
+                updateCaption = runCatching {
+                    val remote = Api.publicUpdate()
+                    when {
+                        remote == null ->
+                            "Belum ada rilis publik. Draft GitHub tidak muncul di latest."
+                        remote.build > BuildConfig.VERSION_CODE -> {
+                            onOpenUrl(remote.releaseUrl)
+                            "Ada ${remote.version} (build ${remote.build}). Membuka halaman rilis."
+                        }
+                        else -> "Ini versi terbaru yang terbit (${remote.version})."
+                    }
+                }.getOrElse { "Gagal cek: ${it.message}" }
+            }
+        })
         XyRow(Icon.NEWS, "Catatan rilis", "Apa yang berubah di tiap versi.", onClick = { Legal.open = Legal.CHANGELOG })
         XyRow(Icon.LINK, "Situs web", "xydesk.my.id", onClick = { onOpenUrl("https://xydesk.my.id") })
     }

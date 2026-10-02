@@ -31,10 +31,10 @@ Tertutup sebagai usang: shell Electron/`desktop/` (dihapus 2026-09-23).
 - [ ] **Keystore Android dirotasi** — APK lama tidak update-in-place; artikel
   rilis berikutnya harus jujur: uninstall dulu. Verifikasi
   `apksigner verify --print-certs` pada APK pertama keystore baru.
-- [ ] `update.json` hanya aset GitHub Release (`.../releases/latest/download/`),
-  bukan di domain app/signal. Klien Kotlin native **belum** mengambil manifes
-  itu (updater lama di Flutter). Web unduhan memakai URL GitHub yang sama —
-  rilis **draft** membuat `latest` 404, itu disengaja sampai rilis publik.
+- [x] Native Tentang → Cek pembaruan membaca
+  `github.com/xykal/XyDesk/releases/latest/download/update.json` (bukan
+  domain app). Draft = 404, ditampilkan jujur. Belum unduh/pasang APK
+  (hanya buka `release_url`). Tertutup 2026-10-01.
 - [ ] Versi, berita, `workflow_dispatch` Build/Release = keputusan operator.
   Jangan terbitkan ulang nomor build yang sama.
 
