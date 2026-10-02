@@ -22,13 +22,13 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
+## [Belum terbit]
+
 ## [6.11.6] — 2026-10-02
 
 - Wallpaper Windows ke kartu APK; libxypreview/libxyscroll/libxygamepad.
 - Virtual XInput 0x0E (ViGEm bila tidak ada pad fisik).
 - LEGAL native + SECURITY.md. Mascot onboard/empty; hero login asli. Lanskap terkunci.
-
-## [Belum terbit]
 
 - **UX sesi native:** editor overlay lebih mudah diketuk (chip 36dp, pustaka wrap), tombol overlay lebih kontras, keyboard PC lebih tinggi, salinan HID/sambung lebih singkat.
 
