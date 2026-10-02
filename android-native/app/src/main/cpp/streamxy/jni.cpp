@@ -76,6 +76,15 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_fps(JNIEnv* en
   return wrap(env, b, sx_input_fps(b, static_cast<uint8_t>(target_fps)));
 }
 
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_gamepad(
+    JNIEnv* env, jclass, jint buttons, jint lt, jint rt, jint lx, jint ly, jint rx, jint ry) {
+  uint8_t b[16];
+  return wrap(env, b,
+              sx_input_gamepad(b, static_cast<uint16_t>(buttons), static_cast<uint8_t>(std::clamp(lt, 0, 255)),
+                               static_cast<uint8_t>(std::clamp(rt, 0, 255)), static_cast<int16_t>(lx),
+                               static_cast<int16_t>(ly), static_cast<int16_t>(rx), static_cast<int16_t>(ry)));
+}
+
 JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_text(JNIEnv* env, jclass, jstring s) {
   if (!s) return wrap(env, nullptr, 0);
   const char* utf8 = env->GetStringUTFChars(s, nullptr);

@@ -21,6 +21,9 @@ add_library(xyhid SHARED xyhid/xyhid.cpp)
 target_compile_options(xyhid PRIVATE -O2 -fno-exceptions -fno-rtti -Wall -Wextra)
 target_link_libraries(xyhid log)
 
+add_library(xygamepad SHARED xygamepad/xygamepad.cpp)
+target_compile_options(xygamepad PRIVATE -O2 -fno-exceptions -fno-rtti -Wall -Wextra)
+
 add_library(xypreview SHARED xypreview/xypreview.cpp)
 target_compile_options(xypreview PRIVATE -O2 -fno-exceptions -fno-rtti -Wall -Wextra)
 

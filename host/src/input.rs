@@ -30,6 +30,7 @@
 //! 0x0A VIDEO_QUALITY   quality:u8             (0=auto 1=medium 2=high 3=ultra)
 //! 0x0B VIDEO_BITRATE   mbps:u16 le            (0=auto 1..50 Mbps)
 //! 0x0C VIDEO_RESOLUTION mode:u8                (0=720p, 1=1080p)
+//! 0x0E GAMEPAD         XUSB_REPORT 12 byte     (tombol + analog XInput)
 //! 0x0F VIDEO_FPS       fps:u8                  (30 atau 60)
 //! ```
 //!
@@ -65,6 +66,16 @@ pub enum InputEvent {
     VideoQuality(u8),
     /// Target bitrate Mbps dari client (0=Auto) — bukan injeksi.
     VideoBitrate(u16),
+    /// Laporan Xbox/XInput dari gamepad klien.
+    Gamepad {
+        buttons: u16,
+        lt: u8,
+        rt: u8,
+        lx: i16,
+        ly: i16,
+        rx: i16,
+        ry: i16,
+    },
 }
 
 /// Tipe pesan (byte pertama).
@@ -80,6 +91,7 @@ mod tag {
     pub const CLIPBOARD_REQ: u8 = 0x09;
     pub const VIDEO_QUALITY: u8 = 0x0A;
     pub const VIDEO_BITRATE: u8 = 0x0B;
+    pub const GAMEPAD: u8 = 0x0E;
 }
 
 /// Dekode satu pesan biner. `None` bila tidak valid (pesan dibuang diam-diam
@@ -120,6 +132,15 @@ pub fn decode(data: &[u8]) -> Option<InputEvent> {
             let mbps = u16::from_le_bytes([data[1], data[2]]);
             Some(InputEvent::VideoBitrate(mbps))
         }
+        (&tag::GAMEPAD, n) if n >= 13 => Some(InputEvent::Gamepad {
+            buttons: le16(data, 1),
+            lt: data[3],
+            rt: data[4],
+            lx: le16(data, 5) as i16,
+            ly: le16(data, 7) as i16,
+            rx: le16(data, 9) as i16,
+            ry: le16(data, 11) as i16,
+        }),
         _ => None,
     }
 }
@@ -443,6 +464,26 @@ mod windows_inject {
             // memilikinya — keduanya ditangani di loop utama sesi. Nilai
             // `true` = bukan kegagalan, jangan dicatat sebagai inject gagal.
             InputEvent::ClipboardSet(_) | InputEvent::ClipboardRequest => true,
+            InputEvent::Gamepad {
+                buttons,
+                lt,
+                rt,
+                lx,
+                ly,
+                rx,
+                ry,
+            } => {
+                crate::xinput::submit(crate::xinput::GamepadReport {
+                    buttons,
+                    lt,
+                    rt,
+                    lx,
+                    ly,
+                    rx,
+                    ry,
+                });
+                true
+            }
         }
     }
 }
@@ -485,6 +526,27 @@ pub fn encode_clipboard_request() -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn gamepad_xinput_report() {
+        let mut m = vec![tag::GAMEPAD, 0x00, 0x10, 0, 255];
+        m.extend_from_slice(&32767i16.to_le_bytes());
+        m.extend_from_slice(&(-1i16).to_le_bytes());
+        m.extend_from_slice(&0i16.to_le_bytes());
+        m.extend_from_slice(&0i16.to_le_bytes());
+        assert_eq!(
+            decode(&m),
+            Some(InputEvent::Gamepad {
+                buttons: 0x1000,
+                lt: 0,
+                rt: 255,
+                lx: 32767,
+                ly: -1,
+                rx: 0,
+                ry: 0,
+            })
+        );
+    }
 
     #[test]
     fn clipboard_set_membawa_utf8_seluruh_sisa_pesan() {
