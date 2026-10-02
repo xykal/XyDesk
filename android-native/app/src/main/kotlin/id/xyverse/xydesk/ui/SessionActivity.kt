@@ -12,7 +12,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.HapticFeedbackConstants
+import android.view.InputDevice
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.PixelCopy
 import android.view.SurfaceView
 import android.view.View
@@ -54,6 +56,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var touch: SessionTouch
     private lateinit var metrics: SessionMetrics
     private lateinit var keys: SessionKeyboard
+    private lateinit var hid: SessionHid
     private val store by lazy { Store(applicationContext) }
     private val hostId by lazy { intent.getStringExtra("host").orEmpty() }
     private val reconnect by lazy { ReconnectPolicy().also { p -> repeat(intent.getIntExtra("attempt", 0)) { p.nextDelayMs() } } }
@@ -153,6 +156,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
         touch.directTouch = store.directTouch
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
+        hid = SessionHid(session::send)
         session.attach(b.video)
         applyDecodeMode(true)
         b.raw.setOnTouchListener { v, e -> touch.onTouch(v, e) }
@@ -396,8 +400,26 @@ class SessionActivity : ComponentActivity(), RtcListener {
     )
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (!connected || !KeyMap.isPhysical(event) || event.keyCode == KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
-        return keys.physical(event) || super.dispatchKeyEvent(event)
+        if (!connected || event.keyCode == KeyEvent.KEYCODE_BACK) return super.dispatchKeyEvent(event)
+        if (::hid.isInitialized && hid.gamepadKey(event)) return true
+        if (KeyMap.isPhysical(event) && keys.physical(event)) return true
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (connected && ::hid.isInitialized) {
+            val surface = if (lowLatency) b.raw else b.video
+            if (hid.motion(event, surface)) return true
+        }
+        return super.dispatchGenericMotionEvent(event)
+    }
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (connected && ::hid.isInitialized && event.isFromSource(InputDevice.SOURCE_MOUSE)) {
+            val surface = if (lowLatency) b.raw else b.video
+            if (hid.motion(event, surface)) return true
+        }
+        return super.dispatchTouchEvent(event)
     }
 
     override fun onMicInput(available: Boolean, reason: String) { micInput = available; micReason = reason }

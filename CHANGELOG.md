@@ -24,6 +24,9 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK HID:** keyboard/mouse fisik (hover, klik, scroll) dan gamepad (stick kiri WASD, stick kanan mouse, tombol A/B/X/Y). `libxyhid.so` deadzone stick. `libstreamxy.so` tetap protokol.
+- **Host/installer:** virtual audio yang sudah ada di-skip. NSIS: pilih bahasa, lisensi Inggris + I accept, folder, checkbox Desktop/Start Menu shortcut.
+
 - **APK overlay kontrol bebas (bukan dok):** posisi %, ukuran, radius, stick WASD/panah/mouse, F-keys, numpad, mouse, chord. Rel samping tidak diubah. Edit lewat tombol Dok.
 
 - **APK HUD keyboard PC:** tombol Keyboard di rel membuka papan ABC / 123 / F1–F12 / Numpad / Penuh (bukan IME HP). Numpad juga bisa dipasang di dok. Rel samping tidak diubah.
