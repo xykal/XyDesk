@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **UX sesi native:** editor overlay lebih mudah diketuk (chip 36dp, pustaka wrap), tombol overlay lebih kontras, keyboard PC lebih tinggi, salinan HID/sambung lebih singkat.
+
 - **Inno Setup:** English license + must accept, language dialog, Desktop shortcut task, skip VB-CABLE if driver already on the PC. Publisher string XyVerse Technology Global.
 
 - **HID OTG/BT:** keyboard alfabet, mouse, gamepad/joystick terdeteksi; overlay on-screen otomatis hilang (pola remote gaming: kontrol sentuh hanya bila tidak ada perangkat fisik). Rail tetap.

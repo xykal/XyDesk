@@ -56,7 +56,7 @@ fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Un
                     XyText(if (state.reconnecting) "Menyambung ulang…" else phaseTitle(state.phase), Xy.title.copy(textAlign = TextAlign.Center))
                     if (state.attempt > 0) XyText("Percobaan ${state.attempt}/3", Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(4.dp))
-                    XyText("Host " + state.hostId.chunked(3).joinToString(" "), Xy.caption.copy(textAlign = TextAlign.Center))
+                    XyText("PC " + state.hostId.chunked(3).joinToString(" "), Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(36.dp))
                     XyButton("Batal", Modifier.width(180.dp), ghost = true, onClick = onBack)
                 }

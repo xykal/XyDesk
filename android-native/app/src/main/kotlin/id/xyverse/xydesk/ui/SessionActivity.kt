@@ -283,7 +283,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         applyChrome()
         if (p.any && connected && !hidToastShown) {
             hidToastShown = true
-            Toast.makeText(this, "HID ${p.label()} terhubung — overlay disentuh disembunyikan.".tr(store.lang), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Terhubung: ${p.label()}. Overlay sentuh disembunyikan.".tr(store.lang), Toast.LENGTH_LONG).show()
         }
     }
 
