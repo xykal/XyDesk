@@ -146,7 +146,13 @@ pub fn display_label(width: u32, height: u32, refresh_hz: Option<u32>) -> String
 /// keduanya nyata — menyembunyikan salah satunya membuat diagnosis salah).
 pub fn gpu_label(names: &[String]) -> Option<String> {
     let mut uniq: Vec<&String> = Vec::new();
-    for n in names.iter().filter(|s| !s.trim().is_empty()) {
+    for n in names.iter().filter(|s| {
+        let t = s.trim().to_ascii_lowercase();
+        !t.is_empty()
+            && !t.contains("basic render driver")
+            && !t.contains("remote desktop")
+            && t != "microsoft basic display adapter"
+    }) {
         if !uniq.iter().any(|x| x.trim() == n.trim()) {
             uniq.push(n);
         }
@@ -530,6 +536,14 @@ mod tests {
         );
         assert_eq!(gpu_label(&[]), None);
         assert_eq!(gpu_label(&["".to_string(), "  ".to_string()]), None);
+        assert_eq!(
+            gpu_label(&[
+                "Microsoft Basic Render Driver".to_string(),
+                "AMD Radeon RX 7800 XT".to_string()
+            ])
+            .unwrap(),
+            "AMD Radeon RX 7800 XT"
+        );
     }
 
     #[test]

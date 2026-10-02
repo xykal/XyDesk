@@ -27,6 +27,15 @@ export function LegalPage() {
       </section>
 
       <section>
+        <h2>Kebijakan Cookie</h2>
+        <p>
+          Cookie dan penyimpanan lokal hanya untuk sesi masuk, bahasa, dan perangkat
+          yang kamu ingat di browser ini. Tidak ada cookie iklan. Media sesi tetap
+          ujung ke ujung (WebRTC DTLS-SRTP).
+        </p>
+      </section>
+
+      <section>
         <h2>Privasi sesi</h2>
         <p>
           Signaling hanya mempertemukan perangkat. Media WebRTC memakai DTLS-SRTP dan

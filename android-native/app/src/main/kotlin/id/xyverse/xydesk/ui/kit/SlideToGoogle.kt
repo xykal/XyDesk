@@ -117,15 +117,18 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
     ) {
         val maxPx = with(density) { (maxWidth - knob - pad * 2).toPx() }
         val progress = (offset.value / maxPx).coerceIn(0f, 1f)
-        Box(Modifier.fillMaxSize().padding(start = knob + 12.dp).alpha(1f - progress), contentAlignment = Alignment.CenterStart) {
-            XyText(if (loading) "Menghubungkan ke Google…" else "Geser untuk lanjut dengan Google", Xy.caption.copy(color = Xy.textMid))
+        Box(
+            Modifier.fillMaxSize().clip(shape).background(Xy.accent.copy(alpha = 0.14f + 0.40f * progress)),
+        )
+        Box(Modifier.fillMaxSize().padding(start = knob + 12.dp).alpha(1f - progress * 0.85f), contentAlignment = Alignment.CenterStart) {
+            XyText(if (loading) "Menghubungkan ke Google…" else "Geser untuk lanjut dengan Google", Xy.caption.copy(color = Xy.textHi))
         }
         Box(
             Modifier
                 .padding(pad)
                 .offset { IntOffset(offset.value.roundToInt(), 0) }
                 .size(knob)
-                .shadow(6.dp, CircleShape, ambientColor = Xy.shadow, spotColor = Xy.shadow)
+                .shadow(10.dp, CircleShape, ambientColor = Xy.accent.copy(alpha = 0.35f), spotColor = Xy.accent.copy(alpha = 0.35f))
                 .clip(CircleShape)
                 .background(Color.White)
                 .pointerInput(enabled, loading, maxPx) {

@@ -56,7 +56,7 @@ object Legal {
         if (kind == CHANGELOG) return markdown.lines().take(400).joinToString("\n")
         val head = when (kind) {
             TERMS -> "## 3."
-            COOKIE -> "## 2."
+            COOKIE -> "## 5."
             else -> "## 2."
         }
         val start = markdown.indexOf(head).takeIf { it >= 0 } ?: return markdown

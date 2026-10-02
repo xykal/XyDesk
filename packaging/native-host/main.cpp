@@ -73,7 +73,7 @@ using xydesk::panel::Rect;
 using xydesk::panel::Target;
 
 constexpr wchar_t kClassName[] = L"XyDeskNativeControlPanel";
-constexpr wchar_t kWindowTitle[] = L"XyDesk";
+constexpr wchar_t kWindowTitle[] = L"XyDesk Control Panel";
 constexpr wchar_t kWebUrl[] = L"https://remote.xydesk.my.id/devices";
 constexpr wchar_t kEngineName[] = L"xydesk-host.exe";
 
@@ -1556,7 +1556,7 @@ void hidePanel(HWND hwnd) {
 void showTrayMenu(HWND hwnd) {
     HMENU menu = CreatePopupMenu();
     if (!menu) return;
-    AppendMenuW(menu, MF_STRING, kTrayOpen, L"Buka XyDesk");
+    AppendMenuW(menu, MF_STRING, kTrayOpen, L"Buka Control Panel");
     AppendMenuW(menu, g.running ? MF_GRAYED : MF_STRING, kTrayStart, L"Mulai host");
     AppendMenuW(menu, g.running ? MF_STRING : MF_GRAYED, kTrayStop, L"Hentikan host");
     AppendMenuW(menu, MF_STRING, kTrayRestart, L"Restart host");
@@ -2615,6 +2615,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         WS_POPUP | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN, x, y, g.layout.window.w, g.layout.window.h,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
+    // Jangan ikut tertangkap DXGI/capture sesi (privacy screen panel host).
+    SetWindowDisplayAffinity(window, 0x00000011);
 
     applyDpi(window, windowDpi(window), true);
     ShowWindow(window, show);

@@ -49,7 +49,7 @@ import org.json.JSONObject
 import kotlin.math.hypot
 import kotlin.math.roundToInt
 
-enum class OverlayKind { KEY, MOUSE, SCROLL, SCROLL_X, CHORD, TOGGLE, STICK_KEYS, STICK_MOUSE }
+enum class OverlayKind { KEY, MOUSE, SCROLL, SCROLL_X, SCROLL_WHEEL, CHORD, TOGGLE, STICK_KEYS, STICK_MOUSE }
 
 data class OverlayItem(
     val id: String,
@@ -155,6 +155,7 @@ private fun OverlayItem.label(): String = when (kind) {
     OverlayKind.MOUSE -> listOf("Kiri", "Kanan", "Tengah", "Back", "Maju").getOrElse(code) { "Mouse" }
     OverlayKind.SCROLL -> if (code > 0) "Scr ↑" else "Scr ↓"
     OverlayKind.SCROLL_X -> if (code > 0) "Scr →" else "Scr ←"
+    OverlayKind.SCROLL_WHEEL -> "Scroll"
     OverlayKind.TOGGLE -> "Mode"
     OverlayKind.STICK_KEYS -> display.ifBlank { "WASD" }
     OverlayKind.STICK_MOUSE -> "Mouse"
@@ -164,7 +165,7 @@ class OverlayHolds(private val send: (ByteArray) -> Unit) {
     private val owners = mutableMapOf<String, OverlayItem>()
     private val counts = mutableMapOf<String, Int>()
     fun down(owner: String, m: OverlayItem) {
-        if (m.kind == OverlayKind.TOGGLE || m.kind == OverlayKind.STICK_KEYS || m.kind == OverlayKind.STICK_MOUSE) return
+        if (m.kind == OverlayKind.TOGGLE || m.kind == OverlayKind.STICK_KEYS || m.kind == OverlayKind.STICK_MOUSE || m.kind == OverlayKind.SCROLL_WHEEL) return
         if (m.kind == OverlayKind.SCROLL) { send(StreamXy.scroll(0, m.code)); return }
         if (m.kind == OverlayKind.SCROLL_X) { send(StreamXy.scroll(m.code, 0)); return }
         if (owners.containsKey(owner)) return
@@ -281,6 +282,10 @@ private fun OverlayButton(
         StickPad(m, edit, left, top, px, parentW, parentH, holds, send, onSelect, onMove)
         return
     }
+    if (m.kind == OverlayKind.SCROLL_WHEEL) {
+        ScrollWheel(m, edit, left, top, px, parentW, parentH, send, onSelect, onMove)
+        return
+    }
     Box(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
@@ -382,6 +387,58 @@ private fun StickPad(
     }
 }
 
+@Composable
+private fun ScrollWheel(
+    m: OverlayItem,
+    edit: Boolean,
+    left: Float,
+    top: Float,
+    px: Float,
+    parentW: Float,
+    parentH: Float,
+    send: (ByteArray) -> Unit,
+    onSelect: () -> Unit,
+    onMove: (Float, Float) -> Unit,
+) {
+    var knob by remember { mutableStateOf(0f) }
+    Box(
+        Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
+            .size(width = (m.size * 0.72f).dp, height = m.size.dp)
+            .clip(RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
+            .background(Color(0xE6FFFFFF))
+            .border(1.dp, Xy.line, RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
+            .pointerInput(edit, m.id) {
+                if (edit) detectDragGestures(
+                    onDragStart = { onSelect() },
+                    onDrag = { change, drag ->
+                        change.consume()
+                        onMove(
+                            ((left + px / 2 + drag.x) / parentW * 100f).coerceIn(0f, 100f),
+                            ((top + px / 2 + drag.y) / parentH * 100f).coerceIn(0f, 100f),
+                        )
+                    },
+                ) else detectDragGestures(
+                    onDrag = { change, drag ->
+                        change.consume()
+                        knob = (knob + drag.y).coerceIn(-px * 0.28f, px * 0.28f)
+                        val dy = (-drag.y / 3.2f).toInt().coerceIn(-360, 360)
+                        if (dy != 0) send(StreamXy.scroll(0, dy))
+                    },
+                    onDragEnd = { knob = 0f },
+                    onDragCancel = { knob = 0f },
+                )
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.size((m.size * 0.42f).dp)
+                .offset { IntOffset(0, knob.roundToInt()) }
+                .clip(RoundedCornerShape(999.dp))
+                .background(Xy.accent),
+        )
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LibraryPanel(count: Int, onPreset: (List<OverlayItem>) -> Unit, add: (OverlayItem) -> Unit) {
@@ -402,6 +459,7 @@ private fun LibraryPanel(count: Int, onPreset: (List<OverlayItem>) -> Unit, add:
         Chip("Klik kiri") { add(item(OverlayKind.MOUSE, 0)) }
         Chip("Klik kanan") { add(item(OverlayKind.MOUSE, 1)) }
         Chip("Klik tengah") { add(item(OverlayKind.MOUSE, 2)) }
+        Chip("Scroll geser") { add(OverlayItem("sw${System.nanoTime()}", OverlayKind.SCROLL_WHEEL, x = 16f, y = 72f, size = 88f, radius = 28f, display = "Scroll")) }
         Chip("Scroll ↑") { add(item(OverlayKind.SCROLL, 120)) }
         Chip("Scroll ↓") { add(item(OverlayKind.SCROLL, -120)) }
         Chip("Scroll ←") { add(item(OverlayKind.SCROLL_X, -120)) }
