@@ -50,7 +50,7 @@ fun Switch(store: Store, key: String, title: String, caption: String, def: Boole
 fun SessionMorePrefs(store: Store) {
     XyCard {
         XyText("TAMPILAN SESI", Xy.label)
-        Choice(store, P.ORIENTATION, "Orientasi", "Potret berguna untuk PC dengan layar tegak.", listOf("Otomatis", "Lanskap", "Potret"))
+        XyText("Orientasi terkunci lanskap — XyDesk untuk game, latensi rendah.", Xy.caption)
         Choice(store, P.RAIL_AUTOHIDE, "Rel otomatis sembunyi", "Rel kanan menyusut jadi garis bila tidak disentuh.", listOf("Mati", "5 d", "10 d", "20 d"))
         Choice(store, P.START_RES, "Resolusi awal", "Dikirim ke host saat tersambung; Auto mengikuti jaringan.", listOf("Auto", "720p", "1080p"))
         Choice(store, P.MAX_MBPS, "Bitrate maksimum", "Batas atas agar kuota aman; Auto = tanpa batas (≤ 50 Mbps).", listOf("Auto", "8", "12", "20", "30"))

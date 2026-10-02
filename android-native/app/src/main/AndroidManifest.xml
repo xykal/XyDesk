@@ -12,8 +12,8 @@
         android:theme="@style/Theme.XyDesk"
         android:allowBackup="false"
         android:usesCleartextTraffic="false">
-        <activity android:name=".ui.BrowserActivity" android:exported="false" android:configChanges="orientation|screenSize" />
-        <activity android:name=".ui.MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
+        <activity android:name=".ui.BrowserActivity" android:exported="false" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize" />
+        <activity android:name=".ui.MainActivity" android:exported="true" android:screenOrientation="sensorLandscape" android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

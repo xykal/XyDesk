@@ -48,7 +48,7 @@ import kotlinx.coroutines.launch
 private class Page(val kicker: String, val title: String, val body: String, val tips: List<Pair<String, String>> = emptyList())
 
 private val pagesEn = listOf(
-    Page("WELCOME", "Your PC, in your hand.", "XyDesk streams your PC screen to your phone over a low-latency direct path — for work, and for play."),
+    Page("WELCOME", "Your PC, in your hand.", "XyDesk is built for games: landscape, low latency, a direct path from GPU to phone."),
     Page("STEP 1", "Install the host on your PC.", "Download XyDesk Host from xydesk.my.id, run it, note the 9-digit device ID and set a password there."),
     Page("STEP 2", "Connect.", "Sign in with email or Google, type the device ID and host password, tap Connect. Hosts you connect to are saved automatically."),
     Page(
@@ -58,7 +58,7 @@ private val pagesEn = listOf(
 )
 
 private val pages = listOf(
-    Page("SELAMAT DATANG", "PC kamu, di genggaman.", "XyDesk menyalurkan layar PC ke HP lewat jalur langsung berlatensi rendah — untuk kerja, dan untuk main."),
+    Page("SELAMAT DATANG", "PC kamu, di genggaman.", "XyDesk untuk game: lanskap terkunci, latensi rendah, jalur langsung GPU ke HP."),
     Page("LANGKAH 1", "Pasang host di PC.", "Unduh XyDesk Host dari xydesk.my.id, jalankan, lalu catat ID perangkat 9 digit dan atur password di sana."),
     Page("LANGKAH 2", "Hubungkan.", "Masuk dengan email atau Google, ketik ID perangkat dan password host, tekan Hubungkan. Host yang pernah tersambung tersimpan otomatis."),
     Page(
