@@ -1,4 +1,5 @@
 -keep class org.webrtc.** { *; }
 -keep class id.xyverse.xydesk.core.StreamXy { *; }
 -keep class id.xyverse.xydesk.core.StreamXy$* { *; }
+-keep class id.xyverse.xydesk.core.XyHid { *; }
 -dontwarn org.webrtc.**
