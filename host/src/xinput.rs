@@ -85,9 +85,9 @@ fn physical_present() -> bool {
 
 #[cfg(target_os = "windows")]
 fn xinput_any_slot() -> bool {
+    use windows::core::w;
     use windows::Win32::Foundation::HMODULE;
     use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
-    use windows::core::w;
     #[repr(C)]
     struct State {
         packet: u32,
@@ -123,14 +123,15 @@ struct Vigem {
 }
 
 #[cfg(target_os = "windows")]
-type UpdateFn = unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *const u8) -> u32;
+type UpdateFn =
+    unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *const u8) -> u32;
 
 #[cfg(target_os = "windows")]
 impl Vigem {
     fn connect() -> Option<Self> {
+        use windows::core::w;
         use windows::Win32::Foundation::HMODULE;
         use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
-        use windows::core::w;
         unsafe {
             let lib: HMODULE = LoadLibraryW(w!("ViGEmClient.dll")).ok()?;
             if lib.is_invalid() {
