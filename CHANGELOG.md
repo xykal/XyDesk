@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.
+
 - **TURN produksi:** ExpressTurn (`TURN_DIRECT_*`) terpasang di Worker signaling. Cadangan Open Relay bukan syarat. GitHub Secrets TURN tetap kosong supaya deploy tidak menimpa Worker.
 
 - **Native Tentang: cek pembaruan dari GitHub Releases** (`update.json` di `latest/download`). Draft tidak dihitung sebagai rilis. Belum memasang APK sendiri.

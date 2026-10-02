@@ -24,7 +24,7 @@ def read(rel: str) -> str:
     return (ROOT / rel).read_text(encoding="utf-8")
 
 
-def pubspec_version() -> tuple[str, int]:
+def version_file() -> tuple[str, int]:
     m = re.fullmatch(r"(\d+\.\d+\.\d+)\+(\d+)", read("VERSION").strip())
     if not m:
         sys.exit("VERSI GAGAL: VERSION harus berisi 'X.Y.Z+NN'")
@@ -58,7 +58,7 @@ def changelog_top_version(changelog: str) -> tuple[str | None, list[str]]:
 
 
 def main() -> None:
-    version, build = pubspec_version()
+    version, build = version_file()
     problems: list[str] = []
 
     # host/Cargo.toml — versi paket, ambil kemunculan pertama di [package].
