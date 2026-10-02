@@ -298,6 +298,8 @@ private val en = mapOf(
     "Host menutup sesi atau koneksi terputus." to "The host closed the session or the link dropped.",
     "Periksa jaringan dan coba lagi." to "Check the network and try again.",
     "Data seluler" to "Cellular data",
+    "Scroll geser" to "Scroll drag",
+    "Nama lengkap" to "Full name",
 )
 
 fun String.tr(lang: Lang): String = if (lang == Lang.EN) en[this] ?: this else this

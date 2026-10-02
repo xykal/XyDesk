@@ -58,7 +58,7 @@ export function AuthPanel(props: AuthPanelProps) {
         <>
           <GoogleButton />
           <p className="or-label">atau dengan email</p>
-          <label className="auth-field">Nama lengkap<input autoComplete="name" placeholder="Nama lu" value={props.name} onChange={(e) => props.setName(e.target.value)} /></label>
+          <label className="auth-field">Nama lengkap<input autoComplete="name" placeholder="Nama lengkap" value={props.name} onChange={(e) => props.setName(e.target.value)} /></label>
           <label className="auth-field">Alamat email<input type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} placeholder="email@contoh.com" value={props.email} onChange={(e) => props.setEmail(e.target.value)} /></label>
           {props.error && <p className="error" role="alert">{props.error}</p>}
           <button disabled={props.busy || props.name.trim().length < 2 || !props.email.includes('@')} onClick={props.requestOtp}>
@@ -76,6 +76,7 @@ export function AuthPanel(props: AuthPanelProps) {
           <button className="text-action" onClick={() => props.setStep('login')}>Ganti email</button>
         </>
       )}
+      <p className="muted auth-legal">Dengan masuk, kamu menyetujui <a href="/legal">Syarat &amp; Ketentuan</a> dan <a href="/legal">Kebijakan Privasi</a>.</p>
     </main>
   );
 }

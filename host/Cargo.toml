@@ -1,6 +1,6 @@
 [package]
 name = "xydesk-host"
-version = "6.11.3"
+version = "6.11.4"
 edition = "2021"
 authors = ["xykal (XyVerse Technology Global)"]
 description = "XyDesk host — capture & stream layar Windows via WebRTC"

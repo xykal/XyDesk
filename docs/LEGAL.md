@@ -164,7 +164,21 @@ masing-masing penyedia, bukan lisensi sumber terbuka.
 
 ---
 
-## 5. Kontak
+## 5. Kebijakan Cookie
+
+XyDesk memakai cookie dan penyimpanan lokal hanya untuk:
+
+- sesi masuk (token, bukan kata sandi host);
+- preferensi bahasa dan tampilan;
+- ID perangkat yang kamu pilih untuk diingat di HP ini.
+
+Tidak ada cookie iklan, tidak ada pelacakan lintas situs. Sesi media
+(WebRTC DTLS-SRTP) ujung ke ujung antar perangkat; server hanya
+mempertemukan, tidak melihat layar.
+
+---
+
+## 6. Kontak
 
 - Legal & privasi: legal@xydesk.app
 - Keamanan (laporan kerentanan): legal@xydesk.app (subjek: SECURITY)
