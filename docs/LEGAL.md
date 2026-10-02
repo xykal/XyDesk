@@ -104,6 +104,7 @@ Pencantuman di sini TIDAK mengubah status proprietary XyDesk.
 | libwebrtc (Google) | BSD-3-Clause | Media peer-to-peer |
 | libstreamxy.so | Proprietary XyVerse | Protokol input/clipboard |
 | libxyhid.so | Proprietary XyVerse | HID USB/BT |
+| libxygamepad.so | Proprietary XyVerse | Skala analog / bitmask XInput |
 | libxypreview.so | Proprietary XyVerse | Validasi JPEG wallpaper |
 | libxyscroll.so | Proprietary XyVerse | Delta scroll overlay |
 | Inter (font) | SIL OFL 1.1 | Font antarmuka |
