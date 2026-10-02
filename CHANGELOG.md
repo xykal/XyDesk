@@ -22,10 +22,6 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
-## [6.11.2] — 2026-10-02
-
-- **APK:** overlay pass-through memakai FrameLayout (ComposeView final); keep `XyHid`.
-
 ## [Belum terbit]
 
 - **UX sesi native:** editor overlay lebih mudah diketuk (chip 36dp, pustaka wrap), tombol overlay lebih kontras, keyboard PC lebih tinggi, salinan HID/sambung lebih singkat.
@@ -42,6 +38,10 @@ Kebijakan rilis:
 - **APK HUD keyboard PC:** tombol Keyboard di rel membuka papan ABC / 123 / F1–F12 / Numpad / Penuh (bukan IME HP). Numpad juga bisa dipasang di dok. Rel samping tidak diubah.
 
 - **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.
+
+## [6.11.2] — 2026-10-02
+
+- **APK:** overlay pass-through memakai FrameLayout (ComposeView final); keep `XyHid`.
 
 - **TURN produksi:** ExpressTurn (`TURN_DIRECT_*`) terpasang di Worker signaling. Cadangan Open Relay bukan syarat. GitHub Secrets TURN tetap kosong supaya deploy tidak menimpa Worker.
 
