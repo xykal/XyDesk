@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Inno Setup:** English license + must accept, language dialog, Desktop shortcut task, skip VB-CABLE if driver already on the PC. Publisher string XyVerse Technology Global.
+
 - **HID OTG/BT:** keyboard alfabet, mouse, gamepad/joystick terdeteksi; overlay on-screen otomatis hilang (pola remote gaming: kontrol sentuh hanya bila tidak ada perangkat fisik). Rail tetap.
 
 - **APK HID:** keyboard/mouse fisik (hover, klik, scroll) dan gamepad (stick kiri WASD, stick kanan mouse, tombol A/B/X/Y). `libxyhid.so` deadzone stick. `libstreamxy.so` tetap protokol.
