@@ -72,6 +72,9 @@ class Store(context: Context) {
     var dockKeys: List<String>
         get() = prefs.getString("dockKeys", null)?.split(",")?.filter { it.isNotEmpty() } ?: DOCK_DEFAULT
         set(v) = prefs.edit().putString("dockKeys", v.joinToString(",")).apply()
+    var overlayJson: String
+        get() = prefs.getString("overlayJson", null).orEmpty()
+        set(v) = prefs.edit().putString("overlayJson", v).apply()
     fun int(key: String, def: Int) = prefs.getInt(key, def)
     fun bool(key: String, def: Boolean) = prefs.getBoolean(key, def)
     fun set(key: String, v: Int) = prefs.edit().putInt(key, v).apply()

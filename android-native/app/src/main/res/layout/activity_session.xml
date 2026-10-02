@@ -20,17 +20,15 @@
         android:importantForAutofill="no"
         android:inputType="textNoSuggestions|textVisiblePassword"
         android:imeOptions="flagNoExtractUi|flagNoFullscreen" />
+    <id.xyverse.xydesk.ui.PassThroughComposeView
+        android:id="@+id/dock"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/toolbar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|center_vertical" />
-    <androidx.compose.ui.platform.ComposeView
-        android:id="@+id/dock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="10dp" />
     <androidx.compose.ui.platform.ComposeView
         android:id="@+id/pcKeys"
         android:layout_width="match_parent"

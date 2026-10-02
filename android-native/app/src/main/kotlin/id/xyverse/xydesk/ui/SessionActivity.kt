@@ -77,6 +77,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var dockSize by mutableStateOf(1)
     private var dockKeys by mutableStateOf<List<String>>(emptyList())
     private var dockHeld by mutableStateOf<Set<String>>(emptySet())
+    private var overlayItems by mutableStateOf(listOf<OverlayItem>())
+    private var overlayEdit by mutableStateOf(false)
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
     private val statsTick = object : Runnable {
@@ -120,6 +122,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
         showStats = store.showStats
         dockOn = store.dockOn; dockSize = store.dockSize; dockKeys = store.dockKeys
+        overlayItems = OverlayLayouts.fromJson(store.overlayJson)
         session = RtcSession(
             context = applicationContext,
             jwt = intent.getStringExtra("jwt").orEmpty(),
@@ -201,10 +204,21 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     private fun setupDock() {
-        b.dock.visibility = View.GONE
+        (b.dock as? PassThroughComposeView)?.behind = b.video
         b.dock.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
-                ControlDock(dockKeys, dockHeld, dockSize) { k -> onDock(k) }
+                ControlOverlay(
+                    items = overlayItems,
+                    edit = overlayEdit,
+                    send = session::send,
+                    onItems = { overlayItems = it },
+                    onToggleTouch = {
+                        store.directTouch = !store.directTouch
+                        touch.directTouch = store.directTouch
+                    },
+                    onEdit = { overlayEdit = it },
+                    onSave = { store.overlayJson = OverlayLayouts.toJson(overlayItems) },
+                )
             }
         }
     }
@@ -253,7 +267,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         pcKeysOpen = on
         b.pcKeys.visibility = if (on && !presenting) View.VISIBLE else View.GONE
         if (on) b.dock.visibility = View.GONE
-        else b.dock.visibility = if (connected && dockOn && !presenting) View.VISIBLE else View.GONE
+        else if (connected && dockOn && !presenting) b.dock.visibility = View.VISIBLE
     }
 
     private fun setupToolbar() {
@@ -289,6 +303,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         dockOn = { store.dockOn = it; dockOn = it; b.dock.visibility = if (it && connected) View.VISIBLE else View.GONE },
                         dockSize = { store.dockSize = it; dockSize = it },
                         dockKeys = { store.dockKeys = it; dockKeys = it },
+                        overlayEdit = {
+                            overlayEdit = !overlayEdit
+                            if (overlayEdit) { dockOn = true; store.dockOn = true; b.dock.visibility = View.VISIBLE }
+                        },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,

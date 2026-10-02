@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay kontrol bebas (bukan dok):** posisi %, ukuran, radius, stick WASD/panah/mouse, F-keys, numpad, mouse, chord. Rel samping tidak diubah. Edit lewat tombol Dok.
+
 - **APK HUD keyboard PC:** tombol Keyboard di rel membuka papan ABC / 123 / F1–F12 / Numpad / Penuh (bukan IME HP). Numpad juga bisa dipasang di dok. Rel samping tidak diubah.
 
 - **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.

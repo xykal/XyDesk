@@ -68,6 +68,7 @@ class SessionActions(
     val dockOn: (on: Boolean) -> Unit = {},
     val dockSize: (size: Int) -> Unit = {},
     val dockKeys: (ids: List<String>) -> Unit = {},
+    val overlayEdit: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -201,7 +202,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Xy.textLow)) }
                 RailButton(Icon.KEYBOARD, "Keyboard") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol", active = panel == Panel.CONTROLS) { panel = if (panel == Panel.CONTROLS) Panel.NONE else Panel.CONTROLS }
-                RailButton(Icon.GRID, "Dok", active = panel == Panel.DOCK) { panel = if (panel == Panel.DOCK) Panel.NONE else Panel.DOCK }
+                RailButton(Icon.GRID, "Dok", active = panel == Panel.DOCK) { actions.overlayEdit(); panel = Panel.NONE }
                 RailButton(Icon.SETTINGS, "Atur", active = panel == Panel.SETTINGS) { panel = if (panel == Panel.SETTINGS) Panel.NONE else Panel.SETTINGS }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))
