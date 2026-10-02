@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui
 
+import id.xyverse.xydesk.core.XyScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -421,7 +422,7 @@ private fun ScrollWheel(
                     onDrag = { change, drag ->
                         change.consume()
                         knob = (knob + drag.y).coerceIn(-px * 0.28f, px * 0.28f)
-                        val dy = (-drag.y / 3.2f).toInt().coerceIn(-360, 360)
+                        val dy = XyScroll.delta(drag.y)
                         if (dy != 0) send(StreamXy.scroll(0, dy))
                     },
                     onDragEnd = { knob = 0f },
