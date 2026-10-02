@@ -356,7 +356,6 @@ pub fn ensure_virtual_mic() {
         "[xydesk-host] Virtual Mic: needed={}, installed={}, virtual_input={}, virtual_output={}, render_target={}",
         status.needed, status.installed, status.has_virtual_input, status.has_virtual_output, status.render_target
     );
-
 }
 
 #[cfg(not(target_os = "windows"))]
