@@ -56,7 +56,13 @@ fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Un
                 Column(Modifier.padding(Xy.pad), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     MorphLoader(size = 132.dp)
                     Spacer(Modifier.height(28.dp))
-                    XyText(if (state.reconnecting) "Menyambung ulang…".tr(lang) else "Menyambung…".tr(lang), Xy.title.copy(textAlign = TextAlign.Center))
+                    XyText(
+                        when {
+                            state.reconnecting -> "Menyambung ulang…".tr(lang)
+                            else -> phaseTitle(state.phase).tr(lang)
+                        },
+                        Xy.title.copy(textAlign = TextAlign.Center),
+                    )
                     if (state.attempt > 0) XyText("Percobaan".tr(lang) + " ${state.attempt}/3", Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(4.dp))
                     XyText("PC " + state.hostId.chunked(3).joinToString(" "), Xy.caption.copy(textAlign = TextAlign.Center))
