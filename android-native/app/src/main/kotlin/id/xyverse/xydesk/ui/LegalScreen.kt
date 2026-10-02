@@ -43,13 +43,14 @@ object Legal {
     const val COOKIE = "cookie"
     const val LICENSES = "lisensi"
     const val CHANGELOG = "rilis"
+    const val SECURITY = "keamanan"
     var open by mutableStateOf<String?>(null)
 
     fun title(kind: String) = when (kind) {
-        TERMS -> "Syarat & Ketentuan"; PRIVACY -> "Kebijakan Privasi"; COOKIE -> "Kebijakan Cookie"; LICENSES -> "Lisensi pihak ketiga"; else -> "Catatan rilis"
+        TERMS -> "Syarat & Ketentuan"; PRIVACY -> "Kebijakan Privasi"; COOKIE -> "Kebijakan Cookie"; LICENSES -> "Lisensi pihak ketiga"; SECURITY -> "Keamanan"; else -> "Catatan rilis"
     }
 
-    fun asset(kind: String) = when (kind) { LICENSES -> "attribution.md"; CHANGELOG -> "changelog.md"; else -> "legal.md" }
+    fun asset(kind: String) = when (kind) { LICENSES -> "attribution.md"; CHANGELOG -> "changelog.md"; SECURITY -> "security.md"; else -> "legal.md" }
 
     fun section(markdown: String, kind: String): String {
         if (kind == LICENSES) return markdown.lines().filterNot { it.startsWith("|---") }.joinToString("\n") { l -> if (l.startsWith("|")) "- " + l.trim('|').split("|").joinToString(" — ") { it.trim() } else l }

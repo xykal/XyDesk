@@ -92,5 +92,6 @@ fun AboutBody(appVersion: String, onOpenUrl: (String) -> Unit) {
         XyRow(Icon.SHIELD, "Syarat & Ketentuan", "Dibaca di dalam aplikasi.", onClick = { Legal.open = Legal.TERMS })
         XyRow(Icon.KEY, "Kebijakan Privasi", "Dibaca di dalam aplikasi.", onClick = { Legal.open = Legal.PRIVACY })
         XyRow(Icon.LIST, "Lisensi pihak ketiga", "Pustaka sumber terbuka yang dipakai.", onClick = { Legal.open = Legal.LICENSES })
+        XyRow(Icon.SHIELD, "Keamanan", "Pelaporan celah dan versi yang didukung.", onClick = { Legal.open = Legal.SECURITY })
     }
 }
