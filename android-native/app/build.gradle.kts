@@ -90,7 +90,7 @@ abstract class CopyLegalTask : DefaultTask() {
     @get:InputFiles abstract val sources: ConfigurableFileCollection
     @get:OutputDirectory abstract val outDir: DirectoryProperty
     @TaskAction fun run() {
-        val names = mapOf("LEGAL.md" to "legal.md", "THIRD-PARTY-LICENSES.md" to "attribution.md", "CHANGELOG.md" to "changelog.md")
+        val names = mapOf("LEGAL.md" to "legal.md", "THIRD-PARTY-LICENSES.md" to "attribution.md", "CHANGELOG.md" to "changelog.md", "SECURITY.md" to "security.md")
         sources.files.forEach { f -> f.copyTo(outDir.get().asFile.resolve(names.getValue(f.name)), overwrite = true) }
     }
 }
@@ -98,7 +98,7 @@ abstract class CopyLegalTask : DefaultTask() {
 androidComponents {
     onVariants { variant ->
         val task = tasks.register<CopyLegalTask>("copyLegal${variant.name.replaceFirstChar(Char::uppercase)}") {
-            sources.from(rootProject.file("../docs/LEGAL.md"), rootProject.file("../docs/THIRD-PARTY-LICENSES.md"), rootProject.file("../CHANGELOG.md"))
+            sources.from(rootProject.file("../docs/LEGAL.md"), rootProject.file("../docs/THIRD-PARTY-LICENSES.md"), rootProject.file("../CHANGELOG.md"), rootProject.file("../docs/SECURITY.md"))
         }
         variant.sources.assets?.addGeneratedSourceDirectory(task, CopyLegalTask::outDir)
     }

@@ -96,28 +96,17 @@ Semua UI/UX XyDesk dirancang sendiri oleh tim XyDesk. Berikut seluruh
 komponen pihak ketiga yang dipakai, lisensinya, dan apa fungsinya.
 Pencantuman di sini TIDAK mengubah status proprietary XyDesk.
 
-### Android (Flutter)
+### Android (Kotlin native)
 
 | Komponen | Lisensi | Fungsi di XyDesk |
 |---|---|---|
-| Flutter SDK | BSD-3-Clause (Google) | Kerangka UI lintas platform |
-| Dart SDK | BSD-3-Clause (Google) | Bahasa pemrograman aplikasi |
-| flutter_riverpod | MIT (Remi Rousselet) | Manajemen state reaktif |
-| go_router | BSD-3-Clause (Flutter Team) | Navigasi deklaratif |
-| lucide_icons_flutter | ISC (Lucide Contributors) | Set ikon garis konsisten |
-| Inter (font) | SIL Open Font License 1.1 (Rasmus Andersson) | Font antarmuka |
-| shared_preferences | BSD-3-Clause (Flutter Team) | Penyimpanan key-value lokal |
-| http | BSD-3-Clause (Dart Team) | Klien HTTP (berita, update) |
-| google_sign_in | BSD-3-Clause (Flutter Team) | Masuk dengan Google |
-| flutter_secure_storage | BSD-3-Clause (Flutter Team) | Penyimpanan kredensial terenkripsi |
-| flutter_webrtc | MIT (Flutter WebRTC) | Binding WebRTC untuk sesi |
-| libwebrtc | BSD-3-Clause (Google) | Implementasi media peer-to-peer |
-| web_socket_channel | BSD-3-Clause (Dart Team) | Kanal signaling |
-| package_info_plus | BSD-3-Clause (Flutter Community) | Metadata versi aplikasi |
-| url_launcher | BSD-3-Clause (Flutter Team) | Membuka tautan eksternal |
-| mobile_scanner | BSD-3-Clause (Mobile Scanner) | Pemindai QR (CameraX/MLKit) |
-| onesignal_flutter | Ketentuan OneSignal | Notifikasi push |
-| share_plus | BSD-3-Clause (Flutter Community) | Berbagi tautan berita |
+| Android SDK / Jetpack Compose | Apache-2.0 (Google) | UI native |
+| libwebrtc (Google) | BSD-3-Clause | Media peer-to-peer |
+| libstreamxy.so | Proprietary XyVerse | Protokol input/clipboard |
+| libxyhid.so | Proprietary XyVerse | HID USB/BT |
+| libxypreview.so | Proprietary XyVerse | Validasi JPEG wallpaper |
+| libxyscroll.so | Proprietary XyVerse | Delta scroll overlay |
+| Inter (font) | SIL OFL 1.1 | Font antarmuka |
 
 ### Desktop Windows (Native Win32 C++ + Rust Engine)
 
