@@ -48,9 +48,23 @@ private val ease = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
 
 /** Master VO "XyDesk" di `res/raw/xydesk_vo.mp3`; hanya saat pertama kali atau diputar ulang. */
 private class IntroVoice(ctx: android.content.Context) {
-    private val player = runCatching { MediaPlayer.create(ctx, R.raw.xydesk_vo) }.getOrNull()
-    fun start() = runCatching { player?.setVolume(1f, 1f); player?.start() }
-    fun release() = runCatching { player?.release() }
+    private val player = runCatching {
+        MediaPlayer.create(ctx, R.raw.xydesk_vo)?.apply { isLooping = false }
+    }.getOrNull()
+
+    private var started = false
+
+    fun start() {
+        val p = player ?: return
+        if (started || p.isPlaying) return
+        started = true
+        runCatching { p.setVolume(1f, 1f); p.start() }
+    }
+
+    fun release() {
+        runCatching { if (player?.isPlaying == true) player.stop() }
+        runCatching { player?.release() }
+    }
 }
 
 /** Splash sederhana: logo + wordmark berdampingan, masuk halus, keluar halus. Ketuk untuk lewati. */
@@ -61,17 +75,18 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
     val exit = remember { Animatable(0f) }
     val voice = remember { if (playVoice) IntroVoice(ctx) else null }
     DisposableEffect(Unit) { onDispose { voice?.release() } }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(playVoice) {
         delay(60)
-        voice?.start()
+        if (playVoice) voice?.start()
         launch { enter.animateTo(1f, tween(if (short) 520 else 760, easing = ease)) }
         delay(if (short) 900L else 2100L)
+        voice?.release()
         exit.animateTo(1f, tween(320, easing = ease))
         onDone()
     }
     Box(
         Modifier.fillMaxSize().background(Xy.bg).graphicsLayer { alpha = 1f - exit.value }
-            .clickable(remember { MutableInteractionSource() }, null) { onDone() },
+            .clickable(remember { MutableInteractionSource() }, null) { voice?.release(); onDone() },
         contentAlignment = Alignment.Center,
     ) {
         val float = rememberInfiniteTransition(label = "orb")

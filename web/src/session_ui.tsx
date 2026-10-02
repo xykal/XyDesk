@@ -512,8 +512,10 @@ function StatRow({ label, value }: { label: string; value: string }) {
 }
 
 export function transportLabel(stats:Pick<SessionStats,'transportPath'|'transportProtocol'>):string {
- const protocol=stats.transportProtocol?` · ${stats.transportProtocol}`:'';
- return stats.transportPath==='turn-relay'?`TURN relay${protocol}`:stats.transportPath==='direct-p2p'?`Langsung (P2P)${protocol}`:'Jalur belum terukur';
+ const proto=(stats.transportProtocol||'udp').toUpperCase();
+ if(stats.transportPath==='turn-relay') return `${proto} RELAY`;
+ if(stats.transportPath==='direct-p2p') return `${proto} P2P`;
+ return 'Jalur…';
 }
 const ms=(v:number|undefined)=>v===undefined?'—':`${Math.round(v)} ms`;
 
