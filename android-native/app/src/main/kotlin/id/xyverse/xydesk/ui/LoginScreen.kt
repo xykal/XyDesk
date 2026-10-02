@@ -73,7 +73,7 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).safeDrawingPadding().imePadding().padding(Xy.pad)) {
         Spacer(Modifier.height(300.dp))
         XyText("XyDesk", Xy.display)
-        XyText("Kendalikan PC dari mana saja — latensi rendah, jalur langsung.", Xy.caption)
+        XyText("Remote play, latensi rendah.", Xy.caption)
         Spacer(Modifier.height(20.dp))
         XyCard {
             XyField(email, { email = it.trim() }, "Email", keyboard = KeyboardType.Email, hint = "nama@domain.com")

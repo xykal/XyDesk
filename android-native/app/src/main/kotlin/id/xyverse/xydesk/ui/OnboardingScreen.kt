@@ -1,12 +1,6 @@
 package id.xyverse.xydesk.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -32,8 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -76,7 +67,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
         HorizontalPager(state, Modifier.weight(1f)) { i ->
             val p = pages[i]
             Column(Modifier.fillMaxSize().padding(Xy.pad), verticalArrangement = Arrangement.Center) {
-                Illustration(i, Modifier.fillMaxWidth().height(220.dp))
+                Illustration(i, Modifier.fillMaxWidth().height(200.dp))
                 Spacer(Modifier.height(28.dp))
                 XyText(p.kicker, Xy.label.copy(color = Xy.accent))
                 Spacer(Modifier.height(8.dp))
@@ -116,17 +107,11 @@ fun OnboardingScreen(onDone: () -> Unit) {
 
 private fun Modifier.clickableText(onClick: () -> Unit): Modifier = clickable(onClick = onClick)
 
-/** Ilustrasi generate + elemen kaca yang melayang. */
+/** Mascot 3D (sudah rembg) di tengah, tanpa hiasan. */
 @Composable
 private fun Illustration(page: Int, modifier: Modifier) {
     val art = listOf(R.drawable.onboard_welcome, R.drawable.onboard_host, R.drawable.onboard_connect, R.drawable.onboard_gestures)
-    val t = rememberInfiniteTransition(label = "float")
-    val y by t.animateFloat(0f, 1f, infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Reverse), label = "y")
-    val y2 by t.animateFloat(1f, 0f, infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Reverse), label = "y2")
-    Box(modifier.clip(RoundedCornerShape(24.dp)).background(Xy.overlay)) {
-        Image(painterResource(art.getOrElse(page) { art[0] }), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        Box(Modifier.size(18.dp).align(Alignment.TopEnd).padding(18.dp).graphicsLayer { translationY = (y - 0.5f) * 16f }.clip(CircleShape).background(Xy.accent.copy(alpha = 0.55f)))
-        Box(Modifier.size(10.dp).align(Alignment.BottomStart).padding(22.dp).graphicsLayer { translationY = (y2 - 0.5f) * 12f }.clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
-        Box(Modifier.size(14.dp).align(Alignment.CenterStart).padding(start = 28.dp).graphicsLayer { translationY = (0.5f - y) * 10f }.clip(RoundedCornerShape(4.dp)).background(Xy.accent.copy(alpha = 0.35f)))
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Image(painterResource(art.getOrElse(page) { art[0] }), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
     }
 }

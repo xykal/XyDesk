@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
@@ -34,7 +35,7 @@ fun XyEmpty(icon: Icon, title: String, caption: String, action: String? = null, 
         Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusL)).background(Xy.overlay).padding(horizontal = 24.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (image != null) Image(painterResource(image), null, Modifier.size(150.dp).clip(RoundedCornerShape(Xy.radiusL)))
+        if (image != null) Image(painterResource(image), null, Modifier.height(140.dp).fillMaxWidth(), contentScale = ContentScale.Fit)
         else Box(Modifier.size(72.dp).background(Color.White, CircleShape).border(1.dp, Xy.line, CircleShape), contentAlignment = Alignment.Center) {
             XyIcon(icon, tint = Xy.accent, size = 30.dp)
         }
