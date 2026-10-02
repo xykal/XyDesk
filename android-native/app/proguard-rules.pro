@@ -2,4 +2,5 @@
 -keep class id.xyverse.xydesk.core.StreamXy { *; }
 -keep class id.xyverse.xydesk.core.StreamXy$* { *; }
 -keep class id.xyverse.xydesk.core.XyHid { *; }
+-keep class id.xyverse.xydesk.core.XyGamepad { *; }
 -dontwarn org.webrtc.**

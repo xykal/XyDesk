@@ -18,6 +18,7 @@ enum Tag : uint8_t {
   kBitrate = 0x0B,
   kResolution = 0x0C,
   kFps = 0x0F,
+  kGamepad = 0x0E,
 };
 
 inline void put16(uint8_t* p, uint16_t v) {
@@ -113,6 +114,19 @@ size_t sx_input_fps(uint8_t* out, uint8_t fps) {
   out[0] = kFps;
   out[1] = fps;
   return 2;
+}
+
+size_t sx_input_gamepad(uint8_t* out, uint16_t buttons, uint8_t lt, uint8_t rt, int16_t lx,
+                        int16_t ly, int16_t rx, int16_t ry) {
+  out[0] = kGamepad;
+  put16(out + 1, buttons);
+  out[3] = lt;
+  out[4] = rt;
+  put16(out + 5, static_cast<uint16_t>(lx));
+  put16(out + 7, static_cast<uint16_t>(ly));
+  put16(out + 9, static_cast<uint16_t>(rx));
+  put16(out + 11, static_cast<uint16_t>(ry));
+  return 13;
 }
 
 const char* sx_clipboard_decode(const uint8_t* packet, size_t packet_len, size_t* out_len) {

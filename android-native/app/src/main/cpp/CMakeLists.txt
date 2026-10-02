@@ -20,3 +20,6 @@ target_link_libraries(streamxy log)
 add_library(xyhid SHARED xyhid/xyhid.cpp)
 target_compile_options(xyhid PRIVATE -O2 -fno-exceptions -fno-rtti -Wall -Wextra)
 target_link_libraries(xyhid log)
+
+add_library(xygamepad SHARED xygamepad/xygamepad.cpp)
+target_compile_options(xygamepad PRIVATE -O2 -fno-exceptions -fno-rtti -Wall -Wextra)

@@ -23,6 +23,7 @@ object StreamXy {
     external fun display(index: Int): ByteArray
     external fun resolution(mode: Int): ByteArray
     external fun fps(targetFps: Int): ByteArray
+    external fun gamepad(buttons: Int, lt: Int, rt: Int, lx: Int, ly: Int, rx: Int, ry: Int): ByteArray
 
     external fun statsNew(capacity: Int): Long
     external fun statsFree(handle: Long)

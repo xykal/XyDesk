@@ -23,6 +23,8 @@ size_t sx_input_quality(uint8_t* out, uint8_t preset);
 size_t sx_input_bitrate(uint8_t* out, uint16_t mbps);
 size_t sx_input_resolution(uint8_t* out, uint8_t mode);
 size_t sx_input_fps(uint8_t* out, uint8_t fps);
+size_t sx_input_gamepad(uint8_t* out, uint16_t buttons, uint8_t lt, uint8_t rt, int16_t lx,
+                        int16_t ly, int16_t rx, int16_t ry);
 
 // Dekode pesan 0x08 CLIPBOARD_SET yang masuk dari host; mengembalikan
 // pointer ke payload UTF-8 di dalam `packet` (dan menulis panjangnya ke `out_len`),

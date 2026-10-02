@@ -98,6 +98,7 @@ pub mod nvenc_types;
 pub mod desktop_geometry;
 
 pub mod wallpaper;
+pub mod xinput;
 
 pub mod video_policy;
 
