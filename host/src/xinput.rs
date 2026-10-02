@@ -49,7 +49,9 @@ impl Pad {
             } else if physical {
                 eprintln!("[xydesk-host] XInput fisik ada — virtual dilewati");
             } else {
-                eprintln!("[xydesk-host] ViGEmClient.dll tidak ada — pasang ViGEmBus untuk pad virtual");
+                eprintln!(
+                    "[xydesk-host] ViGEmClient.dll tidak ada — pasang ViGEmBus untuk pad virtual"
+                );
             }
             Self { virt, physical }
         }
@@ -143,7 +145,8 @@ impl Vigem {
                 std::mem::transmute(gpa(windows::core::s!("vigem_target_x360_alloc"))?);
             let add: unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void) -> u32 =
                 std::mem::transmute(gpa(windows::core::s!("vigem_target_add"))?);
-            let update: UpdateFn = std::mem::transmute(gpa(windows::core::s!("vigem_target_x360_update"))?);
+            let update: UpdateFn =
+                std::mem::transmute(gpa(windows::core::s!("vigem_target_x360_update"))?);
             let client = alloc();
             if client.is_null() {
                 return None;
