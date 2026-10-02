@@ -4,7 +4,7 @@ name: Build
 #
 # Sebelum 3 Sep 2026: satu job `check` raksasa + build penuh dijalankan untuk
 # SEMUA push/PR, sekecil apa pun perubahannya — agent Docs yang menyentuh satu
-# file markdown ikut membayar analisis Flutter + Rust + 4 build. Itu lambat dan
+# file markdown ikut membayar analisis Rust + 4 build. Itu lambat dan
 # bikin run agent lain saling bertabrakan.
 #
 # Sekarang: job `changes` (murah, selalu jalan) mendeteksi area yang tersentuh
@@ -145,7 +145,7 @@ jobs:
               - 'web/package.json'
               - 'host/Cargo.toml'
 
-  # ── 1a. Gerbang kompilasi & mutu client Flutter ──
+  # ── 1a. Gerbang worker berita ──
   check-news:
     name: Uji Worker Berita
     needs: changes
@@ -202,7 +202,7 @@ jobs:
   # ── 1d. Gerbang lintas-dokumen (versi, CI, status proyek) ──
   # Menjadi status check bagi perubahan dokumen/koordinasi: push Docs &
   # Audit, AGENT.md, CHANGELOG, atau papan koordinasi tetap punya check
-  # hijau tanpa membayar build Flutter/Rust.
+  # hijau tanpa membayar build native/Rust.
   check-meta:
     name: Cek Lintas-Dokumen
     needs: changes

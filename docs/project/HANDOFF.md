@@ -7,6 +7,16 @@ Dibersihkan operator 2026-10-01: item Flutter/`desktop/` Electron yang sudah
 diganti klien Kotlin + panel Win32 dicoret. Verifikasi perangkat nyata tetap
 item terbuka (tidak bisa ditutup dari CI).
 
+**Flutter (2026-10-02):** tidak ada `pubspec.yaml` / `*.dart`. Sisa `android/`
+(GeneratedPluginRegistrant + local.properties) dihapus. CI tidak lagi
+menyebut `FLUTTER_VERSION`. Changelog/docs lama boleh tetap menyebut Flutter
+sebagai sejarah. **Jangan rilis publik** sampai host/web/APK lolos uji
+lapangan.
+
+**Status stack (bukan lulus QA):** host Rust 6.11.1 ada; web Vite live HTTP
+200 di app.xydesk.my.id (bukan uji sesi); APK hanya `android-native/` (CI
+Gradle, belum bukti HP).
+
 ## Untuk: Client Android native
 
 - [ ] **Screenshot sesi Android untuk berita** — rail + panel pengaturan, dari

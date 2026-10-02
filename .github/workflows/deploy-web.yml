@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-flutter-web-production
+  group: deploy-web-production
   # Deploy berjalan SERIAL, tidak boleh dibatalkan (cancel-in-progress:
   # false): membatalkan run yang sedang upload = state parsial di worker,
   # dan run basi yang selamat bisa menimpa bundle baru dengan yang lama.
