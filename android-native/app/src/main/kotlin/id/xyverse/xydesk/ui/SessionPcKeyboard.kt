@@ -36,8 +36,8 @@ fun SessionPcKeyboard(onKey: (vk: Int) -> Unit, onIme: () -> Unit, onClose: () -
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .background(Color(0xF2FFFFFF)).border(1.dp, Xy.line, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(KbLayer.ABC to "ABC", KbLayer.NUM to "123", KbLayer.FN to "F1–F12", KbLayer.PAD to "Numpad", KbLayer.FULL to "Penuh").forEach { (l, t) ->
@@ -99,7 +99,7 @@ private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
         keys.forEach { (label, vk) ->
             val wide = label in setOf("Spasi", "Enter", "Shift", "Caps", "0")
             Box(
-                Modifier.weight(if (wide) 1.6f else 1f).height(36.dp).clip(RoundedCornerShape(8.dp))
+                Modifier.weight(if (wide) 1.6f else 1f).height(42.dp).clip(RoundedCornerShape(10.dp))
                     .background(Xy.overlay).clickable(remember { MutableInteractionSource() }, null) { onKey(vk) },
                 contentAlignment = Alignment.Center,
             ) { XyText(label, Xy.label.copy(fontSize = 11.sp, color = Xy.textHi)) }
@@ -110,7 +110,7 @@ private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
 @Composable
 private fun Chip(text: String, on: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.height(28.dp).widthIn(min = 44.dp).clip(RoundedCornerShape(Xy.pill))
+        Modifier.height(36.dp).widthIn(min = 48.dp).clip(RoundedCornerShape(Xy.pill))
             .background(if (on) Xy.accent else Xy.overlay)
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
             .padding(horizontal = 10.dp),

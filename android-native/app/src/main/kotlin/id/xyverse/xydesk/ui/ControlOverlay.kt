@@ -4,8 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -224,10 +229,10 @@ fun ControlOverlay(
         }
         if (edit) {
             Column(
-                Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(8.dp)
-                    .clip(RoundedCornerShape(12.dp)).background(Color(0xF2FFFFFF)).padding(8.dp),
+                Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp)
+                    .clip(RoundedCornerShape(14.dp)).background(Color(0xF7FFFFFF)).padding(10.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Chip("Tambah", library) { library = !library; selected = null }
                     Chip("Simpan") { onSave(); onEdit(false) }
                     Chip("Selesai") { onEdit(false) }
@@ -280,7 +285,7 @@ private fun OverlayButton(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
             .clip(RoundedCornerShape(m.radius.dp))
-            .background(if (selected) Xy.accent else Color(0xCCFFFFFF))
+            .background(if (selected) Xy.accent else Color(0xE6FFFFFF))
             .border(1.dp, if (selected) Xy.accent else Xy.line, RoundedCornerShape(m.radius.dp))
             .pointerInput(edit, m.id) {
                 if (edit) detectDragGestures(
@@ -304,7 +309,7 @@ private fun OverlayButton(
             },
         contentAlignment = Alignment.Center,
     ) {
-        XyText(m.label(), Xy.label.copy(fontSize = 11.sp, color = if (selected) Color.White else Xy.textHi))
+        XyText(m.label(), Xy.body.copy(fontSize = 12.sp, color = if (selected) Color.White else Xy.textHi))
     }
 }
 
@@ -377,18 +382,18 @@ private fun StickPad(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LibraryPanel(count: Int, onPreset: (List<OverlayItem>) -> Unit, add: (OverlayItem) -> Unit) {
-    Column(Modifier.height(180.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.height(240.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         XyText("Preset & kontrol ($count/24)", Xy.caption)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Chip("Preset mouse") { onPreset(OverlayLayouts.mouse()) }
             Chip("Preset FPS") { onPreset(OverlayLayouts.fps()) }
-        }
-        wrapChips("Stick WASD") {
-            add(OverlayItem("stk${System.nanoTime()}", OverlayKind.STICK_KEYS, keys = listOf(0x57, 0x53, 0x41, 0x44), x = 20f, y = 70f, size = 128f, radius = 64f))
-        }
-        Chip("Stick panah") {
+            Chip("Stick WASD") {
+                add(OverlayItem("stk${System.nanoTime()}", OverlayKind.STICK_KEYS, keys = listOf(0x57, 0x53, 0x41, 0x44), x = 20f, y = 70f, size = 128f, radius = 64f))
+            }
+            Chip("Stick panah") {
             add(OverlayItem("stk${System.nanoTime()}", OverlayKind.STICK_KEYS, keys = listOf(0x26, 0x28, 0x25, 0x27), x = 20f, y = 70f, size = 128f, radius = 64f, display = "Panah"))
         }
         Chip("Stick mouse") {
@@ -412,10 +417,11 @@ private fun LibraryPanel(count: Int, onPreset: (List<OverlayItem>) -> Unit, add:
         Chip("Ctrl+Z") { add(OverlayItem("c${System.nanoTime()}", OverlayKind.CHORD, keys = listOf(0xA2, 0x5A), x = 50f, y = 50f, size = 56f, radius = 28f, display = "Undo")) }
         Chip("Alt+Tab") { add(OverlayItem("c${System.nanoTime()}", OverlayKind.CHORD, keys = listOf(0xA4, 0x09), x = 50f, y = 50f, size = 56f, radius = 28f, display = "Alt+Tab")) }
         Chip("Alt+F4") { add(OverlayItem("c${System.nanoTime()}", OverlayKind.CHORD, keys = listOf(0xA4, 0x73), x = 50f, y = 50f, size = 56f, radius = 28f, display = "Alt+F4")) }
-        Chip("↑") { add(item(OverlayKind.KEY, 0x26, "↑")) }
-        Chip("↓") { add(item(OverlayKind.KEY, 0x28, "↓")) }
-        Chip("←") { add(item(OverlayKind.KEY, 0x25, "←")) }
-        Chip("→") { add(item(OverlayKind.KEY, 0x27, "→")) }
+            Chip("↑") { add(item(OverlayKind.KEY, 0x26, "↑")) }
+            Chip("↓") { add(item(OverlayKind.KEY, 0x28, "↓")) }
+            Chip("←") { add(item(OverlayKind.KEY, 0x25, "←")) }
+            Chip("→") { add(item(OverlayKind.KEY, 0x27, "→")) }
+        }
     }
 }
 
@@ -423,15 +429,12 @@ private fun item(kind: OverlayKind, code: Int, display: String = "") =
     OverlayItem("n${System.nanoTime()}", kind, code, x = 50f, y = 55f, size = 56f, radius = 28f, display = display)
 
 @Composable
-private fun wrapChips(label: String, onClick: () -> Unit) { Chip(label, onClick = onClick) }
-
-@Composable
 private fun Chip(text: String, on: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.height(28.dp).widthIn(min = 40.dp).clip(RoundedCornerShape(Xy.pill))
+        Modifier.height(36.dp).widthIn(min = 44.dp).clip(RoundedCornerShape(Xy.pill))
             .background(if (on) Xy.accent else Xy.overlay)
-            .padding(horizontal = 8.dp)
-            .pointerInput(text) { detectTapGestures { onClick() } },
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
+            .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
-    ) { XyText(text, Xy.label.copy(fontSize = 10.sp, color = if (on) Color.White else Xy.textHi)) }
+    ) { XyText(text, Xy.label.copy(fontSize = 12.sp, letterSpacing = 0.sp, color = if (on) Color.White else Xy.textHi)) }
 }
