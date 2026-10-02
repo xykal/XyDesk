@@ -57,6 +57,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private lateinit var metrics: SessionMetrics
     private lateinit var keys: SessionKeyboard
     private lateinit var hid: SessionHid
+    private var hidMonitor: HidMonitor? = null
+    private var hidPresent = HidMonitor.HidPresence()
+    private var hidToastShown = false
     private val store by lazy { Store(applicationContext) }
     private val hostId by lazy { intent.getStringExtra("host").orEmpty() }
     private val reconnect by lazy { ReconnectPolicy().also { p -> repeat(intent.getIntExtra("attempt", 0)) { p.nextDelayMs() } } }
@@ -157,6 +160,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         touch.directTouch = store.directTouch
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
         hid = SessionHid(session::send)
+        hidMonitor = HidMonitor(this) { p -> runOnUiThread { onHid(p) } }
         session.attach(b.video)
         applyDecodeMode(true)
         b.raw.setOnTouchListener { v, e -> touch.onTouch(v, e) }
@@ -268,10 +272,25 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     private fun setPcKeys(on: Boolean) {
-        pcKeysOpen = on
-        b.pcKeys.visibility = if (on && !presenting) View.VISIBLE else View.GONE
-        if (on) b.dock.visibility = View.GONE
-        else if (connected && dockOn && !presenting) b.dock.visibility = View.VISIBLE
+        pcKeysOpen = on && !hidPresent.keyboard
+        b.pcKeys.visibility = if (pcKeysOpen && !presenting) View.VISIBLE else View.GONE
+        applyChrome()
+    }
+
+    private fun onHid(p: HidMonitor.HidPresence) {
+        hidPresent = p
+        if (p.keyboard && pcKeysOpen) setPcKeys(false)
+        applyChrome()
+        if (p.any && connected && !hidToastShown) {
+            hidToastShown = true
+            Toast.makeText(this, "HID ${p.label()} terhubung — overlay disentuh disembunyikan.".tr(store.lang), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    /** Overlay on-screen hanya jika tidak ada keyboard/mouse/gamepad fisik (OTG/BT). */
+    private fun applyChrome() {
+        val show = connected && dockOn && !presenting && !pcKeysOpen && !hidPresent.any
+        b.dock.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun setupToolbar() {
@@ -304,12 +323,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
                         centerCursor = { session.send(StreamXy.moveAbs(0.5f, 0.5f)) },
                         present = { setPresenting(true) },
-                        dockOn = { store.dockOn = it; dockOn = it; b.dock.visibility = if (it && connected) View.VISIBLE else View.GONE },
+                        dockOn = { store.dockOn = it; dockOn = it; applyChrome() },
                         dockSize = { store.dockSize = it; dockSize = it },
                         dockKeys = { store.dockKeys = it; dockKeys = it },
                         overlayEdit = {
                             overlayEdit = !overlayEdit
-                            if (overlayEdit) { dockOn = true; store.dockOn = true; b.dock.visibility = View.VISIBLE }
+                            if (overlayEdit) { dockOn = true; store.dockOn = true; applyChrome() }
                         },
                         disconnect = { outcome = "putus"; finish() },
                     ),
@@ -335,7 +354,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         presenting = on
         b.toolbar.visibility = if (on) View.GONE else View.VISIBLE
         if (on) setPcKeys(false)
-        b.dock.visibility = if (!on && dockOn && connected) View.VISIBLE else View.GONE
+        applyChrome()
         if (on) b.status.visibility = View.GONE
         if (on) Toast.makeText(this, "Mode presentasi. Tekan Kembali untuk menampilkan kontrol lagi.".tr(store.lang), Toast.LENGTH_LONG).show()
     }
@@ -440,7 +459,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (phase == Phase.REJECTED) store.setHostPin(hostId, null)
         connectState = connectState.copy(phase = phase, message = message)
         b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
-        b.dock.visibility = if (connected && dockOn && !presenting) View.VISIBLE else View.GONE
+        applyChrome()
         b.status.visibility = View.GONE
         ui.removeCallbacks(statsTick); ui.removeCallbacks(previewTick)
         if (connected) {
@@ -486,7 +505,18 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        hidMonitor?.start()
+    }
+
+    override fun onPause() {
+        hidMonitor?.stop()
+        super.onPause()
+    }
+
     override fun onDestroy() {
+        hidMonitor?.stop()
         clipboard?.removePrimaryClipChangedListener(clipListener)
         if (outcome == "berjalan") outcome = "ok"
         record()

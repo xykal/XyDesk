@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **HID OTG/BT:** keyboard alfabet, mouse, gamepad/joystick terdeteksi; overlay on-screen otomatis hilang (pola remote gaming: kontrol sentuh hanya bila tidak ada perangkat fisik). Rail tetap.
+
 - **APK HID:** keyboard/mouse fisik (hover, klik, scroll) dan gamepad (stick kiri WASD, stick kanan mouse, tombol A/B/X/Y). `libxyhid.so` deadzone stick. `libstreamxy.so` tetap protokol.
 - **Host/installer:** virtual audio yang sudah ada di-skip. NSIS: pilih bahasa, lisensi Inggris + I accept, folder, checkbox Desktop/Start Menu shortcut.
 
