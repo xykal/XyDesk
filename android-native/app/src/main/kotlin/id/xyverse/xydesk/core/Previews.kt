@@ -25,6 +25,13 @@ object Previews {
 
     fun file(context: Context, host: String): File = File(dir(context), Presence.hostKey(host) + ".jpg")
 
+    fun saveJpeg(context: Context, host: String, bytes: ByteArray) {
+        if (!XyPreview.jpegOk(bytes)) return
+        val dest = file(context, host)
+        File(dir(context), "w.jpg").apply { writeBytes(bytes); renameTo(dest) }
+        memory.remove(Presence.hostKey(host))
+    }
+
     fun save(context: Context, host: String, bitmap: Bitmap) {
         val tmp = File(dir(context), "tmp.jpg")
         tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }

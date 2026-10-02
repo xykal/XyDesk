@@ -442,6 +442,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         return super.dispatchTouchEvent(event)
     }
 
+    override fun onHostWallpaper(jpeg: ByteArray) {
+        Thread { Previews.saveJpeg(applicationContext, hostId, jpeg) }.start()
+    }
+
     override fun onMicInput(available: Boolean, reason: String) { micInput = available; micReason = reason }
 
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
