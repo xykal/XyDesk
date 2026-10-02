@@ -1,13 +1,10 @@
 package id.xyverse.xydesk.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -116,13 +113,13 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
         }
         Spacer(Modifier.height(16.dp))
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            XyText("Dengan masuk, kamu menyetujui dokumen berikut:", Xy.caption)
-            Spacer(Modifier.height(8.dp))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LegalPill("Syarat & Ketentuan") { Legal.open = Legal.TERMS }
-                LegalPill("Kebijakan Privasi") { Legal.open = Legal.PRIVACY }
-                LegalPill("Kebijakan Cookie") { Legal.open = Legal.COOKIE }
-                LegalPill("Lisensi pihak ketiga") { Legal.open = Legal.LICENSES }
+            XyText("Dengan masuk, kamu menyetujui", Xy.caption)
+            Spacer(Modifier.height(6.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                LegalLink("Syarat & Ketentuan") { Legal.open = Legal.TERMS }
+                LegalLink("Privasi") { Legal.open = Legal.PRIVACY }
+                LegalLink("Cookie") { Legal.open = Legal.COOKIE }
+                LegalLink("Lisensi") { Legal.open = Legal.LICENSES }
             }
             Spacer(Modifier.height(20.dp))
             XyText("XyVerse Technology Global", Xy.label)
@@ -133,9 +130,6 @@ fun LoginScreen(onGoogle: suspend () -> String?, onOpenUrl: (String) -> Unit = {
 }
 
 @Composable
-private fun LegalPill(text: String, onClick: () -> Unit) {
-    Box(
-        Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay).border(1.dp, Xy.line, RoundedCornerShape(Xy.pill))
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 12.dp, vertical = 7.dp),
-    ) { XyText(text, Xy.caption.copy(color = Xy.accent)) }
+private fun LegalLink(text: String, onClick: () -> Unit) {
+    XyText(text, Xy.caption.copy(color = Xy.accent), Modifier.clickable(remember { MutableInteractionSource() }, null, onClick = onClick))
 }
