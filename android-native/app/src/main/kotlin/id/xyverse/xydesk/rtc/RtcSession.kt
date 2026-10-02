@@ -45,6 +45,7 @@ interface RtcListener {
     fun onRemoteClipboard(text: String) {}
     fun onHostSpecs(specs: HostSpecs) {}
     fun onMicInput(available: Boolean, reason: String) {}
+    fun onHostWallpaper(jpeg: ByteArray) {}
 }
 
 /**
@@ -73,6 +74,7 @@ class RtcSession(
     private var factory: PeerConnectionFactory
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
+    private val wallpaper = WallpaperTransfer().also { it.onJpeg = { jpeg -> listener.onHostWallpaper(jpeg) } }
     private var remoteAudioTrack: AudioTrack? = null
     private var micTrack: AudioTrack? = null
     private var micSrc: org.webrtc.AudioSource? = null
@@ -225,12 +227,13 @@ class RtcSession(
         val mic = factory.createAudioTrack("xy-mic", micSource).apply { setEnabled(false) }
         micTrack = mic; micSrc = micSource
         conn.addTransceiver(mic, RtpTransceiver.RtpTransceiverInit(RtpTransceiver.RtpTransceiverDirection.SEND_RECV))
-        val ch = conn.createDataChannel("input", DataChannel.Init().apply { ordered = false; maxRetransmits = 0 })
+        val ch = conn.createDataChannel("input", DataChannel.Init())
         ch?.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
             override fun onStateChange() {
                 if (ch.state() == DataChannel.State.OPEN) {
                     if (clipboardSync) send(StreamXy.clipboardReq())
+                    send(wallpaper.request())
                 }
             }
             override fun onMessage(buffer: DataChannel.Buffer) {
@@ -254,6 +257,11 @@ class RtcSession(
     /** Pesan JSON dari host di kanal input; saat ini hanya `meta.hardware` yang dipakai. */
     private fun onText(text: String) {
         if (!text.startsWith("{")) return
+        val type = runCatching { JSONObject(text) }.getOrNull()?.optString("type").orEmpty()
+        if (type == "wallpaper" || type == "wallpaper-error") {
+            wallpaper.receiveJson(text)
+            return
+        }
         val meta = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" } ?: return
         meta.optJSONObject("micInput")?.let { listener.onMicInput(it.optBoolean("available", true), it.optString("reason", "")) }
         if (specsSent) return
