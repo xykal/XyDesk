@@ -1,6 +1,13 @@
 package id.xyverse.xydesk.ui
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.R
 import id.xyverse.xydesk.core.Lang
 import id.xyverse.xydesk.core.LocalLang
 import id.xyverse.xydesk.ui.kit.Xy
@@ -65,7 +76,7 @@ fun OnboardingScreen(onDone: () -> Unit) {
         HorizontalPager(state, Modifier.weight(1f)) { i ->
             val p = pages[i]
             Column(Modifier.fillMaxSize().padding(Xy.pad), verticalArrangement = Arrangement.Center) {
-                Illustration(i, Modifier.fillMaxWidth().height(180.dp))
+                Illustration(i, Modifier.fillMaxWidth().height(220.dp))
                 Spacer(Modifier.height(28.dp))
                 XyText(p.kicker, Xy.label.copy(color = Xy.accent))
                 Spacer(Modifier.height(8.dp))
@@ -105,31 +116,17 @@ fun OnboardingScreen(onDone: () -> Unit) {
 
 private fun Modifier.clickableText(onClick: () -> Unit): Modifier = clickable(onClick = onClick)
 
-/** Ilustrasi vektor sederhana per halaman: layar PC, HP, dan jalur di antaranya. */
+/** Ilustrasi generate + elemen kaca yang melayang. */
 @Composable
 private fun Illustration(page: Int, modifier: Modifier) {
-    androidx.compose.foundation.Canvas(modifier) {
-        val w = size.width
-        val h = size.height
-        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx())
-        val pc = androidx.compose.ui.geometry.Rect(w * 0.08f, h * 0.12f, w * 0.58f, h * 0.68f)
-        val phone = androidx.compose.ui.geometry.Rect(w * 0.70f, h * 0.22f, w * 0.92f, h * 0.88f)
-        drawRoundRect(Xy.accent.copy(alpha = 0.10f), androidx.compose.ui.geometry.Offset(0f, h * 0.05f), androidx.compose.ui.geometry.Size(w, h * 0.9f), androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()))
-        drawRoundRect(Xy.textHi, pc.topLeft, pc.size, androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()), style = stroke)
-        drawLine(Xy.textHi, androidx.compose.ui.geometry.Offset(pc.center.x - w * 0.08f, h * 0.8f), androidx.compose.ui.geometry.Offset(pc.center.x + w * 0.08f, h * 0.8f), stroke.width)
-        drawLine(Xy.textHi, androidx.compose.ui.geometry.Offset(pc.center.x, pc.bottom), androidx.compose.ui.geometry.Offset(pc.center.x, h * 0.8f), stroke.width)
-        drawRoundRect(Xy.textHi, phone.topLeft, phone.size, androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()), style = stroke)
-        if (page >= 1) drawRoundRect(Xy.accent, androidx.compose.ui.geometry.Offset(pc.left + 12.dp.toPx(), pc.top + 12.dp.toPx()), androidx.compose.ui.geometry.Size(pc.width - 24.dp.toPx(), pc.height - 24.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
-        if (page >= 2) {
-            drawRoundRect(Xy.accent, androidx.compose.ui.geometry.Offset(phone.left + 8.dp.toPx(), phone.top + 10.dp.toPx()), androidx.compose.ui.geometry.Size(phone.width - 16.dp.toPx(), phone.height - 20.dp.toPx()), androidx.compose.ui.geometry.CornerRadius(6.dp.toPx()))
-            val path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(pc.right, pc.center.y); cubicTo(w * 0.64f, pc.center.y, w * 0.64f, phone.center.y, phone.left, phone.center.y)
-            }
-            drawPath(path, Xy.accent, style = androidx.compose.ui.graphics.drawscope.Stroke(3.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 10f))))
-        }
-        if (page == 3) {
-            drawCircle(Color.White, 10.dp.toPx(), phone.center)
-            drawCircle(Color.White.copy(alpha = 0.4f), 18.dp.toPx(), phone.center, style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
-        }
+    val art = listOf(R.drawable.onboard_welcome, R.drawable.onboard_host, R.drawable.onboard_connect, R.drawable.onboard_gestures)
+    val t = rememberInfiniteTransition(label = "float")
+    val y by t.animateFloat(0f, 1f, infiniteRepeatable(tween(4200, easing = LinearEasing), RepeatMode.Reverse), label = "y")
+    val y2 by t.animateFloat(1f, 0f, infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Reverse), label = "y2")
+    Box(modifier.clip(RoundedCornerShape(24.dp)).background(Xy.overlay)) {
+        Image(painterResource(art.getOrElse(page) { art[0] }), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        Box(Modifier.size(18.dp).align(Alignment.TopEnd).padding(18.dp).graphicsLayer { translationY = (y - 0.5f) * 16f }.clip(CircleShape).background(Xy.accent.copy(alpha = 0.55f)))
+        Box(Modifier.size(10.dp).align(Alignment.BottomStart).padding(22.dp).graphicsLayer { translationY = (y2 - 0.5f) * 12f }.clip(CircleShape).background(Color.White.copy(alpha = 0.7f)))
+        Box(Modifier.size(14.dp).align(Alignment.CenterStart).padding(start = 28.dp).graphicsLayer { translationY = (0.5f - y) * 10f }.clip(RoundedCornerShape(4.dp)).background(Xy.accent.copy(alpha = 0.35f)))
     }
 }

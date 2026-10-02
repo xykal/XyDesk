@@ -55,10 +55,10 @@ VIAddVersionKey /LANG=1033 "CompanyName" "${COMPANY}"
 !define MUI_WELCOMEPAGE_TITLE "Welcome to XyDesk"
 !define MUI_WELCOMEPAGE_TEXT "XyDesk gives you a quiet native Windows control panel, a Rust streaming engine, and the dedicated XyDesk Virtual Display Adapter & Virtual Audio drivers.\r\n\r\nThe installer keeps the engine, native UI, virtual drivers, third-party notices, and English license text together."
 !define MUI_FINISHPAGE_TITLE "XyDesk is ready"
-!define MUI_FINISHPAGE_TEXT "XyDesk Control Panel and XyDesk Virtual Display Adapter are installed and verified. Run it now, or start it later from the Desktop or Start Menu shortcut.$\r$\n$\r$\nTip: run XyDesk inside the Windows session you actually use (your RDP user), so screen capture sees that session."
+!define MUI_FINISHPAGE_TEXT "XyDesk and XyDesk Virtual Display Adapter are installed and verified. Run it now, or start it later from the Desktop or Start Menu shortcut.$\r$\n$\r$\nTip: run XyDesk inside the Windows session you actually use (your RDP user), so screen capture sees that session."
 ; Panel langsung terbuka setelah install supaya hasil pemasangan terlihat.
 !define MUI_FINISHPAGE_RUN "$INSTDIR\XyDesk.exe"
-!define MUI_FINISHPAGE_RUN_TEXT "Run XyDesk Control Panel now"
+!define MUI_FINISHPAGE_RUN_TEXT "Run XyDesk now"
 !define MUI_FINISHPAGE_RUN_CHECKED
 !define MUI_LICENSEPAGE_CHECKBOX
 !define MUI_LICENSEPAGE_CHECKBOX_TEXT "I accept the terms of the License Agreement"
@@ -166,14 +166,14 @@ SectionEnd
 
 Section "Create Desktop shortcut" SecDesk
   SetShellVarContext all
-  CreateShortCut "$DESKTOP\XyDesk Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
+  CreateShortCut "$DESKTOP\XyDesk.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
   SetShellVarContext current
 SectionEnd
 
 Section "Create Start Menu shortcuts" SecStart
   SetShellVarContext all
   CreateDirectory "$SMPROGRAMS\${PRODUCT}"
-  CreateShortCut "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
+  CreateShortCut "$SMPROGRAMS\${PRODUCT}\XyDesk.lnk" "$INSTDIR\XyDesk.exe" "" "$INSTDIR\xydesk.ico"
   CreateShortCut "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk" "$INSTDIR\LICENSE-XyDesk.txt"
   CreateShortCut "$SMPROGRAMS\${PRODUCT}\Uninstall.lnk" "$INSTDIR\Uninstall-XyDesk.exe"
   SetShellVarContext current
@@ -192,6 +192,8 @@ Section "Uninstall"
   ; The installer leaves personal diagnostics under %LOCALAPPDATA%\XyDesk.
   Delete "$DESKTOP\XyDesk Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk"
+  Delete "$DESKTOP\XyDesk.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\XyDesk.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Display Driver.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk"
@@ -200,6 +202,8 @@ Section "Uninstall"
   SetShellVarContext current
   Delete "$DESKTOP\XyDesk Control Panel.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Control Panel.lnk"
+  Delete "$DESKTOP\XyDesk.lnk"
+  Delete "$SMPROGRAMS\${PRODUCT}\XyDesk.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\License and Notices.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Display Driver.lnk"
   Delete "$SMPROGRAMS\${PRODUCT}\Install Virtual Audio Driver.lnk"

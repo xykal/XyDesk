@@ -121,6 +121,27 @@ fun XyCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 }
 
 @Composable
+fun XyCheck(text: String, caption: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusS)).clickable(remember { MutableInteractionSource() }, null) { onChange(!checked) }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(if (checked) Xy.accent else Xy.overlay)
+                .border(1.dp, if (checked) Xy.accent else Xy.line, RoundedCornerShape(6.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (checked) XyText("✓", Xy.label.copy(color = Color.White, fontSize = 12.sp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            XyText(text, Xy.body)
+            XyText(caption, Xy.caption)
+        }
+    }
+}
+
+@Composable
 fun XyToggle(text: String, caption: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     val knob by animateFloatAsState(if (checked) 1f else 0f, label = "knob")
     Row(

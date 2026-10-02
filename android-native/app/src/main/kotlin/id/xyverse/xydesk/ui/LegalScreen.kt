@@ -40,12 +40,13 @@ import id.xyverse.xydesk.ui.kit.XyText
 object Legal {
     const val TERMS = "syarat"
     const val PRIVACY = "privasi"
+    const val COOKIE = "cookie"
     const val LICENSES = "lisensi"
     const val CHANGELOG = "rilis"
     var open by mutableStateOf<String?>(null)
 
     fun title(kind: String) = when (kind) {
-        TERMS -> "Syarat & Ketentuan"; PRIVACY -> "Kebijakan Privasi"; LICENSES -> "Lisensi pihak ketiga"; else -> "Catatan rilis"
+        TERMS -> "Syarat & Ketentuan"; PRIVACY -> "Kebijakan Privasi"; COOKIE -> "Kebijakan Cookie"; LICENSES -> "Lisensi pihak ketiga"; else -> "Catatan rilis"
     }
 
     fun asset(kind: String) = when (kind) { LICENSES -> "attribution.md"; CHANGELOG -> "changelog.md"; else -> "legal.md" }
@@ -53,7 +54,11 @@ object Legal {
     fun section(markdown: String, kind: String): String {
         if (kind == LICENSES) return markdown.lines().filterNot { it.startsWith("|---") }.joinToString("\n") { l -> if (l.startsWith("|")) "- " + l.trim('|').split("|").joinToString(" — ") { it.trim() } else l }
         if (kind == CHANGELOG) return markdown.lines().take(400).joinToString("\n")
-        val head = if (kind == TERMS) "## 3." else "## 2."
+        val head = when (kind) {
+            TERMS -> "## 3."
+            COOKIE -> "## 2."
+            else -> "## 2."
+        }
         val start = markdown.indexOf(head).takeIf { it >= 0 } ?: return markdown
         val body = markdown.substring(markdown.indexOf('\n', start) + 1)
         val end = body.indexOf("\n## ").takeIf { it >= 0 } ?: body.length
@@ -81,7 +86,7 @@ fun LegalOverlay() {
             Spacer(Modifier.width(12.dp))
             XyText(Legal.title(kind), Xy.display)
         }
-        XyText(if (kind == Legal.TERMS || kind == Legal.PRIVACY) "DRAFT · XyVerse Technology Global" else "XyVerse Technology Global", Xy.label)
+        XyText(if (kind == Legal.TERMS || kind == Legal.PRIVACY || kind == Legal.COOKIE) "XyVerse Technology Global" else "XyVerse Technology Global", Xy.label)
         Spacer(Modifier.height(20.dp))
         XyMarkdown(text)
         Spacer(Modifier.height(48.dp))

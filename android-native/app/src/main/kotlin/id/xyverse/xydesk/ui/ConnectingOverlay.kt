@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import id.xyverse.xydesk.core.LocalLang
+import id.xyverse.xydesk.core.tr
 import id.xyverse.xydesk.rtc.Phase
 import id.xyverse.xydesk.ui.kit.MorphLoader
 import id.xyverse.xydesk.ui.kit.Xy
@@ -35,17 +37,18 @@ private val failed = setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase
 
 @Composable
 fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Unit) {
+    val lang = LocalLang.current
     val isError = state.phase in failed && !state.reconnecting
     Box(Modifier.fillMaxSize().background(Xy.bg).safeDrawingPadding(), contentAlignment = Alignment.Center) {
         AnimatedContent(isError, transitionSpec = { fadeIn(tween(260)) togetherWith fadeOut(tween(160)) }, label = "conn") { err ->
             if (err) {
                 Box(Modifier.padding(Xy.pad).widthIn(max = 420.dp)) {
                     XyError(
-                        title = errorTitle(state.phase),
-                        reason = state.message?.takeIf { it.isNotBlank() } ?: errorReason(state.phase),
-                        retry = if (state.phase == Phase.REJECTED) null else "Coba lagi",
+                        title = errorTitle(state.phase).tr(lang),
+                        reason = (state.message?.takeIf { it.isNotBlank() } ?: errorReason(state.phase)).tr(lang),
+                        retry = if (state.phase == Phase.REJECTED) null else "Coba lagi".tr(lang),
                         onRetry = onRetry,
-                        back = "Kembali",
+                        back = "Kembali".tr(lang),
                         onBack = onBack,
                     )
                 }
@@ -53,12 +56,12 @@ fun ConnectingOverlay(state: ConnectState, onRetry: () -> Unit, onBack: () -> Un
                 Column(Modifier.padding(Xy.pad), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     MorphLoader(size = 132.dp)
                     Spacer(Modifier.height(28.dp))
-                    XyText(if (state.reconnecting) "Menyambung ulang…" else phaseTitle(state.phase), Xy.title.copy(textAlign = TextAlign.Center))
-                    if (state.attempt > 0) XyText("Percobaan ${state.attempt}/3", Xy.caption.copy(textAlign = TextAlign.Center))
+                    XyText(if (state.reconnecting) "Menyambung ulang…".tr(lang) else "Menyambung…".tr(lang), Xy.title.copy(textAlign = TextAlign.Center))
+                    if (state.attempt > 0) XyText("Percobaan".tr(lang) + " ${state.attempt}/3", Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(4.dp))
                     XyText("PC " + state.hostId.chunked(3).joinToString(" "), Xy.caption.copy(textAlign = TextAlign.Center))
                     Spacer(Modifier.height(36.dp))
-                    XyButton("Batal", Modifier.width(180.dp), ghost = true, onClick = onBack)
+                    XyButton("Batal".tr(lang), Modifier.width(180.dp), ghost = true, onClick = onBack)
                 }
             }
         }

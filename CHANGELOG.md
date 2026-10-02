@@ -39,6 +39,15 @@ Kebijakan rilis:
 
 - **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.
 
+## [6.11.3] — 2026-10-02
+
+- Login: tautan Syarat & Ketentuan, Kebijakan Privasi, Kebijakan Cookie, Lisensi.
+- Ingat perangkat: checkbox, bukan toggle.
+- Connecting: morph tetap, status “Menyambung…” ikut bahasa.
+- Onboarding/welcome: ilustrasi generate + elemen melayang.
+- HUD: UDP RELAY/P2P, Wi‑Fi/Data seluler, LOSS. Cuplikan perangkat HD 1920.
+- Host jendela/shortcut bernama XyDesk.
+
 ## [6.11.2] — 2026-10-02
 
 - **APK:** overlay pass-through memakai FrameLayout (ComposeView final); keep `XyHid`.
