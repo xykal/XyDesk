@@ -209,6 +209,7 @@ jobs:
             --name XyDesk-Windows-x64 --dir incoming/windows-x64
           cp incoming/android/XyDesk-arm64-v8a.apk dist/
           cp incoming/android/XyDesk-armeabi-v7a.apk dist/
+          if [ -f incoming/android/XyDesk.apk ]; then cp incoming/android/XyDesk.apk dist/; fi
           # Satu paket Windows native C++ + engine Rust sebagai bahan installer.
           (cd incoming/windows-x64 && zip -q -r ../../dist/app-windows-x64.zip .)
           test -s dist/XyDesk-arm64-v8a.apk
@@ -498,6 +499,7 @@ jobs:
           mkdir -p dist
           cp artifacts/release-client-assets/XyDesk-arm64-v8a.apk dist/
           cp artifacts/release-client-assets/XyDesk-armeabi-v7a.apk dist/
+          if [ -f artifacts/release-client-assets/XyDesk.apk ]; then cp artifacts/release-client-assets/XyDesk.apk dist/; fi
           # Changelog rilis ikut dilampirkan — wajib ada di setiap rilis.
           cp CHANGELOG.md dist/CHANGELOG.md
           # Dua installer x64 dari payload yang sama: EXE NSIS untuk pengguna
@@ -520,6 +522,7 @@ jobs:
             XyDesk-x64.exe \
             XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg \
+            $(test -f XyDesk.apk && echo XyDesk.apk) \
             > SHA256SUMS.txt
           arm64_sha="$(sha256sum XyDesk-arm64-v8a.apk | cut -d' ' -f1)"
           arm64_bytes="$(stat -c%s XyDesk-arm64-v8a.apk)"
@@ -598,7 +601,7 @@ jobs:
           set -euo pipefail
           for asset in \
             CHANGELOG.md SHA256SUMS.txt update.json \
-            XyDesk-arm64-v8a.apk XyDesk-armeabi-v7a.apk \
+            XyDesk-arm64-v8a.apk XyDesk-armeabi-v7a.apk XyDesk.apk \
             XyDesk-x64.exe XyDesk-x64.msi \
             xydesk_update_banner_1024x512.jpg
           do
@@ -649,6 +652,7 @@ jobs:
             | Windows x64 MSI | `XyDesk-x64.msi` | Deployment Windows/enterprise |
             | Android 64-bit | `XyDesk-arm64-v8a.apk` | HP Android modern |
             | Android 32-bit | `XyDesk-armeabi-v7a.apk` | Perangkat ARMv7 lama |
+            | Android universal | `XyDesk.apk` | Semua ABI, unduhan lebih besar |
 
             Installer Windows sudah memuat aplikasi dan engine Host sekaligus —
             tidak ada berkas terpisah yang perlu diunduh. Client web tersedia

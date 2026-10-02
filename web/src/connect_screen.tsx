@@ -1031,6 +1031,7 @@ export function ConnectScreen({
           <strong>{stats.fps > 0 ? `${Math.round(stats.fps)} FPS` : 'FPS —'}</strong>
           <span>{stats.mbps > 0 ? `${Math.round(stats.mbps * 1000)} kbps` : 'kbps —'}</span>
           <span>{transportLabel(stats)}</span>
+          <span>LOSS {stats.lossPct>=0?`${stats.lossPct.toFixed(1)}%`:'—'}</span>
           {stats.noFrameWarning && <span className="session-freeze-label">Freeze terdeteksi</span>}
         </div>}
         {connected && <>

@@ -39,6 +39,10 @@ Kebijakan rilis:
 
 - **Sisa Flutter dihapus:** folder `android/` (plugin registrant), `FLUTTER_VERSION` di `release.yml`, concurrency deploy web. Tidak ada `*.dart`/`pubspec.yaml`. Rilis publik ditahan.
 
+## [6.11.5] — 2026-10-02
+
+- Splash VO sekali, tanpa gema dobel. HUD web UDP RELAY/P2P + LOSS. Release sertakan `XyDesk.apk` universal.
+
 ## [6.11.4] — 2026-10-02
 
 - Overlay scroll dua mode: pil geser + tombol ↑↓. Google slide isi progres.
