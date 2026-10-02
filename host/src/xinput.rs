@@ -122,6 +122,10 @@ struct Vigem {
     update: UpdateFn,
 }
 
+// ViGEm handle hanya disentuh dari thread injeksi (Mutex).
+#[cfg(target_os = "windows")]
+unsafe impl Send for Vigem {}
+
 #[cfg(target_os = "windows")]
 type UpdateFn =
     unsafe extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, *const u8) -> u32;
