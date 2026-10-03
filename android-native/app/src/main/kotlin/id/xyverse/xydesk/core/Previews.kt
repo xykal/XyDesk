@@ -25,16 +25,18 @@ object Previews {
 
     fun file(context: Context, host: String): File = File(dir(context), Presence.hostKey(host) + ".jpg")
 
+    fun wallpaperFile(context: Context, host: String): File = File(dir(context), Presence.hostKey(host) + ".wall.jpg")
+
     fun saveJpeg(context: Context, host: String, bytes: ByteArray) {
         if (!XyPreview.jpegOk(bytes)) return
-        val dest = file(context, host)
-        File(dir(context), "w.jpg").apply { writeBytes(bytes); renameTo(dest) }
+        File(dir(context), "w.jpg").apply { writeBytes(bytes); renameTo(wallpaperFile(context, host)) }
         memory.remove(Presence.hostKey(host))
     }
 
     fun save(context: Context, host: String, bitmap: Bitmap) {
+        if (wallpaperFile(context, host).exists()) return
         val tmp = File(dir(context), "tmp.jpg")
-        tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+        tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 82, it) }
         tmp.renameTo(file(context, host))
         memory.remove(Presence.hostKey(host))
     }
@@ -48,8 +50,8 @@ object Previews {
         val key = Presence.hostKey(host)
         memory.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
-            val f = file(context, host)
-            if (!f.exists()) null
+            val f = listOf(wallpaperFile(context, host), file(context, host)).firstOrNull { it.exists() }
+            if (f == null) null
             else BitmapFactory.decodeFile(f.path)?.asImageBitmap()?.also { memory.put(key, it) }
         }
     }

@@ -2,6 +2,7 @@ package id.xyverse.xydesk.ui
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -300,7 +301,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
                     SessionActions(
-                        keyboard = { setPcKeys(!pcKeysOpen) },
+                        keyboard = { keys.toggle() },
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },
@@ -399,8 +400,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (!connected || !store.bool(P.SAVE_PREVIEW, true)) return
         val view: SurfaceView = if (lowLatency) b.raw else b.video
         if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
-        val w = 1920
-        val h = (w * view.height / view.width).coerceIn(1, 1080)
+        val w = 640
+        val h = (w * view.height / view.width).coerceIn(1, 360)
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         runCatching {
             PixelCopy.request(view, bmp, { r -> if (r == PixelCopy.SUCCESS) Thread { Previews.save(applicationContext, hostId, bmp) }.start() }, ui)
@@ -466,11 +467,16 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (connected) {
             everConnected = true
             reconnect.reset()
+            b.dock.bringToFront()
+            b.toolbar.bringToFront()
+            startService(Intent(this, SessionKeep::class.java))
             ui.postDelayed(statsTick, 1000)
             ui.postDelayed(previewTick, 3000)
             session.send(StreamXy.fps(metrics.targetFps))
             if (store.quality == 0) metrics.auto = true else session.send(StreamXy.quality(store.quality))
             applyStartPrefs()
+        } else {
+            stopService(Intent(this, SessionKeep::class.java))
         }
         if (phase in setOf(Phase.REJECTED, Phase.PEER_OFFLINE, Phase.BUSY, Phase.ERROR, Phase.ENDED) && outcome == "berjalan") {
             outcome = phase.name.lowercase()
@@ -524,6 +530,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         ui.removeCallbacksAndMessages(null)
         touch.release()
         metrics.close()
+        stopService(Intent(this, SessionKeep::class.java))
         session.stop()
         session.release()
         super.onDestroy()
