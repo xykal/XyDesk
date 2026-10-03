@@ -24,6 +24,13 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+## [6.11.8] — 2026-10-03
+
+- Kartu perangkat pakai wallpaper host, bukan cuplikan HD.
+- Keyboard rel = IME HP. Overlay kontrol bulat, bisa digeser.
+- Sesi foreground service. Resolusi Auto, tidak maksa 1080.
+
+
 ## [6.11.7] — 2026-10-02
 
 - Host: daftar HP ringkas (ikon+status), bukan foto besar. Remote HP dari PC = Premium.

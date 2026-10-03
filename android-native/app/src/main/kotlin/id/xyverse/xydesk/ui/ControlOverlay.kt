@@ -290,9 +290,9 @@ private fun OverlayButton(
     Box(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
-            .clip(RoundedCornerShape(m.radius.dp))
+            .clip(CircleShape)
             .background(if (selected) Xy.accent else Color(0xE6FFFFFF))
-            .border(1.dp, if (selected) Xy.accent else Xy.line, RoundedCornerShape(m.radius.dp))
+            .border(1.dp, if (selected) Xy.accent else Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
                 if (edit) detectDragGestures(
                     onDragStart = { onSelect() },

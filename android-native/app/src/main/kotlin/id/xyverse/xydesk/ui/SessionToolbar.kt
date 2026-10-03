@@ -165,7 +165,8 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                     XyText("FPS · RESOLUSI", Xy.label)
                     Wrap {
                         listOf(30, 60).forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
-                        listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; quality = 3.coerceAtMost(quality.coerceAtLeast(1)); actions.resolution(i) } }
+                        Pill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
+                        listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; actions.resolution(i) } }
                     }
                     if (quality != 0) {
                         XyText("BITRATE", Xy.label)
