@@ -126,7 +126,7 @@ object OverlayLayouts {
         return a.toString()
     }
     fun fromJson(raw: String?): List<OverlayItem> {
-        if (raw.isNullOrBlank()) return mouse()
+        if (raw.isNullOrBlank()) return fps()
         return runCatching {
             val a = JSONArray(raw)
             (0 until a.length()).mapNotNull { i ->

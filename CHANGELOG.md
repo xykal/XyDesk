@@ -24,6 +24,11 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+## [6.11.9] — 2026-10-03
+
+- Overlay default FPS: WASD + mouse bulat, bisa digeser. Keyboard tetap IME HP.
+
+
 ## [6.11.8] — 2026-10-03
 
 - Kartu perangkat pakai wallpaper host, bukan cuplikan HD.
