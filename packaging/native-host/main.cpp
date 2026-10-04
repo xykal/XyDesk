@@ -695,8 +695,24 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
 bool workspaceProbe=false;
 xydesk::session_view::Snapshot sessionView;
 std::future<xydesk::session_view::Snapshot> sessionViewPending;
+std::future<std::string> sessionActionPending;
 unsigned sessionViewPid=0;
 ULONGLONG sessionViewNext=0;
+void pollSessionAction(){
+    if(!sessionActionPending.valid()||sessionActionPending.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready)return;
+    std::string response;
+    try{response=sessionActionPending.get();}catch(...){response.clear();}
+    if(response.empty()){
+        setFlash(L"Gagal memutus sesi lewat kanal privat host.",kBad);
+    }else if(response.find("\"stopped\":true")!=std::string::npos){
+        sessionView={};sessionViewNext=0;
+        setFlash(L"Sesi aktif diputus dari host.",kGood);
+    }else{
+        sessionView={};sessionViewNext=0;
+        setFlash(L"Tidak ada sesi aktif yang perlu diputus.",kWarn);
+    }
+}
+
 void pollSessionView(){
     if(sessionViewPending.valid()&&sessionViewPending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
         try{auto value=sessionViewPending.get();if(g.process&&GetProcessId(g.process)==sessionViewPid)sessionView=std::move(value);else sessionView={};}catch(...){sessionView={};}
@@ -717,6 +733,8 @@ bool targetEnabled(Target target) {
         return !g.running;
     case Target::Stop:
         return g.running;
+    case Target::StopSession:
+        return g.running && controlChannel.endpoint.has_value() && sessionView.known && sessionView.active && !sessionActionPending.valid();
     case Target::CopyId:
         return !g.deviceId.empty();
     case Target::CopyPassword:
@@ -734,6 +752,7 @@ std::wstring targetLabel(Target target) {
     case Target::Web: return L"Buka XyDesk Web";
     case Target::OpenLog: return L"Buka log host";
     case Target::RunHost: return L"Ambil alih sesi ini";
+    case Target::StopSession: return L"Putus sesi";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1064,8 +1083,9 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
     workspaceText(dc,dur,{x+width-px(96),y+px(16),px(88),px(24)},g.fontSmall,kMuted);
     y+=px(68);
     if(detailed){
-        workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,y,width,px(22)},g.fontSmall,kMuted);
-        workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,y+px(24),width,px(40)},g.fontSmall,kMuted);
+        paintButton(surface,layout,dc,Target::StopSession,layout.stopSession);
+        workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,layout.stopSession.bottom()+px(12),width,px(22)},g.fontSmall,kMuted);
+        workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,layout.stopSession.bottom()+px(36),width,px(40)},g.fontSmall,kMuted);
     }
 }
 void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
@@ -1188,7 +1208,7 @@ PanelLayout shiftedContent(const PanelLayout& l, int dx) {
     const auto shift = [dx](Rect& r) { r.x += dx; };
     shift(s.statusCard); shift(s.statusDot); shift(s.statusLine1); shift(s.statusLine2);
     shift(s.captureCard); shift(s.captureTitle); shift(s.captureLine1); shift(s.captureLine2);
-    shift(s.captureLine3); shift(s.runHost);
+    shift(s.captureLine3); shift(s.runHost); shift(s.stopSession);
     shift(s.idCard); shift(s.idLabel); shift(s.idValue); shift(s.idCopy);
     shift(s.passwordCard); shift(s.passwordLabel); shift(s.passwordValue); shift(s.passwordCopy);
     shift(s.start); shift(s.stop); shift(s.restart); shift(s.web); shift(s.openLog);
@@ -1900,6 +1920,16 @@ void activateTarget(HWND hwnd, Target target) {
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
+    case Target::StopSession: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(sessionActionPending.valid()){setFlash(L"Permintaan putus sesi masih diproses.",kWarn);break;}
+        const auto endpoint=*controlChannel.endpoint;
+        try{
+            sessionActionPending=std::async(std::launch::async,[endpoint]{return xydesk::panel_control::action(endpoint,"{\"action\":\"stop-session\"}");});
+            setFlash(L"Memutus sesi aktif…",kAccent);
+        }catch(...){setFlash(L"Gagal memulai permintaan putus sesi.",kBad);}
+        break;
+    }
     case Target::RunHost: {
         // Jalan pintas takeover: bila engine lama masih hidup di sesi lain,
         // restart dari panel ini supaya instance baru benar-benar lahir di
@@ -1960,6 +1990,9 @@ std::vector<Target> focusOrder() {
         break;
     case Page::Status:
         if (g.sessionMismatch) order.push_back(Target::RunHost);
+        break;
+    case Page::Connections:
+        order.push_back(Target::StopSession);
         break;
     }
     order.push_back(Target::Minimize);
@@ -2054,6 +2087,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::Restart:
     case Target::Web:
     case Target::OpenLog:
+    case Target::StopSession:
         return HTCLIENT;
     case Target::TitleBar:
         return HTCAPTION; // geser jendela dari area judul
@@ -2284,6 +2318,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                     setStatus(L"Identitas gagal dibaca atau timeout. Coba Mulai host lagi.", kBad);
                 } else if (start) { startHost(); }
             }
+            pollSessionAction();
             pollSessionView();
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {

@@ -97,6 +97,7 @@ enum class Target {
     Web,
     OpenLog,
     RunHost,
+    StopSession,
 };
 
 inline const char* targetName(Target target) {
@@ -127,6 +128,7 @@ inline const char* targetName(Target target) {
     case Target::Web: return "Web";
     case Target::OpenLog: return "OpenLog";
     case Target::RunHost: return "RunHost";
+    case Target::StopSession: return "StopSession";
     default: return "None";
     }
 }
@@ -190,6 +192,9 @@ struct PanelLayout {
     Rect captureLine2{};
     Rect captureLine3{};
     Rect runHost{};
+
+    // Halaman Connections.
+    Rect stopSession{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -361,6 +366,9 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     l.connectionQr = Rect{contentX, l.deviceLink.bottom() + px(8), px(152), px(42)};
 
+    // Halaman Connections: tombol aksi kecil di bawah baris perangkat aktif.
+    l.stopSession = Rect{contentX + px(20), topY + px(116), px(168), px(36)};
+
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
     const int actionX = contentX + px(20), actionY = topY + px(20);
@@ -400,6 +408,8 @@ inline bool targetOnPage(Target target, Page page) {
         return page == Page::Control;
     case Target::RunHost:
         return page == Page::Status;
+    case Target::StopSession:
+        return page == Page::Connections;
     default:
         return true;
     }
@@ -436,6 +446,7 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
         if (l.web.contains(x, y)) return Target::Web;
         if (l.openLog.contains(x, y)) return Target::OpenLog;
     }
+    if (targetOnPage(Target::StopSession, page) && l.stopSession.contains(x, y)) return Target::StopSession;
     if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
         return Target::RunHost;
     }

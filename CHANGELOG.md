@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host panel koneksi:** halaman Koneksi kini punya tombol Putus sesi untuk menghentikan sesi HP/browser aktif lewat kanal kontrol privat host, tanpa mematikan proses host seluruhnya.
+
 - **APK overlay mouse:** Stick mouse sekarang terus mengirim gerakan selama jari ditahan ke arah tertentu, bukan hanya saat jari sedang bergerak, sehingga aksi held untuk kontrol mouse terasa konsisten.
 
 - **APK overlay editor:** kontrol overlay kini bisa dipilih dengan tap saat mode edit, selain drag, sehingga resize/hapus layout custom tidak perlu menggeser posisi dulu. Hint editor juga diperjelas.
