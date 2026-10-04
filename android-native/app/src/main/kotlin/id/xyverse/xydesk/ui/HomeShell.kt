@@ -120,7 +120,7 @@ fun HomeShell(
                 } }
                 Tab.DEVICES -> Page("Perangkat", "Semua PC yang pernah tersambung: wallpaper, spesifikasi, dan riwayat sesinya.") {
                     if (devices.isEmpty()) {
-                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, PC tersimpan di sini beserta spesifikasi dan riwayat sesinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
+                        XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, PC tersimpan di sini beserta spesifikasi dan riwayat sesinya.", "Sambungkan", image = R.drawable.float_pc_sleep) { tab = Tab.HOME }
                     } else {
                         DeviceSearch(query) { query = it }
                         Spacer(Modifier.height(12.dp))

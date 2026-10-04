@@ -93,6 +93,9 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   `float_cursor`+`float_keycap`, host `float_monitor`, riwayat kosong
   `float_pc_sleep`, OTP `float_mail`, low-latency `float_bolt`/`float_rocket`,
   keamanan `float_shield`/`float_padlock`.
+  Progres 2026-10-04: web Devices/History empty state memakai
+  `float-pc-sleep.webp` (PR #99); APK empty state perangkat/host memakai
+  `R.drawable.float_pc_sleep` (batch ini).
 - [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
   hero web & splash — animasi lembut, delay acak per elemen.
 - [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang

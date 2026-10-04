@@ -104,7 +104,7 @@ fun ConnectScreen(
             }
         }
         Spacer(Modifier.height(24.dp))
-        if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.", image = R.drawable.empty_devices)
+        if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.", image = R.drawable.float_pc_sleep)
         else QuickConnect(devices.take(4), onQuick)
         Spacer(Modifier.height(96.dp))
     }
