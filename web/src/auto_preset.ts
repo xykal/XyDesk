@@ -6,6 +6,8 @@
 ///   Start light, climb only after the link proves stable.
 /// - Jangan kirim lebih banyak piksel daripada layar client bisa tampilkan.
 ///   Never send more pixels than the client screen can show.
+/// - Prioritaskan 720p dulu; 1080p baru dicoba setelah jalur 720p stabil.
+///   Prefer 720p first; try 1080p only after the 720p path proves stable.
 /// - Encoder software (openh264) tidak pernah diminta 60 FPS, dan 1080p
 ///   hanya kalau latensi terukur masih sehat. Software encoders are never
 ///   asked for 60 FPS; 1080p only while measured latency stays healthy.
@@ -49,13 +51,37 @@ export interface AutoInput {
 
 const TIERS: ReadonlyArray<{ resolution: AutoResolution; fps: AutoFps }> = [
   { resolution: '720p', fps: 30 },
-  { resolution: '1080p', fps: 30 },
   { resolution: '720p', fps: 60 },
+  { resolution: '1080p', fps: 30 },
   { resolution: '1080p', fps: 60 },
 ];
+const STABLE_PROMOTION_MS = 20000;
+const REPROMOTION_AFTER_DEMOTE_MS = 60000;
 
 export function isHardwareEncoder(encoder: string | undefined): boolean {
   return encoder === 'nvenc' || encoder === 'mft' || encoder === 'amf' || encoder === 'qsv';
+}
+
+function tierAllowed(input: AutoInput, tier: number): boolean {
+  const preset = TIERS[tier];
+  if (!preset) return false;
+  if (preset.fps === 60 && (!isHardwareEncoder(input.encoder) || (input.fpsLimit ?? 30) < 60)) return false;
+  if (preset.resolution === '1080p' && (input.clientLongEdgePx < 1600 || (input.hostLevel ?? 31) < 40)) return false;
+  return true;
+}
+
+function nextAllowedTier(input: AutoInput, currentTier: number, capTier: number): number | null {
+  for (let tier = currentTier + 1; tier <= capTier; tier += 1) {
+    if (tierAllowed(input, tier)) return tier;
+  }
+  return null;
+}
+
+function previousAllowedTier(input: AutoInput, currentTier: number): number {
+  for (let tier = currentTier - 1; tier >= 0; tier -= 1) {
+    if (tierAllowed(input, tier)) return tier;
+  }
+  return 0;
 }
 
 /** Tier tertinggi yang masuk akal untuk kombinasi layar client + host ini. */
@@ -67,10 +93,10 @@ export function ceilingTier(input: AutoInput): { tier: number; reason: string } 
     const why = input.clientLongEdgePx < 1600
       ? 'layar perangkat ini tidak butuh lebih dari 720p'
       : 'host/browser membatasi ke 720p';
-    return fps60 ? { tier: 2, reason: why } : { tier: 0, reason: hw ? why : `${why}; encoder software` };
+    return fps60 ? { tier: 1, reason: why } : { tier: 0, reason: hw ? why : `${why}; encoder software` };
   }
-  if (fps60) return { tier: 3, reason: 'encoder hardware dan layar tajam' };
-  return { tier: 1, reason: hw ? 'host membatasi 30 FPS' : 'encoder software: 1080p 30 FPS' };
+  if (fps60) return { tier: 3, reason: 'encoder hardware dan jalur 720p stabil' };
+  return { tier: 2, reason: hw ? 'host membatasi 30 FPS; coba 1080p setelah stabil' : 'encoder software: 1080p 30 FPS setelah stabil' };
 }
 
 /** Bukti bahwa tier sekarang terlalu berat untuk jalur/encoder saat ini. */
@@ -111,15 +137,11 @@ export class AutoPreset {
 
   /**
    * Keputusan awal begitu `meta` host tiba — sebelum ada statistik.
-   * Encoder hardware langsung ke satu tingkat di bawah plafon supaya
-   * pengguna tidak menunggu; software tetap mulai dari 720p30.
+   * Semua encoder mulai dari 720p30 supaya web tidak memaksa HD sebelum
+   * jalur, decoder, dan host terbukti stabil.
    */
-  initial(input: AutoInput, now: number): AutoDecision {
-    this.reset(now);
-    const cap = ceilingTier(input);
-    const tier = isHardwareEncoder(input.encoder) ? Math.max(0, Math.min(cap.tier, 1)) : 0;
-    this.current = { ...TIERS[tier], tier, reason: tier === 0 ? 'mulai ringan' : cap.reason };
-    return this.current;
+  initial(_input: AutoInput, now: number): AutoDecision {
+    return this.reset(now);
   }
 
   /** Dipanggil tiap detik; mengembalikan keputusan baru hanya bila berubah. */
@@ -137,14 +159,16 @@ export class AutoPreset {
       if (this.current.tier === 0 || now - this.lastChange < 5000) return null;
       this.failedPromotions += 1;
       this.lastDemotedTier = this.current.tier;
-      return this.apply(this.current.tier - 1, `turun: ${why}`, now);
+      return this.apply(previousAllowedTier(input, this.current.tier), `turun: ${why}`, now);
     }
 
     if (this.current.tier >= cap.tier) return null;
     if (this.failedPromotions >= 2) return null;
-    const need = this.lastDemotedTier === this.current.tier + 1 ? 60000 : 12000;
+    const nextTier = nextAllowedTier(input, this.current.tier, cap.tier);
+    if (nextTier === null) return null;
+    const need = this.lastDemotedTier === nextTier ? REPROMOTION_AFTER_DEMOTE_MS : STABLE_PROMOTION_MS;
     if (now - this.stableSince < need || now - this.lastChange < need) return null;
-    return this.apply(this.current.tier + 1, cap.reason, now);
+    return this.apply(nextTier, cap.reason, now);
   }
 
   private apply(tier: number, reason: string, now: number): AutoDecision {

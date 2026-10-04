@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Web auto quality:** mode otomatis selalu mulai 720p30, naik lebih pelan setelah jalur stabil, melewati tier yang tidak didukung encoder, dan manual fallback kembali ke 720p. Kartu/riwayat perangkat menampilkan wallpaper dengan `contain` supaya preview tidak dicrop seperti efek cover.
+
 - **Host wallpaper preview:** generator preview tidak lagi memaksa canvas HD 1920×1080/Lanczos. Wallpaper dikirim ringkas, mempertahankan rasio asli, tanpa upscaling, dan pesan gagal tidak lagi menyebut "preview HD". Panel host juga menjelaskan bahwa kartu perangkat memakai wallpaper Windows, bukan frame video sesi.
 
 - **APK native:** preview kartu perangkat sekarang hanya memakai wallpaper host, bukan tangkapan frame sesi; permintaan wallpaper diulang aman tanpa menimpa transfer yang sedang jalan, tampilan kartu tidak lagi crop/High filter. Overlay virtual diperluas dengan preset QWERTY, F1–F12, numpad, mouse, dan gamepad/XInput lengkap (stick kiri/kanan, trigger, ABXY, D-pad, Start/Back), semua tombol tetap berbentuk ring bulat, bisa digeser, diubah ukuran, dan aksi tahan mengikuti durasi sentuhan.
