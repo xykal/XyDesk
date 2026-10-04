@@ -344,6 +344,10 @@ fun ControlOverlay(
 ) {
     val holds = remember { OverlayHolds(send) }
     DisposableEffect(Unit) { onDispose { holds.reset() } }
+    DisposableEffect(edit) {
+        if (edit) holds.reset()
+        onDispose { }
+    }
     var selected by remember { mutableStateOf<String?>(null) }
     var library by remember { mutableStateOf(false) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
