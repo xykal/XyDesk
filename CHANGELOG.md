@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **CI Android:** guard operator pra-checkout memakai `${{ github.workspace }}` agar tidak tetap mengikuti default `android-native` sebelum checkout.
+
 - **Agent board:** row aktif batch fix CI Android yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **CI Android:** validasi operator workflow APK kini berjalan dari root sebelum checkout, sehingga job Android manual tidak gagal karena folder `android-native` belum tersedia.
