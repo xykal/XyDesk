@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-ANDROID-WALLPAPER-UNKNOWN-CANCEL | Operator - XyDesk Team | Operator | REVIEW | APK wallpaper: cancel type transfer tak dikenal | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-WALLPAPER-TRANSFER-CANCEL | Operator - XyDesk Team | Operator | REVIEW | APK wallpaper: cancel transfer invalid agar retry tidak tertahan | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-WALLPAPER-WORDING | Operator - XyDesk Team | Operator | REVIEW | APK wording: preview kartu disebut wallpaper | 2026-10-04 |
 

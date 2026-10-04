@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK wallpaper transfer:** respons wallpaper dengan ID cocok tetapi tipe tak dikenal sekarang membatalkan transfer, sehingga state pending tidak menunggu timeout untuk pesan yang tidak valid.
+
 - **APK wallpaper transfer:** chunk wallpaper invalid, ukuran berlebih, total berubah, atau Base64 rusak sekarang langsung membatalkan transfer dan membersihkan state agar retry preview tidak tertahan sampai timeout.
 
 - **APK wording wallpaper:** teks perangkat/akun tidak lagi menyebut cuplikan layar host; preview kartu dijelaskan sebagai wallpaper lokal yang tidak diunggah.

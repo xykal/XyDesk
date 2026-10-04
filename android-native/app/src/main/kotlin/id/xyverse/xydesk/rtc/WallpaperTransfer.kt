@@ -64,6 +64,7 @@ class WallpaperTransfer {
                     cancel()
                 }
             }
+            else -> cancel()
         }
     }
 }
