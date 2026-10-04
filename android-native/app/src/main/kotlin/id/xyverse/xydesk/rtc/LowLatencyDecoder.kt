@@ -110,6 +110,7 @@ class LowLatencyH264Decoder(
                 configure(format, surface, null, 0)
                 start()
             }
+            onSize(w, h)
             Log.i(TAG, "decoder $name low-latency siap ${w}x$h")
             VideoCodecStatus.OK
         } catch (e: Exception) {

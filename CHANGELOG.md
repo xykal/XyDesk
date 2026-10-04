@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Session natural render:** Web dan Android kini mengunci video sesi ke scaling natural/aspect-fit tanpa CSS `filter`, `image-rendering: pixelated/crisp`, atau copy “tajam”; SurfaceView native juga langsung letterbox dari ukuran frame awal agar tidak terasa stretch/sharpen saat decode mulai.
+
 - **Agent board:** row aktif batch rustfmt natural quality yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **Host formatting:** log natural-quality host dirapikan agar `cargo fmt --check` pada Build penuh lulus.

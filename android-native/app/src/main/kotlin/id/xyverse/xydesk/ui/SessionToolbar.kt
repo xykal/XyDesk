@@ -118,7 +118,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var dockOn by remember { mutableStateOf(prefs.dockOn) }
     var dockSize by remember { mutableStateOf(prefs.dockSize) }
     var dockKeys by remember { mutableStateOf(prefs.dockKeys) }
-    val qLabels = listOf("Auto", "Sedang", "Tinggi", "Ultra")
+    val qLabels = listOf("Auto", "Seimbang", "Lebih halus", "Paling halus")
     var touched by remember { mutableStateOf(0L) }
     if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
         if (!hidden && panel == Panel.NONE) { kotlinx.coroutines.delay(prefs.autohideMs); hidden = true }
@@ -180,7 +180,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
                         Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
                     }
-                    if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption)
+                    if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption) else XyText("Preset kualitas hanya mengubah bitrate/kompresi; resolusi tetap di pilihan Auto/Manual, tanpa filter tajam buatan.", Xy.caption)
                 }
             }
         }
