@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **CI Build:** job Android pada Build penuh kini benar-benar menjalankan guard operator dari `${{ github.workspace }}` sebelum checkout, bukan default `android-native`.
+
 - **Agent board:** row aktif batch guard Android pra-checkout yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **CI Android:** guard operator pra-checkout memakai `${{ github.workspace }}` agar tidak tetap mengikuti default `android-native` sebelum checkout.
