@@ -79,7 +79,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20261004-OPERATOR-CI-ANDROID-WORKSPACE | Operator - XyDesk Team | Operator | LAGI KERJA | CI: pakai github.workspace untuk guard Android pra-checkout | 2026-10-04 |
 
 ## Antrean izin push
 
