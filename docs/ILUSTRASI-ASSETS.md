@@ -31,7 +31,7 @@ File baru di `assets/img/` wajib lulus gerbang yang sama.
 | `float_bolt`, `float_rocket` | Materi low-latency (hero web, promo rilis) |
 | `float_shield`, `float_padlock` | Layar keamanan / pairing zero-trust |
 | `float_gamepad`, `float_headset` | Materi gaming HUD / audio loopback |
-| `float_cloud`, `float_sparkle`, `float_globe`, `float_globe` | Dekorasi melayang (animasi halus, delay acak per elemen) |
+| `float_cloud`, `float_sparkle`, `float_globe` | Dekorasi melayang (animasi halus, delay acak per elemen) |
 
 ## Spec bingkai VIP (`frame_vip`)
 

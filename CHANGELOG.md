@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Aset ilustrasi lintas platform:** ditambahkan set 17 ilustrasi melayang 3D glossy dan `frame_vip.webp` untuk sumber audit, APK, dan Web, plus panduan pemakaian serta antrean integrasi host/web/APK.
+
 - **Agent board:** row aktif batch APK i18n password host yang sudah merged dibersihkan agar papan kembali kosong.
 
 - **APK i18n privasi:** translasi Inggris untuk status password host kini menjelaskan penyimpanan opsional melalui pilihan Ingat, bukan klaim bahwa password tidak pernah disimpan.
