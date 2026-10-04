@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay editor:** highlight kontrol terpilih sekarang konsisten untuk tombol, stick, joystick gamepad, trigger, dan scroll wheel, sehingga resize/hapus kontrol lebih jelas saat mode edit.
+
 - **APK overlay editor:** drag saat mode edit kini memakai delta gerak terakumulasi dari pusat kontrol awal untuk tombol, stick, joystick gamepad, dan scroll wheel, sehingga penempatan kontrol tidak lagi terasa loncat/seret pendek saat layout tersimpan ulang.
 
 - **Preview wording:** sisa label/test internal yang menyebut "HD preview" diganti menjadi wallpaper preview, supaya audit no forced HD/filter konsisten dengan perilaku runtime.

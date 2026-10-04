@@ -415,19 +415,19 @@ private fun OverlayButton(
     val top = (m.y / 100f * parentH - px / 2).coerceIn(0f, parentH - px)
     when (m.kind) {
         OverlayKind.STICK_KEYS, OverlayKind.STICK_MOUSE -> {
-            StickPad(m, edit, left, top, px, parentW, parentH, holds, send, onSelect, onMove)
+            StickPad(m, edit, selected, left, top, px, parentW, parentH, holds, send, onSelect, onMove)
             return
         }
         OverlayKind.SCROLL_WHEEL -> {
-            ScrollWheel(m, edit, left, top, px, parentW, parentH, send, onSelect, onMove)
+            ScrollWheel(m, edit, selected, left, top, px, parentW, parentH, send, onSelect, onMove)
             return
         }
         OverlayKind.GAMEPAD_STICK_L, OverlayKind.GAMEPAD_STICK_R -> {
-            GamepadStickPad(m, edit, left, top, px, parentW, parentH, holds, onSelect, onMove)
+            GamepadStickPad(m, edit, selected, left, top, px, parentW, parentH, holds, onSelect, onMove)
             return
         }
         OverlayKind.GAMEPAD_TRIGGER_L, OverlayKind.GAMEPAD_TRIGGER_R -> {
-            GamepadTriggerPad(m, edit, left, top, px, parentW, parentH, holds, onSelect, onMove)
+            GamepadTriggerPad(m, edit, selected, left, top, px, parentW, parentH, holds, onSelect, onMove)
             return
         }
         else -> Unit
@@ -502,6 +502,7 @@ private fun RoundControl(
 private fun StickPad(
     m: OverlayItem,
     edit: Boolean,
+    selected: Boolean,
     left: Float,
     top: Float,
     px: Float,
@@ -518,9 +519,9 @@ private fun StickPad(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
             .clip(CircleShape)
-            .background(Color(0xBFFFFFFF))
-            .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
-            .border(1.dp, Xy.line, CircleShape)
+            .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xBFFFFFFF))
+            .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.9f), CircleShape)
+            .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
@@ -578,6 +579,7 @@ private fun StickPad(
 private fun GamepadStickPad(
     m: OverlayItem,
     edit: Boolean,
+    selected: Boolean,
     left: Float,
     top: Float,
     px: Float,
@@ -592,9 +594,9 @@ private fun GamepadStickPad(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
             .clip(CircleShape)
-            .background(Color(0xBFFFFFFF))
-            .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
-            .border(1.dp, Xy.line, CircleShape)
+            .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xBFFFFFFF))
+            .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.9f), CircleShape)
+            .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
@@ -637,6 +639,7 @@ private fun GamepadStickPad(
 private fun GamepadTriggerPad(
     m: OverlayItem,
     edit: Boolean,
+    selected: Boolean,
     left: Float,
     top: Float,
     px: Float,
@@ -648,7 +651,7 @@ private fun GamepadTriggerPad(
 ) {
     RoundControl(
         m = m,
-        selected = false,
+        selected = selected,
         left = left,
         top = top,
         edit = edit,
@@ -666,6 +669,7 @@ private fun GamepadTriggerPad(
 private fun ScrollWheel(
     m: OverlayItem,
     edit: Boolean,
+    selected: Boolean,
     left: Float,
     top: Float,
     px: Float,
@@ -680,9 +684,9 @@ private fun ScrollWheel(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(width = (m.size * 0.72f).dp, height = m.size.dp)
             .clip(RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
-            .background(Color(0xDDFDFDFD))
-            .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
-            .border(1.dp, Xy.line, RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
+            .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xDDFDFDFD))
+            .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.85f), RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
+            .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
