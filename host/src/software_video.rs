@@ -12,9 +12,9 @@ pub fn output_size(width: usize, height: usize) -> Result<(usize, usize), String
     if width < 2 || height < 2 {
         return Err("capture lebih kecil dari 2x2".into());
     }
-    // Jalur software ini adalah output HD: jangan pernah mengembalikan
-    // tinggi di bawah 720, meski capture RDP hanya 940x529 atau sumbernya
-    // ber-aspek berbeda. Encoder utama memakai VideoLayout yang sama.
+    // Jalur software ini memakai kanvas 1280x720 sesuai batas H264 Level 3.1:
+    // jangan mengembalikan tinggi di bawah 720, meski capture RDP hanya 940x529
+    // atau sumbernya ber-aspek berbeda. Encoder utama memakai VideoLayout yang sama.
     Ok((MAX_WIDTH, MAX_HEIGHT))
 }
 

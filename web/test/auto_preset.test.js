@@ -31,7 +31,7 @@ test('plafon: encoder software tidak pernah 60 FPS, hardware boleh 1080p60', () 
   assert.equal(ceilingTier({ ...phone1080, encoder: 'nvenc', hostLevel: 31 }).tier, 1);
 });
 
-test('awal: semua encoder mulai 720p30, bukan langsung HD', () => {
+test('awal: semua encoder mulai 720p30, bukan langsung 1080p', () => {
   assert.equal(new AutoPreset().initial({ ...phone1080, encoder: 'nvenc' }, 0).tier, 0);
   assert.equal(new AutoPreset().initial({ ...phone1080, encoder: 'openh264' }, 0).tier, 0);
   assert.equal(new AutoPreset().initial({ ...phone720, encoder: 'nvenc' }, 0).tier, 0);
