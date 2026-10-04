@@ -79,3 +79,21 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 Tertutup 2026-10-04: preview wallpaper host sudah diperkecil aman di PR #73 — mempertahankan rasio asli, tidak upscale, tidak memakai Lanczos, tidak memakai label HD, dan fallback JPEG lebih longgar.
 
 Tertutup: hello ditolak hub tidak lagi menggantung loop host.
+
+## Untuk: Integrasi ilustrasi & bingkai VIP (host + web + APK)
+
+Sumber: PR `sesi-20261004-agent-ilustrasi-vip-frame`. Panduan lengkap +
+spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
+
+- [ ] **Bingkai VIP (`frame_vip`) di semua UI profil pengguna berlangganan** —
+  APK (layar akun/profil), web (akun), host panel bila menampilkan identitas
+  pengguna. Foto = 48% lebar frame, ring di tengah — jangan `matchParentSize`.
+- [ ] **Ilustrasi melayang di onboarding & empty state** — APK + web:
+  welcome `float_pc_mascot`, connect `float_phone`+`float_wifi`, gestur
+  `float_cursor`+`float_keycap`, host `float_monitor`, riwayat kosong
+  `float_pc_sleep`, OTP `float_mail`, low-latency `float_bolt`/`float_rocket`,
+  keamanan `float_shield`/`float_padlock`.
+- [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
+  hero web & splash — animasi lembut, delay acak per elemen.
+- [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang
+  saja; `hero_login.webp` tidak diganti.
