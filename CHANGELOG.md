@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay autosave:** layout overlay sekarang otomatis tersimpan saat keluar mode edit, saat app masuk background, atau saat sesi ditutup ketika masih edit, jadi posisi/ukuran custom tidak hilang kalau user menekan Selesai atau disconnect tanpa tombol Simpan.
+
 - **APK overlay hold safety:** saat masuk mode edit, overlay melepas semua input yang sedang held terlebih dulu agar tombol, trigger, stick, atau mouse tidak nyangkut ketika layout diedit.
 
 - **APK overlay editor:** highlight kontrol terpilih sekarang konsisten untuk tombol, stick, joystick gamepad, trigger, dan scroll wheel, sehingga resize/hapus kontrol lebih jelas saat mode edit.
