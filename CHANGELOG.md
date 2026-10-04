@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK empty state:** daftar host/perangkat kosong kini memakai ilustrasi `float_pc_sleep` dari paket aset melayang, selaras dengan empty state Web.
+
 - **Agent board:** row aktif batch Web empty-state aset yang sudah merged dibersihkan agar papan kembali kosong.
 
 - **Web empty state:** halaman Devices/History kini memakai ilustrasi `float-pc-sleep.webp` untuk state kosong perangkat/sesi, mulai mengintegrasikan paket aset melayang tanpa menyentuh hero login.
