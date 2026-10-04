@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** baris aktif/review untuk batch PR #80–#88 yang sudah merged dibersihkan, sehingga papan kembali menunjukkan tidak ada area kerja yang terkunci.
+
 - **Host panel koneksi:** tombol Putus sesi memakai tint danger ringan saat normal/hover/pressed, supaya aksi memutus client terlihat berbeda dari tombol navigasi biasa.
 
 - **APK overlay stick safety:** stick keyboard/mouse, joystick gamepad, dan scroll wheel kini mereset knob/vector visual saat masuk mode edit, mencegah vector stick mouse lama hidup lagi setelah edit ditutup.
