@@ -79,15 +79,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20261004-OPERATOR-HOST-STOP-SESSION-DANGER | Operator - XyDesk Team | Operator | REVIEW | Host panel: visual danger tombol putus sesi | 2026-10-04 |
-| SESI-20261004-OPERATOR-ANDROID-STICK-EDIT-RESET | Operator - XyDesk Team | Operator | REVIEW | APK overlay: reset vector stick saat masuk edit | 2026-10-04 |
-| SESI-20261004-OPERATOR-PREVIEW-HANDOFF-CLEANUP | Operator - XyDesk Team | Operator | REVIEW | Docs/Web/Host: tutup TODO preview wallpaper usang | 2026-10-04 |
-| SESI-20261004-OPERATOR-HOST-RUNHOST-HOVER | Operator - XyDesk Team | Operator | REVIEW | Host panel: hover/hit-test tombol takeover sesi | 2026-10-04 |
-| SESI-20261004-OPERATOR-WEB-RESOLUTION-WORDING | Operator - XyDesk Team | Operator | REVIEW | Web session: wording resolusi tanpa klaim HD paksa | 2026-10-04 |
-| SESI-20261004-OPERATOR-HOST-STOP-SESSION-BUTTON | Operator - XyDesk Team | Operator | REVIEW | Host panel: tombol putus sesi aktif | 2026-10-04 |
-| SESI-20261004-OPERATOR-ANDROID-MOUSE-STICK-HOLD | Operator - XyDesk Team | Operator | REVIEW | APK overlay: stick mouse terus bergerak saat ditahan | 2026-10-04 |
-| SESI-20261004-OPERATOR-ANDROID-OVERLAY-TAP-SELECT | Operator - XyDesk Team | Operator | REVIEW | APK overlay: tap kontrol untuk pilih saat edit | 2026-10-04 |
-| SESI-20261004-OPERATOR-ANDROID-OVERLAY-AUTOSAVE | Operator - XyDesk Team | Operator | REVIEW | APK overlay: autosave layout saat keluar mode edit | 2026-10-04 |
 
 ## Antrean izin push
 
