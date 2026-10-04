@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK wallpaper storage:** penyimpanan wallpaper memakai temp file per-host, fallback write bila rename gagal, dan cache memori hanya dibersihkan setelah save sukses sehingga preview lama tidak mudah hilang karena kegagalan IO.
+
 - **APK wallpaper transfer:** respons wallpaper dengan ID cocok tetapi tipe tak dikenal sekarang membatalkan transfer, sehingga state pending tidak menunggu timeout untuk pesan yang tidak valid.
 
 - **APK wallpaper transfer:** chunk wallpaper invalid, ukuran berlebih, total berubah, atau Base64 rusak sekarang langsung membatalkan transfer dan membersihkan state agar retry preview tidak tertahan sampai timeout.
