@@ -8,7 +8,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { captureHealthText, frameGuidance, relayReasonText, relayStatusText } from '../src/session_guidance.ts';
+import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import { transformWithOxc } from 'vite';
+
+const input = readFileSync(new URL('../src/session_guidance.ts', import.meta.url), 'utf8')
+  .replace(/^import .*$/gm, '')
+  .replace(/^export /gm, '');
+const { code } = await transformWithOxc(
+  input + '\nexports.api = { captureHealthText, frameGuidance, relayReasonText, relayStatusText };',
+  'session_guidance.ts',
+);
+const exports = {};
+vm.runInNewContext(code, { exports });
+const { captureHealthText, frameGuidance, relayReasonText, relayStatusText } = exports.api;
 
 test('setiap sebab relay yang mungkin punya kalimat, kode asing tidak ditelan', () => {
   for (const reason of [

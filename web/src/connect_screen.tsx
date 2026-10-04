@@ -581,7 +581,7 @@ export function ConnectScreen({
           session.setBitrate(prefsRef.current.bitrateMbps||1);
           adaptive.current.reset(prefsRef.current.bitrateMbps||1);
           if (prefsRef.current.preset === 'manual') {
-            session.setResolution(prefsRef.current.resolution||'1080p');
+            session.setResolution(prefsRef.current.resolution||'720p');
             session.setFps(prefsRef.current.fps===60?60:30);
           } else {
             applyAutoDecision(autoPreset.current.initial(autoInputFromMeta(meta), performance.now()));

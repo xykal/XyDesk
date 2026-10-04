@@ -417,8 +417,8 @@ export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: st
   {value:'1080p', label:'1080p', hint:'Full HD — detail lebih tajam bila host/browser mendukung'},
 ];
 export function normalizeResolution(value: unknown): ResolutionMode {
-  // Migrasi native/480p dari preferensi lama ke Full HD; UI tidak menawarkan
-  // target di bawah HD. Mode 720p tetap mengirim canvas HD 1280×720.
+  // Migrasi nilai lama/asing ke 720p ringan. Full HD tetap opsi manual,
+  // tetapi bukan fallback diam-diam.
   return value === '1080p' ? '1080p' : '720p';
 }
 
@@ -739,7 +739,7 @@ export function SessionPanel({
               <div className="display-chips">{([30,60] as const).map(fps=><button type="button" key={fps} className={prefs.fps===fps?'active':''} onClick={()=>{onChange({...prefs,fps});onFps?.(fps);}}>{fps} FPS</button>)}</div>
               <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
               <p className="spanel-section">Resolusi maksimal</p>
-              <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'1080p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
+              <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'720p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
               <p className="spanel-note">Mode 720p menjaga output HD 1280×720, termasuk saat desktop RDP lebih kecil; sumber akan diskalakan halus agar tidak berhenti di tinggi 529. Mode 1080p memakai ukuran yang tersedia tanpa mengarang detail.</p>
             </>
           )}
