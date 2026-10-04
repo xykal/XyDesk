@@ -79,7 +79,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20261004-OPERATOR-APK-OVERLAY-SETTER-FIX | Operator - XyDesk Team | Operator | LAGI KERJA | APK: rename setOverlayEdit agar tidak clash dengan property setter | 2026-10-04 |
 
 ## Antrean izin push
 
