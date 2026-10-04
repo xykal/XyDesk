@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-NATURAL-SESSION-QUALITY | Operator - XyDesk Team | Operator | LAGI KERJA | Session: quality preset natural, tidak memaksa resolusi/HD | 2026-10-04 |
 
 ## Antrean izin push
 

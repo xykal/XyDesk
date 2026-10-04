@@ -372,21 +372,20 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                     continue;
                 }
                 InputEvent::VideoQuality(q) => {
-                    // 0=auto 1=medium 2=high 3=ultra → map ke bitrate + resolusi preset host
+                    // Quality hanya target bitrate/kompresi. Jangan menaikkan
+                    // resolusi dari sini: mode Auto/manual resolusi tetap
+                    // pemilik pilihan gambar agar sesi terasa natural, bukan
+                    // dipaksa HD/tajam saat user cuma memilih preset kualitas.
                     let bps = match q {
                         1 => 8_000_000,
                         2 => 15_000_000,
                         3 => 25_000_000,
                         _ => screen::DEFAULT_TARGET_BPS,
                     };
-                    if q >= 2 {
-                        video_policy::promote_level(if q >= 3 { 51 } else { 40 });
-                        video_policy::request(1);
-                    }
                     xyadapt::sync(bps);
                     screen::set_target_bitrate_bps(bps);
                     screen::request_keyframe();
-                    println!("[xydesk-host] quality dari client: {} -> {} bps", q, bps);
+                    println!("[xydesk-host] quality dari client: {} -> {} bps tanpa ubah resolusi", q, bps);
                     continue;
                 }
                 InputEvent::VideoBitrate(mbps) => {

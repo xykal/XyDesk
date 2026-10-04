@@ -442,8 +442,8 @@ export type SessionPrefs = {
 export const QUALITY_META: Record<StreamQuality, { label: string; desc: string; bitrate: BitrateMbps; num: number }> = {
   auto:   { label: 'Otomatis', desc: 'Bitrate menyesuaikan kehilangan paket dan antrean jaringan', bitrate: 0,  num: 0 },
   medium: { label: 'Sedang',   desc: 'Target 8 Mbps • seimbang',    bitrate: 8,  num: 1 },
-  high:   { label: 'Tinggi',   desc: 'Target 15 Mbps • detail lebih tinggi',      bitrate: 15, num: 2 },
-  ultra:  { label: 'Sangat tinggi',    desc: 'Target 25 Mbps • bandwidth tinggi',    bitrate: 25, num: 3 },
+  high:   { label: 'Tinggi',   desc: 'Target 15 Mbps • kompresi lebih ringan',   bitrate: 15, num: 2 },
+  ultra:  { label: 'Sangat tinggi',    desc: 'Target 25 Mbps • paling halus bila jaringan kuat', bitrate: 25, num: 3 },
 };
 
 export const BITRATE_OPTIONS: { value: BitrateMbps; label: string; hint: string }[] = [
