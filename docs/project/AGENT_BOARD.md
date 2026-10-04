@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-ANDROID-WALLPAPER-WORDING | Operator - XyDesk Team | Operator | REVIEW | APK wording: preview kartu disebut wallpaper | 2026-10-04 |
 
 ## Antrean izin push
 

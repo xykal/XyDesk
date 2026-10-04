@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK wording wallpaper:** teks perangkat/akun tidak lagi menyebut cuplikan layar host; preview kartu dijelaskan sebagai wallpaper lokal yang tidak diunggah.
+
 - **Agent board:** baris aktif/review untuk batch PR #80–#88 yang sudah merged dibersihkan, sehingga papan kembali menunjukkan tidak ada area kerja yang terkunci.
 
 - **Host panel koneksi:** tombol Putus sesi memakai tint danger ringan saat normal/hover/pressed, supaya aksi memutus client terlihat berbeda dari tombol navigasi biasa.

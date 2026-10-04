@@ -248,14 +248,14 @@ private fun SecurityBody(settings: Settings, onLogout: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         XyRow(Icon.SHIELD, "Token login terenkripsi", "AES-256, hanya bisa dibuka oleh aplikasi ini.", chevron = false, tint = Xy.success)
         XyRow(Icon.KEY, "Password host", "Tidak disimpan kecuali kamu memilih \"Ingat\" saat menyambung dari riwayat.", chevron = false, tint = Xy.success)
-        XyRow(Icon.MONITOR, "Cuplikan layar host", "Disimpan lokal untuk kartu perangkat; tidak diunggah.", chevron = false, tint = Xy.success)
+        XyRow(Icon.MONITOR, "Wallpaper host", "Disimpan lokal untuk kartu perangkat; tidak diunggah.", chevron = false, tint = Xy.success)
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("TINDAKAN", Xy.label)
         Spacer(Modifier.height(8.dp))
         settings.store?.let { ExportHistoryRow(it) }
-        XyRow(Icon.TRASH, "Hapus riwayat & cuplikan", "${settings.historyCount} sesi akan dihapus.", tint = Xy.warning, onClick = settings.onClearHistory)
+        XyRow(Icon.TRASH, "Hapus riwayat & wallpaper", "${settings.historyCount} sesi akan dihapus.", tint = Xy.warning, onClick = settings.onClearHistory)
         XyRow(Icon.KEY, "Lupakan password host tersimpan", "Semua host akan minta password lagi.", tint = Xy.warning, onClick = { settings.store?.forgetAllPins() })
         XyRow(Icon.POWER, "Keluar dari HP ini", "Token dihapus, harus login ulang.", tint = Xy.danger, onClick = onLogout)
     }
@@ -290,7 +290,7 @@ private fun PermissionsBody(settings: Settings) {
             value = if (notif) "Diizinkan" else "Minta izin", chevron = !notif, tint = if (notif) Xy.success else Xy.accent,
             onClick = if (notif || Build.VERSION.SDK_INT < 33) null else ({ askNotif.launch(Manifest.permission.POST_NOTIFICATIONS) }))
         XyRow(Icon.CONTROLS, "Clipboard", "Hanya saat kamu menyalakannya di dalam sesi.", value = "Opsional", chevron = false)
-        XyRow(Icon.MONITOR, "Penyimpanan internal", "Riwayat dan cuplikan; tidak menyentuh galeri.", value = "Aktif", chevron = false, tint = Xy.success)
+        XyRow(Icon.MONITOR, "Penyimpanan internal", "Riwayat dan wallpaper; tidak menyentuh galeri.", value = "Aktif", chevron = false, tint = Xy.success)
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
