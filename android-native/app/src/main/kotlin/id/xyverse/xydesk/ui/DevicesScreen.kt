@@ -54,7 +54,7 @@ import id.xyverse.xydesk.ui.kit.XyText
 import java.text.DateFormat
 import java.util.Date
 
-/** Kartu per host: cuplikan layar terakhir, nama, spesifikasi ringkas; ketuk panah untuk detail dan riwayat sesi. */
+/** Kartu per host: wallpaper terakhir, nama, spesifikasi ringkas; ketuk panah untuk detail dan riwayat sesi. */
 @Composable
 fun DevicesSection(
     devices: List<SessionRecord>,
@@ -103,10 +103,10 @@ private fun PreviewBox(d: SessionRecord, ratio: Float, iconSize: Dp, caption: Bo
     val preview by Previews.rememberPreview(d.host, d.durationSec)
     Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color(0xFF1B1B22)), contentAlignment = Alignment.Center) {
         val img = preview
-        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Crop, filterQuality = FilterQuality.High)
+        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit, filterQuality = FilterQuality.Low)
         else Column(horizontalAlignment = Alignment.CenterHorizontally) {
             XyIcon(Icon.MONITOR, tint = Color.White.copy(alpha = 0.5f), size = iconSize)
-            if (caption) { Spacer(Modifier.height(6.dp)); XyText("Belum ada cuplikan", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f))) }
+            if (caption) { Spacer(Modifier.height(6.dp)); XyText("Belum ada wallpaper", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f))) }
         }
         content()
     }

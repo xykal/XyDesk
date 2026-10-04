@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.graphics.Bitmap
 import android.media.AudioManager
 import android.os.Build
 import android.os.Bundle
@@ -16,8 +15,6 @@ import android.view.HapticFeedbackConstants
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
-import android.view.PixelCopy
-import android.view.SurfaceView
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
@@ -92,7 +89,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         override fun run() { metrics.tick(); ui.postDelayed(this, 1000) }
     }
     private val previewTick = object : Runnable {
-        override fun run() { capturePreview(); ui.postDelayed(this, 10_000) }
+        override fun run() {
+            if (store.bool(P.SAVE_PREVIEW, true)) session.requestWallpaperPreview()
+            ui.postDelayed(this, 30_000)
+        }
     }
     private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
         if (!connected || !clipboardSync) return@OnPrimaryClipChangedListener
@@ -395,19 +395,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (maxMbps > 0 && metrics.auto) session.send(StreamXy.bitrate(maxMbps))
     }
 
-    /** Salin frame yang sedang tampil ke bitmap kecil; jadi cuplikan kartu perangkat. */
-    private fun capturePreview() {
-        if (!connected || !store.bool(P.SAVE_PREVIEW, true)) return
-        val view: SurfaceView = if (lowLatency) b.raw else b.video
-        if (view.width == 0 || view.height == 0 || !view.holder.surface.isValid) return
-        val w = 640
-        val h = (w * view.height / view.width).coerceIn(1, 360)
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        runCatching {
-            PixelCopy.request(view, bmp, { r -> if (r == PixelCopy.SUCCESS) Thread { Previews.save(applicationContext, hostId, bmp) }.start() }, ui)
-        }
-    }
-
     /** Catat/perbarui sesi ini di riwayat; dipanggil ulang tiap ada info baru. */
     private fun record() = store.record(
         SessionRecord(
@@ -440,7 +427,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onHostWallpaper(jpeg: ByteArray) {
-        Thread { Previews.saveJpeg(applicationContext, hostId, jpeg) }.start()
+        if (!store.bool(P.SAVE_PREVIEW, true)) return
+        Thread {
+            Previews.saveJpeg(applicationContext, hostId, jpeg)
+            ui.post { record() }
+        }.start()
     }
 
     override fun onMicInput(available: Boolean, reason: String) { micInput = available; micReason = reason }
@@ -471,7 +462,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
             b.toolbar.bringToFront()
             startService(Intent(this, SessionKeep::class.java))
             ui.postDelayed(statsTick, 1000)
-            ui.postDelayed(previewTick, 3000)
+            if (store.bool(P.SAVE_PREVIEW, true)) {
+                listOf(1200L, 5000L, 12_000L).forEach { delay ->
+                    ui.postDelayed({ session.requestWallpaperPreview() }, delay)
+                }
+            }
+            ui.postDelayed(previewTick, 30_000)
             session.send(StreamXy.fps(metrics.targetFps))
             if (store.quality == 0) metrics.auto = true else session.send(StreamXy.quality(store.quality))
             applyStartPrefs()

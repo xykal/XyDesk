@@ -233,7 +233,6 @@ class RtcSession(
             override fun onStateChange() {
                 if (ch.state() == DataChannel.State.OPEN) {
                     if (clipboardSync) send(StreamXy.clipboardReq())
-                    send(wallpaper.request())
                 }
             }
             override fun onMessage(buffer: DataChannel.Buffer) {
@@ -348,6 +347,12 @@ class RtcSession(
             val loss = if (total > 0) lost / total * 100.0 else 0.0
             cb(LinkStats(fps, frames, decode, rtt, path, loss))
         }
+    }
+
+    fun requestWallpaperPreview() {
+        val ch = input ?: return
+        if (ch.state() != DataChannel.State.OPEN) return
+        wallpaper.requestIfIdle()?.let(::send)
     }
 
     fun send(bytes: ByteArray) {

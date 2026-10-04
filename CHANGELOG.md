@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK native:** preview kartu perangkat sekarang hanya memakai wallpaper host, bukan tangkapan frame sesi; permintaan wallpaper diulang aman tanpa menimpa transfer yang sedang jalan, tampilan kartu tidak lagi crop/High filter. Overlay virtual diperluas dengan preset QWERTY, F1–F12, numpad, mouse, dan gamepad/XInput lengkap (stick kiri/kanan, trigger, ABXY, D-pad, Start/Back), semua tombol tetap berbentuk ring bulat, bisa digeser, diubah ukuran, dan aksi tahan mengikuti durasi sentuhan.
+
 - **Dokumentasi stack aktif:** ROADMAP, SETUP, ARCHITECTURE, dan VERSIONING disinkronkan dengan stack saat ini: Android native, host Rust + panel Win32, web Vite, Worker Cloudflare, serta `VERSION` sebagai sumber versi. Referensi aktif ke Flutter/Tauri/Electron dipindahkan menjadi catatan sejarah.
 
 - **Actions dikunci manual:** semua workflow produksi/helper sekarang hanya `workflow_dispatch`; pemicu `push`, `pull_request`, `workflow_run`, dan jadwal cleanup dihapus. Setiap job berhenti di langkah awal bila actor bukan `xykal`, supaya build/deploy/release hanya bisa dijalankan pemilik repo atau token pemilik.

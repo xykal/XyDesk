@@ -1,7 +1,6 @@
 package id.xyverse.xydesk.core
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.LruCache
 import androidx.compose.runtime.Composable
@@ -15,7 +14,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Cuplikan terakhir layar host per ID: JPEG di penyimpanan internal + cache memori,
+ * Wallpaper terakhir host per ID: JPEG di penyimpanan internal + cache memori,
  * dibaca di luar thread UI supaya daftar tidak tersendat saat digulir.
  */
 object Previews {
@@ -23,21 +22,11 @@ object Previews {
 
     private fun dir(context: Context) = File(context.filesDir, "previews").apply { mkdirs() }
 
-    fun file(context: Context, host: String): File = File(dir(context), Presence.hostKey(host) + ".jpg")
-
     fun wallpaperFile(context: Context, host: String): File = File(dir(context), Presence.hostKey(host) + ".wall.jpg")
 
     fun saveJpeg(context: Context, host: String, bytes: ByteArray) {
         if (!XyPreview.jpegOk(bytes)) return
         File(dir(context), "w.jpg").apply { writeBytes(bytes); renameTo(wallpaperFile(context, host)) }
-        memory.remove(Presence.hostKey(host))
-    }
-
-    fun save(context: Context, host: String, bitmap: Bitmap) {
-        if (wallpaperFile(context, host).exists()) return
-        val tmp = File(dir(context), "tmp.jpg")
-        tmp.outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 82, it) }
-        tmp.renameTo(file(context, host))
         memory.remove(Presence.hostKey(host))
     }
 
@@ -50,13 +39,13 @@ object Previews {
         val key = Presence.hostKey(host)
         memory.get(key)?.let { return it }
         return withContext(Dispatchers.IO) {
-            val f = listOf(wallpaperFile(context, host), file(context, host)).firstOrNull { it.exists() }
+            val f = wallpaperFile(context, host).takeIf { it.exists() }
             if (f == null) null
             else BitmapFactory.decodeFile(f.path)?.asImageBitmap()?.also { memory.put(key, it) }
         }
     }
 
-    /** Dipakai kartu perangkat: null sampai cuplikan terbaca; ikut berubah saat file diganti. */
+    /** Dipakai kartu perangkat: null sampai wallpaper terbaca; ikut berubah saat file diganti. */
     @Composable
     fun rememberPreview(host: String, tick: Any? = null): State<ImageBitmap?> {
         val ctx = LocalContext.current

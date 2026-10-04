@@ -90,6 +90,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 | SESI-20260928-LATENCY-HARNESS | Operator - XyDesk Team | Latency harness (6.8.6), preset otomatis + APK kirim preset (6.8.7), pemulihan gate CI, keamanan WebSocket/VB-CABLE, pemangkasan workflow, penataan dokumen | DISETUJUI | Xyckal (chat) | 2026-09-28 | Build hijau berturut-turut; Release v6.8.6, v6.8.7 |
 | SESI-20261004-OPERATOR-ACTIONS | Operator - XyDesk Team | Kunci Actions: semua workflow manual-only + actor guard `xykal`; hapus pemicu push/PR/workflow_run/schedule | DISETUJUI | Operator | 2026-10-04 | local: PyYAML parse workflows, `python3 tool/check_version.py`, `git diff --check` |
 | SESI-20261004-SENA-DOCS | Sena - XyVerse Team | Sinkronisasi dokumentasi stack aktif: Android native, host Rust + panel Win32, web Vite, Worker Cloudflare, `VERSION` sebagai sumber versi | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check` |
+| SESI-20261004-ARKA-ANDROID | Arka - XyVerse Team | APK native: preview hanya wallpaper host + retry aman; overlay virtual QWERTY/F1–F12/numpad/mouse/gamepad ring bulat, resize/drag, tekan-tahan | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`; remote Android Native CI success sebelum rebase |
 
 Riwayat lengkap (log pengiriman, antrean lama, riwayat sesi sampai 28 Sep 2026):
 `../archive/AGENT_BOARD-2026-09.md`.

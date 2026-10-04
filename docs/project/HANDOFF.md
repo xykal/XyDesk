@@ -72,6 +72,7 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 
 ## Untuk: Host Engine
 
+- [ ] Preview wallpaper host: generator masih memaksa pratinjau 1920×1080/Lanczos dan bisa menolak wallpaper yang terlalu rinci. Bila kartu APK masih kosong setelah retry native, sederhanakan generator host supaya mempertahankan rasio asli, tanpa filter/HD paksa, dengan batas byte yang tetap aman.
 - [ ] Encoder MFT: belum diuji GPU AMD/Intel nyata (hanya RDP).
 - [ ] Mic klien → VB-CABLE: alasan `micInput.reason` ada di 6.11.1; bukti
   lapangan masih butuh PC + APK.

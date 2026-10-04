@@ -13,10 +13,18 @@ class WallpaperTransfer {
     private val chunks = ArrayList<String>()
     private var total = 0
     private var size = 0
+    private var pending = false
+    private var requestedAt = 0L
     var onJpeg: ((ByteArray) -> Unit)? = null
 
-    fun request(): ByteArray {
+    fun requestIfIdle(now: Long = System.currentTimeMillis(), timeoutMs: Long = 20_000): ByteArray? {
+        if (pending && now - requestedAt < timeoutMs) return null
+        return request(now)
+    }
+
+    fun request(now: Long = System.currentTimeMillis()): ByteArray {
         chunks.clear(); total = 0; size = 0
+        pending = true; requestedAt = now
         id = next.incrementAndGet()
         val b = ByteArray(5)
         b[0] = 0x0d
@@ -31,7 +39,7 @@ class WallpaperTransfer {
         val o = runCatching { JSONObject(text) }.getOrNull() ?: return
         if (o.optInt("id") != id) return
         when (o.optString("type")) {
-            "wallpaper-error" -> return
+            "wallpaper-error" -> { pending = false; chunks.clear(); return }
             "wallpaper" -> {
                 val t = o.optInt("total")
                 val idx = o.optInt("index")
@@ -45,6 +53,7 @@ class WallpaperTransfer {
                 if (chunks.size == total) {
                     val raw = runCatching { Base64.decode(chunks.joinToString(""), Base64.DEFAULT) }.getOrNull() ?: return
                     if (XyPreview.jpegOk(raw)) onJpeg?.invoke(raw)
+                    pending = false
                     chunks.clear()
                 }
             }
