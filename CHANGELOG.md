@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay mouse:** Stick mouse sekarang terus mengirim gerakan selama jari ditahan ke arah tertentu, bukan hanya saat jari sedang bergerak, sehingga aksi held untuk kontrol mouse terasa konsisten.
+
 - **APK overlay editor:** kontrol overlay kini bisa dipilih dengan tap saat mode edit, selain drag, sehingga resize/hapus layout custom tidak perlu menggeser posisi dulu. Hint editor juga diperjelas.
 
 - **APK overlay autosave:** layout overlay sekarang otomatis tersimpan saat keluar mode edit, saat app masuk background, atau saat sesi ditutup ketika masih edit, jadi posisi/ukuran custom tidak hilang kalau user menekan Selesai atau disconnect tanpa tombol Simpan.
