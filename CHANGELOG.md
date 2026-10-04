@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host panel status:** kartu Capture sekarang netral saat host berhenti, tidak lagi terlihat seperti error engine basi. Tombol takeover sesi berubah menjadi "Ambil alih sesi ini" dan merestart engine dari panel aktif bila host lama masih running di sesi Windows lain.
+
 - **Web auto quality:** mode otomatis selalu mulai 720p30, naik lebih pelan setelah jalur stabil, melewati tier yang tidak didukung encoder, dan manual fallback kembali ke 720p. Kartu/riwayat perangkat menampilkan wallpaper dengan `contain` supaya preview tidak dicrop seperti efek cover.
 
 - **Host wallpaper preview:** generator preview tidak lagi memaksa canvas HD 1920×1080/Lanczos. Wallpaper dikirim ringkas, mempertahankan rasio asli, tanpa upscaling, dan pesan gagal tidak lagi menyebut "preview HD". Panel host juga menjelaskan bahwa kartu perangkat memakai wallpaper Windows, bukan frame video sesi.
