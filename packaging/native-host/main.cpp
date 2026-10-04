@@ -1099,7 +1099,7 @@ void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
     paintCard(surface,left,l.radiusCard);paintCard(surface,right,l.radiusCard);
     workspaceText(dc,L"AKSES KE PC INI",{left.x+px(24),y+px(22),half-px(48),px(20)},g.fontCaps,kMuted);
     workspaceText(dc,g.deviceId.empty()?L"ID belum tersedia":g.deviceId,{left.x+px(24),y+px(50),half-px(48),px(34)},g.fontValue);
-    if(height>=px(200))workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Jangan bagikan password di ruang publik.",{left.x+px(24),y+px(96),half-px(48),px(48)},g.fontBody,kMuted);
+    if(height>=px(200))workspaceText(dc,L"Link, QR dan password tersedia di Akses host. Kartu perangkat memakai wallpaper Windows, bukan frame video sesi.",{left.x+px(24),y+px(96),half-px(48),px(56)},g.fontBody,kMuted);
     workspaceText(dc,L"KONEKSI",{right.x+px(24),y+px(22),right.w-px(48),px(20)},g.fontCaps,kMuted);
     const std::wstring label=!sessionView.known?L"Menunggu status":sessionView.active?L"1 perangkat terhubung":L"Tidak ada sesi aktif";
     workspaceText(dc,label,{right.x+px(24),y+px(50),right.w-px(48),px(42)},g.fontSemi);
@@ -1112,7 +1112,7 @@ void paintWorkspaceSummary(Surface& surface,const PanelLayout& l,HDC dc){
 // tanpa membuka jendela (dipakai CI).
 void paintPageHeading(HDC dc, const PanelLayout& layout, Page page){
     const wchar_t* title=L"Beranda host";
-    const wchar_t* detail=L"Status PC, akses, dan daftar HP yang terhubung — ringkas.";
+    const wchar_t* detail=L"Status PC, akses, daftar HP, dan catatan preview wallpaper — ringkas.";
     switch(page){
     case Page::Connections:title=L"Koneksi perangkat";detail=L"Daftar ringkas: model, status, durasi. Foto produk tidak dipakai.";break;
     case Page::Pairing:title=L"Akses ke PC ini";detail=L"Bagikan link atau QR. Password tetap di bawah kendali lu.";break;

@@ -3,6 +3,7 @@ use std::io::Cursor;
 #[cfg(target_os = "windows")]
 use std::io::Read;
 pub const MAX_JPEG: usize = 256 * 1024;
+const MAX_PREVIEW_EDGE: u32 = 1280;
 
 pub fn preview_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, String> {
     if bytes.len() > 16 * 1024 * 1024 {
@@ -19,13 +20,19 @@ pub fn preview_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let source = reader
         .decode()
         .map_err(|_| "format wallpaper tidak didukung")?;
-    let image = if source.width() > 1920 || source.height() > 1080 {
-        source.resize(1920, 1080, image::imageops::FilterType::Lanczos3)
+    let image = if source.width() > MAX_PREVIEW_EDGE || source.height() > MAX_PREVIEW_EDGE {
+        // Kartu perangkat butuh wallpaper ringkas, bukan versi HD yang dipoles.
+        // Rasio asli dipertahankan dan tidak ada upscaling.
+        source.resize(
+            MAX_PREVIEW_EDGE,
+            MAX_PREVIEW_EDGE,
+            image::imageops::FilterType::Nearest,
+        )
     } else {
         source
     };
     let rgb = image.to_rgb8();
-    for quality in [90, 85, 80, 75] {
+    for quality in [88, 82, 76, 70, 64, 58, 52] {
         let mut out = Vec::new();
         image::codecs::jpeg::JpegEncoder::new_with_quality(&mut out, quality)
             .encode_image(&rgb)
@@ -34,7 +41,7 @@ pub fn preview_from_bytes(bytes: &[u8]) -> Result<Vec<u8>, String> {
             return Ok(out);
         }
     }
-    Err("wallpaper terlalu rinci untuk batas preview HD; gambar lama dipertahankan".into())
+    Err("wallpaper terlalu rinci untuk batas preview; gambar lama dipertahankan".into())
 }
 
 #[cfg(target_os = "windows")]
@@ -132,14 +139,29 @@ mod tests {
         assert!(local_drive_path("C:\\Users\\test\\wallpaper.jpg"));
     }
     #[test]
-    fn hd_without_upscale_and_invalid_bounded() {
+    fn preview_preserves_ratio_without_hd_canvas() {
         let image = image::RgbImage::from_pixel(2560, 1440, image::Rgb([24, 80, 120]));
         let mut png = Cursor::new(Vec::new());
         image.write_to(&mut png, image::ImageFormat::Png).unwrap();
         let jpeg = preview_from_bytes(png.get_ref()).unwrap();
         let decoded = image::load_from_memory(&jpeg).unwrap();
-        assert_eq!((decoded.width(), decoded.height()), (1920, 1080));
+        assert_eq!((decoded.width(), decoded.height()), (1280, 720));
         assert!(jpeg.len() <= MAX_JPEG);
+    }
+
+    #[test]
+    fn preview_does_not_upscale_small_wallpaper() {
+        let image = image::RgbImage::from_pixel(800, 600, image::Rgb([24, 80, 120]));
+        let mut png = Cursor::new(Vec::new());
+        image.write_to(&mut png, image::ImageFormat::Png).unwrap();
+        let jpeg = preview_from_bytes(png.get_ref()).unwrap();
+        let decoded = image::load_from_memory(&jpeg).unwrap();
+        assert_eq!((decoded.width(), decoded.height()), (800, 600));
+        assert!(jpeg.len() <= MAX_JPEG);
+    }
+
+    #[test]
+    fn invalid_and_oversized_wallpaper_rejected() {
         assert!(preview_from_bytes(b"not a picture").is_err());
         assert!(preview_from_bytes(&vec![0; 16 * 1024 * 1024 + 1]).is_err());
     }

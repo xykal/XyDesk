@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host wallpaper preview:** generator preview tidak lagi memaksa canvas HD 1920×1080/Lanczos. Wallpaper dikirim ringkas, mempertahankan rasio asli, tanpa upscaling, dan pesan gagal tidak lagi menyebut "preview HD". Panel host juga menjelaskan bahwa kartu perangkat memakai wallpaper Windows, bukan frame video sesi.
+
 - **APK native:** preview kartu perangkat sekarang hanya memakai wallpaper host, bukan tangkapan frame sesi; permintaan wallpaper diulang aman tanpa menimpa transfer yang sedang jalan, tampilan kartu tidak lagi crop/High filter. Overlay virtual diperluas dengan preset QWERTY, F1–F12, numpad, mouse, dan gamepad/XInput lengkap (stick kiri/kanan, trigger, ABXY, D-pad, Start/Back), semua tombol tetap berbentuk ring bulat, bisa digeser, diubah ukuran, dan aksi tahan mengikuti durasi sentuhan.
 
 - **Dokumentasi stack aktif:** ROADMAP, SETUP, ARCHITECTURE, dan VERSIONING disinkronkan dengan stack saat ini: Android native, host Rust + panel Win32, web Vite, Worker Cloudflare, serta `VERSION` sebagai sumber versi. Referensi aktif ke Flutter/Tauri/Electron dipindahkan menjadi catatan sejarah.
