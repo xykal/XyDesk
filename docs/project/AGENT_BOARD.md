@@ -96,6 +96,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 | SESI-20261004-OPERATOR-HOST-STATUS | Operator - XyDesk Team | Host panel: capture stopped-state netral; takeover sesi restart engine dari panel aktif | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`; compiler Windows native tidak tersedia di sandbox |
 | SESI-20261004-OPERATOR-PREVIEW-WORDING | Operator - XyDesk Team | Preview wording: ganti sisa label internal `HD preview` menjadi wallpaper preview | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`, `npm test` |
 | SESI-20261004-OPERATOR-ANDROID-OVERLAY-POLISH | Operator - XyDesk Team | APK overlay editor: drag kontrol mengakumulasi gerak dari pusat awal untuk tombol/stick/joystick/scroll | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`; Gradle tidak tersedia di sandbox |
+| SESI-20261004-OPERATOR-ANDROID-OVERLAY-SELECT | Operator - XyDesk Team | APK overlay editor: selected highlight konsisten untuk stick/joystick/trigger/scroll | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`; Gradle tidak tersedia di sandbox |
 
 Riwayat lengkap (log pengiriman, antrean lama, riwayat sesi sampai 28 Sep 2026):
 `../archive/AGENT_BOARD-2026-09.md`.
