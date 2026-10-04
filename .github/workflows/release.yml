@@ -1,13 +1,9 @@
 name: Release
 
-# Release stabil dibuat hanya setelah workflow Build pada main sukses.
+# Release stabil dibuat manual dari SHA yang sudah punya Build penuh sukses.
 # Perubahan versi di VERSION (contoh 1.1.0+3) menjadi tag v1.1.0.
 # Jika tag/release untuk versi itu sudah ada, workflow berhenti tanpa duplikasi.
 on:
-  workflow_run:
-    workflows: ['Build']
-    branches: [main]
-    types: [completed]
   workflow_dispatch:
     inputs:
       draft:
@@ -30,15 +26,9 @@ env:
 jobs:
   prepare:
     name: Validasi versi
-    # Sejak kebijakan 3 Sep 2026 push TIDAK memicu Build — semua Build
-    # dijalankan lewat `workflow_dispatch` oleh role CI/Release. Syarat lama
-    # `workflow_run.event == 'push'` karena itu tidak pernah lagi terpenuhi,
-    # dan Release diam-diam `skipped` walau versi sudah dinaikkan (terjadi di
-    # rilis 6.5.0, Build 33781937189). Yang benar-benar penting bukan APA yang
-    # memicu Build, melainkan bahwa Build-nya SUKSES di `main`.
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    # Manual saja: operator memilih SHA yang sudah punya Build penuh sukses.
+    # Kalau release_sha kosong, workflow memakai SHA tempat workflow_dispatch
+    # dijalankan.
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -49,17 +39,24 @@ jobs:
       release_sha: ${{ steps.release.outputs.release_sha }}
       build_run_id: ${{ steps.release.outputs.build_run_id }}
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ inputs.release_sha || github.sha }}
           fetch-depth: 2
 
       - id: release
         name: Cocokkan VERSION dan Build
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKFLOW_SHA: ${{ github.event.workflow_run.head_sha }}
-          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_SHA: ""
+          WORKFLOW_RUN_ID: ""
           RELEASE_SHA_INPUT: ${{ inputs.release_sha }}
         run: |
           set -euo pipefail
@@ -196,6 +193,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - name: Unduh artefak Build terverifikasi
         env:
           GH_TOKEN: ${{ github.token }}
@@ -234,6 +238,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.release_sha }}
@@ -478,6 +489,13 @@ jobs:
       RELEASE_SHA: ${{ needs.prepare.outputs.release_sha }}
       ONESIGNAL_REST_API_KEY: ${{ secrets.ONESIGNAL_REST_API_KEY }}
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.prepare.outputs.release_sha }}

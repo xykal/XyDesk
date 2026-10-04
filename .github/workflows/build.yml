@@ -81,6 +81,13 @@ jobs:
       meta: ${{ steps.filter.outputs.meta }}
       full: ${{ steps.full.outputs.value }}
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # paths-filter butuh sejarah penuh untuk membandingkan base..head
@@ -153,6 +160,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Uji gerbang badge resmi (news worker)
         run: node --test news/test/*.test.js
@@ -165,6 +179,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Worker signaling memegang JWT, OTP, dan rate limit. Sekarang
@@ -210,6 +231,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Nomor versi hidup di satu tempat. Kalau turunannya melenceng, footer
@@ -228,6 +256,13 @@ jobs:
       run:
         working-directory: android-native
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -274,6 +309,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
@@ -322,6 +364,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
@@ -406,6 +455,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -447,6 +503,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Pasang WiX v4 dan NSIS
         shell: pwsh
@@ -565,6 +628,13 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - name: Tulis ringkasan
         env:
           FULL: ${{ needs.changes.outputs.full }}

@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Actions dikunci manual:** semua workflow produksi/helper sekarang hanya `workflow_dispatch`; pemicu `push`, `pull_request`, `workflow_run`, dan jadwal cleanup dihapus. Setiap job berhenti di langkah awal bila actor bukan `xykal`, supaya build/deploy/release hanya bisa dijalankan pemilik repo atau token pemilik.
+
 ## [6.11.9] — 2026-10-03
 
 - Overlay default FPS: WASD + mouse bulat, bisa digeser. Keyboard tetap IME HP.

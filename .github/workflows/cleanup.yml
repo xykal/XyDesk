@@ -1,11 +1,6 @@
 name: Bersihkan Actions
 
 on:
-  workflow_run:
-    workflows: ["Release", "Deploy Web App (Cloudflare)", "CodeQL", "Android Native"]
-    types: [completed]
-  schedule:
-    - cron: "0 3 * * *"
   workflow_dispatch:
 
 permissions:
@@ -21,8 +16,14 @@ jobs:
     name: Hapus run, artifact & cache lama
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'skipped'
     steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
       - name: Pangkas riwayat run, artifact, dan cache Actions
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

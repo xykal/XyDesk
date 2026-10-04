@@ -1,23 +1,30 @@
 # CI/CD — XyDesk
 
 Build dan rilis dijalankan melalui GitHub Actions agar perangkat pengguna tidak
-perlu menjalankan Flutter, Android SDK, Rust, atau Visual Studio secara lokal.
+perlu menyiapkan Android SDK, Rust MSVC, WiX/NSIS, atau Cloudflare Wrangler
+secara lokal. Semua workflow produksi sekarang manual dan dijaga actor guard.
 
 ## Workflow
 
-Lima workflow. Sepuluh workflow eksperimen (`validate-web-host`, `prepare-host-*`,
-`prepare-windows-installer`, `publish-host-*`, `build-apk-only`,
-`deploy-web-candidate`, `test-vdd-setup`) dihapus 28 Sep 2026: semuanya
-`workflow_dispatch` tanpa pemakai, menggandakan pekerjaan `build.yml`, dan
-memperlebar permukaan serangan (tiap workflow = jalur lain ke secret repo).
+Semua workflow aktif hanya berjalan lewat `workflow_dispatch`. Tidak ada pemicu
+`push`, `pull_request`, `workflow_run`, atau jadwal.
 
 | Berkas | Pemicu | Hasil |
 |---|---|---|
-| `.github/workflows/build.yml` | **manual** (`workflow_dispatch`) saja | gerbang mutu per-area, APK Android per ABI, bundle Windows native C++ + engine Rust, bundle Web |
-| `.github/workflows/release.yml` | Build `main` sukses + `version` berubah; manual via `release_sha` | GitHub Release: APK, EXE (NSIS), MSI (WiX), `update.json`, push OneSignal |
-| `.github/workflows/deploy-web.yml` | Build `main` sukses; manual recovery | deploy bundle web ke Cloudflare |
-| `.github/workflows/deploy-signaling.yml` | **manual** | deploy Cloudflare Worker API/signaling |
-| `.github/workflows/deploy-news.yml` | **manual** | deploy Worker berita + migrasi D1 |
+| `.github/workflows/build.yml` | manual | Build penuh: APK Android per ABI, host Rust, panel Win32, web, Worker checks, installer lint, meta/version check |
+| `.github/workflows/release.yml` | manual via `release_sha` | GitHub Release: APK, EXE, MSI, `update.json`, checksum, push OneSignal |
+| `.github/workflows/deploy-web.yml` | manual | deploy bundle web dari run Build yang dipilih ke Cloudflare |
+| `.github/workflows/deploy-signaling.yml` | manual | deploy Cloudflare Worker API/signaling |
+| `.github/workflows/deploy-news.yml` | manual | deploy Worker berita + migrasi D1 |
+| `.github/workflows/android-native.yml` | manual | build APK native cepat |
+| `.github/workflows/host-check.yml` | manual | format/clippy host Linux + Windows check |
+| `.github/workflows/web-shots.yml` | manual | bukti screenshot layout web |
+| `.github/workflows/android-keystore.yml` | manual | buat/rotasi keystore Android |
+| `.github/workflows/cleanup.yml` | manual | bersihkan run/artifact/cache lama |
+
+Setiap job memiliki langkah awal `Validasi operator workflow`. Jika `GITHUB_ACTOR`
+bukan `xykal`, job berhenti sebelum checkout/build/deploy. Artinya Actions
+praktis hanya bisa dijalankan pemilik repo atau token pemilik repo.
 
 ## Pengujian web + host tanpa runner interaktif
 
@@ -32,11 +39,9 @@ mencabut secret/node Tailscale. Periksa dan batalkan run lama bila masih aktif;
 review kredensial yang khusus lab secara terpisah. Penghapusan baru berlaku
 di branch remote setelah perubahan dipush.
 
-**Perhatian:** Build sukses dapat memicu `deploy-web.yml` dan `release.yml`
-melalui `workflow_run` sesuai syarat masing-masing. Jangan memperlakukan
-dispatch Build sebagai validasi tanpa efek produksi. Untuk kandidat uji,
-jalankan Build di branch selain `main`: listener `workflow_run` hanya
-bereaksi pada `main` dan Release menolak versi yang tidak berubah.
+**Perhatian:** Build sukses tidak lagi menyalakan deploy atau release otomatis.
+Setelah Build penuh hijau, operator masih harus menjalankan `deploy-web.yml`
+atau `release.yml` secara manual dengan SHA yang disengaja.
 
 ## Kebijakan pemicu (sejak 3 Sep 2026): push TIDAK memicu actions
 
@@ -44,34 +49,18 @@ Push ke `main` **tidak memicu actions apa pun**. Dulu ada satu
 pengecualian — gerbang audit `verify-push-auth.yml` — tetapi workflow itu
 dihapus operator pada 5 Sep 2026 (commit `b4ce4a4`), jadi sekarang betul-betul
 nihil: tidak ada workflow yang berjalan karena push.
-Semua jalur — build terfilter maupun penuh, kemasan desktop, deploy
-web/news/signaling, rilis — hanya lewat `workflow_dispatch` dan dijalankan
-oleh role CI/Release (Cakra) setelah izin operator: bump versi → Build →
-Release → deploy → berita, dalam satu run penuh saat operator menyatakan
-siap. Alasan: build otomatis dari push perantara menghasilkan "hijau
-palsu" (run terfilter, artefak tak lengkap), run yang terbuang, dan
-tumpang tindih dengan jadwal rilis; hasil akhir yang dianggap bukti hanya
-run penuh yang disetujui. `release.yml`/`deploy-web.yml` menyala HANYA
-setelah Build sukses — pemicu sebenarnya tetap satu (dispatch oleh Cakra).
+Semua jalur — build penuh, APK native cepat, host check, screenshot web,
+deploy web/news/signaling, cleanup, keystore, dan release — hanya lewat
+`workflow_dispatch`. Alasan: build otomatis dari push/PR perantara membuat
+"hijau palsu", run terbuang, dan update produksi berulang. Hasil yang
+dianggap bukti hanya run manual yang memang diminta operator.
 
-### Pengecualian: jalur deploy cepat (aturan papan #5, 3 Sep 2026)
+### Deploy cepat
 
-Restu operator di chat membuka satu pengecualian dari "semua lewat dispatch":
-**Web app** serta **worker Backend/Edge dan worker berita** boleh di-deploy
-langsung oleh role pemiliknya, tanpa menunggu dispatch CI/Release. Syaratnya
-kumulatif — semuanya, bukan pilih salah satu:
-
-1. push sudah di `main` dan `verify-push-auth` hijau;
-2. build memakai env produksi yang benar (mis. `VITE_GOOGLE_CLIENT_ID`);
-3. verifikasi pasca-deploy dijalankan **dan dicatat** (contoh Web: md5 bundle
-   live == artefak build, `content-type` JS benar);
-4. dicatat terbuka di baris sesi papan + item `project/HANDOFF.md` ke CI/Release pada
-   sesi yang sama.
-
-Yang TIDAK ikut pengecualian ini: **build/rilis penuh** — APK, Windows,
-installer, tag rilis — tetap kewenangan CI/Release lewat `workflow_dispatch`.
-Kredensial deploy milik operator; pembagiannya ke lingkungan agent lain adalah
-keputusan operator, bukan agent.
+Tidak ada workflow deploy otomatis. Deploy cepat masih boleh atas restu operator,
+tetapi harus dijalankan manual oleh pemilik/token pemilik dan tetap dicatat di
+papan + laporan sesi. Build/rilis penuh tetap tidak boleh digabung diam-diam
+dengan PR fitur.
 
 ### Sebelum build/rilis: cek papan, lalu izin operator (sejak 3 Sep 2026)
 
@@ -79,14 +68,14 @@ Aturan operator — bukan saran, bukan kebiasaan:
 
 1. **Versi & berita = keputusan operator.** Role build/rilis TIDAK
    menetapkan nomor versi, tidak memilih isi berita, dan tidak menaikkan
-   `pubspec.yaml` atas inisiatif sendiri. Semua lewat arahan operator.
+   `VERSION` atas inisiatif sendiri. Semua lewat arahan operator.
 2. **Cek kerjaan agent lain dulu.** Sebelum mengajukan build penuh/rilis:
    baca `project/AGENT_BOARD.md` (sesi aktif) + `project/HANDOFF.md` dan pastikan sesi
    yang menyentuh area rilis (client, host, desktop, web) sudah `SELESAI`.
    Kalau masih ada yang berjalan: TAHAN, laporkan ke operator — jangan
    memaksakan rilis.
 3. **Push wajib izin operator.** Termasuk bump versi dan push yang
-   menyentuh `pubspec.yaml`/`release.yml`/`build.yml` — antre di
+   menyentuh `VERSION`/`release.yml`/`build.yml` — antre di
    `project/AGENT_BOARD.md`, tunggu `DISETUJUI`, baru push. Push sendiri tidak
    menjalankan build apa pun — hanya gerbang audit izin.
 4. **Satu gerakan saat siap.** Rilis penuh dikerjakan SEKALIGUS ketika
@@ -99,19 +88,20 @@ Untuk memicu Build penuh:
 gh workflow run build.yml --ref main
 ```
 
-**Catatan anti-race (3 Sep 2026):** `deploy-web.yml` mempercayai API, bukan payload `workflow_run` — SHA run Build diambil dari catatan run, checkout memakai SHA itu, artefak dicocokkan dengan run-nya, deploy berjalan serial (`cancel-in-progress: false`), dan hanya Build web terbaru yang deploy (run basi menyingkirkan diri). Pelajaran: dua Build sukses berdekatan sempat membuat run deploy menimpa bundle baru dengan yang lama (6c5ba06/d90e12a).
+**Catatan anti-race:** `deploy-web.yml` tetap mempercayai API dan artefak run
+Build yang dipilih, bukan asumsi dari branch. Karena workflow-nya manual, SHA
+yang dideploy harus eksplisit dan bisa diaudit.
 
 ## Filter area di Build (sejak 3 Sep 2026)
 
-`build.yml` tidak lagi menjalankan seluruh rantai untuk setiap push/PR.
-Job `changes` (selalu berjalan, murah) mendeteksi area yang tersentuh lewat
-`dorny/paths-filter`; job lain hanya hidup bila areanya berubah. Peta
-filternya (ubah bersama `docs/CI.md` bila bergeser):
+`build.yml` manual masih memakai `dorny/paths-filter` agar ringkasan area jelas.
+Pada `workflow_dispatch`, Build penuh menjalankan seluruh rantai; peta filter
+ini tetap menjadi dokumentasi area yang dijaga:
 
 | Perubahan | Job yang jalan |
 |---|---|
-| `lib/`, `test/`, `assets/`, `android/`, `design/`, `tool/`, `pubspec*`, `analysis_options.yaml` | `check-flutter` → `android` + `windows` |
-| `host/**` (dan `pubspec.yaml` — bump rilis) | `host-test` → `windows` |
+| `android-native/**`, `VERSION` | `android` |
+| `host/**`, `packaging/native-host/**`, `packaging/tests/**`, `VERSION` | `host-test` → `windows` |
 | `web/**` | `web` |
 | `news/**` | `check-news` |
 | `cloudflare/**`, `signaling/**` | `check-signaling` |
@@ -121,16 +111,14 @@ filternya (ubah bersama `docs/CI.md` bila bergeser):
 
 Konsekuensi yang dijaga:
 
-- **Rilis tetap utuh.** `pubspec.yaml` masuk filter `flutter` AND `host`,
-  sehingga bump versi (satu-satunya pemicu rilis) membangun ulang rantai
-  client + host — `release.yml` selalu menemukan artefak
-  `XyDesk-Android-APK` dan `XyDesk-Windows-<arch>`.
-- **PR dokumen punya status check.** Job `changes` selalu hijau, plus
-  `check-meta` untuk perubahan dokumen — tidak ada lagi PR "tanpa check".
+- **Rilis tetap utuh.** `VERSION` masuk filter Android dan host, sehingga bump
+  versi membangun ulang rantai client + host — `release.yml` selalu menemukan
+  artefak `XyDesk-Android-APK` dan `XyDesk-Windows-<arch>`.
+- **PR tidak otomatis membakar Actions.** PR dipakai untuk review. Validasi
+  Actions dijalankan manual saat operator/token pemilik memang memintanya.
 - **Deploy tidak ikut salah jalan.** `deploy-web.yml` memeriksa keberadaan
-  artefak `XyDesk-Web` pada run Build yang memicunya; kalau tidak ada
-  (perubahan tidak menyentuh `web/`), deploy dilewati dengan peringatan,
-  bukan gagal.
+  artefak `XyDesk-Web` pada run Build yang dipilih; kalau tidak ada, deploy
+  berhenti dengan pesan jelas.
 - **Job `skipped` = bukan areamu, bukan kegagalan.** Baca tabel *Ringkasan*
   pada run untuk melihat area yang terdeteksi.
 - **Release hanya mau Build penuh.** `release.yml` memeriksa artefak
@@ -138,17 +126,13 @@ Konsekuensi yang dijaga:
   dipilih; kalau tidak ada (run terfilter), rilis dilewati dengan
   peringatan, bukan merah. Build penuh lewat `workflow_dispatch` berjalan
   di jalur `manual` (tidak dibatalkan push biasa).
-- **Branch protection**: kalau ada, daftar required check nama-nama job
-  berubah (mis. `Analisis Statis (Flutter)` menggantikan `Analisis Statis`).
+- **Branch protection**: kalau ada, required check sebaiknya tidak memaksa
+  workflow otomatis. PR dipakai untuk review; Build manual dipakai sebagai
+  bukti sebelum merge/rilis.
 
-Check yang lama (`Analisis Statis`, satu job raksasa) dipecah menjadi
-`check-flutter`, `check-news`, `check-signaling`, dan `check-meta` supaya
-filter per-area mungkin dilakukan tanpa kehilangan satu pun pengawal:
-analyze/format/test/lisensi/audit aset tetap jalan pada perubahan client,
-test Worker berita pada perubahan `news/`, test JWT/OTP/rate-limit + gofmt +
-**`go vet` + `go test`** pada perubahan `cloudflare/` atau `signaling/`
-(uji Go menjagai aturan token & arah relay server self-host agar tidak
-menyimpang dari Worker produksi).
+Gerbang utama yang tetap dijaga: test Worker berita, test Worker signaling,
+`gofmt`/`go vet`/`go test` signaling Go, `tool/check_version.py`, Gradle APK
+native, host Rust, web build/test, dan lint installer.
 
 ## Verifikasi izin push — **sedang NONAKTIF**
 
@@ -265,11 +249,11 @@ Push ke `main` menjalankan:
 Artefak build biasa disimpan 30 hari. Artefak Actions bukan GitHub Release dan
 tidak otomatis tampil di halaman Releases.
 
-## Deployment Flutter Web
+## Deployment Web
 
-Setelah workflow Build pada `main` sukses, workflow Web mengambil artefak
-`XyDesk-Web` dari run yang sama dan memublikasikannya tanpa build ulang ke
-Cloudflare Workers Static Assets. Produksi menggunakan
+Saat operator menjalankan `deploy-web.yml`, workflow mengambil artefak
+`XyDesk-Web` dari run Build yang dipilih dan memublikasikannya tanpa build ulang
+ke Cloudflare Workers Static Assets. Produksi menggunakan
 `https://app.xydesk.my.id`; API, autentikasi, dan signaling tetap terpisah di
 `https://signal.xydesk.my.id`.
 
@@ -279,12 +263,10 @@ Artefak Web tidak boleh di-commit ke repository.
 
 ## Menerbitkan GitHub Release
 
-Versi aplikasi adalah syarat rilis, **bukan lagi pemicunya**. Sejak kebijakan
-3 Sep 2026, push tidak menjalankan Build; alurnya: operator menetapkan versi →
-naikkan nilai `version` di `pubspec.yaml` (SemVer + Android build, mis.
-`6.4.0+27`) → push (dengan izin) → role CI/Release men-*dispatch* `build.yml`.
-Setelah run Build itu sukses, workflow Release berjalan (dipicu `workflow_run`
-dari Build, bukan dari push) dan:
+Versi aplikasi adalah syarat rilis, **bukan lagi pemicunya**. Sejak kebijakan manual penuh, push tidak menjalankan Build; alurnya: operator
+menetapkan versi → naikkan `VERSION` (`X.Y.Z+NN`) → push/PR dengan izin →
+operator men-*dispatch* `build.yml`. Setelah run Build itu sukses, operator
+men-*dispatch* `release.yml` dengan SHA yang sama. Workflow Release lalu:
 
 1. memastikan tag `v<versi>` belum ada (tag menandai versi yang sudah dirilis);
 2. memastikan Build sukses berasal dari commit yang sama;
@@ -298,15 +280,15 @@ Build yang sukses tanpa perubahan nilai versi tidak membuat Release. Trigger
 manual (`workflow_dispatch` + `release_sha`) disediakan untuk pemulihan.
 
 **Pengawal SHA tertinggal (sejak 3 Sep 2026).** `prepare` menolak merilis SHA
-yang sudah dilewati `main`. Alasannya kejadian nyata: `pubspec.yaml` ikut
+yang sudah dilewati `main`. Alasannya kejadian nyata: manifest versi ikut
 berubah di sebuah commit fitur, Build jalan, dan Release langsung menandai
 `v6.3.0` di SHA itu — padahal perbaikan layar hitam baru masuk empat commit
 setelahnya, sehingga tag menunjuk isi setengah jadi dan rilisnya harus
 dianulir paksa. Kini:
 
 - SHA rilis == HEAD `main` → lanjut seperti biasa;
-- `main` sudah maju dan Release terpicu otomatis → **berhenti merah**, dengan
-  pesan berapa commit tertinggal;
+- `main` sudah maju dan Release dijalankan untuk SHA lama → **berhenti merah**,
+  dengan pesan berapa commit tertinggal;
 - `main` sudah maju tetapi operator mengisi `release_sha` sendiri → lanjut
   dengan peringatan, karena SHA itu memang disengaja.
 
@@ -348,9 +330,9 @@ belum tersedia, workflow berhenti sebelum GitHub Release dipublikasikan.
 
 ## Konfigurasi publik build
 
-Repository variable `GOOGLE_CLIENT_ID` diteruskan sebagai `dart-define` ke build
-Android, Windows Flutter, dan Web. Nilai ini bukan secret, tetapi tetap dikelola
-di GitHub agar konfigurasi build konsisten.
+Repository variables `GOOGLE_WEB_CLIENT_ID`, `GOOGLE_CLIENT_ID`, dan
+`RESEND_FROM` diteruskan ke build/deploy sesuai area. Nilai OAuth client ID
+bukan secret, tetapi tetap dikelola di GitHub agar konfigurasi build konsisten.
 
 ## Checklist manual setelah install
 

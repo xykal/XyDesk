@@ -88,6 +88,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 | ID Sesi | Agent | Ringkasan perubahan | Status izin | Disetujui oleh | Kapan | Run CI |
 |---|---|---|---|---|---|---|
 | SESI-20260928-LATENCY-HARNESS | Operator - XyDesk Team | Latency harness (6.8.6), preset otomatis + APK kirim preset (6.8.7), pemulihan gate CI, keamanan WebSocket/VB-CABLE, pemangkasan workflow, penataan dokumen | DISETUJUI | Xyckal (chat) | 2026-09-28 | Build hijau berturut-turut; Release v6.8.6, v6.8.7 |
+| SESI-20261004-OPERATOR-ACTIONS | Operator - XyDesk Team | Kunci Actions: semua workflow manual-only + actor guard `xykal`; hapus pemicu push/PR/workflow_run/schedule | DISETUJUI | Operator | 2026-10-04 | local: PyYAML parse workflows, `python3 tool/check_version.py`, `git diff --check` |
 
 Riwayat lengkap (log pengiriman, antrean lama, riwayat sesi sampai 28 Sep 2026):
 `../archive/AGENT_BOARD-2026-09.md`.
