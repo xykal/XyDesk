@@ -527,6 +527,12 @@ private fun StickPad(
     var knob by remember { mutableStateOf(Offset.Zero) }
     var mouseVector by remember { mutableStateOf(Offset.Zero) }
     val dirs = m.keys.ifEmpty { listOf(0x57, 0x53, 0x41, 0x44) }
+    LaunchedEffect(edit) {
+        if (edit) {
+            knob = Offset.Zero
+            mouseVector = Offset.Zero
+        }
+    }
     LaunchedEffect(edit, m.kind, mouseVector) {
         if (!edit && m.kind == OverlayKind.STICK_MOUSE && mouseVector != Offset.Zero) {
             while (true) {
@@ -614,6 +620,9 @@ private fun GamepadStickPad(
     onMove: (Float, Float) -> Unit,
 ) {
     var knob by remember { mutableStateOf(Offset.Zero) }
+    LaunchedEffect(edit) {
+        if (edit) knob = Offset.Zero
+    }
     Box(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
@@ -705,6 +714,9 @@ private fun ScrollWheel(
     onMove: (Float, Float) -> Unit,
 ) {
     var knob by remember { mutableStateOf(0f) }
+    LaunchedEffect(edit) {
+        if (edit) knob = 0f
+    }
     Box(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(width = (m.size * 0.72f).dp, height = m.size.dp)

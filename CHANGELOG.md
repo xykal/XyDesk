@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay stick safety:** stick keyboard/mouse, joystick gamepad, dan scroll wheel kini mereset knob/vector visual saat masuk mode edit, mencegah vector stick mouse lama hidup lagi setelah edit ditutup.
+
 - **Docs/audit preview:** TODO handoff preview wallpaper host yang sudah selesai ditutup, dan sisa wording internal aktif yang menyiratkan “langsung HD” dirapikan menjadi 720p/1080p eksplisit.
 
 - **Host panel takeover:** hover dan hit-test tombol Ambil alih sesi ini kini memakai kondisi session mismatch yang sama dengan klik, sehingga tombol takeover memberi feedback visual saat benar-benar tampil.
