@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Preview wording:** sisa label/test internal yang menyebut "HD preview" diganti menjadi wallpaper preview, supaya audit no forced HD/filter konsisten dengan perilaku runtime.
+
 - **Host panel status:** kartu Capture sekarang netral saat host berhenti, tidak lagi terlihat seperti error engine basi. Tombol takeover sesi berubah menjadi "Ambil alih sesi ini" dan merestart engine dari panel aktif bila host lama masih running di sesi Windows lain.
 
 - **Web auto quality:** mode otomatis selalu mulai 720p30, naik lebih pelan setelah jalur stabil, melewati tier yang tidak didukung encoder, dan manual fallback kembali ke 720p. Kartu/riwayat perangkat menampilkan wallpaper dengan `contain` supaya preview tidak dicrop seperti efek cover.
