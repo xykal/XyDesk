@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** row aktif batch natural session quality yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
+
 - **Session natural quality:** preset kualitas kini hanya mengubah target bitrate/kompresi tanpa memaksa resolusi HD; wording Web diganti agar tidak terasa seperti efek sharpen.
 
 - **Agent board:** row aktif batch APK overlay setter yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
