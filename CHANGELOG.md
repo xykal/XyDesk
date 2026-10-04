@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** row aktif batch Host stop-session JSON yang sudah merged dibersihkan agar papan kembali kosong.
+
 - **Host panel stop-session:** hasil aksi Putus sesi kini diparse sebagai JSON boolean `stopped`, bukan string matching, sehingga respons tetap terbaca meski format JSON berubah spasi/urutan field.
 
 - **APK wallpaper storage:** penyimpanan wallpaper memakai temp file per-host, fallback write bila rename gagal, dan cache memori hanya dibersihkan setelah save sukses sehingga preview lama tidak mudah hilang karena kegagalan IO.
