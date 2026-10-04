@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay hold safety:** saat masuk mode edit, overlay melepas semua input yang sedang held terlebih dulu agar tombol, trigger, stick, atau mouse tidak nyangkut ketika layout diedit.
+
 - **APK overlay editor:** highlight kontrol terpilih sekarang konsisten untuk tombol, stick, joystick gamepad, trigger, dan scroll wheel, sehingga resize/hapus kontrol lebih jelas saat mode edit.
 
 - **APK overlay editor:** drag saat mode edit kini memakai delta gerak terakumulasi dari pusat kontrol awal untuk tombol, stick, joystick gamepad, dan scroll wheel, sehingga penempatan kontrol tidak lagi terasa loncat/seret pendek saat layout tersimpan ulang.
