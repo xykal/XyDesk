@@ -93,7 +93,7 @@ fun GeneralMorePrefs(store: Store, onTextSize: (Int) -> Unit) {
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("PRIVASI & DATA", Xy.label)
-        Switch(store, P.SAVE_PREVIEW, "Simpan cuplikan layar PC", "Gambar kecil di kartu perangkat; hanya di HP ini.", true)
+        Switch(store, P.SAVE_PREVIEW, "Simpan wallpaper PC", "Wallpaper kecil di kartu perangkat; hanya di HP ini.", true)
         Switch(store, P.SHOW_ID, "Tampilkan ID di kartu", "Sembunyikan bila sering merekam layar HP.", true)
         Choice(store, P.HISTORY_DAYS, "Hapus riwayat otomatis", "Sesi lebih lama dari ini dibuang saat aplikasi dibuka.", listOf("Tidak", "7 hr", "30 hr", "90 hr")) { store.pruneHistory() }
     }

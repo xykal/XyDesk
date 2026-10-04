@@ -257,7 +257,7 @@ object P {
     const val SESSION_HAPTIC = "sessionHaptic"
     const val AUTO_LAST = "autoLast"
     const val FORCE_RELAY = "forceRelay"
-    const val SAVE_PREVIEW = "savePreview"
+    const val SAVE_PREVIEW = "savePreview"             // wallpaper host kecil di kartu perangkat
     const val HISTORY_DAYS = "historyDays"        // 0 semua, 7, 30, 90
     const val NEWS_HOURS = "newsHours"            // 3, 6, 12
     const val TEXT_SIZE = "textSize"              // 0 S, 1 M, 2 L
