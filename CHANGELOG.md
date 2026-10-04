@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host panel takeover:** hover dan hit-test tombol Ambil alih sesi ini kini memakai kondisi session mismatch yang sama dengan klik, sehingga tombol takeover memberi feedback visual saat benar-benar tampil.
+
 - **Web session wording:** label resolusi/bitrate tidak lagi menyiratkan HD paksa; UI menjelaskan 720p/1080p sebagai permintaan mode yang tetap mengikuti batas capture/encoder tanpa filter peningkat detail.
 
 - **Host panel koneksi:** halaman Koneksi kini punya tombol Putus sesi untuk menghentikan sesi HP/browser aktif lewat kanal kontrol privat host, tanpa mematikan proses host seluruhnya.
