@@ -2032,7 +2032,7 @@ void trackMouse(HWND hwnd) {
 }
 
 void updateHover(int x, int y) {
-    const Target target = xydesk::panel::targetAt(g.layout, g.page, x, y);
+    const Target target = xydesk::panel::targetAt(g.layout, g.page, x, y, g.sessionMismatch);
     const Target hot = targetEnabled(target) || target == Target::TitleBar ? target : Target::None;
     if (hot != g.hot) {
         g.hot = hot;
@@ -2061,7 +2061,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
         if (top) return HTTOP;
         if (bottom) return HTBOTTOM;
     }
-    const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y);
+    const Target target = xydesk::panel::targetAt(g.layout, g.page, client.x, client.y, g.sessionMismatch);
     switch (target) {
     case Target::ConnectionQr:
     case Target::ToggleSidebar:
@@ -2087,6 +2087,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::Restart:
     case Target::Web:
     case Target::OpenLog:
+    case Target::RunHost:
     case Target::StopSession:
         return HTCLIENT;
     case Target::TitleBar:
