@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** row aktif batch APK empty-state aset yang sudah merged dibersihkan agar papan kembali kosong.
+
 - **APK empty state:** daftar host/perangkat kosong kini memakai ilustrasi `float_pc_sleep` dari paket aset melayang, selaras dengan empty state Web.
 
 - **Agent board:** row aktif batch Web empty-state aset yang sudah merged dibersihkan agar papan kembali kosong.
