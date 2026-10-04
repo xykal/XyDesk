@@ -385,7 +385,10 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                     xyadapt::sync(bps);
                     screen::set_target_bitrate_bps(bps);
                     screen::request_keyframe();
-                    println!("[xydesk-host] quality dari client: {} -> {} bps tanpa ubah resolusi", q, bps);
+                    println!(
+                        "[xydesk-host] quality dari client: {} -> {} bps tanpa ubah resolusi",
+                        q, bps
+                    );
                     continue;
                 }
                 InputEvent::VideoBitrate(mbps) => {
