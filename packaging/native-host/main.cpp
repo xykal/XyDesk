@@ -709,7 +709,7 @@ void pollSessionAction(){
     try{response=sessionActionPending.get();}catch(...){response.clear();}
     if(response.empty()){
         setFlash(L"Gagal memutus sesi lewat kanal privat host.",kBad);
-    }else if(response.find("\"stopped\":true")!=std::string::npos){
+    }else if(jsonFlag(response,"stopped")){
         sessionView={};sessionViewNext=0;
         setFlash(L"Sesi aktif diputus dari host.",kGood);
     }else{

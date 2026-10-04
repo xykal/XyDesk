@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host panel stop-session:** hasil aksi Putus sesi kini diparse sebagai JSON boolean `stopped`, bukan string matching, sehingga respons tetap terbaca meski format JSON berubah spasi/urutan field.
+
 - **APK wallpaper storage:** penyimpanan wallpaper memakai temp file per-host, fallback write bila rename gagal, dan cache memori hanya dibersihkan setelah save sukses sehingga preview lama tidak mudah hilang karena kegagalan IO.
 
 - **APK wallpaper transfer:** respons wallpaper dengan ID cocok tetapi tipe tak dikenal sekarang membatalkan transfer, sehingga state pending tidak menunggu timeout untuk pesan yang tidak valid.
