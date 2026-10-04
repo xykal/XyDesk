@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Web session wording:** label resolusi/bitrate tidak lagi menyiratkan HD paksa; UI menjelaskan 720p/1080p sebagai permintaan mode yang tetap mengikuti batas capture/encoder tanpa filter peningkat detail.
+
 - **Host panel koneksi:** halaman Koneksi kini punya tombol Putus sesi untuk menghentikan sesi HP/browser aktif lewat kanal kontrol privat host, tanpa mematikan proses host seluruhnya.
 
 - **APK overlay mouse:** Stick mouse sekarang terus mengirim gerakan selama jari ditahan ke arah tertentu, bukan hanya saat jari sedang bergerak, sehingga aksi held untuk kontrol mouse terasa konsisten.
