@@ -1,73 +1,115 @@
 # SETUP — dari workspace ke produksi (tanpa VM/VPS, tanpa kartu kredit)
 
-Panduan menjalankan seluruh sistem XyDesk lewat **GitHub Actions**
-(build/compile tidak dilakukan di mesin lokal).
+Panduan menjalankan seluruh sistem XyDesk lewat GitHub Actions dan layanan
+serverless. Build/compile rilis tidak dilakukan dari laptop pribadi, kecuali
+untuk uji lokal area tertentu.
 
 ## Status terkini
 
 | Item | Status |
 |---|---|
+| Sumber versi | `VERSION` (`X.Y.Z+NN`) |
 | Signaling Worker live | `https://signal.xydesk.my.id` (custom domain) |
-| Worker secrets (XYDESK_SECRET, ADMIN_SECRET) | terpasang |
-| Custom domain | `signal.xydesk.my.id` -> worker (zona `xydesk.my.id`; custom domain di zona lama dilepas pada rilis 6.5.4) |
-| Endpoint TURN `/turn-ice` | jadi (butuh TURN key di dashboard) |
-| Endpoint `/signal-token` (JWT -> token signaling) | jadi |
-| Host WebRTC (webrtc-rs) | implementasi tersedia |
-| CI "Build" (Flutter) | hijau |
-| CI "Build Host" (Windows EXE) | hijau |
-| CI "Deploy Signaling" | hijau |
+| Worker secrets inti | terpasang di Cloudflare Worker, nilai tidak disimpan di repo |
+| Custom domain signaling | `signal.xydesk.my.id` -> worker |
+| Endpoint TURN `/turn-ice` | jadi; ExpressTurn aktif lewat secret Worker `TURN_DIRECT_*` |
+| Endpoint `/signal-token` | jadi; JWT pengguna -> token signaling |
+| Host WebRTC | engine Rust di `host/` |
+| Panel host Windows | Win32 native di `packaging/native-host/` |
+| Android client | Kotlin/Compose native di `android-native/` |
+| Web client | Vite/React di `web/` |
+| CI Build penuh | `build.yml` manual (`workflow_dispatch`) |
+| CI Android cepat | `android-native.yml` untuk APK native |
+| CI Host cepat | `host-check.yml` untuk format/clippy/check host |
+| Deploy Signaling/Web/News | workflow manual setelah izin operator |
 
 ## Tindakan yang butuh operator (di luar sandbox)
 
-1. **TURN key** (opsional, untuk remote via internet): dashboard Cloudflare ->
-   **Realtime -> TURN -> Create TURN key**, lalu:
-   ```bash
-   npx wrangler secret put TURN_KEY_ID     # id turn key
-   npx wrangler secret put TURN_KEY_TOKEN  # api token turn key
-   ```
-2. **Uji capture layar** di Windows (DXGI + NVENC) — lihat `host/README.md`.
+1. **Deploy produksi** (`deploy-signaling`, `deploy-web`, `deploy-news`,
+   `release.yml`) hanya dijalankan setelah izin operator. Agent boleh menyiapkan
+   patch dan bukti build/test, tetapi tidak menerbitkan produksi sendiri.
+2. **TURN relay** sudah memiliki triplet `TURN_DIRECT_*` di Worker. GitHub
+   Secrets TURN boleh kosong agar deploy CI tidak menimpa secret Worker yang
+   benar. Tambahan provider TURN cadangan bersifat opsional, bukan syarat rilis.
+3. **Keystore Android** dikelola sebagai secret Actions. Bila keystore dirotasi,
+   rilis berikutnya wajib jujur bahwa update-in-place dari APK lama tidak bisa.
+4. **Uji lapangan Windows/Android** tetap di perangkat nyata pemilik: DXGI,
+   hardware encode, relay TURN, audio/mic, input, clipboard opt-in, dan latency
+   glass-to-glass.
 
-## 1. Struktur repo
+## 1. Struktur repo aktif
 
 ```
 XyDesk/
-├── cloudflare/          # signaling + auth produksi (Worker + DO)
-├── signaling/           # opsi self-host LAN (Go)
-├── host/                # host Rust (WebRTC + data channel input)
-├── lib/webrtc/          # transport WebRTC client (signaling, RTC, input)
-├── docs/                # PROTOCOL, ARCHITECTURE, FREE-STACK
-├── .github/workflows/   # build, release, deploy
-├── ROADMAP.md, SETUP.md
+├── VERSION              # sumber tunggal versi X.Y.Z+NN
+├── android-native/      # client Android Kotlin + Compose + C++ kecil
+├── cloudflare/          # signaling + auth produksi (Worker + Durable Object)
+├── signaling/           # opsi self-host/LAN (Go)
+├── host/                # engine Rust: capture, encode, WebRTC, control API
+├── packaging/native-host/ # panel Windows native + installer payload
+├── web/                 # web client/landing Vite + React
+├── web_deploy/          # konfigurasi deploy web
+├── news/                # worker berita + D1
+├── admin/               # panel admin worker
+├── docs/                # dokumentasi teknis, QA, legal, roadmap
+└── .github/workflows/   # build, release, deploy manual/terarah
 ```
 
-## 2. Setting GitHub Secrets (repo -> Settings -> Secrets -> Actions)
+Tidak ada stack Flutter aktif: tidak ada `pubspec.yaml`, `lib/`, atau `*.dart`.
+Shell desktop Tauri/Electron lama di `desktop/` juga sudah dihapus.
 
-| Secret | Nilai |
-|---|---|
-| `CLOUDFLARE_API_TOKEN` | API token Cloudflare (scope Workers Scripts:Edit) |
-| `CLOUDFLARE_ACCOUNT_ID` | ID akun Cloudflare (dashboard -> Workers) |
-| `XYDESK_SECRET` | `openssl rand -hex 32` |
-| `ADMIN_SECRET` | kata sandi acak untuk endpoint `/issue` |
-| `AUTH_SECRET` | kunci JWT/OTP terpisah |
-| `RESEND_API_KEY` | kunci API pengirim email OTP |
+## 2. Setting GitHub Secrets dan Variables
 
-Variable repo: `GOOGLE_CLIENT_ID` dan `RESEND_FROM`.
-
-Nilai semua secret dikelola operator secara privat di luar repo. Jangan pernah
+Nilai secret dikelola operator secara privat di luar repo. Jangan pernah
 menulis nilai secret ke file yang di-commit.
 
-## 3. Trigger build
+### Secrets Actions utama
 
-- **Deploy signaling** -> push perubahan di `cloudflare/**`, atau manual
-  (Actions -> "Deploy Signaling" -> Run workflow). Workflow memasang secret ke
-  Worker lalu menjalankan `wrangler deploy`.
-- **Build host** -> push perubahan di `host/**` -> menghasilkan
-  `xydesk-host-windows` (artifact EXE).
-- **Build APK Flutter** -> workflow `build.yml`.
+| Secret | Fungsi |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Deploy Worker/Web/News ke Cloudflare |
+| `CLOUDFLARE_ACCOUNT_ID` | Akun Cloudflare untuk workflow deploy |
+| `XYDESK_SECRET` | Secret internal signaling/token |
+| `ADMIN_SECRET` | Secret endpoint admin internal |
+| `AUTH_SECRET` | Kunci JWT/OTP |
+| `RESEND_API_KEY` | Email OTP/notifikasi |
+| `ANDROID_KEYSTORE_B64` | Keystore APK release |
+| `ANDROID_KEYSTORE_PASS` | Password keystore APK release |
+| `RELEASE_TOKEN` | Upload APK cepat ke draft release bila workflow Android native dijalankan di `main` |
+| `ONESIGNAL_REST_API_KEY` | Push update saat Release |
+
+### Variables repo
+
+| Variable | Fungsi |
+|---|---|
+| `GOOGLE_WEB_CLIENT_ID` | Google Sign-In Android native dan web build |
+| `GOOGLE_CLIENT_ID` | OAuth/signaling Worker |
+| `RESEND_FROM` | Alamat pengirim email |
+
+TURN produksi saat ini dipertahankan sebagai secret Worker (`TURN_DIRECT_*`).
+Kalau workflow deploy menerima secret TURN kosong, workflow harus melewatinya,
+bukan menimpa nilai Worker yang sudah hidup.
+
+## 3. Trigger build dan pemeriksaan
+
+- **Build penuh**: workflow `Build` (`build.yml`) manual. Ini membangun APK
+  native per ABI, host Rust, panel Win32, web, Worker, installer lint, dan
+  gerbang lintas-dokumen.
+- **Android native cepat**: workflow `Android Native` (`android-native.yml`)
+  dari perubahan `android-native/**` atau manual; menghasilkan APK native.
+- **Host cepat**: workflow `Host Check` (`host-check.yml`) manual; menjalankan
+  format/clippy Linux dan clippy target Windows.
+- **Web shots**: workflow `Web Layout Shots` untuk perubahan web dan screenshot
+  layout.
+- **Deploy**: `deploy-signaling.yml`, `deploy-web.yml`, dan `deploy-news.yml`
+  hanya manual setelah izin operator.
+- **Release**: `release.yml` manual memakai SHA yang sudah punya Build penuh
+  sukses. Workflow menolak duplikasi tag/release.
 
 ## 4. Setelah deploy signaling jalan
 
-Terbitkan token untuk host (pakai ADMIN_SECRET):
+Host tidak memakai endpoint admin publik untuk pengguna biasa. Token host bisa
+diterbitkan oleh operator memakai secret admin:
 
 ```bash
 curl -H "X-Admin: <ADMIN_SECRET>" \
@@ -80,14 +122,23 @@ header `Authorization: Bearer <jwt>`.
 
 ## 5. Urutan kerja selanjutnya (dari ROADMAP.md)
 
-1. Isi `host/src/screen.rs` (DXGI + NVENC) — build di Windows runner.
-2. Ukur latency < 40 ms — **jangan poles UI dulu**.
+1. Uji host Windows nyata: DXGI, hardware encode, audio, input, control API,
+   dan TURN relay.
+2. Uji Android native + web melawan host yang sama: pairing, render, input,
+   clipboard opt-in, mic/audio, presence, reconnect.
+3. Ukur latency glass-to-glass sesuai `docs/LATENCY.md` dan catat bukti di
+   `docs/qa/`.
+4. Tahan rilis publik sampai bukti perangkat nyata tersedia.
 
 ## Troubleshooting umum
 
-- **wrangler gagal auth**: pastikan token punya scope `Workers Scripts:Edit`.
-- **Durable Object error saat local dev**: pastikan `Hub` di-export dari
-  `src/worker.js` (sudah ditangani).
-- **`npm ci` gagal**: pastikan `package-lock.json` ikut ter-commit (sudah ada).
-- **TURN 503 `turn-not-configured`**: buat TURN key di dashboard dulu (lihat
-  bagian "Tindakan yang butuh operator").
+- **wrangler gagal auth**: pastikan token punya scope Worker/Pages/D1 yang
+  dibutuhkan workflow terkait.
+- **Durable Object error saat local dev**: pastikan `Hub` di-export dari Worker
+  signaling.
+- **`npm ci` gagal**: pastikan `package-lock.json` ikut ter-commit di folder
+  worker/web yang sedang diuji.
+- **TURN 503 `turn-not-configured`**: cek nama secret Worker `TURN_DIRECT_*` di
+  Cloudflare; jangan menulis nilai secret ke log.
+- **APK release unsigned**: cek secret keystore Actions. Untuk build lokal,
+  Gradle akan membuat APK debug tanpa keystore release.

@@ -54,17 +54,37 @@ demi gengsi.
 ### Fase 0 — PoC streaming (PRIORITAS, kerjakan SEKARANG)
 **Tujuan:** buktikan loop inti jalan end-to-end dan ukur latency-nya.
 
-1. **Host (Rust + Tauri)**: capture layar via Desktop Duplication API (DXGI),
-   encode NVENC, kirim via WebRTC. Lihat `host/`.
-2. **Client (Flutter)**: terima via `flutter_webrtc`, render ke `RTCVideoView`,
-   kirim input (mouse/keyboard) balik lewat data channel. Lihat `lib/webrtc/`.
-3. **Signaling**: sudah DIBANGUN (Cloudflare Workers + Durable Object, gratis);
-   ada juga `signaling/` cadangan.
+1. **Host (Rust + panel Win32)**: capture layar via Desktop Duplication API
+   (DXGI), encode hardware (NVENC/AMF/QuickSync/MFT bila tersedia), kirim via
+   WebRTC. Engine ada di `host/`, panel Windows native di
+   `packaging/native-host/`.
+2. **Client Android native + Web**: Android menerima stream dengan WebRTC SDK
+   native, Compose untuk UI, dan pustaka C++ kecil untuk input/HUD; web PWA
+   tetap menjadi klien tamu dan alat verifikasi cepat. Lihat `android-native/`
+   dan `web/`.
+3. **Signaling**: produksi memakai Cloudflare Workers + Durable Object di
+   `cloudflare/`; `signaling/` Go tetap cadangan self-host/LAN.
 4. **Uji latency** dengan overlay timestamp di layar (paling jujur: foto layar
    host + layar client berjejer, baca selisih jam di frame). Protokol lengkap
    ada di `docs/LATENCY.md`.
 
-**Progres Fase 0 (28 Agu 2026):**
+**Progres Fase 0 (status sinkron 4 Okt 2026; catatan 28 Agu tetap sebagai
+jejak sejarah):**
+
+- [x] Migrasi klien: Flutter sudah tidak menjadi stack aktif. Tidak ada
+      `pubspec.yaml`/`*.dart`; Android aktif berada di `android-native/` dan
+      versi dibaca dari `VERSION`.
+- [x] Migrasi shell: shell Tauri/Electron lama di `desktop/` sudah dihapus.
+      Desktop Windows aktif adalah panel Win32 di `packaging/native-host/`
+      yang membungkus engine Rust.
+- [x] CI utama membangun APK native per ABI, host Rust, panel Win32,
+      web Vite, Worker, dan gerbang lintas-dokumen dari `VERSION`.
+- [ ] **Belum:** bukti lapangan DXGI/hardware encode di PC AMD/Intel/NVIDIA
+      nyata, termasuk MFT ketika NVENC tidak tersedia.
+- [ ] **Belum:** angka glass-to-glass terukur (foto 10 pasang layar) dari
+      APK/web melawan host Windows nyata.
+
+Catatan sejarah awal PoC:
 
 - [x] Loop `capture → encode → RTP → client` terbukti di **test loopback
       otomatis** (`host/tests/loopback.rs`): SDP jawaban memuat video, paket
@@ -77,8 +97,8 @@ demi gengsi.
 - [x] Konfigurasi encoder dibeneri: `skip_frames(true)` — sebelumnya
       OpenH264 memperingatkan mode bitrate tidak berfungsi (bitrate bisa
       meledak jauh di atas 8 Mbps).
-- [ ] **Belum:** capture DXGI nyata diverifikasi di lab Windows (runner
-      tanpa GPU; lihat `.github/workflows/test-lab.yml`).
+- [ ] **Belum:** capture DXGI nyata diverifikasi di lab Windows (runner umum
+      tanpa GPU; alur lab lama tidak lagi aktif).
 - [ ] **Belum:** angka glass-to-glass terukur (foto 10 pasang layar).
 - [ ] **TERBUKTI TIDAK LULUS:** openh264 CPU ~30 ms @640x360 — JAUH di atas
       target <10 ms @1080p60. **NVENC/AMF/QuickSync wajib** untuk target
@@ -101,7 +121,7 @@ dengan TURN, stabil 30 menit tanpa re-buffer.
 - Gamepad passthrough.
 
 ### Fase 3 — Distribusi & scale
-- Host app installer (Tauri bundler / WiX) dengan auto-update.
+- Host app installer (WiX/NSIS + panel Win32 native) dengan auto-update.
 - Android release di Play Store / side-load; Windows signed EXE.
 - Signaling multi-node (NATS/Redis pub-sub) kalau user base tumbuh — protokol
   sudah tidak berubah, ganti `Hub.clients` saja.
@@ -124,8 +144,8 @@ dengan TURN, stabil 30 menit tanpa re-buffer.
   daftar lengkap lisensi pihak ketiga di `docs/LEGAL.md` + Legal di
   semua platform. (Sebelumnya sempat tercatat Apache-2.0 — dicabut.)
 - Kebijakan rilis (berlaku mulai sekarang):
-  1. Setiap update aplikasi **wajib menaikkan versi** (pubspec `X.Y.Z+NN`,
-     web & desktop `package.json`).
+  1. Setiap update aplikasi **wajib menaikkan versi** (`VERSION` berisi
+     `X.Y.Z+NN`; host/web membaca turunannya saat build).
   2. Setiap rilis **wajib punya artikel Berita** — terbit lewat endpoint
      admin (slug hash acak), lihat `news/README.md`.
 
@@ -201,15 +221,13 @@ dengan TURN, stabil 30 menit tanpa re-buffer.
 
 ## Keputusan stack shell desktop (Agu 2026)
 
-Shell host Windows kini **Electron + Next.js (static export)** menggantikan
-GUI native Win32 (`host/src/bin/gui.rs`, tetap ada sebagai fallback).
-Alasannya: UI web jauh lebih cepat dikembangkan dan konsisten dengan web
-client; engine streaming **tetap Rust** — capture/encode/WebRTC TIDAK boleh
-pindah ke Chromium (desktopCapturer + encode Chromium jauh di atas target
-`< 40 ms`). Shell hanya launcher + panel; kanal baliknya adalah **control API
-lokal** di engine (HTTP `127.0.0.1` + token per-lahir, `host/src/control.rs`):
-status mesin, sesi aktif, statistik video, dan aksi password/stop-session.
-Detail lengkap: `docs/DESKTOP_SHELL.md`.
+Shell host Windows aktif adalah **panel Win32 native** di
+`packaging/native-host/`. Shell Tauri/Electron lama di `desktop/` sudah dihapus
+pada 23 Sep 2026. Engine streaming **tetap Rust** — capture/encode/WebRTC tidak
+boleh pindah ke UI shell. Shell hanya launcher + panel; kanal baliknya adalah
+**control API lokal** di engine (HTTP `127.0.0.1` + token per-lahir,
+`host/src/control.rs`): status mesin, sesi aktif, statistik video, log host,
+dan aksi password/stop-session. Detail lengkap: `docs/DESKTOP_SHELL.md`.
 
 ---
 
@@ -223,7 +241,7 @@ Detail lengkap: `docs/DESKTOP_SHELL.md`.
 | TLS | otomatis (custom domain signal.xydesk.my.id) | Rp 0 |
 | Auth | Firebase **Spark** / Supabase free / HMAC self-host | Rp 0 |
 | Encode | NVENC/AMF/QuickSync (GPU onboard) | Rp 0 |
-| Libraries | flutter_webrtc, webrtc-rs, str0m — MIT/Apache | Rp 0 |
+| Libraries | Android WebRTC SDK, crate `webrtc` Rust, `ws`, pustaka C++ internal — lihat `docs/THIRD-PARTY-LICENSES.md` | Rp 0 |
 
 **Tidak ada** VM/VPS, tidak ada API berbayar, tidak ada kartu kredit.
 Versi Go (`signaling/`) tetap ada sebagai opsi self-host LAN, tetapi produksi
@@ -243,10 +261,12 @@ Setiap fase punya artefak yang bisa diverifikasi orang lain, bukan perasaan:
 
 ## PR berikutnya (urut)
 
-1. `feat(host): DXGI capture + NVENC encode skeleton` — lihat `host/`.
-2. `feat(client): sambungkan flutter_webrtc ke SessionPage` — lihat `client/`.
-3. `feat(signaling): deploy Worker ke Cloudflare + verifikasi STUN/TURN`.
-4. **STOP memoles UI** sampai Fase 0 go.
+1. Verifikasi host Windows nyata: DXGI, hardware encode, audio, input, dan
+   status relay; hasilnya dicatat di `docs/qa/`.
+2. Verifikasi klien Android native dan web melawan host yang sama: pairing,
+   render, input, clipboard opt-in, mic/audio, presence, dan reconnect.
+3. Ukur latency glass-to-glass dengan bukti foto/video sesuai `docs/LATENCY.md`.
+4. **STOP memoles UI** sampai bukti Fase 0 di atas ada.
 
 ---
 
