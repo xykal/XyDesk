@@ -687,6 +687,11 @@ ButtonPalette buttonPalette(Target target, bool enabled, bool hot, bool pressed,
         if (hot) return ButtonPalette{kAccentHover, kOnAccent, radius, false};
         return ButtonPalette{kAccent, kOnAccent, radius, false};
     }
+    if (target == Target::StopSession) {
+        if (pressed) return ButtonPalette{mixColor(kSurfacePressed, kBad, 0.22f), kBad, radius, true};
+        if (hot) return ButtonPalette{mixColor(kSurface3, kBad, 0.16f), kBad, radius, true};
+        return ButtonPalette{mixColor(kSurface2, kBad, 0.10f), kBad, radius, true};
+    }
     if (pressed) return ButtonPalette{kSurfacePressed, kText, radius, false};
     if (hot) return ButtonPalette{kSurface3, kText, radius, true};
     return ButtonPalette{kSurface2, kText, radius, false};
