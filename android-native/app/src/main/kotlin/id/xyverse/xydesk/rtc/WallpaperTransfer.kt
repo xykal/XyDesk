@@ -17,6 +17,13 @@ class WallpaperTransfer {
     private var requestedAt = 0L
     var onJpeg: ((ByteArray) -> Unit)? = null
 
+    private fun cancel() {
+        pending = false
+        chunks.clear()
+        total = 0
+        size = 0
+    }
+
     fun requestIfIdle(now: Long = System.currentTimeMillis(), timeoutMs: Long = 20_000): ByteArray? {
         if (pending && now - requestedAt < timeoutMs) return null
         return request(now)
@@ -39,22 +46,22 @@ class WallpaperTransfer {
         val o = runCatching { JSONObject(text) }.getOrNull() ?: return
         if (o.optInt("id") != id) return
         when (o.optString("type")) {
-            "wallpaper-error" -> { pending = false; chunks.clear(); return }
+            "wallpaper-error" -> { cancel(); return }
             "wallpaper" -> {
                 val t = o.optInt("total")
                 val idx = o.optInt("index")
                 val data = o.optString("data")
-                if (t < 1 || t > 22 || idx != chunks.size || data.length > 16384) return
-                if (total != 0 && total != t) return
+                if (t < 1 || t > 22 || idx != chunks.size || data.length > 16384) { cancel(); return }
+                if (total != 0 && total != t) { cancel(); return }
                 total = t
                 size += data.length
-                if (size > 350_000) return
+                if (size > 350_000) { cancel(); return }
                 chunks.add(data)
                 if (chunks.size == total) {
-                    val raw = runCatching { Base64.decode(chunks.joinToString(""), Base64.DEFAULT) }.getOrNull() ?: return
+                    val raw = runCatching { Base64.decode(chunks.joinToString(""), Base64.DEFAULT) }.getOrNull()
+                    if (raw == null) { cancel(); return }
                     if (XyPreview.jpegOk(raw)) onJpeg?.invoke(raw)
-                    pending = false
-                    chunks.clear()
+                    cancel()
                 }
             }
         }

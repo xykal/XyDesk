@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK wallpaper transfer:** chunk wallpaper invalid, ukuran berlebih, total berubah, atau Base64 rusak sekarang langsung membatalkan transfer dan membersihkan state agar retry preview tidak tertahan sampai timeout.
+
 - **APK wording wallpaper:** teks perangkat/akun tidak lagi menyebut cuplikan layar host; preview kartu dijelaskan sebagai wallpaper lokal yang tidak diunggah.
 
 - **Agent board:** baris aktif/review untuk batch PR #80–#88 yang sudah merged dibersihkan, sehingga papan kembali menunjukkan tidak ada area kerja yang terkunci.
