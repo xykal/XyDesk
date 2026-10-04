@@ -82,8 +82,9 @@ Nomor versi menjawab "seberapa besar perubahannya". Tahap menjawab
 | **Beta** | Lulus uji lab, diuji terbatas oleh penguji undangan | Tautan langsung ke penguji |
 | **Stabil** | Lulus beta tanpa cacat kritis | Publik |
 
-Sumber kebenaran tahap: `lib/core/release_stage.dart` (aplikasi) dan
-`web/src/version.ts` (web). Keduanya harus disetel bersamaan.
+Sumber kebenaran tahap web saat ini: `web/src/version.ts`. Stack Flutter sudah
+tidak aktif; bila Android native membutuhkan gating tahap sendiri, sumbernya
+harus ditambahkan eksplisit dan disetel bersamaan dengan web.
 
 ### Gerbang menuju Beta — semua wajib lulus
 
@@ -107,38 +108,50 @@ XyDesk **belum** memenuhi ini per 1 September 2026:
 
 ## 3. Cara menaikkan versi — prosedur
 
-Versi hidup di **satu** tempat: `pubspec.yaml`. Semua yang lain membacanya.
+Versi hidup di **satu** tempat: `VERSION`. Semua manifest turunan harus
+mengikuti nilai ini. Formatnya:
 
 ```
-version: 6.4.0+27
-         ^^^^^ ^^
-         SemVer BUILD
+6.11.9+74
+^^^^^^ ^^
+SemVer BUILD
 ```
 
 | Konsumen | Cara membaca |
 |---|---|
-| Android/APK | Gradle membaca pubspec |
-| Aplikasi Flutter | `AppVersion` via `package_info_plus` |
-| Web | `vite.config.ts` membaca `pubspec.yaml` saat build → `__APP_VERSION__` |
-| Host Rust | `host/Cargo.toml` (disamakan manual saat rilis) |
-| Release CI | `release.yml` mengurai pubspec → tag `v6.4.0` |
+| Android/APK | `android-native/app/build.gradle.kts` membaca `../VERSION` untuk `versionName` dan `versionCode` |
+| Web | `vite.config.ts` membaca `VERSION` saat build → `__APP_VERSION__` |
+| Host Rust | `host/Cargo.toml` disamakan dengan SemVer dari `VERSION` saat rilis |
+| Release CI | `release.yml` mengurai `VERSION` → tag `vX.Y.Z` dan build number |
+| Gerbang meta | `tool/check_version.py` membandingkan `VERSION`, `host/Cargo.toml`, `web/package.json`, dan entri teratas `CHANGELOG.md` |
 
 **Jangan pernah** menulis nomor versi di tempat lain. Footer web pernah memajang
-"v2.5.0" selama empat rilis karena angkanya diketik tangan di JSX.
+angka lama selama beberapa rilis karena angkanya diketik tangan di JSX.
+
+### Tahap rilis
+
+Tahap peredaran web saat ini berada di `web/src/version.ts` (`RELEASE_STAGE`).
+Unduhan publik tetap ditahan selama tahap `pra-beta`. Bila Android native nanti
+memiliki gating tahap sendiri, sumbernya harus disebut eksplisit di dokumen ini
+dan ikut dicek lintas-dokumen.
 
 ### Langkah rilis
 
 1. Tentukan tingkat perubahan dengan aturan §1. Kalau ragu antara MINOR dan
    MAJOR, pilih MINOR — kamu selalu bisa naik MAJOR nanti, tetapi tidak bisa
    turun.
-2. Perbarui `pubspec.yaml` (SemVer + BUILD naik satu).
-3. Samakan `host/Cargo.toml`.
+2. Perbarui `VERSION` (SemVer + BUILD naik satu).
+3. Samakan `host/Cargo.toml` dan `web/package.json` dengan SemVer dari
+   `VERSION`. Android membaca `VERSION` langsung, jadi tidak punya nomor
+   terpisah.
 4. Tulis entri `CHANGELOG.md`: **apa** yang berubah, **kenapa**, dan **apa
    dampaknya bagi pengguna**. Bukan daftar commit.
-5. Jalankan `node tool/gen-licenses.mjs` bila dependensi berubah.
-6. Terbitkan artikel changelog di News (§4). Ini wajib, bukan opsional.
-7. Push ke `main`. CI membangun; `release.yml` membuat tag `v<versi>` dan
-   Release hanya bila workflow **Build** hijau — termasuk gerbang mutu host.
+5. Jalankan generator/check lisensi bila dependensi berubah, lalu perbarui
+   `docs/THIRD-PARTY-LICENSES.md` bila perlu.
+6. Terbitkan artikel changelog di News (§4). Ini wajib saat rilis publik, bukan
+   opsional.
+7. Jalankan Build penuh di SHA yang akan dirilis. `release.yml` hanya dijalankan
+   operator setelah Build penuh hijau dan memakai SHA itu.
 
 ### Yang TIDAK boleh
 
@@ -147,8 +160,6 @@ version: 6.4.0+27
   perbaikan dalam sehari, itu satu rilis PATCH, bukan tiga.
 - Membuat tag saat gerbang mutu merah.
 - Merilis ke publik saat tahap masih pra-beta.
-
----
 
 ## 4. Changelog wajib per rilis
 
@@ -194,7 +205,5 @@ terbaca.
 Jadi 6.x diteruskan, tetapi **berhenti bergerak liar**. Angka 7 disimpan untuk
 saat protokolnya benar-benar patah.
 
-> Catatan status (3 Sep 2026): versi yang beredar saat ini adalah **6.4.0+27**
-> (`pubspec.yaml`). Kalimat lama di paragraf ini masih menyebut "rilis
-> berikutnya adalah 6.2.0" — sudah usang dan dihapus. Contoh angka di bagian
-> §1–§3 tetap ilustratif, bukan status.
+> Catatan status (4 Okt 2026): versi aktif dibaca dari `VERSION`. Contoh angka
+> di dokumen ini tetap ilustratif, bukan perintah menaikkan versi.

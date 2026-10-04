@@ -11,7 +11,7 @@ versi mengikuti [Semantic Versioning](https://semver.org/lang/id/).
 
 Kebijakan rilis:
 - Setiap update aplikasi **wajib menaikkan versi** (`VERSION` berisi `X.Y.Z+NN`,
-  `web`/`desktop` package.json, `host` Cargo.toml).
+  `web/package.json`, `host/Cargo.toml`).
 - Setiap rilis **wajib punya artikel Berita** dengan changelog yang jelas dan
   panjang (lihat `news/README.md` untuk alur penerbitan).
 - **Berita dan changelog adalah dua hal berbeda.** File ini untuk tim dan
@@ -23,6 +23,8 @@ Kebijakan rilis:
   lihat `docs/NEWS_STYLE.md` §11.
 
 ## [Belum terbit]
+
+- **Dokumentasi stack aktif:** ROADMAP, SETUP, ARCHITECTURE, dan VERSIONING disinkronkan dengan stack saat ini: Android native, host Rust + panel Win32, web Vite, Worker Cloudflare, serta `VERSION` sebagai sumber versi. Referensi aktif ke Flutter/Tauri/Electron dipindahkan menjadi catatan sejarah.
 
 - **Actions dikunci manual:** semua workflow produksi/helper sekarang hanya `workflow_dispatch`; pemicu `push`, `pull_request`, `workflow_run`, dan jadwal cleanup dihapus. Setiap job berhenti di langkah awal bila actor bukan `xykal`, supaya build/deploy/release hanya bisa dijalankan pemilik repo atau token pemilik.
 

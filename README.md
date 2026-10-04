@@ -126,7 +126,7 @@ npm run dev
 
 - **Zero Divider Line**: Dilarang menyisipkan `Divider()` atau `VerticalDivider()`. Pemisah visual murni menggunakan jarak token `Gap` (16dp, 24dp, 32dp) dan gradasi permukaan `FadeEdge`.
 - **High Transparency Assets**: Seluruh ilustrasi diuji otomatis oleh `tool/audit_assets.py` untuk memastikan kompatibilitas tema dan transparansi tepi yang bersih.
-- **Konsistensi Lintas-Dokumen**: Nomor versi di seluruh manifest (`pubspec.yaml`, `host/Cargo.toml`, `web/package.json`, dan `CHANGELOG.md`) divalidasi secara ketat oleh `tool/check_version.py`.
+- **Konsistensi Lintas-Dokumen**: Nomor versi di seluruh manifest (`VERSION`, `host/Cargo.toml`, `web/package.json`, dan `CHANGELOG.md`) divalidasi secara ketat oleh `tool/check_version.py`.
 - **Inventaris Lisensi Pihak Ketiga**: Seluruh dependensi tercatat dan terverifikasi secara hukum di [`docs/THIRD-PARTY-LICENSES.md`](docs/THIRD-PARTY-LICENSES.md).
 
 ---
