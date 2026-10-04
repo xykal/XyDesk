@@ -26,8 +26,24 @@ object Previews {
 
     fun saveJpeg(context: Context, host: String, bytes: ByteArray) {
         if (!XyPreview.jpegOk(bytes)) return
-        File(dir(context), "w.jpg").apply { writeBytes(bytes); renameTo(wallpaperFile(context, host)) }
-        memory.remove(Presence.hostKey(host))
+        val key = Presence.hostKey(host)
+        val folder = dir(context)
+        val target = wallpaperFile(context, host)
+        val tmp = File(folder, "$key.wall.tmp")
+        runCatching {
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(target)) {
+                target.delete()
+                if (!tmp.renameTo(target)) {
+                    target.writeBytes(bytes)
+                    tmp.delete()
+                }
+            }
+        }.onSuccess {
+            memory.remove(key)
+        }.onFailure {
+            tmp.delete()
+        }
     }
 
     fun clear(context: Context) {
