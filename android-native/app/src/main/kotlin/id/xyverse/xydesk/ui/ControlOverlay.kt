@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,7 @@ import id.xyverse.xydesk.core.XyScroll
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyText
 import org.json.JSONArray
+import kotlinx.coroutines.delay
 import org.json.JSONObject
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -523,7 +525,16 @@ private fun StickPad(
     onMove: (Float, Float) -> Unit,
 ) {
     var knob by remember { mutableStateOf(Offset.Zero) }
+    var mouseVector by remember { mutableStateOf(Offset.Zero) }
     val dirs = m.keys.ifEmpty { listOf(0x57, 0x53, 0x41, 0x44) }
+    LaunchedEffect(edit, m.kind, mouseVector) {
+        if (!edit && m.kind == OverlayKind.STICK_MOUSE && mouseVector != Offset.Zero) {
+            while (true) {
+                send(StreamXy.moveRel((mouseVector.x * 18).roundToInt(), (mouseVector.y * 18).roundToInt()))
+                delay(16L)
+            }
+        }
+    }
     Box(
         Modifier.offset { IntOffset(left.roundToInt(), top.roundToInt()) }
             .size(m.size.dp)
@@ -564,16 +575,19 @@ private fun StickPad(
                                 if (on) holds.down(owner, OverlayItem(owner, OverlayKind.KEY, dirs.getOrElse(i) { 0 }, x = 0f, y = 0f, size = 8f, radius = 4f))
                                 else holds.up(owner)
                             }
-                        } else if (len > max * 0.10f) {
-                            send(StreamXy.moveRel((vx * 18).roundToInt(), (vy * 18).roundToInt()))
+                        } else {
+                            mouseVector = if (len > max * 0.10f) Offset(vx, vy) else Offset.Zero
+                            if (mouseVector != Offset.Zero) send(StreamXy.moveRel((vx * 18).roundToInt(), (vy * 18).roundToInt()))
                         }
                     },
                     onDragEnd = {
                         knob = Offset.Zero
+                        mouseVector = Offset.Zero
                         for (i in 0..3) holds.up("stick:${m.id}:$i")
                     },
                     onDragCancel = {
                         knob = Offset.Zero
+                        mouseVector = Offset.Zero
                         for (i in 0..3) holds.up("stick:${m.id}:$i")
                     },
                 )
