@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-APK-I18N-QUOTE-FIX | Operator - XyDesk Team | Operator | LAGI KERJA | APK: escape quote i18n password host agar compile release | 2026-10-04 |
 
 ## Antrean izin push
 

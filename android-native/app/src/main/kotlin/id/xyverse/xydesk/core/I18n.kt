@@ -90,7 +90,7 @@ private val en = mapOf(
     "DATA DI HP INI" to "DATA ON THIS PHONE",
     "Token login terenkripsi" to "Login token encrypted",
     "AES-256, hanya bisa dibuka oleh aplikasi ini." to "AES-256, readable only by this app.",
-    "Tidak disimpan kecuali kamu memilih "Ingat" saat menyambung dari riwayat." to "Not stored unless you choose "Remember" when connecting from history.",
+    "Tidak disimpan kecuali kamu memilih \"Ingat\" saat menyambung dari riwayat." to "Not stored unless you choose \"Remember\" when connecting from history.",
     "Wallpaper host" to "Host wallpaper",
     "Disimpan lokal untuk kartu perangkat; tidak diunggah." to "Kept locally for the device card; never uploaded.",
     "TINDAKAN" to "ACTIONS",
