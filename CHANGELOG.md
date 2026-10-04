@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **CI Android:** validasi operator workflow APK kini berjalan dari root sebelum checkout, sehingga job Android manual tidak gagal karena folder `android-native` belum tersedia.
+
 - **Agent board:** row aktif batch APK empty-state aset yang sudah merged dibersihkan agar papan kembali kosong.
 
 - **APK empty state:** daftar host/perangkat kosong kini memakai ilustrasi `float_pc_sleep` dari paket aset melayang, selaras dengan empty state Web.
