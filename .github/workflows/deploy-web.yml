@@ -1,10 +1,6 @@
 name: Deploy Web App (Cloudflare)
 
 on:
-  workflow_run:
-    workflows: ['Build']
-    branches: [main]
-    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -23,22 +19,24 @@ concurrency:
 jobs:
   deploy:
     name: Cloudflare Workers Static Assets
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      # Step 1: tentukan run Build & SHA secara OTORITATIF dari API, bukan
-      # dari payload workflow_run. Ada kasus payload tertukar saat dua Build
-      # sukses berdekatan (race 6c5ba06/d90e12a, lihat HANDOFF): run deploy
-      # sempat checkout SHA lama lalu menimpa bundle baru. head_sha dari
-      # catatan run di API = satu-satunya yang dipercaya.
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
+      # Step 1: tentukan run Build & SHA secara otoritatif dari API.
+      # Operator menjalankan workflow ini manual setelah memilih Build yang
+      # memang akan dipublikasikan.
       - name: Tentukan run Build & SHA dari API
         id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
-          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_RUN_ID: ""
         run: |
           set -euo pipefail
           run_id="${WORKFLOW_RUN_ID:-}"
