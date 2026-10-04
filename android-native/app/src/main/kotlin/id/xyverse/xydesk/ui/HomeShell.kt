@@ -118,7 +118,7 @@ fun HomeShell(
                     store?.setHostPin(host, if (keep) pin else null)
                     onConnect(host, pin)
                 } }
-                Tab.DEVICES -> Page("Perangkat", "Semua PC yang pernah tersambung: cuplikan, spesifikasi, dan riwayat sesinya.") {
+                Tab.DEVICES -> Page("Perangkat", "Semua PC yang pernah tersambung: wallpaper, spesifikasi, dan riwayat sesinya.") {
                     if (devices.isEmpty()) {
                         XyEmpty(Icon.MONITOR, "Belum ada perangkat", "Sambungkan sekali, PC tersimpan di sini beserta spesifikasi dan riwayat sesinya.", "Sambungkan", image = R.drawable.empty_devices) { tab = Tab.HOME }
                     } else {
