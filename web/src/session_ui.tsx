@@ -413,11 +413,11 @@ export type BitrateMbps = 0 | 1 | 2 | 4 | 8 | 15 | 25 | 50;
 
 export type ResolutionMode = '720p'|'1080p';
 export const RESOLUTION_OPTIONS: ReadonlyArray<{value: ResolutionMode; label: string; hint: string}> = [
-  {value:'720p', label:'720p', hint:'HD minimum — tidak di bawah 720p'},
-  {value:'1080p', label:'1080p', hint:'Full HD — detail lebih tajam bila host/browser mendukung'},
+  {value:'720p', label:'720p', hint:'Awal ringan — host menjaga rasio sumber'},
+  {value:'1080p', label:'1080p', hint:'Lebih detail bila host/browser mendukung'},
 ];
 export function normalizeResolution(value: unknown): ResolutionMode {
-  // Migrasi nilai lama/asing ke 720p ringan. Full HD tetap opsi manual,
+  // Migrasi nilai lama/asing ke 720p ringan. 1080p tetap opsi manual,
   // tetapi bukan fallback diam-diam.
   return value === '1080p' ? '1080p' : '720p';
 }
@@ -450,7 +450,7 @@ export const BITRATE_OPTIONS: { value: BitrateMbps; label: string; hint: string 
   { value: 0,  label: 'Otomatis', hint: 'Adaptif berdasarkan kondisi jaringan' },
   { value: 1, label: '1 Mbps', hint: 'Koneksi terbatas; detail lebih rendah' },
   { value: 2, label: '2 Mbps', hint: 'Butuh ruang tambahan untuk audio dan transport' },
-  { value: 4, label: '4 Mbps', hint: 'Seimbang untuk HD' },
+  { value: 4, label: '4 Mbps', hint: 'Seimbang untuk 720p' },
   { value: 8, label: '8 Mbps', hint: 'Detail tinggi' },
   { value: 15, label: '15 Mbps',  hint: 'Seimbang' },
   { value: 25, label: '25 Mbps',  hint: 'Tajam' },
@@ -740,7 +740,7 @@ export function SessionPanel({
               <p className="spanel-note">Encoder host: {encoder??'belum diketahui'} • batas host {fpsLimit??'belum tersedia'} FPS. FPS nyata terlihat pada statistik; mengikuti encoder, negosiasi H264, dan jaringan. Resolusi desktop tidak diubah oleh pilihan FPS.</p>
               <p className="spanel-section">Resolusi maksimal</p>
               <div className="display-chips">{RESOLUTION_OPTIONS.map(option=><button key={option.value} type="button" title={option.hint} className={(prefs.resolution||'720p')===option.value?'active':''} onClick={()=>{onChange({...prefs,resolution:option.value});onResolution?.(option.value);}}>{option.label}</button>)}</div>
-              <p className="spanel-note">Mode 720p menjaga output HD 1280×720, termasuk saat desktop RDP lebih kecil; sumber akan diskalakan halus agar tidak berhenti di tinggi 529. Mode 1080p memakai ukuran yang tersedia tanpa mengarang detail.</p>
+              <p className="spanel-note">Mode 720p meminta kanvas 1280×720 tanpa crop; host tetap menjaga rasio sumber dan tidak mengarang detail. Mode 1080p hanya dipakai bila capture dan encoder mendukung.</p>
             </>
           )}
           <p className="spanel-section">Bitrate</p>
@@ -762,7 +762,7 @@ export function SessionPanel({
               </button>
             ))}
           </div>
-          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host. Mode 720p mengirim kanvas HD; mode 1080p dipakai bila capture dan encoder mendukung. RTT bukan latensi layar-ke-layar.</p>
+          <p className="spanel-note">Bitrate adalah target, bukan pemakaian tetap. Resolusi, fps, dan bitrate efektif mengikuti batas encoder host. 720p/1080p adalah permintaan mode, bukan filter peningkat detail. RTT bukan latensi layar-ke-layar.</p>
           {stats?.relayState === 'unavailable' && (
             <p className="spanel-note" role="status">
               Relay TURN tidak tersedia — {relayReasonText(stats.relayReason)}.
