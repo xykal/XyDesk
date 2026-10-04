@@ -79,7 +79,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20261004-OPERATOR-ANDROID-PASSWORD-WORDING-I18N | Operator - XyDesk Team | Operator | REVIEW | APK i18n: password host tersimpan opsional | 2026-10-04 |
 
 ## Antrean izin push
 

@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** row aktif batch APK i18n password host yang sudah merged dibersihkan agar papan kembali kosong.
+
 - **APK i18n privasi:** translasi Inggris untuk status password host kini menjelaskan penyimpanan opsional melalui pilihan Ingat, bukan klaim bahwa password tidak pernah disimpan.
 
 - **Agent board:** row aktif batch Host stop-session JSON yang sudah merged dibersihkan agar papan kembali kosong.
