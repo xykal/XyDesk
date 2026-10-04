@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay editor:** drag saat mode edit kini memakai delta gerak terakumulasi dari pusat kontrol awal untuk tombol, stick, joystick gamepad, dan scroll wheel, sehingga penempatan kontrol tidak lagi terasa loncat/seret pendek saat layout tersimpan ulang.
+
 - **Preview wording:** sisa label/test internal yang menyebut "HD preview" diganti menjadi wallpaper preview, supaya audit no forced HD/filter konsisten dengan perilaku runtime.
 
 - **Host panel status:** kartu Capture sekarang netral saat host berhenti, tidak lagi terlihat seperti error engine basi. Tombol takeover sesi berubah menjadi "Ambil alih sesi ini" dan merestart engine dari panel aktif bila host lama masih running di sesi Windows lain.
