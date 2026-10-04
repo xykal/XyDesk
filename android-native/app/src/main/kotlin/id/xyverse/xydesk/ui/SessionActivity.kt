@@ -216,7 +216,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         store.overlayJson = OverlayLayouts.toJson(overlayItems)
     }
 
-    private fun setOverlayEdit(on: Boolean) {
+    private fun setOverlayEditMode(on: Boolean) {
         if (overlayEdit && !on) saveOverlayLayout()
         overlayEdit = on
         if (on) {
@@ -239,7 +239,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         store.directTouch = !store.directTouch
                         touch.directTouch = store.directTouch
                     },
-                    onEdit = { setOverlayEdit(it) },
+                    onEdit = { setOverlayEditMode(it) },
                     onSave = { saveOverlayLayout() },
                 )
             }
@@ -341,7 +341,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         dockOn = { store.dockOn = it; dockOn = it; applyChrome() },
                         dockSize = { store.dockSize = it; dockSize = it },
                         dockKeys = { store.dockKeys = it; dockKeys = it },
-                        overlayEdit = { setOverlayEdit(!overlayEdit) },
+                        overlayEdit = { setOverlayEditMode(!overlayEdit) },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,

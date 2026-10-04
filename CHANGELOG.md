@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK overlay:** fungsi internal edit overlay diganti nama agar tidak bentrok dengan setter properti Kotlin saat kompilasi release.
+
 - **Agent board:** row aktif batch APK i18n quote yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **APK i18n:** quote pada teks privasi password host di-escape agar kompilasi Kotlin release tidak gagal.
