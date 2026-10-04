@@ -355,17 +355,29 @@ int jsonNumber(const std::string& json, const char* key) {
 // Heartbeat publik per PID; wajib cocok dengan umur proses dan segar <=5s.
 // File lama/tidak lengkap tidak boleh membuat UI mengaku host siap.
 void readCaptureStatus() {
-    auto stale = [] {
+    auto unavailable = [](const std::wstring& note, bool warn, bool updateStatus) {
+        const bool changed = g.captureSeen || !g.captureBackend.empty() || g.captureWarn != warn ||
+            g.captureNote != note || !g.captureNote2.empty() || g.sessionMismatch ||
+            !g.procUser.empty() || !g.activeUser.empty() || g.procSession != -1 || g.activeSession != -1;
         g.captureSeen = false;
         g.captureBackend.clear();
+        g.captureNote = note;
         g.captureNote2.clear();
+        g.captureWarn = warn;
         g.sessionMismatch = false;
+        g.procUser.clear();
+        g.activeUser.clear();
         g.procSession = g.activeSession = -1;
-        g.captureWarn = true;
-        g.captureNote = L"Status engine belum tersedia atau sudah kedaluwarsa.";
-        if (g.running) setStatus(g.captureNote, kWarn);
+        if (updateStatus && g.running) setStatus(note, warn ? kWarn : kMuted);
+        else if (changed) renderPanel();
     };
-    if (!g.process || !g.running) { stale(); return; }
+    auto stale = [&] {
+        unavailable(L"Status engine belum tersedia atau sudah kedaluwarsa.", true, true);
+    };
+    if (!g.process || !g.running) {
+        unavailable(L"Capture belum aktif — mulai host untuk menerima koneksi.", false, false);
+        return;
+    }
     const DWORD pid = GetProcessId(g.process);
     // Sama dengan config_dir() engine: XYDESK_HOME dulu, lalu USERPROFILE\.xydesk.
     const std::wstring path = [&] {
@@ -721,7 +733,7 @@ std::wstring targetLabel(Target target) {
     case Target::Restart: return L"Restart";
     case Target::Web: return L"Buka XyDesk Web";
     case Target::OpenLog: return L"Buka log host";
-    case Target::RunHost: return L"Jalankan host di sesi ini";
+    case Target::RunHost: return L"Ambil alih sesi ini";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1015,7 +1027,7 @@ void paintCaptureCard(Surface& surface, const PanelLayout& layout, HDC dc) {
         : (L"Backend: " + g.captureBackend);
     drawTextLine(dc, line1, layout.captureLine1, g.fontSmall, kText,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
-    const std::wstring line2 = g.captureWarn ? g.captureNote
+    const std::wstring line2 = !g.captureNote.empty() ? g.captureNote
         : std::wstring(L"Tidak ada masalah terdeteksi — frame langsung dari sesi aktif.");
     drawTextLine(dc, line2, layout.captureLine2, g.fontSmall, g.captureWarn ? kWarn : kMuted,
         DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
@@ -1427,14 +1439,21 @@ void stopHost() {
     g.startRequested = false;
     g.captureSeen = false;
     g.captureBackend.clear();
+    g.captureNote = L"Capture belum aktif — mulai host untuk menerima koneksi.";
+    g.captureNote2.clear();
+    g.captureWarn = false;
+    g.sessionMismatch = false;
+    g.procUser.clear();
+    g.activeUser.clear();
+    g.procSession = g.activeSession = -1;
     if (g.job) TerminateJobObject(g.job, 0);
     closeHostHandles();
     setStatus(L"Host berhenti", kMuted);
 }
 
-void restartHost() {
+bool restartHost() {
     stopHost();
-    startHost();
+    return startHost();
 }
 
 bool startHost() {
@@ -1881,16 +1900,18 @@ void activateTarget(HWND hwnd, Target target) {
         ShellExecuteW(hwnd, L"open", log.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         break;
     }
-    case Target::RunHost:
-        // Jalan pintas takeover: mulai instance host di sesi panel ini
-        // (peluncur resmi: job object + identitas). Instance tersebut akan
-        // meminta leader lama turun lewat berkas stepdown dan mengambil alih.
-        if (startHost()) {
+    case Target::RunHost: {
+        // Jalan pintas takeover: bila engine lama masih hidup di sesi lain,
+        // restart dari panel ini supaya instance baru benar-benar lahir di
+        // sesi Windows aktif. startHost() saja akan no-op saat g.running=true.
+        const bool ok = g.running ? restartHost() : startHost();
+        if (ok) {
             setFlash(L"Host dijalankan di sesi ini — menunggu takeover…", kAccent);
         } else {
             setStatus(g.lastError.empty() ? L"Gagal memulai host di sesi ini." : g.lastError, kBad);
         }
         break;
+    }
     case Target::PageConnections:goPage(hwnd,Page::Connections);break;
     case Target::PageSettings:goPage(hwnd,Page::Settings);break;
     case Target::PageAccount:goPage(hwnd,Page::Account);break;
