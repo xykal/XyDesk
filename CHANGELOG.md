@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Agent board:** row aktif batch Web empty-state aset yang sudah merged dibersihkan agar papan kembali kosong.
+
 - **Web empty state:** halaman Devices/History kini memakai ilustrasi `float-pc-sleep.webp` untuk state kosong perangkat/sesi, mulai mengintegrasikan paket aset melayang tanpa menyentuh hero login.
 
 - **Aset ilustrasi lintas platform:** ditambahkan set 17 ilustrasi melayang 3D glossy dan `frame_vip.webp` untuk sumber audit, APK, dan Web, plus panduan pemakaian serta antrean integrasi host/web/APK.
