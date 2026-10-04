@@ -212,6 +212,20 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.raw.holder.setFixedSize(w, h)
     }
 
+    private fun saveOverlayLayout() {
+        store.overlayJson = OverlayLayouts.toJson(overlayItems)
+    }
+
+    private fun setOverlayEdit(on: Boolean) {
+        if (overlayEdit && !on) saveOverlayLayout()
+        overlayEdit = on
+        if (on) {
+            dockOn = true
+            store.dockOn = true
+        }
+        applyChrome()
+    }
+
     private fun setupDock() {
         (b.dock as? PassThroughComposeView)?.behind = b.video
         b.dock.setContent {
@@ -225,8 +239,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         store.directTouch = !store.directTouch
                         touch.directTouch = store.directTouch
                     },
-                    onEdit = { overlayEdit = it },
-                    onSave = { store.overlayJson = OverlayLayouts.toJson(overlayItems) },
+                    onEdit = { setOverlayEdit(it) },
+                    onSave = { saveOverlayLayout() },
                 )
             }
         }
@@ -327,10 +341,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         dockOn = { store.dockOn = it; dockOn = it; applyChrome() },
                         dockSize = { store.dockSize = it; dockSize = it },
                         dockKeys = { store.dockKeys = it; dockKeys = it },
-                        overlayEdit = {
-                            overlayEdit = !overlayEdit
-                            if (overlayEdit) { dockOn = true; store.dockOn = true; applyChrome() }
-                        },
+                        overlayEdit = { setOverlayEdit(!overlayEdit) },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
@@ -514,11 +525,13 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onPause() {
+        if (overlayEdit) saveOverlayLayout()
         hidMonitor?.stop()
         super.onPause()
     }
 
     override fun onDestroy() {
+        if (overlayEdit) saveOverlayLayout()
         hidMonitor?.stop()
         clipboard?.removePrimaryClipChangedListener(clipListener)
         if (outcome == "berjalan") outcome = "ok"
