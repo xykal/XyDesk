@@ -389,7 +389,7 @@ fun ControlOverlay(
                 }
                 val cur = items.find { it.id == selected }
                 if (cur != null && !library) {
-                    XyText("${cur.label()} · ${cur.size.roundToInt()}px · geser untuk posisi, tahan saat bermain", Xy.caption)
+                    XyText("${cur.label()} · ${cur.size.roundToInt()}px · ketuk untuk pilih, geser untuk posisi, tahan saat bermain", Xy.caption)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                         Chip("−") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size - 8f).coerceAtLeast(34f), radius = ((it.size - 8f) / 2).coerceAtLeast(0f)) else it }) }
                         Chip("+") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size + 8f).coerceAtMost(180f), radius = ((it.size + 8f) / 2).coerceAtMost(90f)) else it }) }
@@ -399,6 +399,10 @@ fun ControlOverlay(
         }
     }
 }
+
+@Composable
+private fun Modifier.editTapSelect(edit: Boolean, onSelect: () -> Unit): Modifier =
+    if (edit) clickable(remember { MutableInteractionSource() }, null, onClick = onSelect) else this
 
 @Composable
 private fun OverlayButton(
@@ -474,6 +478,7 @@ private fun RoundControl(
             .background(if (selected) Xy.accent else Color(0xDDFDFDFD))
             .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.85f), CircleShape)
             .border(1.dp, if (selected) Color.White.copy(alpha = 0.55f) else Xy.line, CircleShape)
+            .editTapSelect(edit, onSelect)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
@@ -526,6 +531,7 @@ private fun StickPad(
             .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xBFFFFFFF))
             .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.9f), CircleShape)
             .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, CircleShape)
+            .editTapSelect(edit, onSelect)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
@@ -601,6 +607,7 @@ private fun GamepadStickPad(
             .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xBFFFFFFF))
             .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.9f), CircleShape)
             .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, CircleShape)
+            .editTapSelect(edit, onSelect)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
@@ -691,6 +698,7 @@ private fun ScrollWheel(
             .background(if (selected) Xy.accent.copy(alpha = 0.22f) else Color(0xDDFDFDFD))
             .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.85f), RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
             .border(1.dp, if (selected) Color.White.copy(alpha = 0.65f) else Xy.line, RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
+            .editTapSelect(edit, onSelect)
             .pointerInput(edit, m.id) {
                 if (edit) {
                     var dragCenter = Offset.Zero
