@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host formatting:** log natural-quality host dirapikan agar `cargo fmt --check` pada Build penuh lulus.
+
 - **Agent board:** row aktif batch natural session quality yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **Session natural quality:** preset kualitas kini hanya mengubah target bitrate/kompresi tanpa memaksa resolusi HD; wording Web diganti agar tidak terasa seperti efek sharpen.
