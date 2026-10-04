@@ -42,6 +42,7 @@ import id.xyverse.xydesk.databinding.ActivitySessionBinding
 import id.xyverse.xydesk.rtc.Phase
 import id.xyverse.xydesk.rtc.RtcListener
 import id.xyverse.xydesk.rtc.RtcSession
+import kotlin.math.roundToInt
 
 /**
  * Layar sesi: video penuh, gestur trackpad/sentuh (`SessionTouch`), statistik +
@@ -162,6 +163,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
         hid = SessionHid(session::send)
         hidMonitor = HidMonitor(this) { p -> runOnUiThread { onHid(p) } }
+        // Surface decode native juga harus tampil natural/aspect-fit, bukan stretch/crop.
+        b.raw.setZOrderMediaOverlay(false)
         session.attach(b.video)
         applyDecodeMode(true)
         b.raw.setOnTouchListener { v, e -> touch.onTouch(v, e) }
@@ -202,11 +205,16 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     /** Letterbox: SurfaceView mengikuti rasio frame host, bukan layar HP. */
     private fun fitSurface(w: Int, h: Int) {
+        if (w <= 0 || h <= 0) return
         val parent = b.raw.parent as View
-        if (parent.width == 0 || parent.height == 0) return
+        if (parent.width == 0 || parent.height == 0) {
+            b.raw.post { fitSurface(w, h) }
+            return
+        }
         val scale = minOf(parent.width.toFloat() / w, parent.height.toFloat() / h)
         val lp = b.raw.layoutParams as android.widget.FrameLayout.LayoutParams
-        lp.width = (w * scale).toInt(); lp.height = (h * scale).toInt()
+        lp.width = (w * scale).roundToInt().coerceAtLeast(1)
+        lp.height = (h * scale).roundToInt().coerceAtLeast(1)
         lp.gravity = android.view.Gravity.CENTER
         b.raw.layoutParams = lp
         b.raw.holder.setFixedSize(w, h)

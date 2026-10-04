@@ -26,6 +26,7 @@ import org.webrtc.PeerConnection
 import org.webrtc.PeerConnectionFactory
 import org.webrtc.RtpReceiver
 import org.webrtc.RtpTransceiver
+import org.webrtc.RendererCommon
 import org.webrtc.SdpObserver
 import org.webrtc.SessionDescription
 import org.webrtc.SurfaceViewRenderer
@@ -118,6 +119,9 @@ class RtcSession(
     fun attach(view: SurfaceViewRenderer) {
         renderer = view
         view.init(egl.eglBaseContext, null)
+        // Render natural: aspect-fit, tanpa mirror/crop dan tanpa filter buatan.
+        view.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+        view.setMirror(false)
         view.setEnableHardwareScaler(true)
     }
 

@@ -1249,6 +1249,16 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
    sebelum tersambung. Hormati `hidden` secara eksplisit. */
 .video-surface[hidden] { display: none; }
 .video-surface video { width: 100%; height: 100%; object-fit: contain; }
+/* Sesi harus menampilkan frame remote apa adanya: browser boleh melakukan
+   interpolasi normal saat letterbox/scale, tetapi jangan pernah pakai mode
+   pixel-art/crisp atau filter yang membuat gambar terasa disharpen. */
+.video-surface video,
+.remote-session .video-surface video {
+  image-rendering: auto !important;
+  filter: none !important;
+  mix-blend-mode: normal;
+  background: #000;
+}
 /* Status di dalam form connect: elemen biasa yang mengalir, bukan overlay. */
 .status-text {
   font-size: 12.5px;
