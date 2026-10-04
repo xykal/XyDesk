@@ -471,15 +471,17 @@ private fun RoundControl(
             .border(2.dp, if (selected) Xy.accent else Color.White.copy(alpha = 0.85f), CircleShape)
             .border(1.dp, if (selected) Color.White.copy(alpha = 0.55f) else Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
-                if (edit) detectDragGestures(
-                    onDragStart = { onSelect() },
-                    onDrag = { change, drag ->
-                        change.consume()
-                        val nx = ((left + px / 2 + drag.x) / parentW * 100f).coerceIn(0f, 100f)
-                        val ny = ((top + px / 2 + drag.y) / parentH * 100f).coerceIn(0f, 100f)
-                        onMove(nx, ny)
-                    },
-                ) else detectTapGestures(
+                if (edit) {
+                    var dragCenter = Offset.Zero
+                    detectDragGestures(
+                        onDragStart = { onSelect(); dragCenter = Offset(left + px / 2, top + px / 2) },
+                        onDrag = { change, drag ->
+                            change.consume()
+                            dragCenter += drag
+                            onMove((dragCenter.x / parentW * 100f).coerceIn(0f, 100f), (dragCenter.y / parentH * 100f).coerceIn(0f, 100f))
+                        },
+                    )
+                } else detectTapGestures(
                     onPress = {
                         if (m.kind == OverlayKind.TOGGLE) onToggleTouch()
                         else {
@@ -520,16 +522,20 @@ private fun StickPad(
             .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
             .border(1.dp, Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
-                if (edit) detectDragGestures(
-                    onDragStart = { onSelect() },
-                    onDrag = { change, drag ->
-                        change.consume()
-                        onMove(
-                            ((left + px / 2 + drag.x) / parentW * 100f).coerceIn(0f, 100f),
-                            ((top + px / 2 + drag.y) / parentH * 100f).coerceIn(0f, 100f),
-                        )
-                    },
-                ) else detectDragGestures(
+                if (edit) {
+                    var dragCenter = Offset.Zero
+                    detectDragGestures(
+                        onDragStart = { onSelect(); dragCenter = Offset(left + px / 2, top + px / 2) },
+                        onDrag = { change, drag ->
+                            change.consume()
+                            dragCenter += drag
+                            onMove(
+                                (dragCenter.x / parentW * 100f).coerceIn(0f, 100f),
+                                (dragCenter.y / parentH * 100f).coerceIn(0f, 100f),
+                            )
+                        },
+                    )
+                } else detectDragGestures(
                     onDrag = { change, _ ->
                         change.consume()
                         val c = Offset(px / 2, px / 2)
@@ -590,16 +596,20 @@ private fun GamepadStickPad(
             .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
             .border(1.dp, Xy.line, CircleShape)
             .pointerInput(edit, m.id) {
-                if (edit) detectDragGestures(
-                    onDragStart = { onSelect() },
-                    onDrag = { change, drag ->
-                        change.consume()
-                        onMove(
-                            ((left + px / 2 + drag.x) / parentW * 100f).coerceIn(0f, 100f),
-                            ((top + px / 2 + drag.y) / parentH * 100f).coerceIn(0f, 100f),
-                        )
-                    },
-                ) else detectDragGestures(
+                if (edit) {
+                    var dragCenter = Offset.Zero
+                    detectDragGestures(
+                        onDragStart = { onSelect(); dragCenter = Offset(left + px / 2, top + px / 2) },
+                        onDrag = { change, drag ->
+                            change.consume()
+                            dragCenter += drag
+                            onMove(
+                                (dragCenter.x / parentW * 100f).coerceIn(0f, 100f),
+                                (dragCenter.y / parentH * 100f).coerceIn(0f, 100f),
+                            )
+                        },
+                    )
+                } else detectDragGestures(
                     onDrag = { change, _ ->
                         change.consume()
                         val center = Offset(px / 2, px / 2)
@@ -674,16 +684,20 @@ private fun ScrollWheel(
             .border(2.dp, Color.White.copy(alpha = 0.85f), RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
             .border(1.dp, Xy.line, RoundedCornerShape(m.radius.dp.coerceAtLeast(18.dp)))
             .pointerInput(edit, m.id) {
-                if (edit) detectDragGestures(
-                    onDragStart = { onSelect() },
-                    onDrag = { change, drag ->
-                        change.consume()
-                        onMove(
-                            ((left + px / 2 + drag.x) / parentW * 100f).coerceIn(0f, 100f),
-                            ((top + px / 2 + drag.y) / parentH * 100f).coerceIn(0f, 100f),
-                        )
-                    },
-                ) else detectDragGestures(
+                if (edit) {
+                    var dragCenter = Offset.Zero
+                    detectDragGestures(
+                        onDragStart = { onSelect(); dragCenter = Offset(left + px / 2, top + px / 2) },
+                        onDrag = { change, drag ->
+                            change.consume()
+                            dragCenter += drag
+                            onMove(
+                                (dragCenter.x / parentW * 100f).coerceIn(0f, 100f),
+                                (dragCenter.y / parentH * 100f).coerceIn(0f, 100f),
+                            )
+                        },
+                    )
+                } else detectDragGestures(
                     onDrag = { change, drag ->
                         change.consume()
                         knob = (knob + drag.y).coerceIn(-px * 0.28f, px * 0.28f)
