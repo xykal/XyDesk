@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK i18n:** quote pada teks privasi password host di-escape agar kompilasi Kotlin release tidak gagal.
+
 - **Agent board:** row aktif batch fix guard Android Build yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
 
 - **CI Build:** job Android pada Build penuh kini benar-benar menjalankan guard operator dari `${{ github.workspace }}` sebelum checkout, bukan default `android-native`.
