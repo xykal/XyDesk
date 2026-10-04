@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **APK i18n privasi:** translasi Inggris untuk status password host kini menjelaskan penyimpanan opsional melalui pilihan Ingat, bukan klaim bahwa password tidak pernah disimpan.
+
 - **Agent board:** row aktif batch Host stop-session JSON yang sudah merged dibersihkan agar papan kembali kosong.
 
 - **Host panel stop-session:** hasil aksi Putus sesi kini diparse sebagai JSON boolean `stopped`, bukan string matching, sehingga respons tetap terbaca meski format JSON berubah spasi/urutan field.
