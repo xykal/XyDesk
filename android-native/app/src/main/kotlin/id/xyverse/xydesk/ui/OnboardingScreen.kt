@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -25,6 +26,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -44,7 +48,7 @@ private val pagesEn = listOf(
     Page("STEP 2", "Connect.", "Sign in with email or Google, type the device ID and host password, tap Connect. Hosts you connect to are saved automatically."),
     Page(
         "HOW TO PLAY", "Gestures.", "Your phone screen works like a precision trackpad.",
-        listOf("1-finger drag" to "move cursor", "Tap" to "left click", "Long press" to "right click", "2-finger drag" to "scroll", "Bottom handle" to "keyboard, quality, stats, disconnect"),
+        listOf("1-finger drag" to "move cursor", "Tap" to "left click", "Long press" to "right click", "2-finger drag" to "scroll", "Mapping" to "analog joystick, WASD, QWERTY, numpad"),
     ),
 )
 
@@ -54,7 +58,7 @@ private val pages = listOf(
     Page("LANGKAH 2", "Hubungkan.", "Masuk dengan email atau Google, ketik ID perangkat dan password host, tekan Hubungkan. Host yang pernah tersambung tersimpan otomatis."),
     Page(
         "CARA MAIN", "Gestur di layar.", "Layar HP bekerja seperti trackpad presisi.",
-        listOf("1 jari geser" to "gerakkan kursor", "Ketuk" to "klik kiri", "Tekan lama" to "klik kanan", "2 jari geser" to "scroll", "Garis di bawah" to "keyboard, kualitas, stats, putus"),
+        listOf("1 jari geser" to "gerakkan kursor", "Ketuk" to "klik kiri", "Tekan lama" to "klik kanan", "2 jari geser" to "scroll", "Mapping" to "joystick analog, WASD, QWERTY, numpad"),
     ),
 )
 
@@ -107,11 +111,35 @@ fun OnboardingScreen(onDone: () -> Unit) {
 
 private fun Modifier.clickableText(onClick: () -> Unit): Modifier = clickable(onClick = onClick)
 
-/** Mascot 3D (sudah rembg) di tengah, tanpa hiasan. */
+/** Ilustrasi tiap halaman memakai hero + beberapa aset float agar jelas berganti. */
 @Composable
 private fun Illustration(page: Int, modifier: Modifier) {
-    val art = listOf(R.drawable.onboard_welcome, R.drawable.onboard_host, R.drawable.onboard_connect, R.drawable.onboard_gestures)
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Image(painterResource(art.getOrElse(page) { art[0] }), null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+    val heroes = listOf(R.drawable.onboard_welcome, R.drawable.onboard_host, R.drawable.onboard_connect, R.drawable.onboard_gestures)
+    val floats = listOf(
+        listOf(R.drawable.float_pc_mascot, R.drawable.float_phone, R.drawable.float_sparkle),
+        listOf(R.drawable.float_monitor, R.drawable.float_padlock, R.drawable.float_wifi),
+        listOf(R.drawable.float_cloud, R.drawable.float_cursor, R.drawable.float_globe),
+        listOf(R.drawable.float_gamepad, R.drawable.float_keycap, R.drawable.float_headset),
+    )
+    val bg = listOf(
+        listOf(Color(0xFFEDE7FF), Color(0xFFFFFFFF)),
+        listOf(Color(0xFFE9F0FF), Color(0xFFFFFFFF)),
+        listOf(Color(0xFFE7FFF6), Color(0xFFFFFFFF)),
+        listOf(Color(0xFFFFF0E7), Color(0xFFFFFFFF)),
+    )[page.coerceIn(0, 3)]
+    Box(
+        modifier.clip(RoundedCornerShape(28.dp)).background(Brush.radialGradient(bg)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painterResource(heroes.getOrElse(page) { heroes[0] }),
+            null,
+            Modifier.fillMaxSize().padding(8.dp),
+            contentScale = ContentScale.Fit,
+        )
+        val pack = floats.getOrElse(page) { floats[0] }
+        Image(painterResource(pack[0]), null, Modifier.align(Alignment.TopStart).padding(16.dp).size(56.dp).graphicsLayer { rotationZ = -10f }, contentScale = ContentScale.Fit)
+        Image(painterResource(pack[1]), null, Modifier.align(Alignment.TopEnd).padding(18.dp).size(52.dp).graphicsLayer { rotationZ = 9f }, contentScale = ContentScale.Fit)
+        Image(painterResource(pack[2]), null, Modifier.align(Alignment.BottomEnd).padding(20.dp).size(46.dp).graphicsLayer { rotationZ = -6f }, contentScale = ContentScale.Fit)
     }
 }

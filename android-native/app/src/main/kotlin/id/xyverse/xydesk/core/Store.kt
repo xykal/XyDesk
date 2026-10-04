@@ -40,7 +40,7 @@ class Store(context: Context) {
         set(v) = prefs.edit().putBoolean("haptics", v).apply()
 
     var trackpadSpeed: Float
-        get() = prefs.getFloat("trackpadSpeed", 1.4f)
+        get() = prefs.getFloat("trackpadSpeed", 1.8f)
         set(v) = prefs.edit().putFloat("trackpadSpeed", v).apply()
 
     var naturalScroll: Boolean
@@ -62,16 +62,6 @@ class Store(context: Context) {
     var devicesGrid: Boolean
         get() = prefs.getBoolean("devicesGrid", false)
         set(v) = prefs.edit().putBoolean("devicesGrid", v).apply()
-    var dockOn: Boolean
-        get() = prefs.getBoolean("dockOn", true)
-        set(v) = prefs.edit().putBoolean("dockOn", v).apply()
-    var dockSize: Int
-        get() = prefs.getInt("dockSize", 1)
-        set(v) = prefs.edit().putInt("dockSize", v).apply()
-    /** Urutan tombol dok sesi, id dari `DockCatalog`. */
-    var dockKeys: List<String>
-        get() = prefs.getString("dockKeys", null)?.split(",")?.filter { it.isNotEmpty() } ?: DOCK_DEFAULT
-        set(v) = prefs.edit().putString("dockKeys", v.joinToString(",")).apply()
     var overlayJson: String
         get() = prefs.getString("overlayJson", null).orEmpty()
         set(v) = prefs.edit().putString("overlayJson", v).apply()
@@ -262,14 +252,12 @@ object P {
     const val NEWS_HOURS = "newsHours"            // 3, 6, 12
     const val TEXT_SIZE = "textSize"              // 0 S, 1 M, 2 L
     const val REMEMBER_DEFAULT = "rememberDefault"
-    const val DOCK_TOP = "dockTop"
     const val SHOW_ID = "showId"
     val MBPS = listOf(0, 8, 12, 20, 30)
     val HISTORY = listOf(0, 7, 30, 90)
     val HOURS = listOf(3, 6, 12)
 }
 
-val DOCK_DEFAULT = listOf("lmb", "rmb", "sup", "sdn", "esc", "win", "alttab", "enter")
 val HUD_ALL = listOf("FPS", "MS", "JALUR", "JARINGAN", "LOSS", "KUALITAS", "MIC")
 val HUD_DEFAULT = setOf("FPS", "MS", "JALUR", "JARINGAN", "LOSS")
 

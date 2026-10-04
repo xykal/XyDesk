@@ -45,7 +45,7 @@ fun Switch(store: Store, key: String, title: String, caption: String, def: Boole
     Box(Modifier.padding(horizontal = 6.dp)) { XyToggle(title, caption, v) { v = it; store.set(key, it); onChange(it) } }
 }
 
-/** Pengaturan tambahan di halaman Sesi: tampilan, audio awal, kursor lanjutan, HUD, dok. */
+/** Pengaturan tambahan di halaman Sesi: tampilan, audio awal, kursor lanjutan, HUD, dan mapping kontrol. */
 @Composable
 fun SessionMorePrefs(store: Store) {
     XyCard {
@@ -73,10 +73,9 @@ fun SessionMorePrefs(store: Store) {
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
-        XyText("HUD & DOK", Xy.label)
+        XyText("HUD", Xy.label)
         Choice(store, P.HUD_SIZE, "Ukuran HUD", "", listOf("S", "M", "L"), 1)
-        Switch(store, P.HUD_RIGHT, "HUD di kanan atas", "Bawaan kiri atas, menjauh dari rel.")
-        Switch(store, P.DOCK_TOP, "Dok di atas", "Bawaan di bawah layar.")
+        Switch(store, P.HUD_RIGHT, "HUD di kanan atas", "Bawaan kiri atas, menjauh dari rel dan mapping kontrol.")
     }
 }
 

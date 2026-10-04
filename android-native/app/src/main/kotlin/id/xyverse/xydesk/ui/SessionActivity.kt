@@ -78,10 +78,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var specs = HostSpecs()
     private var startedAt = 0L
     private var outcome = "berjalan"
-    private var dockOn = true
-    private var dockSize by mutableStateOf(1)
-    private var dockKeys by mutableStateOf<List<String>>(emptyList())
-    private var dockHeld by mutableStateOf<Set<String>>(emptySet())
     private var overlayItems by mutableStateOf(listOf<OverlayItem>())
     private var overlayEdit by mutableStateOf(false)
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
@@ -129,7 +125,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
         hideSystemBars()
 
         showStats = store.showStats
-        dockOn = store.dockOn; dockSize = store.dockSize; dockKeys = store.dockKeys
         overlayItems = OverlayLayouts.fromJson(store.overlayJson)
         session = RtcSession(
             context = applicationContext,
@@ -147,11 +142,13 @@ class SessionActivity : ComponentActivity(), RtcListener {
         metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
         metrics.targetFps = store.targetFps
         metrics.auto = store.quality == 0
+        val tunedTrackpadSpeed = store.trackpadSpeed.coerceAtLeast(1.8f)
+        if (store.trackpadSpeed < tunedTrackpadSpeed) store.trackpadSpeed = tunedTrackpadSpeed
         val cfg = TrackpadConfig(
-            speed = store.trackpadSpeed,
+            speed = tunedTrackpadSpeed,
             naturalScroll = store.naturalScroll,
-            accel = listOf(0f, 0.6f, 1.2f)[store.int(P.ACCEL, 1)],
-            scrollUnit = listOf(24, 40, 70)[store.int(P.SCROLL_SPEED, 1)],
+            accel = listOf(0f, 0.35f, 0.8f)[store.int(P.ACCEL, 1)],
+            scrollUnit = listOf(32, 52, 82)[store.int(P.SCROLL_SPEED, 1)],
             twoFingerTap = store.bool(P.TWO_FINGER_RIGHT, true),
             swipe3Px = if (store.bool(P.SWIPE3, true)) 90f else Float.MAX_VALUE,
         )
@@ -173,7 +170,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         setupToolbar()
         setupPcKeys()
         setupOverlay()
-        setupDock()
+        setupControlMapping()
         startedAt = System.currentTimeMillis()
         record()
         session.start()
@@ -227,16 +224,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun setOverlayEditMode(on: Boolean) {
         if (overlayEdit && !on) saveOverlayLayout()
         overlayEdit = on
-        if (on) {
-            dockOn = true
-            store.dockOn = true
-        }
         applyChrome()
     }
 
-    private fun setupDock() {
-        (b.dock as? PassThroughComposeView)?.behind = b.video
-        b.dock.setContent {
+    private fun setupControlMapping() {
+        (b.controlsLayer as? PassThroughComposeView)?.behind = b.video
+        b.controlsLayer.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 ControlOverlay(
                     items = overlayItems,
@@ -254,21 +247,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
-    /** Tombol dok: modifier/seret bersifat tahan (ditekan sampai diketuk lagi), sisanya tekan-lepas. */
-    private fun onDock(k: DockKey) {
-        b.root.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-        when {
-            k.sticky -> {
-                val down = k.id !in dockHeld
-                dockHeld = if (down) dockHeld + k.id else dockHeld - k.id
-                if (k.mouse >= 0) session.send(StreamXy.button(k.mouse, down)) else session.send(StreamXy.key(k.vk, down))
-            }
-            k.mouse >= 0 -> { session.send(StreamXy.button(k.mouse, true)); ui.postDelayed({ session.send(StreamXy.button(k.mouse, false)) }, 40) }
-            k.scroll != 0 -> session.send(StreamXy.scroll(0, k.scroll * 240))
-            k.chord.isNotEmpty() -> { k.chord.forEach { session.send(StreamXy.key(it, true)) }; k.chord.reversed().forEach { session.send(StreamXy.key(it, false)) } }
-            else -> { session.send(StreamXy.key(k.vk, true)); session.send(StreamXy.key(k.vk, false)) }
-        }
-    }
 
     private fun setupOverlay() {
         b.overlay.setContent {
@@ -310,15 +288,15 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
-    /** Overlay on-screen hanya jika tidak ada keyboard/mouse/gamepad fisik (OTG/BT). */
+    /** Mapping on-screen hanya jika tidak ada keyboard/mouse/gamepad fisik (OTG/BT). */
     private fun applyChrome() {
-        val show = connected && dockOn && !presenting && !pcKeysOpen && !hidPresent.any
-        b.dock.visibility = if (show) View.VISIBLE else View.GONE
+        val show = connected && !presenting && !pcKeysOpen && !hidPresent.any
+        b.controlsLayer.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun setupToolbar() {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
-        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, dockOn, dockSize, dockKeys, autohide)
+        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, autohide)
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
@@ -346,9 +324,6 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         stats = { store.showStats = it; showStats = it; if (!it) b.status.visibility = View.GONE },
                         centerCursor = { session.send(StreamXy.moveAbs(0.5f, 0.5f)) },
                         present = { setPresenting(true) },
-                        dockOn = { store.dockOn = it; dockOn = it; applyChrome() },
-                        dockSize = { store.dockSize = it; dockSize = it },
-                        dockKeys = { store.dockKeys = it; dockKeys = it },
                         overlayEdit = { setOverlayEditMode(!overlayEdit) },
                         disconnect = { outcome = "putus"; finish() },
                     ),
@@ -385,7 +360,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         else -> "PC belum punya input mic virtual. Perbarui XyDesk Host ke versi terbaru."
     }
 
-    /** Orientasi, posisi HUD, ukuran HUD, dan posisi dok dari Pengaturan. */
+    /** Orientasi, posisi HUD, dan ukuran HUD dari Pengaturan. */
     private fun applyLayoutPrefs() {
         requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         b.status.textSize = listOf(10f, 12f, 14.5f)[store.int(P.HUD_SIZE, 1)]
@@ -395,13 +370,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             if (right) lp.marginEnd = (resources.displayMetrics.density * 72).toInt()
             b.status.layoutParams = lp
         }
-        (b.dock.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let { lp ->
-            val top = store.bool(P.DOCK_TOP, false)
-            lp.gravity = (if (top) android.view.Gravity.TOP else android.view.Gravity.BOTTOM) or android.view.Gravity.CENTER_HORIZONTAL
-            val m = (resources.displayMetrics.density * 10).toInt()
-            lp.topMargin = if (top) m else 0; lp.bottomMargin = if (top) 0 else m
-            b.dock.layoutParams = lp
-        }
+
     }
 
     /** Preferensi "saat mulai sesi": audio bisu, mic, clipboard, resolusi awal, batas bitrate. */
@@ -477,7 +446,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (connected) {
             everConnected = true
             reconnect.reset()
-            b.dock.bringToFront()
+            b.controlsLayer.bringToFront()
             b.toolbar.bringToFront()
             startService(Intent(this, SessionKeep::class.java))
             ui.postDelayed(statsTick, 1000)

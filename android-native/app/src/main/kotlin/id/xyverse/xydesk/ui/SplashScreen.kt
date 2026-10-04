@@ -1,6 +1,10 @@
 package id.xyverse.xydesk.ui
 
 import android.media.MediaPlayer
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.foundation.Canvas
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
@@ -58,7 +62,13 @@ private class IntroVoice(ctx: android.content.Context) {
         val p = player ?: return
         if (started || p.isPlaying) return
         started = true
-        runCatching { p.setVolume(1f, 1f); p.start() }
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                p.playbackParams = p.playbackParams.setPitch(0.72f).setSpeed(0.92f)
+            }
+            p.setVolume(0.96f, 0.96f)
+            p.start()
+        }
     }
 
     fun release() {
@@ -89,8 +99,20 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
             .clickable(remember { MutableInteractionSource() }, null) { voice?.release(); onDone() },
         contentAlignment = Alignment.Center,
     ) {
-        val float = rememberInfiniteTransition(label = "orb")
+        val float = rememberInfiniteTransition(label = "aura")
         val oy by float.animateFloat(0f, 1f, infiniteRepeatable(tween(3800, easing = LinearEasing), RepeatMode.Reverse), label = "oy")
+        val spin by float.animateFloat(0f, 360f, infiniteRepeatable(tween(5200, easing = LinearEasing)), label = "spin")
+        Canvas(
+            Modifier.size(210.dp).graphicsLayer { rotationZ = spin; alpha = 0.92f },
+        ) {
+            drawCircle(
+                brush = Brush.sweepGradient(listOf(Color(0xFF16081F), Xy.accent, Color(0xFF00E0FF), Color(0xFF16081F))),
+                style = Stroke(width = 10.dp.toPx()),
+            )
+            drawCircle(
+                brush = Brush.radialGradient(listOf(Color(0x44200030), Color.Transparent)),
+            )
+        }
         Box(Modifier.size(22.dp).align(Alignment.TopEnd).padding(48.dp).graphicsLayer { translationY = (oy - 0.5f) * 18f }.clip(CircleShape).background(Xy.accent.copy(alpha = 0.35f)))
         Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(56.dp).graphicsLayer { translationY = (0.5f - oy) * 14f }.clip(CircleShape).background(Color.White.copy(alpha = 0.55f)))
         Row(
@@ -110,7 +132,7 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
             }
         }
         XyText(
-            "Remote gaming, dari HP.", Xy.caption,
+            "Remote gaming, masuk ke bayangan.", Xy.caption,
             Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp).graphicsLayer { alpha = enter.value },
         )
         Spacer(Modifier.height(0.dp))

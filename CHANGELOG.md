@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Android UX polish:** onboarding kini memakai komposisi ilustrasi yang lebih jelas per halaman, splash mendapat aura gradasi gelap berputar, Google login pindah ke account-picker popup, trackpad default lebih ringan/halus, dock tombol lama dihapus dari UI, dan IME sesi memakai text input penuh (bukan field password).
+
 - **Session natural render:** Web dan Android kini mengunci video sesi ke scaling natural/aspect-fit tanpa CSS `filter`, `image-rendering: pixelated/crisp`, atau copy “tajam”; SurfaceView native juga langsung letterbox dari ukuran frame awal agar tidak terasa stretch/sharpen saat decode mulai.
 
 - **Agent board:** row aktif batch rustfmt natural quality yang sudah merged dibersihkan agar papan kembali kosong sebelum Build manual.
