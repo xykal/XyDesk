@@ -137,7 +137,7 @@ export class AutoPreset {
 
   /**
    * Keputusan awal begitu `meta` host tiba — sebelum ada statistik.
-   * Semua encoder mulai dari 720p30 supaya web tidak memaksa HD sebelum
+   * Semua encoder mulai dari 720p30 supaya web tidak memaksa 1080p sebelum
    * jalur, decoder, dan host terbukti stabil.
    */
   initial(_input: AutoInput, now: number): AutoDecision {

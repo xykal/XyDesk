@@ -14,4 +14,4 @@ test('same device keeps manual preview across connections and renders one card',
  assert.equal(s.deviceCards(s.loadGuestHistory())[0].preview,replacement);
 });
 
-test('HD preview uses normal fetch instead of exceeding keepalive budget',async()=>{const s=setup();await s.saveSessionHistory({...item(40),preview:'data:image/jpeg;base64,'+'A'.repeat(100000)},'account-token');assert.equal(s.requests[0].options.keepalive,false);});
+test('wallpaper preview uses normal fetch instead of exceeding keepalive budget',async()=>{const s=setup();await s.saveSessionHistory({...item(40),preview:'data:image/jpeg;base64,'+'A'.repeat(100000)},'account-token');assert.equal(s.requests[0].options.keepalive,false);});
