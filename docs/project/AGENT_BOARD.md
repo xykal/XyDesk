@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-HOST-STOP-SESSION-BUTTON | Operator - XyDesk Team | Operator | REVIEW | Host panel: tombol putus sesi aktif | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-MOUSE-STICK-HOLD | Operator - XyDesk Team | Operator | REVIEW | APK overlay: stick mouse terus bergerak saat ditahan | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-OVERLAY-TAP-SELECT | Operator - XyDesk Team | Operator | REVIEW | APK overlay: tap kontrol untuk pilih saat edit | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-OVERLAY-AUTOSAVE | Operator - XyDesk Team | Operator | REVIEW | APK overlay: autosave layout saat keluar mode edit | 2026-10-04 |
