@@ -2942,6 +2942,7 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 .history-content footer { display:flex;justify-content:space-between;align-items:center;margin-top:20px; }
 .history-content summary { cursor:pointer;font-weight:600;margin-top:16px;font-size:13px; }
 .history-empty { padding:48px 24px;text-align:center;border-radius:16px;background:#efeaf5; }
+.history-empty-art { display:block;width:min(220px,70vw);max-height:190px;object-fit:contain;margin:0 auto 18px;filter:drop-shadow(0 18px 28px rgba(80,51,126,.14)); }
 @media(max-width:600px){.history-heading{align-items:flex-start;flex-direction:column}.history-page{margin-top:12px;padding:18px}}
 
 .vkb-dismiss{align-self:center;display:flex;align-items:center;gap:8px;padding:6px 20px;border:0;border-radius:8px;background:#dee0e5;color:#1c1c1e;min-height:34px;cursor:pointer;font-weight:600}.vkb-dismiss:focus-visible{outline:2px solid #1c1c1e}
