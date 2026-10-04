@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Host panel koneksi:** tombol Putus sesi memakai tint danger ringan saat normal/hover/pressed, supaya aksi memutus client terlihat berbeda dari tombol navigasi biasa.
+
 - **APK overlay stick safety:** stick keyboard/mouse, joystick gamepad, dan scroll wheel kini mereset knob/vector visual saat masuk mode edit, mencegah vector stick mouse lama hidup lagi setelah edit ditutup.
 
 - **Docs/audit preview:** TODO handoff preview wallpaper host yang sudah selesai ditutup, dan sisa wording internal aktif yang menyiratkan “langsung HD” dirapikan menjadi 720p/1080p eksplisit.

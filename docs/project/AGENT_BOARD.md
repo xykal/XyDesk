@@ -79,6 +79,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
+| SESI-20261004-OPERATOR-HOST-STOP-SESSION-DANGER | Operator - XyDesk Team | Operator | REVIEW | Host panel: visual danger tombol putus sesi | 2026-10-04 |
 | SESI-20261004-OPERATOR-ANDROID-STICK-EDIT-RESET | Operator - XyDesk Team | Operator | REVIEW | APK overlay: reset vector stick saat masuk edit | 2026-10-04 |
 | SESI-20261004-OPERATOR-PREVIEW-HANDOFF-CLEANUP | Operator - XyDesk Team | Operator | REVIEW | Docs/Web/Host: tutup TODO preview wallpaper usang | 2026-10-04 |
 | SESI-20261004-OPERATOR-HOST-RUNHOST-HOVER | Operator - XyDesk Team | Operator | REVIEW | Host panel: hover/hit-test tombol takeover sesi | 2026-10-04 |
