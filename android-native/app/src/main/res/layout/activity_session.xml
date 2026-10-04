@@ -18,10 +18,10 @@
         android:layout_height="1dp"
         android:alpha="0"
         android:importantForAutofill="no"
-        android:inputType="textNoSuggestions|textVisiblePassword"
-        android:imeOptions="flagNoExtractUi|flagNoFullscreen" />
+        android:inputType="text|textMultiLine|textCapSentences|textAutoCorrect"
+        android:imeOptions="actionNone" />
     <id.xyverse.xydesk.ui.PassThroughComposeView
-        android:id="@+id/dock"
+        android:id="@+id/controlsLayer"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
     <androidx.compose.ui.platform.ComposeView

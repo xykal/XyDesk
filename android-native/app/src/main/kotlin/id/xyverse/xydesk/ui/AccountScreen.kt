@@ -158,7 +158,7 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
             Spacer(Modifier.height(8.dp))
             XyRow(Icon.CONTROLS, "Video, kursor, HUD", "Kualitas, fps, trackpad, HUD, panduan gestur.", onClick = { go(Sub.SESSION) })
             XyRow(Icon.SETTINGS, "Umum", "Koneksi, privasi, data, ukuran teks, berita.", onClick = { go(Sub.GENERAL) })
-            XyText("Tombol dok (klik, scroll, Esc, F1–F12, dll.) diatur langsung di dalam sesi lewat tombol Dok.", Xy.caption, Modifier.padding(horizontal = 6.dp, vertical = 6.dp))
+            XyText("Kontrol mapping lengkap (joystick analog, WASD, mouse, F1–F12, QWERTY, numpad, shortcut) diatur langsung di dalam sesi lewat tombol Mapping.", Xy.caption, Modifier.padding(horizontal = 6.dp, vertical = 6.dp))
         }
         Spacer(Modifier.height(16.dp))
         XyCard {

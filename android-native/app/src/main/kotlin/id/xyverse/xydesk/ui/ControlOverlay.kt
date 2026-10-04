@@ -193,6 +193,11 @@ object OverlayLayouts {
         OverlayItem("gstart", OverlayKind.GAMEPAD_BUTTON, 0x0010, x = 55f, y = 86f, size = 46f, radius = 23f, display = "Start"),
     )
 
+    fun complete(): List<OverlayItem> =
+        (fps() + functionRow() + numpad() + gamepad() + mouse())
+            .distinctBy { it.id }
+            .take(MAX_OVERLAY_ITEMS)
+
     fun toJson(items: List<OverlayItem>): String {
         val a = JSONArray()
         items.take(MAX_OVERLAY_ITEMS).forEach { m ->
@@ -533,10 +538,32 @@ private fun StickPad(
             mouseVector = Offset.Zero
         }
     }
+    fun updateStick(position: Offset) {
+        val c = Offset(px / 2, px / 2)
+        val max = px * 0.42f
+        var raw = position - c
+        val len = hypot(raw.x, raw.y)
+        if (len > max) raw = raw / len * max
+        knob = raw
+        val vx = (raw.x / max).coerceIn(-1f, 1f)
+        val vy = (raw.y / max).coerceIn(-1f, 1f)
+        if (m.kind == OverlayKind.STICK_KEYS) {
+            val pressed = listOf(vy < -0.18f, vy > 0.18f, vx < -0.18f, vx > 0.18f)
+            pressed.forEachIndexed { i, on ->
+                val owner = "stick:${m.id}:$i"
+                if (on) holds.down(owner, OverlayItem(owner, OverlayKind.KEY, dirs.getOrElse(i) { 0 }, x = 0f, y = 0f, size = 8f, radius = 4f))
+                else holds.up(owner)
+            }
+        } else {
+            mouseVector = if (len > max * 0.06f) Offset(vx, vy) else Offset.Zero
+            if (mouseVector != Offset.Zero) send(StreamXy.moveRel((vx * 24).roundToInt(), (vy * 24).roundToInt()))
+        }
+    }
+
     LaunchedEffect(edit, m.kind, mouseVector) {
         if (!edit && m.kind == OverlayKind.STICK_MOUSE && mouseVector != Offset.Zero) {
             while (true) {
-                send(StreamXy.moveRel((mouseVector.x * 18).roundToInt(), (mouseVector.y * 18).roundToInt()))
+                send(StreamXy.moveRel((mouseVector.x * 24).roundToInt(), (mouseVector.y * 24).roundToInt()))
                 delay(16L)
             }
         }
@@ -564,27 +591,10 @@ private fun StickPad(
                         },
                     )
                 } else detectDragGestures(
+                    onDragStart = { updateStick(it) },
                     onDrag = { change, _ ->
                         change.consume()
-                        val c = Offset(px / 2, px / 2)
-                        val max = px * 0.42f
-                        var raw = change.position - c
-                        val len = hypot(raw.x, raw.y)
-                        if (len > max) raw = raw / len * max
-                        knob = raw
-                        val vx = (raw.x / max).coerceIn(-1f, 1f)
-                        val vy = (raw.y / max).coerceIn(-1f, 1f)
-                        if (m.kind == OverlayKind.STICK_KEYS) {
-                            val pressed = listOf(vy < -0.32f, vy > 0.32f, vx < -0.32f, vx > 0.32f)
-                            pressed.forEachIndexed { i, on ->
-                                val owner = "stick:${m.id}:$i"
-                                if (on) holds.down(owner, OverlayItem(owner, OverlayKind.KEY, dirs.getOrElse(i) { 0 }, x = 0f, y = 0f, size = 8f, radius = 4f))
-                                else holds.up(owner)
-                            }
-                        } else {
-                            mouseVector = if (len > max * 0.10f) Offset(vx, vy) else Offset.Zero
-                            if (mouseVector != Offset.Zero) send(StreamXy.moveRel((vx * 18).roundToInt(), (vy * 18).roundToInt()))
-                        }
+                        updateStick(change.position)
                     },
                     onDragEnd = {
                         knob = Offset.Zero
@@ -620,6 +630,19 @@ private fun GamepadStickPad(
     onMove: (Float, Float) -> Unit,
 ) {
     var knob by remember { mutableStateOf(Offset.Zero) }
+    fun updateAnalog(position: Offset) {
+        val center = Offset(px / 2, px / 2)
+        val max = px * 0.42f
+        var raw = position - center
+        val len = hypot(raw.x, raw.y)
+        if (len > max) raw = raw / len * max
+        knob = raw
+        val dead = max * 0.05f
+        val x = if (len < dead) 0f else (raw.x / max).coerceIn(-1f, 1f)
+        val y = if (len < dead) 0f else (-raw.y / max).coerceIn(-1f, 1f)
+        holds.gamepadStick(m.kind, x, y)
+    }
+
     LaunchedEffect(edit) {
         if (edit) knob = Offset.Zero
     }
@@ -646,17 +669,10 @@ private fun GamepadStickPad(
                         },
                     )
                 } else detectDragGestures(
+                    onDragStart = { updateAnalog(it) },
                     onDrag = { change, _ ->
                         change.consume()
-                        val center = Offset(px / 2, px / 2)
-                        val max = px * 0.42f
-                        var raw = change.position - center
-                        val len = hypot(raw.x, raw.y)
-                        if (len > max) raw = raw / len * max
-                        knob = raw
-                        val x = (raw.x / max).coerceIn(-1f, 1f)
-                        val y = (-raw.y / max).coerceIn(-1f, 1f)
-                        holds.gamepadStick(m.kind, x, y)
+                        updateAnalog(change.position)
                     },
                     onDragEnd = { knob = Offset.Zero; holds.gamepadStick(m.kind, 0f, 0f) },
                     onDragCancel = { knob = Offset.Zero; holds.gamepadStick(m.kind, 0f, 0f) },
@@ -767,6 +783,7 @@ private fun LibraryPanel(count: Int, onPreset: (List<OverlayItem>) -> Unit, add:
     Column(Modifier.height(260.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         XyText("Preset & kontrol ($count/$MAX_OVERLAY_ITEMS)", Xy.caption)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Chip("Preset lengkap") { onPreset(OverlayLayouts.complete()) }
             Chip("Preset FPS") { onPreset(OverlayLayouts.fps()) }
             Chip("Preset mouse") { onPreset(OverlayLayouts.mouse()) }
             Chip("Preset QWERTY") { onPreset(OverlayLayouts.qwerty()) }

@@ -28,9 +28,6 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -65,9 +62,6 @@ class SessionActions(
     val stats: (show: Boolean) -> Unit = {},
     val centerCursor: () -> Unit = {},
     val present: () -> Unit = {},
-    val dockOn: (on: Boolean) -> Unit = {},
-    val dockSize: (size: Int) -> Unit = {},
-    val dockKeys: (ids: List<String>) -> Unit = {},
     val overlayEdit: () -> Unit = {},
     val disconnect: () -> Unit,
 )
@@ -77,12 +71,9 @@ data class SessionPrefs(
     val quality: Int = 0,
     val fps: Int = 60,
     val directTouch: Boolean = false,
-    val trackpadSpeed: Float = 1.4f,
+    val trackpadSpeed: Float = 1.8f,
     val naturalScroll: Boolean = false,
     val showStats: Boolean = true,
-    val dockOn: Boolean = true,
-    val dockSize: Int = 1,
-    val dockKeys: List<String> = DockCatalog.default,
     val autohideMs: Long = 0,
 )
 
@@ -91,7 +82,7 @@ enum class QuickKey(val label: String) {
     ALT_TAB("Alt+Tab"), ALT_F4("Alt+F4"), F11("F11"), PRTSC("PrtSc"), CAD("CAD"),
 }
 
-private enum class Panel { NONE, CONTROLS, DOCK, SETTINGS }
+private enum class Panel { NONE, CONTROLS, SETTINGS }
 
 private val glass = Color(0xF2FFFFFF)
 
@@ -115,9 +106,6 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var mic by remember { mutableStateOf(false) }
     var clip by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(prefs.showStats) }
-    var dockOn by remember { mutableStateOf(prefs.dockOn) }
-    var dockSize by remember { mutableStateOf(prefs.dockSize) }
-    var dockKeys by remember { mutableStateOf(prefs.dockKeys) }
     val qLabels = listOf("Auto", "Seimbang", "Lebih halus", "Paling halus")
     var touched by remember { mutableStateOf(0L) }
     if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
@@ -134,12 +122,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 Modifier.width(232.dp).clip(RoundedCornerShape(Xy.radiusL)).background(glass).border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL)).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (panel == Panel.DOCK) {
-                    DockEditor(dockOn, dockSize, dockKeys,
-                        onOn = { dockOn = it; actions.dockOn(it) },
-                        onSize = { dockSize = it; actions.dockSize(it) },
-                    ) { dockKeys = it; actions.dockKeys(it) }
-                } else if (panel == Panel.CONTROLS) {
+                if (panel == Panel.CONTROLS) {
                     XyText("KONTROL", Xy.label)
                     Wrap { QuickKey.entries.forEach { k -> Pill(k.label) { actions.sendQuickKey(k) } } }
                     Wrap {
@@ -203,7 +186,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Xy.textLow)) }
                 RailButton(Icon.KEYBOARD, "Keyboard") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol", active = panel == Panel.CONTROLS) { panel = if (panel == Panel.CONTROLS) Panel.NONE else Panel.CONTROLS }
-                RailButton(Icon.GRID, "Dok", active = panel == Panel.DOCK) { actions.overlayEdit(); panel = Panel.NONE }
+                RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); panel = Panel.NONE }
                 RailButton(Icon.SETTINGS, "Atur", active = panel == Panel.SETTINGS) { panel = if (panel == Panel.SETTINGS) Panel.NONE else Panel.SETTINGS }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))
@@ -211,6 +194,8 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
         }
     }
 }
+
+
 
 @Composable
 private fun RailButton(icon: Icon, label: String, active: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
@@ -222,26 +207,6 @@ private fun RailButton(icon: Icon, label: String, active: Boolean = false, dange
             contentAlignment = Alignment.Center,
         ) { XyIcon(icon, tint = fg, size = 21.dp) }
         XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Xy.danger else Xy.textMid))
-    }
-}
-
-/** Baris pil yang membungkus ke baris berikutnya bila penuh. */
-@OptIn(ExperimentalLayoutApi::class)
-/** Editor dok: nyala/mati, ukuran, dan pilihan tombol per kelompok; urutan = urutan dipilih. */
-@Composable
-private fun DockEditor(on: Boolean, size: Int, ids: List<String>, onOn: (Boolean) -> Unit, onSize: (Int) -> Unit, onIds: (List<String>) -> Unit) {
-    Column(Modifier.heightIn(max = 380.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        XyText("DOK KONTROL", Xy.label)
-        Wrap {
-            Pill(if (on) "Dok tampil" else "Dok sembunyi", accent = on) { onOn(!on) }
-            listOf("S", "M", "L").forEachIndexed { i, l -> Pill(l, accent = size == i) { onSize(i) } }
-            Pill("Reset") { onIds(DockCatalog.default) }
-        }
-        XyText("${ids.size} tombol dipilih · ketuk untuk tambah/hapus; urutan mengikuti saat dipilih.", Xy.caption)
-        DockCatalog.groups.forEach { g ->
-            XyText(g.uppercase(), Xy.label)
-            Wrap { DockCatalog.all.filter { it.group == g }.forEach { k -> Pill(k.label, accent = k.id in ids) { onIds(if (k.id in ids) ids - k.id else ids + k.id) } } }
-        }
     }
 }
 

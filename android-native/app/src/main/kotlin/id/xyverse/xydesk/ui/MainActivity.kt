@@ -1,10 +1,19 @@
 package id.xyverse.xydesk.ui
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.addCallback
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.CancellableContinuation
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
 import id.xyverse.xydesk.core.tr
 import id.xyverse.xydesk.core.Images
 import id.xyverse.xydesk.core.NewsWatch
@@ -30,11 +39,7 @@ import id.xyverse.xydesk.core.LocalLang
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.credentials.CredentialManager
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.credentials.GetCredentialRequest
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import id.xyverse.xydesk.BuildConfig
 import id.xyverse.xydesk.core.P
 import id.xyverse.xydesk.core.Previews
@@ -48,6 +53,21 @@ class MainActivity : ComponentActivity() {
     private val store by lazy { Store(applicationContext) }
     private var lastBack = 0L
     private var openNews = false
+    private var pendingGoogle: CancellableContinuation<String?>? = null
+    private val googlePopup: ActivityResultLauncher<Intent> = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val cont = pendingGoogle ?: return@registerForActivityResult
+        pendingGoogle = null
+        if (result.resultCode != Activity.RESULT_OK) {
+            cont.resume(null)
+            return@registerForActivityResult
+        }
+        val token = runCatching {
+            GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                .getResult(ApiException::class.java)
+                .idToken
+        }.onFailure { Log.w("XyDeskAuth", "google-popup: $it") }.getOrNull()
+        cont.resume(token)
+    }
 
     private fun shareText(text: String) =
         startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text), null))
@@ -154,18 +174,21 @@ class MainActivity : ComponentActivity() {
     private suspend fun googleIdToken(): String? {
         val clientId = BuildConfig.GOOGLE_WEB_CLIENT_ID
         if (clientId.isEmpty()) throw IllegalStateException("Google Sign-In belum dikonfigurasi di build ini.")
-        val option = GetGoogleIdOption.Builder()
-            .setServerClientId(clientId)
-            .setFilterByAuthorizedAccounts(false)
-            .setAutoSelectEnabled(false)
+        val opts = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(clientId)
+            .requestEmail()
             .build()
-        val request = GetCredentialRequest.Builder().addCredentialOption(option).build()
-        return try {
-            val result = CredentialManager.create(this).getCredential(this, request)
-            GoogleIdTokenCredential.createFrom(result.credential.data).idToken
-        } catch (e: Exception) {
-            Log.w("XyDeskAuth", "google: $e")
-            throw IllegalStateException("Google Sign-In dibatalkan atau gagal.")
+        val client = GoogleSignIn.getClient(this, opts)
+        // Pakai account-picker Activity agar tampil sebagai popup/lembar akun Google
+        // eksplisit, bukan Credential Manager bottom sheet yang terasa seperti sheet.
+        return suspendCancellableCoroutine { cont ->
+            if (pendingGoogle != null) {
+                cont.resume(null)
+                return@suspendCancellableCoroutine
+            }
+            pendingGoogle = cont
+            cont.invokeOnCancellation { if (pendingGoogle === cont) pendingGoogle = null }
+            client.signOut().addOnCompleteListener { googlePopup.launch(client.signInIntent) }
         }
     }
 }

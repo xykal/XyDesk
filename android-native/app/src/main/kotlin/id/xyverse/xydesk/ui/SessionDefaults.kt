@@ -47,7 +47,7 @@ fun SessionDefaults(store: Store) {
         XyText("VIDEO", Xy.label)
         Spacer(Modifier.height(8.dp))
         Line("Kualitas") {
-            Segmented(listOf("Auto" to 0, "Sedang" to 1, "Tinggi" to 2, "Ultra" to 3), quality) { quality = it; store.quality = it }
+            Segmented(listOf("Auto" to 0, "Seimbang" to 1, "Halus" to 2, "Paling halus" to 3), quality) { quality = it; store.quality = it }
         }
         Line("FPS") { Segmented(listOf("30" to 30, "60" to 60), fps) { fps = it; store.targetFps = it } }
         Box(Modifier.padding(horizontal = 6.dp)) {
@@ -63,7 +63,7 @@ fun SessionDefaults(store: Store) {
                 }
             }
         }
-        XyText("Auto menaikkan/menurunkan resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption, Modifier.padding(horizontal = 6.dp))
+        XyText("Auto mengatur resolusi dan bitrate mengikuti jaringan; preset kualitas manual hanya rasa kompresi/bitrate.", Xy.caption, Modifier.padding(horizontal = 6.dp))
     }
     Spacer(Modifier.height(16.dp))
     XyCard {
@@ -104,7 +104,7 @@ fun GestureGuide() {
     val rows = listOf(
         "Ketuk 1 jari" to "Klik kiri", "Ketuk 2 jari" to "Klik kanan", "Ketuk 2x lalu geser" to "Seret / blok teks",
         "Geser 2 jari atas/bawah" to "Scroll", "Geser 3 jari kiri/kanan" to "Alt+Tab",
-        "Geser 3 jari ke atas" to "Win+Tab (semua jendela)", "Tombol kanan" to "Keyboard, tombol cepat, kualitas, putus",
+        "Geser 3 jari ke atas" to "Win+Tab (semua jendela)", "Rel kanan" to "Keyboard, mapping, kualitas, putus",
     )
     XyCard {
         XyText("GESTUR", Xy.label)
