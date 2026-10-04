@@ -79,7 +79,6 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 
 | ID Sesi | Agent | Role / Area | Status | Sedang mengerjakan | Mulai |
 |---|---|---|---|---|---|
-| SESI-20261004-OPERATOR-HOST-STOP-SESSION-JSON | Operator - XyDesk Team | Operator | REVIEW | Host panel: parse hasil stop-session via JSON | 2026-10-04 |
 
 ## Antrean izin push
 
