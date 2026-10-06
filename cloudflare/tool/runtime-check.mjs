@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { signJwt } from '../src/auth.js';
-import { totp } from '../src/admin_security.js';
 
 // Pakai runtime yang dibawa Wrangler, tanpa dependensi produksi tambahan.
 const require = createRequire(import.meta.url);
@@ -60,20 +59,41 @@ try {
   const unauthorized = await mf.dispatchFetch('https://local/admin/health');
   assert.equal(unauthorized.status, 401);
   const headers={Authorization:`Bearer ${token}`,Origin:'https://admin.xydesk.my.id','content-type':'application/json'};
-  const setup=await mf.dispatchFetch('https://local/admin/setup/start',{method:'POST',headers,body:JSON.stringify({username:'runtime-owner',password:'Runtime-password-long-and-unique!'})});
-  assert.equal(setup.status,200);const enrollment=await setup.json();
-  const code=await totp(enrollment.secret,Math.floor(Date.now()/30000));
-  const activated=await mf.dispatchFetch('https://local/admin/setup/confirm',{method:'POST',headers,body:JSON.stringify({code})});
-  assert.equal(activated.status,200);assert.match(activated.headers.get('set-cookie'),/HttpOnly/);
-  const setupResult=await activated.json();assert.equal(setupResult.token,undefined);assert.equal(setupResult.recoveryCodes.length,10);
+  const creds = { username: 'runtime-owner', password: 'Runtime-password-long-and-unique!' };
+  const setup=await mf.dispatchFetch('https://local/admin/setup/start',{method:'POST',headers,body:JSON.stringify(creds)});
+  assert.equal(setup.status,200);
+  const enrollment=await setup.json();
+  // Kontrak sekarang: pendaftaran hanya menitipkan kata sandi yang tertunda.
+  // Tidak ada rahasia TOTP yang dikembalikan, dan tidak boleh ada bocoran hash.
+  assert.ok(enrollment.expiresAt > Date.now());
+  assert.equal(enrollment.secret, undefined);
+  assert.equal(enrollment.passwordHash, undefined);
+  const confirmed=await mf.dispatchFetch('https://local/admin/setup/confirm',{method:'POST',headers,body:JSON.stringify({})});
+  assert.equal(confirmed.status,200);
+  const setupResult=await confirmed.json();
+  assert.equal(setupResult.username,'runtime-owner');
+  assert.equal(setupResult.setupRequired,false);
+  // Pemasangan hanya boleh sekali. Setelah pemilik ada, token Google lama tidak
+  // lagi diterima di endpoint pemasangan sama sekali (401), jadi penyusup tidak
+  // pernah sampai ke pemeriksaan 'setup-closed'.
+  const again=await mf.dispatchFetch('https://local/admin/setup/start',{method:'POST',headers,body:JSON.stringify({username:'penyusup',password:'Another-password-long-enough!'})});
+  assert.equal(again.status,401);
   const authConfig=await mf.dispatchFetch('https://local/admin/auth/config');assert.equal((await authConfig.json()).passwordEnabled,true);
+  // JWT Google lama tidak lagi membuka sesi admin.
   const legacySession=await mf.dispatchFetch('https://local/admin/session',{headers});assert.equal(legacySession.status,401);
-  const passwordLogin=await mf.dispatchFetch('https://local/admin/password-login',{method:'POST',headers:{Origin:'https://admin.xydesk.my.id','content-type':'application/json'},body:JSON.stringify({username:'runtime-owner',password:'Runtime-password-long-and-unique!',code:setupResult.recoveryCodes[0],recovery:true,turnstileToken:'local-test-token'})});
-  assert.equal(passwordLogin.status,200);const cookie=passwordLogin.headers.get('set-cookie').split(';')[0];
+  const loginBody = extra => JSON.stringify({ ...creds, turnstileToken: 'local-test-token', ...extra });
+  const loginHeaders = {Origin:'https://admin.xydesk.my.id','content-type':'application/json'};
+  const wrongPassword=await mf.dispatchFetch('https://local/admin/password-login',{method:'POST',headers:loginHeaders,body:loginBody({password:'Wrong-password-but-long-enough!'})});
+  assert.equal(wrongPassword.status,401);
+  const passwordLogin=await mf.dispatchFetch('https://local/admin/password-login',{method:'POST',headers:loginHeaders,body:loginBody()});
+  assert.equal(passwordLogin.status,200);
+  const setCookie=passwordLogin.headers.get('set-cookie');
+  assert.match(setCookie,/HttpOnly/);assert.match(setCookie,/Secure/);assert.match(setCookie,/SameSite/);
+  const cookie=setCookie.split(';')[0];
   const session=await mf.dispatchFetch('https://local/admin/session',{headers:{Cookie:cookie}});assert.equal(session.status,200);
   const logout=await mf.dispatchFetch('https://local/admin/logout',{method:'POST',headers:{Origin:'https://admin.xydesk.my.id',Cookie:cookie}});assert.equal(logout.status,200);
   const afterLogout=await mf.dispatchFetch('https://local/admin/session',{headers:{Cookie:cookie}});assert.equal(afterLogout.status,401);
-  console.log('Runtime auth: setup+TOTP, pemutusan Google/JWT lama, password+recovery sekali pakai, cookie session, logout lolos; captcha ditirukan hanya dalam tes lokal.');
+  console.log('Runtime auth: pemasangan sekali pakai, JWT Google lama ditolak, kata sandi salah ditolak, cookie HttpOnly+Secure+SameSite, sesi dan logout lolos; captcha ditirukan hanya dalam tes lokal.');
   console.log('Runtime SQLite: batch + konflik konkurensi + patch legacy + audit + health + pembatasan akses lolos.');
 } finally {
   await mf.dispose();
