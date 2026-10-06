@@ -30,8 +30,8 @@ use webrtc::data_channel::RTCDataChannel;
 
 use crate::filesink::Sink;
 use crate::filetransfer::{
-    decode, encode, is_risky_extension, Action, FileMessage, Phase, Reason, Receiver,
-    MAX_FILE_BYTES,
+    decode, encode, is_risky_extension, Action, FileMessage, Phase, Reason, Receiver, SendState,
+    Sender, MAX_FILE_BYTES,
 };
 use crate::session::Session;
 
@@ -93,6 +93,73 @@ struct Transfer {
     sink: Sink,
 }
 
+/// Antrean kirim milik sesi yang sedang berjalan.
+///
+/// Aksi control API (`file-send`) dijalankan di utas HTTP yang sama sekali
+/// tidak tahu-menahu tentang sesi WebRTC, jadi ia hanya menitipkan path ke
+/// sini; yang mengirim adalah tugas milik sesi. Bila tidak ada sesi, titipan
+/// ditolak seketika — mengantre berkas untuk sesi yang mungkin tidak pernah
+/// datang hanya membuat kiriman muncul mengejutkan nanti.
+type Outbox = (
+    tokio::sync::mpsc::UnboundedSender<PathBuf>,
+    Arc<RTCDataChannel>,
+);
+
+static OUTBOX: std::sync::Mutex<Option<Outbox>> = std::sync::Mutex::new(None);
+
+fn set_outbox(entry: Option<Outbox>) {
+    if let Ok(mut slot) = OUTBOX.lock() {
+        *slot = entry;
+    }
+}
+
+/// Menitipkan satu berkas untuk dikirim ke perangkat yang sedang tersambung.
+///
+/// Mengembalikan pesan kesalahan bila tidak ada sesi, path bukan berkas,
+/// kosong, atau melebihi batas — semuanya diperiksa **sebelum** pengguna
+/// diberi tahu bahwa kiriman dimulai.
+pub fn queue_outgoing(path: PathBuf) -> Result<(), String> {
+    let meta = std::fs::metadata(&path).map_err(|e| format!("berkas tidak terbaca: {e}"))?;
+    if !meta.is_file() {
+        return Err("yang dipilih bukan berkas".to_string());
+    }
+    if meta.len() == 0 {
+        return Err("berkas kosong, tidak ada yang dikirim".to_string());
+    }
+    if meta.len() > MAX_FILE_BYTES {
+        return Err(format!(
+            "berkas melebihi batas {}",
+            crate::filetransfer::human_bytes(MAX_FILE_BYTES)
+        ));
+    }
+    let mut slot = OUTBOX
+        .lock()
+        .map_err(|_| "antrean kirim rusak".to_string())?;
+    // Channel milik sesi yang sudah mati tetap tersimpan di sini sampai
+    // `on_close` sempat jalan. Menitipkan berkas ke sana akan "berhasil"
+    // tanpa satu byte pun berangkat — keadaan terburuk: pengguna diberi tahu
+    // kiriman dimulai padahal tidak ada penerimanya.
+    let hidup = slot.as_ref().is_some_and(|(_, dc)| {
+        dc.ready_state() == webrtc::data_channel::data_channel_state::RTCDataChannelState::Open
+    });
+    if !hidup {
+        *slot = None;
+        return Err("tidak ada perangkat yang tersambung".to_string());
+    }
+    let (tx, _) = slot.as_ref().expect("sudah diperiksa hidup");
+    tx.send(path).map_err(|_| "sesi sudah berakhir".to_string())
+}
+
+/// Keadaan pengiriman host → client untuk satu sesi.
+#[derive(Default)]
+struct Outgoing {
+    sender: Option<Sender>,
+    /// Tanda siap dari client sudah tiba. Client mengirimnya ketika
+    /// pendengarnya terpasang; mengirim OFFER sebelum itu berarti tawaran
+    /// hilang tanpa jejak.
+    peer_ready: bool,
+}
+
 /// Melayani channel berkas satu sesi sampai sesinya berakhir, menulis ke
 /// [`download_dir`].
 pub async fn serve(session: Arc<Session>) {
@@ -110,6 +177,9 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
     let dc = session.wait_file_channel().await;
     println!("[xydesk-host] data channel berkas terbuka");
     let state: Arc<Mutex<Option<Transfer>>> = Arc::new(Mutex::new(None));
+    let out: Arc<Mutex<Outgoing>> = Arc::new(Mutex::new(Outgoing::default()));
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<PathBuf>();
+    set_outbox(Some((tx, Arc::clone(&dc))));
 
     let on_close_state = Arc::clone(&state);
     dc.on_close(Box::new(move || {
@@ -122,13 +192,16 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
                 t.receiver.disconnected();
                 println!("[xydesk-host] transfer berkas dibatalkan: sesi berakhir");
             }
+            set_outbox(None);
         })
     }));
 
     let channel = Arc::clone(&dc);
+    let out_handler = Arc::clone(&out);
     dc.on_message(Box::new(move |msg| {
         let state = Arc::clone(&state);
         let channel = Arc::clone(&channel);
+        let out_msg = Arc::clone(&out_handler);
         let dir = dir.clone();
         Box::pin(async move {
             let Some(message) = decode(&msg.data) else {
@@ -143,9 +216,24 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
                 .await;
                 return;
             };
+            // Pesan yang menyangkut kiriman keluar ditangani lebih dulu:
+            // ACCEPT/REJECT/ACK adalah jawaban untuk kita, bukan tawaran
+            // baru untuk penerima.
+            if route_outgoing(&channel, &out_msg, &message).await {
+                return;
+            }
             handle(&channel, &state, &dir, message).await;
         })
     }));
+
+    // Pengirim: satu berkas dalam satu waktu, dari antrean control API.
+    let out_task = Arc::clone(&out);
+    let send_channel = Arc::clone(&dc);
+    tokio::spawn(async move {
+        while let Some(path) = rx.recv().await {
+            send_file(&send_channel, &out_task, path).await;
+        }
+    });
 
     // Tanda "siap": `ACK` dengan id 0. Handler `on_message` baru terpasang
     // beberapa baris di atas, sementara channel sudah OPEN di sisi client
@@ -165,6 +253,197 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
         }
     });
 }
+
+/// Menyuapkan pesan yang menyangkut kiriman keluar. `true` berarti pesan ini
+/// sudah selesai ditangani dan tidak boleh ikut dibaca penerima.
+async fn route_outgoing(
+    channel: &Arc<RTCDataChannel>,
+    out: &Arc<Mutex<Outgoing>>,
+    message: &FileMessage,
+) -> bool {
+    let mut guard = out.lock().await;
+    if let FileMessage::Ack { id: 0, .. } = message {
+        guard.peer_ready = true;
+        if let Some(sender) = guard.sender.as_mut() {
+            if let Some(offer) = sender.on_message(message) {
+                let _ = send(channel, &offer).await;
+            }
+        }
+        return true;
+    }
+    let Some(sender) = guard.sender.as_mut() else {
+        return false;
+    };
+    let mine = match message {
+        FileMessage::Accept { id }
+        | FileMessage::Reject { id, .. }
+        | FileMessage::Ack { id, .. } => *id == sender.id(),
+        _ => false,
+    };
+    // CANCEL dengan id kiriman kita juga milik kita; CANCEL dengan id lain
+    // adalah urusan penerima.
+    let mine = mine || matches!(message, FileMessage::Cancel { id, .. } if *id == sender.id());
+    if !mine {
+        return false;
+    }
+    if let Some(reply) = sender.on_message(message) {
+        let _ = send(channel, &reply).await;
+    }
+    true
+}
+
+/// Mengirim satu berkas ke client. Bagian paling tipis dan satu-satunya yang
+/// tidak bisa diuji tanpa sesi nyata: semua aturannya ada di
+/// [`crate::filetransfer::Sender`], di sini hanya membaca disk, menahan laju,
+/// dan berbicara ke channel.
+async fn send_file(channel: &Arc<RTCDataChannel>, out: &Arc<Mutex<Outgoing>>, path: PathBuf) {
+    use sha2::{Digest, Sha256};
+    use tokio::io::AsyncReadExt;
+
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "berkas".to_string());
+    let Ok(meta) = tokio::fs::metadata(&path).await else {
+        eprintln!(
+            "[xydesk-host] kirim berkas gagal: {} tidak terbaca",
+            path.display()
+        );
+        return;
+    };
+    let Ok(mut file) = tokio::fs::File::open(&path).await else {
+        eprintln!(
+            "[xydesk-host] kirim berkas gagal: {} tidak bisa dibuka",
+            path.display()
+        );
+        return;
+    };
+
+    {
+        let mut guard = out.lock().await;
+        if guard.sender.as_ref().is_some_and(|s| s.active()) {
+            eprintln!("[xydesk-host] kiriman ditolak: masih ada berkas berjalan");
+            return;
+        }
+        guard.sender = Some(Sender::new(new_transfer_id(), &name, meta.len()));
+    }
+
+    // Tunggu tanda siap dari client, maksimal 15 detik.
+    let mut siap = false;
+    for _ in 0..150 {
+        let mut guard = out.lock().await;
+        if guard.peer_ready {
+            let ready = FileMessage::Ack { id: 0, received: 0 };
+            if let Some(sender) = guard.sender.as_mut() {
+                if let Some(offer) = sender.on_message(&ready) {
+                    let _ = send(channel, &offer).await;
+                }
+            }
+            siap = true;
+            break;
+        }
+        drop(guard);
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    if !siap {
+        // Client lama tidak mengirim tanda siap sama sekali. Menunggu
+        // selamanya berarti kiriman menggantung diam-diam; lebih baik
+        // berhenti dengan pesan yang bisa dibaca di log panel.
+        eprintln!("[xydesk-host] kirim {name} dibatalkan: perangkat tidak mengirim tanda siap");
+        out.lock().await.sender = None;
+        return;
+    }
+
+    let mut hasher = Sha256::new();
+    let mut buf = vec![0u8; crate::filetransfer::SEND_CHUNK_BYTES];
+    loop {
+        let allowance = {
+            let guard = out.lock().await;
+            match guard.sender.as_ref() {
+                Some(s) if s.active() => {
+                    if s.ready() {
+                        0
+                    } else {
+                        s.allowance()
+                    }
+                }
+                _ => break,
+            }
+        };
+        let finished = {
+            let guard = out.lock().await;
+            guard.sender.as_ref().is_some_and(|s| s.ready())
+        };
+        if finished {
+            let mut guard = out.lock().await;
+            if let Some(sender) = guard.sender.as_mut() {
+                if let Some(done) = sender.finish(hasher.clone().finalize().into()) {
+                    let _ = send(channel, &done).await;
+                    println!("[xydesk-host] berkas terkirim: {name}");
+                }
+            }
+            break;
+        }
+        // Antrean channel juga direm: byte yang belum keluar dari sini tetap
+        // memakai memori proses, berapa pun cepatnya disk dibaca.
+        if allowance == 0 || channel.buffered_amount().await > BUFFER_CAP {
+            tokio::time::sleep(std::time::Duration::from_millis(8)).await;
+            continue;
+        }
+        let read = match file.read(&mut buf[..allowance]).await {
+            Ok(0) | Err(_) => {
+                let mut guard = out.lock().await;
+                if let Some(sender) = guard.sender.as_mut() {
+                    if let Some(cancel) = sender.cancel(Reason::Io) {
+                        let _ = send(channel, &cancel).await;
+                    }
+                }
+                eprintln!("[xydesk-host] kirim berkas gagal: isi {name} berubah saat dikirim");
+                break;
+            }
+            Ok(n) => n,
+        };
+        let part = buf[..read].to_vec();
+        hasher.update(&part);
+        let message = {
+            let mut guard = out.lock().await;
+            match guard.sender.as_mut() {
+                Some(sender) => sender.chunk(part),
+                None => break,
+            }
+        };
+        let Some(message) = message else { break };
+        if send(channel, &message).await.is_err() {
+            break;
+        }
+    }
+
+    let mut guard = out.lock().await;
+    if let Some(sender) = guard.sender.as_ref() {
+        if let SendState::Failed(reason) = sender.state() {
+            eprintln!("[xydesk-host] kiriman {name} gagal: {reason:?}");
+        }
+    }
+    guard.sender = None;
+}
+
+/// Id transfer baru. Tidak pernah 0: id itu milik tanda siap.
+fn new_transfer_id() -> u32 {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.subsec_nanos())
+        .unwrap_or(1);
+    let id = nanos | 0x4000_0000;
+    if id == 0 {
+        1
+    } else {
+        id
+    }
+}
+
+/// Antrean channel maksimum sebelum pengirim menahan diri (1 MiB).
+const BUFFER_CAP: usize = 1024 * 1024;
 
 async fn handle(
     channel: &Arc<RTCDataChannel>,

@@ -67,6 +67,17 @@ class FileWireTest {
 }
 
 class FileSenderTest {
+    @Test
+    fun potonganKirimBawaanMuatDalamSatuPesanSctp() {
+        // 9 byte header CHUNK + isi harus tetap di bawah 64 KiB, kalau tidak
+        // pesannya tidak pernah berangkat dan pengiriman menggantung diam.
+        assertTrue(FileRules.SEND_CHUNK_BYTES + 9 <= 64 * 1024)
+        val s = FileSender(1, "a.bin", 1_000_000L)
+        s.onMessage(FileMsg.Ack(0, 0))
+        s.onMessage(FileMsg.Accept(1))
+        assertEquals(FileRules.SEND_CHUNK_BYTES, s.allowance())
+    }
+
     private fun sender(size: Long = 200_000L, chunk: Int = 65_536) =
         FileSender(9, "foto liburan.jpg", size, chunk)
 

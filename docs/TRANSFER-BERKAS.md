@@ -25,11 +25,20 @@ dianggap "dibatalkan pengguna".
 
 Batas: satu berkas ≤ 4 GiB, satu potongan ≤ 64 KiB, nama ≤ 120 karakter.
 
+**Potongan yang dikirim 16 KiB, bukan 64 KiB.** Batas protokol tetap 64 KiB
+supaya pengirim lama tetap diterima, tetapi satu pesan SCTP dibatasi 64 KiB
+*termasuk* 9 byte header `CHUNK` — potongan 65536 byte menghasilkan pesan
+65545 byte yang **tidak pernah berangkat**, dan pengiriman menggantung tanpa
+satu pun pesan kesalahan. Ini ditemukan oleh uji loopback arah host → client;
+tidak ada uji unit di dua bahasa yang bisa melihatnya, karena keduanya benar
+menurut protokolnya sendiri.
+
 ## 2. Urutan
 
 ```
 host                                   client (HP)
   |  ACK id=0 (tanda siap)  ───────────────>|
+  |<───────────────────────  ACK id=0 (balasan siap)
   |<──────────────────────────  OFFER id,size,name
   |  ACCEPT id  ───────────────────────────>|
   |<──────────────────────────  CHUNK id,seq=0
@@ -45,7 +54,11 @@ itu hilang tanpa jejak dan transfer menggantung tanpa satu pun pesan
 kesalahan. Celah ini pernah benar-benar terjadi dan ditangkap oleh uji
 loopback pada percobaan pertama. Host karena itu mengirim `ACK` dengan id 0 —
 id yang tidak pernah dipakai transfer sungguhan — setelah pendengarnya
-terpasang.
+terpasang. Sejak arah PC → HP ada, **tanda siap itu dua arah**: aplikasi
+membalas tanda siap host dengan tanda siapnya sendiri, dan host baru
+menawarkan berkas setelah menerimanya. Tanpa balasan itu, celah yang sama
+muncul dalam arah sebaliknya — dan memang muncul: percobaan pertama uji
+loopback arah baru menggantung persis karena ini.
 
 ## 3. Sisi host (penerima)
 
@@ -68,6 +81,35 @@ cocok — transfer yang putus meninggalkan sampah yang jelas sampahnya, bukan
 Persetujuan masih **otomatis** untuk client yang lolos pairing; kebijakannya
 terkumpul di `decide_offer` supaya menjadikannya "tanya pengguna" nanti tidak
 perlu menyentuh alur jaringan.
+
+## 3b. Host sebagai pengirim (PC → HP)
+
+- `filetransfer::Sender` — mesin keadaan pengirim, kembaran `FileSender` di
+  Kotlin: tanda siap wajib ditunggu, jendela ACK 512 KiB, kemajuan dari ACK,
+  penolakan potongan yang menyimpang.
+- `file_dispatch::queue_outgoing(path)` — antrean proses-global yang dipakai
+  control API. Ia memeriksa **sebelum** menjawab: ada sesi hidup, path adalah
+  berkas, tidak kosong, tidak melebihi 4 GiB. Channel milik sesi yang sudah
+  mati ikut diperiksa (`ready_state`), karena menitipkan berkas ke sana akan
+  "berhasil" tanpa satu byte pun berangkat.
+- Control API: `POST /action {"action":"file-send","path":"C:\\...\\a.pdf"}`.
+  Jawaban `ok:false` selalu membawa alasan yang bisa ditampilkan apa adanya.
+- Satu kiriman dalam satu waktu; yang kedua ditolak, bukan diantrekan.
+- Bila perangkat tidak pernah mengirim tanda siap dalam 15 detik, kiriman
+  dibatalkan dengan catatan di log — menggantung diam-diam lebih buruk.
+
+## 3c. Aplikasi sebagai penerima (PC → HP)
+
+- `xyadapt/FileReceive.kt` — `FileReceiver`, cermin `Receiver` di Rust,
+  dengan 17 uji JVM.
+- `SessionFile` menulis ke berkas sementara di cache aplikasi dan baru
+  memindahkannya ke **Unduhan/XyDesk** lewat MediaStore (`IS_PENDING=1`
+  sampai isinya lengkap) setelah SHA-256 cocok.
+- **Selalu bertanya.** Setiap tawaran dari PC memunculkan dialog berisi nama,
+  ukuran, dan peringatan bila ekstensinya langsung dijalankan sistem. PC yang
+  memilih nama dan isinya, sementara yang terisi adalah penyimpanan pribadi
+  pemilik HP — menerima diam-diam berarti pemilik HP tidak pernah punya
+  kesempatan berkata tidak.
 
 ## 4. Sisi aplikasi (pengirim)
 
@@ -102,6 +144,10 @@ menjadi `hosts`.
 | Pengirim + pengkodean (Kotlin) | 21 uji `FileWireTest` + `FileSenderTest` |
 | Aturan nama/batas (Kotlin) | 12 uji `FileRulesTest` |
 | Dua sisi bersama | `host/tests/file_transfer_loopback.rs` — 300 KB lewat WebRTC nyata, byte-per-byte sama; hash yang tidak cocok → folder tujuan kosong |
+| Pengirim host (Rust) | 10 uji `Sender`, termasuk pengirim ↔ penerima saling bicara tanpa jaringan |
+| Penerima aplikasi (Kotlin) | 17 uji `FileReceiveTest`, termasuk `FileSender` ↔ `FileReceiver` saling bicara |
+| Arah PC → HP di sesi nyata | `host_mengirim_berkas_ke_client` — 300 KB lewat WebRTC nyata, urutan diperiksa, SHA-256 dicocokkan |
+| Control API | `aksi_file_send_menolak_dengan_alasan_yang_jelas` — tanpa path, path tidak ada, berkas kosong, tanpa sesi |
 | Lintas bahasa | `vektor_dari_pengirim_kotlin_terbaca_sama` — byte yang dihasilkan Kotlin ditempel apa adanya di uji Rust |
 
 Uji lintas bahasa itu ada karena dua sisi menulis pengkodeannya
@@ -111,10 +157,11 @@ di perangkat pengguna.
 
 ## 6. Yang belum ada
 
-- **Arah PC → HP.** Host belum punya pengirim dan aplikasi belum punya
-  penerima.
+- **Tombol "Kirim berkas" di panel host.** Jalurnya sudah ada dan bisa
+  dipanggil (`POST /action {"action":"file-send"}`), tetapi panel native
+  C++ belum menggambar tombolnya.
 - **Pintu persetujuan di PC.** Host menerima otomatis dari client yang sudah
-  lolos pairing.
+  lolos pairing. Arah sebaliknya **selalu** bertanya di HP.
 - **Konfirmasi sukses.** Host diam bila berkas tersimpan; pengirim
   menyimpulkan berhasil dari ketiadaan `CANCEL`. Pesan `DONE-OK` eksplisit
   akan lebih jujur.
@@ -122,4 +169,6 @@ di perangkat pengguna.
 - **Beberapa berkas sekaligus.** Satu transfer dalam satu waktu; yang kedua
   ditolak, bukan diantrekan.
 - **Belum pernah dijalankan di perangkat Android sungguhan** — yang terbukti
-  adalah protokolnya, mesin keadaannya, dan loopback dua sisi di host.
+  adalah protokolnya, kedua mesin keadaan, dan loopback dua arah di host.
+  Penulisan lewat MediaStore khususnya belum pernah menyentuh penyimpanan
+  Android betulan.

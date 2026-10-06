@@ -78,6 +78,16 @@ pub const MAX_FILE_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// yang disebut pengirim.
 pub const MAX_CHUNK_BYTES: usize = 64 * 1024;
 
+/// Isi satu potongan yang **dikirim**: 16 KiB.
+///
+/// Batas protokol tetap 64 KiB supaya pengirim lama tetap diterima, tetapi
+/// mengirim sebesar itu sendiri tidak aman: satu pesan SCTP dibatasi 64 KiB
+/// **termasuk** 9 byte header `CHUNK`, jadi potongan 65536 byte menghasilkan
+/// pesan 65545 byte yang tidak pernah berangkat — `send` menggantung tanpa
+/// satu pun pesan kesalahan. Itu ditemukan oleh uji loopback arah host →
+/// client, bukan oleh uji unit mana pun.
+pub const SEND_CHUNK_BYTES: usize = 16 * 1024;
+
 /// Batas panjang nama berkas setelah dibersihkan (karakter, bukan byte).
 pub const MAX_NAME_CHARS: usize = 120;
 
@@ -327,6 +337,227 @@ pub fn is_risky_extension(name: &str) -> bool {
     match name.rsplit_once('.') {
         Some((_, ext)) => RISKY.contains(&ext.to_ascii_lowercase().as_str()),
         None => false,
+    }
+}
+
+/// Keadaan pengirim satu berkas (arah host → client).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SendState {
+    /// Menunggu tanda siap dari penerima.
+    WaitReady,
+    /// `OFFER` sudah dikirim, menunggu `ACCEPT`.
+    Offered,
+    /// Boleh mengirim potongan.
+    Sending,
+    /// Semua byte keluar; tinggal `DONE`.
+    Finishing,
+    /// `DONE` terkirim.
+    Done,
+    Failed(Reason),
+}
+
+/// Mesin keadaan pengirim — cermin dari [`Receiver`], dan kembaran
+/// `FileSender` di `android-native/xyadapt/.../FileWire.kt`.
+///
+/// Seperti penerima, ia tidak menyentuh disk dan tidak menyentuh jaringan:
+/// byte dibaca pemanggil, di sini hanya diputuskan **boleh atau tidak** dan
+/// **berapa banyak**. Tiga aturan yang membuatnya bukan sekadar perulangan:
+///
+/// - **Tanda siap wajib ditunggu.** Channel sudah OPEN di sisi kita jauh
+///   sebelum lawan memasang pendengarnya; `OFFER` yang tiba di celah itu
+///   hilang tanpa jejak dan transfer menggantung tanpa pesan kesalahan.
+/// - **Laju ditahan ACK**, bukan oleh kecepatan membaca disk. Tanpa jendela,
+///   `CHUNK` menumpuk di antrean WebRTC sampai memori habis pada berkas
+///   besar.
+/// - **Kemajuan dihitung dari ACK**, yaitu byte yang benar-benar tertulis di
+///   perangkat lawan — bukan byte yang baru keluar dari sini.
+#[derive(Clone, Debug)]
+pub struct Sender {
+    id: u32,
+    name: String,
+    size: u64,
+    chunk_size: usize,
+    state: SendState,
+    sent: u64,
+    acked: u64,
+    seq: u32,
+}
+
+impl Sender {
+    /// Byte yang boleh "di udara" sebelum menunggu ACK.
+    pub const WINDOW_BYTES: u64 = 512 * 1024;
+
+    /// Nama dibersihkan di sini juga: yang ditawarkan harus sama dengan yang
+    /// akan ditulis lawan, kalau tidak pengguna menyetujui nama yang lain.
+    pub fn new(id: u32, raw_name: &str, size: u64) -> Sender {
+        Sender {
+            id,
+            name: sanitize_name(raw_name),
+            size,
+            chunk_size: SEND_CHUNK_BYTES,
+            state: SendState::WaitReady,
+            sent: 0,
+            acked: 0,
+            seq: 0,
+        }
+    }
+
+    pub fn id(&self) -> u32 {
+        self.id
+    }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+    pub fn size(&self) -> u64 {
+        self.size
+    }
+    pub fn state(&self) -> SendState {
+        self.state
+    }
+    pub fn acked(&self) -> u64 {
+        self.acked
+    }
+    pub fn active(&self) -> bool {
+        !matches!(self.state, SendState::Done | SendState::Failed(_))
+    }
+    pub fn ready(&self) -> bool {
+        self.state == SendState::Finishing
+    }
+
+    /// Kemajuan yang ditunjukkan ke pengguna: byte yang sampai di disk lawan.
+    pub fn percent(&self) -> u8 {
+        if self.size == 0 {
+            return 0;
+        }
+        ((self.acked.min(self.size) * 100) / self.size) as u8
+    }
+
+    /// Menyuapkan satu pesan dari penerima. Mengembalikan pesan yang harus
+    /// dikirim — hanya `OFFER`, saat tanda siap tiba.
+    pub fn on_message(&mut self, message: &FileMessage) -> Option<FileMessage> {
+        if !self.active() {
+            return None;
+        }
+        if let FileMessage::Ack { id: 0, .. } = message {
+            if self.state != SendState::WaitReady {
+                return None;
+            }
+            if self.size == 0 || self.size > MAX_FILE_BYTES {
+                self.state = SendState::Failed(Reason::TooLarge);
+                return None;
+            }
+            self.state = SendState::Offered;
+            return Some(FileMessage::Offer {
+                id: self.id,
+                size: self.size,
+                name: self.name.clone(),
+            });
+        }
+        let other = match message {
+            FileMessage::Offer { id, .. }
+            | FileMessage::Accept { id }
+            | FileMessage::Reject { id, .. }
+            | FileMessage::Chunk { id, .. }
+            | FileMessage::Done { id, .. }
+            | FileMessage::Cancel { id, .. }
+            | FileMessage::Ack { id, .. } => *id,
+        };
+        if other != self.id {
+            return None;
+        }
+        match message {
+            FileMessage::Accept { .. } => {
+                if self.state == SendState::Offered {
+                    self.state = SendState::Sending;
+                }
+            }
+            FileMessage::Reject { reason, .. } | FileMessage::Cancel { reason, .. } => {
+                self.state = SendState::Failed(*reason);
+            }
+            FileMessage::Ack { received, .. } => {
+                // ACK mundur atau melampaui ukuran berarti ada yang salah
+                // membaca aliran; menampilkan kemajuan yang dikarang lebih
+                // buruk daripada berhenti.
+                if *received < self.acked || *received > self.size {
+                    self.state = SendState::Failed(Reason::Protocol);
+                } else {
+                    self.acked = *received;
+                }
+            }
+            // OFFER/CHUNK/DONE adalah pesan untuk penerima; menerimanya di
+            // sini berarti ada yang salah membaca arah.
+            _ => self.state = SendState::Failed(Reason::Protocol),
+        }
+        None
+    }
+
+    /// Berapa byte yang boleh dibaca dan dikirim sekarang; 0 berarti tunggu.
+    pub fn allowance(&self) -> usize {
+        if self.state != SendState::Sending {
+            return 0;
+        }
+        let remaining = self.size.saturating_sub(self.sent);
+        if remaining == 0 {
+            return 0;
+        }
+        let in_flight = self.sent - self.acked;
+        let room = Self::WINDOW_BYTES.saturating_sub(in_flight);
+        if room < self.chunk_size as u64 && remaining > room {
+            return 0;
+        }
+        remaining.min(self.chunk_size as u64).min(room) as usize
+    }
+
+    /// Membungkus potongan yang baru dibaca; `None` bila tidak boleh dikirim.
+    pub fn chunk(&mut self, data: Vec<u8>) -> Option<FileMessage> {
+        if self.state != SendState::Sending {
+            return None;
+        }
+        if data.is_empty() || data.len() > self.chunk_size {
+            self.state = SendState::Failed(Reason::Protocol);
+            return None;
+        }
+        if self.sent + data.len() as u64 > self.size {
+            self.state = SendState::Failed(Reason::Protocol);
+            return None;
+        }
+        let message = FileMessage::Chunk {
+            id: self.id,
+            seq: self.seq,
+            data,
+        };
+        self.seq += 1;
+        if let FileMessage::Chunk { data, .. } = &message {
+            self.sent += data.len() as u64;
+        }
+        if self.sent == self.size {
+            self.state = SendState::Finishing;
+        }
+        Some(message)
+    }
+
+    /// `DONE` dengan SHA-256 berkas.
+    pub fn finish(&mut self, sha256: [u8; 32]) -> Option<FileMessage> {
+        if self.state != SendState::Finishing {
+            return None;
+        }
+        self.state = SendState::Done;
+        Some(FileMessage::Done {
+            id: self.id,
+            sha256,
+        })
+    }
+
+    /// Dibatalkan dari sisi kita: pengguna, gagal baca, atau sesi berakhir.
+    pub fn cancel(&mut self, reason: Reason) -> Option<FileMessage> {
+        if !self.active() {
+            return None;
+        }
+        self.state = SendState::Failed(reason);
+        Some(FileMessage::Cancel {
+            id: self.id,
+            reason,
+        })
     }
 }
 
@@ -999,5 +1230,216 @@ mod tests {
                 received: 70_000,
             })
         );
+    }
+
+    #[test]
+    fn pengirim_menunggu_tanda_siap_sebelum_menawarkan() {
+        let mut s = Sender::new(5, "catatan.txt", 100);
+        assert_eq!(s.state(), SendState::WaitReady);
+        assert_eq!(s.allowance(), 0);
+        let offer = s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        assert_eq!(
+            offer,
+            Some(FileMessage::Offer {
+                id: 5,
+                size: 100,
+                name: "catatan.txt".to_string()
+            })
+        );
+        assert_eq!(s.state(), SendState::Offered);
+        // Potongan sebelum ACCEPT tetap tidak boleh keluar.
+        assert_eq!(s.allowance(), 0);
+        assert!(s.chunk(vec![1, 2, 3]).is_none());
+    }
+
+    #[test]
+    fn pengirim_membersihkan_nama_sebelum_menawarkan() {
+        let mut s = Sender::new(1, "C:\\Users\\x\\rahasia .txt ", 10);
+        assert_eq!(s.name(), "rahasia .txt");
+        let offer = s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        assert!(
+            matches!(offer, Some(FileMessage::Offer { ref name, .. }) if name == "rahasia .txt")
+        );
+    }
+
+    #[test]
+    fn pengirim_menolak_ukuran_nol_dan_kebesaran() {
+        let mut kosong = Sender::new(1, "a.txt", 0);
+        assert!(kosong
+            .on_message(&FileMessage::Ack { id: 0, received: 0 })
+            .is_none());
+        assert_eq!(kosong.state(), SendState::Failed(Reason::TooLarge));
+
+        let mut besar = Sender::new(1, "a.bin", MAX_FILE_BYTES + 1);
+        assert!(besar
+            .on_message(&FileMessage::Ack { id: 0, received: 0 })
+            .is_none());
+        assert_eq!(besar.state(), SendState::Failed(Reason::TooLarge));
+    }
+
+    #[test]
+    fn jendela_pengirim_menahan_laju_sampai_ack_datang() {
+        let mut s = Sender::new(5, "besar.bin", 10 * 1024 * 1024);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 5 });
+        let mut keluar = 0u64;
+        while s.allowance() > 0 {
+            let n = s.allowance();
+            assert!(s.chunk(vec![0u8; n]).is_some());
+            keluar += n as u64;
+        }
+        assert_eq!(keluar, Sender::WINDOW_BYTES);
+        assert_eq!(s.percent(), 0);
+        s.on_message(&FileMessage::Ack {
+            id: 5,
+            received: Sender::WINDOW_BYTES,
+        });
+        assert!(s.allowance() > 0);
+        assert_eq!(s.percent(), 5);
+    }
+
+    #[test]
+    fn ack_mundur_atau_melampaui_ukuran_menggagalkan_pengirim() {
+        let mut s = Sender::new(5, "a.bin", 1000);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 5 });
+        s.on_message(&FileMessage::Ack {
+            id: 5,
+            received: 500,
+        });
+        s.on_message(&FileMessage::Ack {
+            id: 5,
+            received: 400,
+        });
+        assert_eq!(s.state(), SendState::Failed(Reason::Protocol));
+
+        let mut t = Sender::new(5, "a.bin", 1000);
+        t.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        t.on_message(&FileMessage::Accept { id: 5 });
+        t.on_message(&FileMessage::Ack {
+            id: 5,
+            received: 1001,
+        });
+        assert_eq!(t.state(), SendState::Failed(Reason::Protocol));
+    }
+
+    #[test]
+    fn pesan_untuk_transfer_lain_tidak_menyentuh_pengirim() {
+        let mut s = Sender::new(5, "a.bin", 1000);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 5 });
+        s.on_message(&FileMessage::Cancel {
+            id: 99,
+            reason: Reason::User,
+        });
+        s.on_message(&FileMessage::Ack {
+            id: 99,
+            received: 999,
+        });
+        assert_eq!(s.state(), SendState::Sending);
+        assert_eq!(s.acked(), 0);
+    }
+
+    #[test]
+    fn penolakan_penerima_menghentikan_pengirim() {
+        let mut s = Sender::new(5, "a.bin", 1000);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Reject {
+            id: 5,
+            reason: Reason::User,
+        });
+        assert_eq!(s.state(), SendState::Failed(Reason::User));
+        assert_eq!(s.allowance(), 0);
+        assert!(s.cancel(Reason::User).is_none());
+    }
+
+    #[test]
+    fn done_ditolak_sebelum_semua_byte_keluar() {
+        let mut s = Sender::new(5, "a.bin", 1000);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 5 });
+        s.chunk(vec![0u8; 10]);
+        assert!(s.finish([0u8; 32]).is_none());
+        assert_eq!(s.state(), SendState::Sending);
+    }
+
+    /// Dua mesin keadaan yang saling bicara, tanpa jaringan di antaranya.
+    /// Inilah satu-satunya uji yang bisa membuktikan bahwa aturan pengirim
+    /// dan aturan penerima benar-benar cocok, bukan dua tafsir berbeda atas
+    /// dokumen yang sama.
+    #[test]
+    fn pengirim_dan_penerima_saling_bicara_sampai_berkas_utuh() {
+        let data: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+        let mut s = Sender::new(77, "gambar besar.png", data.len() as u64);
+        let mut r: Option<Receiver> = None;
+        let mut tulisan: Vec<u8> = Vec::new();
+        let mut offset = 0usize;
+
+        // Penerima mengirim tanda siap lebih dulu.
+        let mut antrean = vec![FileMessage::Ack { id: 0, received: 0 }];
+        let mut putaran = 0;
+        while s.active() && putaran < 100_000 {
+            putaran += 1;
+            // Pesan dari penerima ke pengirim.
+            if let Some(m) = antrean.pop() {
+                if let Some(FileMessage::Offer { id, size, name }) = s.on_message(&m).as_ref() {
+                    let mut baru = Receiver::from_offer(*id, *size, name, MAX_FILE_BYTES);
+                    antrean.push(baru.accept().expect("ACCEPT"));
+                    r = Some(baru);
+                }
+                continue;
+            }
+            // Pengirim mengirim potongan.
+            let n = s.allowance();
+            if n > 0 {
+                let bagian = data[offset..offset + n].to_vec();
+                offset += n;
+                let pesan = s.chunk(bagian).expect("CHUNK");
+                match r.as_mut().expect("penerima").handle(&pesan) {
+                    Action::Write { data, ack } => {
+                        tulisan.extend_from_slice(&data);
+                        antrean.push(FileMessage::Ack {
+                            id: 77,
+                            received: ack,
+                        });
+                    }
+                    lain => panic!("tak terduga: {lain:?}"),
+                }
+                continue;
+            }
+            if s.ready() {
+                let done = s.finish(Sha256::digest(&data).into()).expect("DONE");
+                assert_eq!(r.as_mut().expect("penerima").handle(&done), Action::Finish);
+                break;
+            }
+            panic!("buntu: tidak ada yang boleh dikirim dan belum selesai");
+        }
+        assert_eq!(s.state(), SendState::Done);
+        assert_eq!(tulisan, data);
+        assert_eq!(s.percent(), 100);
+    }
+
+    /// Hash yang tidak cocok harus ditangkap penerima, bukan diterima diam.
+    #[test]
+    fn hash_salah_dari_pengirim_ditolak_penerima() {
+        let data = vec![9u8; 1000];
+        let mut s = Sender::new(3, "a.bin", data.len() as u64);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        let offer = FileMessage::Offer {
+            id: 3,
+            size: data.len() as u64,
+            name: "a.bin".into(),
+        };
+        let mut r = match &offer {
+            FileMessage::Offer { id, size, name } => {
+                Receiver::from_offer(*id, *size, name, MAX_FILE_BYTES)
+            }
+            _ => unreachable!(),
+        };
+        s.on_message(&r.accept().unwrap());
+        let potongan = s.chunk(data.clone()).unwrap();
+        assert!(matches!(r.handle(&potongan), Action::Write { .. }));
+        let done = s.finish([0u8; 32]).unwrap();
+        assert_eq!(r.handle(&done), Action::Abort(Reason::HashMismatch));
     }
 }
