@@ -273,7 +273,7 @@ impl Gate {
             self.clear(id);
             return Verdict::Reject(Reason::User);
         }
-        match self.answer.clone() {
+        match self.answer {
             Some((answered, allow, remember)) if answered == id => {
                 let peer = p.peer.clone();
                 self.clear(id);
