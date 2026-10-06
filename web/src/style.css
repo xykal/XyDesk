@@ -2513,10 +2513,30 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 
 /* ── Panduan main (Connect) ── */
 .connect-guide {
+  position: relative;
   max-width: 600px;
   margin: 0 auto 28px;
   padding: 26px 28px;
   text-align: left;
+}
+/* Ilustrasi ikut berganti saat tab client/host ditekan — ia menegaskan
+   sisi mana yang sedang dibaca, bukan sekadar hiasan. Ditaruh di pojok
+   supaya tidak mendorong daftar langkah ke bawah. */
+.guide-art {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  width: 96px;
+  height: auto;
+  opacity: 0.9;
+  pointer-events: none;
+  user-select: none;
+}
+.connect-guide h2,
+.connect-guide > p.muted {
+  /* Ilustrasi dipasang absolut, jadi teks tidak tahu ia ada. Ruang kanan
+     ini yang membuat judul dan intro membungkus sebelum menabraknya. */
+  padding-right: 110px;
 }
 .connect-guide h2 { font-size: 20px; margin-bottom: 4px; }
 .guide-toggle {
@@ -2591,6 +2611,9 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
 
 @media (max-width: 640px) {
   .connect-guide { padding: 20px 16px; }
+  .guide-art { width: 64px; top: 16px; right: 14px; }
+  .connect-guide h2,
+  .connect-guide > p.muted { padding-right: 78px; }
   .support-row { flex-wrap: wrap; }
   .field-tools { gap: 6px; }
 }

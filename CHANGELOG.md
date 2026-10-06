@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Panduan koneksi bergambar:** blok "Cara main" di halaman Connect kini menampilkan ilustrasi yang ikut berganti saat tab Sisi client dan Sisi host ditekan, sehingga sisi mana yang sedang dibaca langsung terlihat tanpa harus mengecek tab. Judul dan kalimat pembukanya diberi ruang supaya tidak pernah tertimpa ilustrasi, termasuk di layar sempit.
+
 - **Ilustrasi beranda dan layar masuk:** empat kartu fitur di beranda kini punya ilustrasi yang sesuai isinya — kontrol, keamanan, kecepatan, dan klien browser — dipasang samar di pojok kartu supaya teksnya tetap penuh lebar dan kontrasnya tidak turun, lalu menguat sedikit saat kartu disentuh. Layar kode verifikasi mendapat ilustrasi amplop agar maksudnya terbaca tanpa menambah kalimat.
 
 - **Dekorasi hero web:** beranda kini punya tiga ilustrasi melayang — awan, kilau, dan globe — yang mengambang pelan di sekitar ilustrasi utama dengan durasi berbeda-beda supaya tidak terlihat berayun serempak. Dekorasi ini murni hiasan: tidak dibacakan pembaca layar, tidak menghalangi tombol, dimuat belakangan agar tidak menunda tampilnya hero, dan disembunyikan di layar sempit saat hero menumpuk jadi satu kolom. Gaya orb dan kartu melayang lama yang markup-nya sudah lama dihapus ikut dibuang — berkas gaya web turun 118,1 kB menjadi 115,7 kB.
