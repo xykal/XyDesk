@@ -71,6 +71,8 @@ class SessionActions(
     val pointerCapture: (on: Boolean) -> Unit = {},
     /** Putar mode pad→keyboard/mouse: otomatis → selalu → mati. */
     val padKbm: () -> Unit = {},
+    /** Buka pemilih berkas dan kirim ke PC. */
+    val sendFile: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -145,6 +147,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                     Wrap { QuickKey.entries.forEach { k -> Pill(k.label) { actions.sendQuickKey(k) } } }
                     Wrap {
                         Pill("Pusatkan kursor") { actions.centerCursor() }
+                        Pill("Kirim berkas ke PC") { panel = Panel.NONE; actions.sendFile() }
                         Pill("Mode presentasi") { panel = Panel.NONE; actions.present() }
                     }
                     XyText("MODE SENTUH", Xy.label)
