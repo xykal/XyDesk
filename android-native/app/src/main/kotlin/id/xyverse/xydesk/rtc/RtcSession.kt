@@ -37,6 +37,7 @@ import org.webrtc.audio.AudioDeviceModule
 import org.webrtc.audio.JavaAudioDeviceModule
 import java.nio.ByteBuffer
 import org.json.JSONObject
+import id.xyverse.xyadapt.DisplayRules
 import id.xyverse.xydesk.core.HostSpecs
 import kotlin.random.Random
 
@@ -55,6 +56,13 @@ interface RtcListener {
      * di PC yang belum punya ViGEmBus.
      */
     fun onHostGamepad(available: Boolean, reason: String) {}
+
+    /**
+     * Daftar monitor PC dan monitor yang sedang ditangkap. Dikirim ulang
+     * setiap kali meta berubah — termasuk setelah monitor dicabut di tengah
+     * sesi, yang membuat daftar lama menunjuk layar yang tidak ada lagi.
+     */
+    fun onHostDisplays(displays: List<DisplayRules.HostDisplay>, wanted: Int) {}
     fun onHostWallpaper(jpeg: ByteArray) {}
 
     /** Satu pesan mentah dari data channel `"file"`. */
@@ -306,6 +314,22 @@ class RtcSession(
         val meta = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" } ?: return
         meta.optJSONObject("micInput")?.let { listener.onMicInput(it.optBoolean("available", true), it.optString("reason", "")) }
         meta.optJSONObject("gamepad")?.let { listener.onHostGamepad(it.optBoolean("available", false), it.optString("reason", "")) }
+        meta.optJSONArray("displays")?.let { arr ->
+            val mentah = (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let { o ->
+                    DisplayRules.HostDisplay(
+                        index = o.optInt("index", -1),
+                        name = o.optString("name", ""),
+                        width = o.optInt("width", 0),
+                        height = o.optInt("height", 0),
+                        // Host menghilangkan field ini bila driver tidak melaporkannya.
+                        refreshHz = o.optInt("refreshRate", 0),
+                        isPrimary = o.optBoolean("isPrimary", false),
+                    )
+                }
+            }
+            listener.onHostDisplays(DisplayRules.sanitize(mentah), meta.optInt("wanted", 0))
+        }
         if (specsSent) return
         val hw = meta.optJSONObject("hardware") ?: return
         val specs = HostSpecs.from(hw)

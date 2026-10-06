@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui
 
+import id.xyverse.xyadapt.DisplayRules
 import id.xyverse.xyadapt.FpsOptions
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +78,18 @@ class SessionActions(
     val disconnect: () -> Unit,
 )
 
+/**
+ * Monitor host apa adanya, sebagaimana dilaporkan pesan `meta`.
+ *
+ * Dipisah dari [SessionPrefs] karena ini bukan preferensi dan tidak diketahui
+ * saat panel dibuat: daftarnya baru tiba setelah sesi hidup, dan bisa berubah
+ * di tengah sesi saat monitor dicolok atau dicabut.
+ */
+data class DisplayState(
+    val displays: List<DisplayRules.HostDisplay> = emptyList(),
+    val active: Int = 0,
+)
+
 /** Nilai awal panel, diambil dari preferensi tersimpan. */
 data class SessionPrefs(
     val quality: Int = 0,
@@ -108,14 +122,18 @@ private val glass = Color(0xF2FFFFFF)
  * ke kiri rel; pegangan kecil di atas menyembunyikan rel jadi satu garis tipis.
  */
 @Composable
-fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()) {
+fun SessionToolbar(
+    actions: SessionActions,
+    prefs: SessionPrefs = SessionPrefs(),
+    /** Monitor host; `null` untuk pratinjau dan uji yang tidak punya sesi. */
+    displayState: State<DisplayState>? = null,
+) {
     var panel by remember { mutableStateOf(Panel.NONE) }
     var hidden by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(prefs.quality) }
     var fps by remember { mutableStateOf(prefs.fps) }
     var res by remember { mutableStateOf(-1) }
     var mbps by remember { mutableStateOf(0) }
-    var monitor by remember { mutableStateOf(0) }
     var directTouch by remember { mutableStateOf(prefs.directTouch) }
     var speed by remember { mutableFloatStateOf(prefs.trackpadSpeed) }
     var natural by remember { mutableStateOf(prefs.naturalScroll) }
@@ -176,9 +194,25 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         XyText("BITRATE", Xy.label)
                         Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> Pill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
                     }
-                    XyText("MONITOR · SESI", Xy.label)
+                    val layar = displayState?.value ?: DisplayState()
+                    XyText("LAYAR PC", Xy.label)
+                    if (DisplayRules.shouldOffer(layar.displays)) {
+                        Wrap {
+                            layar.displays.forEachIndexed { i, d ->
+                                Pill(DisplayRules.label(d, i), accent = d.index == layar.active) {
+                                    // Memilih layar yang sudah aktif tidak dikirim: host akan
+                                    // membangun ulang capture dan gambar berkedip tanpa guna.
+                                    DisplayRules.request(layar.displays, layar.active, d.index)?.let(actions.display)
+                                }
+                            }
+                        }
+                    } else if (layar.displays.size == 1) {
+                        XyText("PC ini hanya punya satu layar.", Xy.caption)
+                    } else {
+                        XyText("Daftar layar belum diterima dari PC.", Xy.caption)
+                    }
+                    XyText("SESI", Xy.label)
                     Wrap {
-                        Pill("Monitor ${monitor + 1}") { monitor = (monitor + 1) % 4; actions.display(monitor) }
                         Pill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
                         Pill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }

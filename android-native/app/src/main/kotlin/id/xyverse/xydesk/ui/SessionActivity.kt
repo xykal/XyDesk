@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import id.xyverse.xyadapt.FpsOptions
 import id.xyverse.xyadapt.CaptureRules
+import id.xyverse.xyadapt.DisplayRules
 import id.xyverse.xyadapt.PadKbm
 import id.xyverse.xyadapt.InputFamily
 import id.xyverse.xyadapt.OverlayRules
@@ -429,6 +430,18 @@ class SessionActivity : ComponentActivity(), RtcListener {
         return fps
     }
 
+    /**
+     * Monitor host untuk panel. Dipegang sebagai state Compose supaya panel
+     * yang sudah terbuka ikut berubah saat daftar monitor PC berubah — panel
+     * dibuat sekali di awal sesi, jadi nilai yang disalin ke `SessionPrefs`
+     * tidak akan pernah diperbarui.
+     */
+    private val displayState = mutableStateOf(DisplayState())
+
+    override fun onHostDisplays(displays: List<DisplayRules.HostDisplay>, wanted: Int) = runOnUiThread {
+        displayState.value = DisplayState(displays, DisplayRules.activeIndex(displays, wanted))
+    }
+
     private fun setupToolbar() {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
         val prefs = SessionPrefs(store.quality, sessionFps(), store.directTouch, store.trackpadSpeed,
@@ -438,13 +451,19 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
-                    SessionActions(
+                    actions = SessionActions(
                         keyboard = { keys.toggle() },
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },
                         bitrate = { metrics.auto = false; session.send(StreamXy.bitrate(capped(it))) },
-                        display = { session.send(StreamXy.display(it)) },
+                        display = { index ->
+                            session.send(StreamXy.display(index))
+                            // Tandai seketika supaya pil tidak terasa mati; meta
+                            // berikutnya dari host yang menjadi kebenaran akhir,
+                            // termasuk bila host menolak pindah.
+                            displayState.value = displayState.value.copy(active = index)
+                        },
                         touchMode = { store.directTouch = it; touch.directTouch = it },
                         trackpadSpeed = { store.trackpadSpeed = it; touch.config = touch.config.copy(speed = it) },
                         naturalScroll = { store.naturalScroll = it; touch.config = touch.config.copy(naturalScroll = it) },
@@ -478,6 +497,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
+                    displayState,
                 )
             }
         }
