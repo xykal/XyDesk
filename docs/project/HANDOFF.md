@@ -1,11 +1,15 @@
-# HANDOFF — Antrian Kerja Lintas Role
+# HANDOFF — Antrean Kerja Terbuka
 
-Hanya item yang **masih terbuka**. Log lama: `../archive/HANDOFF-2026-09.md`
-(beku). Menutup item = hapus di sini + satu baris `CHANGELOG.md` `[Belum terbit]`.
+Hanya item yang **masih terbuka**, dikelompokkan per area kode. Log lama:
+`../archive/HANDOFF-2026-09.md` (beku). Menutup item = hapus di sini + satu
+baris `CHANGELOG.md` `[Belum terbit]`.
 
-Dibersihkan operator 2026-10-01: item Flutter/`desktop/` Electron yang sudah
-diganti klien Kotlin + panel Win32 dicoret. Verifikasi perangkat nyata tetap
-item terbuka (tidak bisa ditutup dari CI).
+Dibersihkan 2026-10-01: item Flutter/`desktop/` Electron yang sudah diganti
+klien Kotlin + panel Win32 dicoret. Verifikasi perangkat nyata tetap item
+terbuka (tidak bisa ditutup dari CI).
+
+Disusun ulang 2026-10-06: judul bagian tidak lagi menyebut role — sistem role
+dihapus, antrean ini milik siapa pun yang mengerjakan area tersebut.
 
 **Flutter (2026-10-02):** tidak ada `pubspec.yaml` / `*.dart`. Sisa `android/`
 (GeneratedPluginRegistrant + local.properties) dihapus. CI tidak lagi
@@ -17,7 +21,7 @@ lapangan.
 200 di app.xydesk.my.id (bukan uji sesi); APK hanya `android-native/` (CI
 Gradle, belum bukti HP).
 
-## Untuk: Client Android native
+## Klien Android native (`android-native/`)
 
 - [ ] **Screenshot sesi Android untuk berita** — rail + panel pengaturan, dari
   APK rilis di perangkat/emulator dengan video host asli. Pola nama:
@@ -28,7 +32,7 @@ Gradle, belum bukti HP).
 Tertutup 2026-10-01: error pra-welcome. `RtcSession` rotasi ID; `Presence`
 rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
 
-## Untuk: Desktop Shell (Win32, `packaging/native-host/`)
+## Panel desktop Win32 (`packaging/native-host/`)
 
 - [ ] **Uji Windows asli** — TURN relay, tray, capture RDP/GDI. Wine/CI bukan
   bukti lapangan. Lihat `docs/qa/relay-turn-native-2026-09-23.md`.
@@ -36,7 +40,7 @@ rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
 
 Tertutup sebagai usang: shell Electron/`desktop/` (dihapus 2026-09-23).
 
-## Untuk: CI / Release
+## CI & rilis (`.github/`, `tool/`, `packaging/`)
 
 - [ ] **Keystore Android dirotasi** — APK lama tidak update-in-place; artikel
   rilis berikutnya harus jujur: uninstall dulu. Verifikasi
@@ -45,12 +49,12 @@ Tertutup sebagai usang: shell Electron/`desktop/` (dihapus 2026-09-23).
   `github.com/xykal/XyDesk/releases/latest/download/update.json` (bukan
   domain app). Draft = 404, ditampilkan jujur. Belum unduh/pasang APK
   (hanya buka `release_url`). Tertutup 2026-10-01.
-- [ ] Versi, berita, `workflow_dispatch` Build/Release = keputusan operator.
+- [ ] Versi, berita, `workflow_dispatch` Build/Release = keputusan pemilik repo.
   Jangan terbitkan ulang nomor build yang sama.
 
 Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 
-## Untuk: Backend / Edge
+## Backend & edge (`cloudflare/`, `signaling/`)
 
 - [x] HTTP DO Hub (`/kick`, `/stats`, `/hub/devices`) menuntut
   `x-internal-admin: 1` (sama seperti AuthStore). Worker publik tetap tidak
@@ -65,12 +69,12 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
 
-## Untuk: News & Konten
+## Berita & konten (`news/`, `web/public/news/`)
 
 - [ ] Artikel berikutnya: apa+kenapa, changelog pengguna, screenshot native
   Android + host Windows (web sudah ada `web-sesi-*`). Penulis: Haekal Saputra.
 
-## Untuk: Host Engine
+## Host engine (`host/`)
 
 - [ ] Encoder MFT: belum diuji GPU AMD/Intel nyata (hanya RDP).
 - [ ] Mic klien → VB-CABLE: alasan `micInput.reason` ada di 6.11.1; bukti
@@ -80,7 +84,7 @@ Tertutup 2026-10-04: preview wallpaper host sudah diperkecil aman di PR #73 — 
 
 Tertutup: hello ditolak hub tidak lagi menggantung loop host.
 
-## Untuk: Integrasi ilustrasi & bingkai VIP (host + web + APK)
+## Integrasi ilustrasi & bingkai VIP (host + web + APK)
 
 Sumber: PR `sesi-20261004-agent-ilustrasi-vip-frame`. Panduan lengkap +
 spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).

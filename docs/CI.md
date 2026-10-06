@@ -57,30 +57,24 @@ dianggap bukti hanya run manual yang memang diminta operator.
 
 ### Deploy cepat
 
-Tidak ada workflow deploy otomatis. Deploy cepat masih boleh atas restu operator,
-tetapi harus dijalankan manual oleh pemilik/token pemilik dan tetap dicatat di
-papan + laporan sesi. Build/rilis penuh tetap tidak boleh digabung diam-diam
-dengan PR fitur.
+Tidak ada workflow deploy otomatis. Deploy cepat masih boleh atas restu pemilik
+repo, tetapi harus dijalankan manual dengan token pemilik dan tetap dicatat di
+`CHANGELOG.md` + laporan sesi. Build/rilis penuh tetap tidak boleh digabung
+diam-diam dengan PR fitur.
 
-### Sebelum build/rilis: cek papan, lalu izin operator (sejak 3 Sep 2026)
+### Sebelum build/rilis: izin pemilik repo
 
-Aturan operator — bukan saran, bukan kebiasaan:
+Tiga aturan ini bukan saran:
 
-1. **Versi & berita = keputusan operator.** Role build/rilis TIDAK
-   menetapkan nomor versi, tidak memilih isi berita, dan tidak menaikkan
-   `VERSION` atas inisiatif sendiri. Semua lewat arahan operator.
-2. **Cek kerjaan agent lain dulu.** Sebelum mengajukan build penuh/rilis:
-   baca `project/AGENT_BOARD.md` (sesi aktif) + `project/HANDOFF.md` dan pastikan sesi
-   yang menyentuh area rilis (client, host, desktop, web) sudah `SELESAI`.
-   Kalau masih ada yang berjalan: TAHAN, laporkan ke operator — jangan
-   memaksakan rilis.
-3. **Push wajib izin operator.** Termasuk bump versi dan push yang
-   menyentuh `VERSION`/`release.yml`/`build.yml` — antre di
-   `project/AGENT_BOARD.md`, tunggu `DISETUJUI`, baru push. Push sendiri tidak
-   menjalankan build apa pun — hanya gerbang audit izin.
-4. **Satu gerakan saat siap.** Rilis penuh dikerjakan SEKALIGUS ketika
-   operator menyatakan siap: bump → Build → Release → deploy → berita
-   (artikel = bahan yang disatukan dari tiap agent).
+1. **Versi & berita = keputusan pemilik repo.** Nomor versi tidak ditetapkan
+   sendiri, isi berita tidak dipilih sendiri, `VERSION` tidak dinaikkan atas
+   inisiatif sendiri.
+2. **Cek pekerjaan yang masih berjalan.** Sebelum mengajukan build penuh atau
+   rilis: pastikan tidak ada PR terbuka yang menyentuh area rilis (klien,
+   host, desktop, web), dan baca `project/HANDOFF.md`. Kalau masih ada yang
+   menggantung: TAHAN, laporkan — jangan memaksakan rilis.
+3. **Satu gerakan saat siap.** Rilis penuh dikerjakan SEKALIGUS ketika pemilik
+   repo menyatakan siap: bump → Build → Release → deploy → berita.
 
 Untuk memicu Build penuh:
 
@@ -106,7 +100,7 @@ ini tetap menjadi dokumentasi area yang dijaga:
 | `news/**` | `check-news` |
 | `cloudflare/**`, `signaling/**` | `check-signaling` |
 | `packaging/**` | `installer-lint` |
-| `docs/`, `AGENT.md`, `project/AGENT_BOARD.md`, `project/HANDOFF.md`, `CHANGELOG.md`, `project/CONTRIBUTORS.md`, `README.md`, `project/ROADMAP.md`, `project/SETUP.md`, `.github/workflows/**`, manifest versi | `check-meta` (konsistensi versi) |
+| `docs/`, `AGENT.md`, `project/HANDOFF.md`, `CHANGELOG.md`, `project/CONTRIBUTORS.md`, `README.md`, `project/ROADMAP.md`, `project/SETUP.md`, `.github/workflows/**`, manifest versi | `check-meta` (konsistensi versi) |
 | `workflow_dispatch` | **semua** job (build penuh untuk pemulihan) |
 
 Konsekuensi yang dijaga:
@@ -134,80 +128,21 @@ Gerbang utama yang tetap dijaga: test Worker berita, test Worker signaling,
 `gofmt`/`go vet`/`go test` signaling Go, `tool/check_version.py`, Gradle APK
 native, host Rust, web build/test, dan lint installer.
 
-## Verifikasi izin push — **sedang NONAKTIF**
+## Verifikasi izin push — dihapus
 
-> **Status 6 Sep 2026: workflow `verify-push-auth.yml` dihapus operator
-> sendiri** (commit `b4ce4a4`, 5 Sep 2026) dan branch `main` tidak
-> memakai branch protection. Jadi saat ini **tidak ada satu pun workflow
-> yang berjalan karena push**, dan tidak ada pemeriksaan yang menolak
-> push ke `main`. Bagian di bawah ini disimpan sebagai resep bila gerbang
-> ingin dihidupkan kembali.
+Repo ini pernah punya gerbang `verify-push-auth.yml`: setiap commit non-merge
+wajib memuat penanda `Izin: <ID-SESI>` yang merujuk baris di papan
+koordinasi. Workflow itu dihapus pada 5 Sep 2026 (commit `b4ce4a4`), dan pada
+6 Okt 2026 papan beserta sistem role ikut dibekukan ke
+`archive/AGENT_BOARD-2026-10.md`. Penanda `Izin:` **tidak dipakai lagi** —
+commit lama yang memuatnya dibiarkan apa adanya sebagai sejarah.
 
-Aturan yang tetap berlaku sebagai kebiasaan tim (bukan sebagai gerbang
-mesin): setiap commit non-merge pada push ke `main` WAJIB memuat penanda
-`Izin: <ID-SESI>` di body, dan ID-nya harus punya baris di
-`project/AGENT_BOARD.md`. Pengecualian: commit merge (tindakan operator), commit
-yang ditulis operator (`OPERATOR_LOGIN` di repository variables), dan
-commit dari `Operator - XyDesk Team` (role Operator, `AGENT.md` bagian
-2.1) — ia mewakili operator, jadi penanda `Izin:`-nya tetap dicatat
-sebagai jejak, tetapi tidak perlu status `DISETUJUI`.
+Pengganti gerbang itu sekarang adalah mekanisme GitHub sendiri:
 
-Untuk menghidupkan kembali pengawasannya, pilih salah satu:
-
-1. **Audit (pelanggaran tampil merah)** — pulihkan workflow
-   `verify-push-auth.yml` dari riwayat git (`git show b4ce4a4^:.github/
-   workflows/verify-push-auth.yml`). Tidak perlu pengaturan lain; hasilnya
-   tampil di tab Actions, tetapi push tetap tidak ditolak.
-2. **Gerbang keras (push tanpa izin ditolak)** — selain workflow di atas,
-   pasang salah satu:
-   - branch protection `main` → *Require status checks* → wajibkan
-     `Periksa izin push`; atau
-   - wajibkan PR (tidak ada push langsung) — persetujuan adalah review
-     operator + merge-nya. Commit feature branch tetap diperiksa: tulis
-     `Izin: <ID>` di body commit (biasa) atau — untuk squash merge — di
-     deskripsi/isi PR, karena squash memakai isi PR sebagai body commit.
-     Merge commit sendiri (tindakan operator) dikecualikan.
-
-Keduanya keputusan operator — bukan sesuatu yang bisa dipasang agent
-sendiri, karena menyangkut siapa yang boleh menulis ke `main`.
-
-## Notifikasi push tanpa izin
-
-Saat gerbang menolak push, langkah terakhir workflow mengirim peringatan ke
-operator. Dua kanal didukung — salah satu saja sudah cukup, keduanya juga
-boleh:
-
-**ntfy (paling cepat dipasang, tanpa akun)** — buat topic di
-<https://ntfy.sh> (mis. `xydesk-izin`), lalu tambahkan repository variable:
-`NTFY_WEBHOOK = https://ntfy.sh/xydesk-izin`. Untuk produksi, sebaiknya
-self-host ntfy di server sendiri (topic publik bisa dibaca siapa pun yang
-tahu namanya).
-
-**Telegram** — buat bot lewat [@BotFather](https://t.me/BotFather)
-(perintah `/newbot`, simpan token-nya), cari `chat_id` (kirim pesan ke bot,
-lalu GET `https://api.telegram.org/bot<TOKEN>/getUpdates`), lalu:
-- secret: `TELEGRAM_BOT_TOKEN` (Settings → Secrets and variables → Actions → Secrets)
-- variable: `TELEGRAM_CHAT_ID`
-
-Keduanya tidak wajib tersedia: kalau kosong, workflow hanya memberi
-peringatan di log dan pelanggaran tetap terlihat merah. Tidak ada
-dependensi baru — pengiriman memakai `curl` bawaan runner.
-
-
-
-Sejak 1 Sep 2026 seluruh gerbang host berada di dalam `build.yml`. Sebelumnya
-fmt/clippy/`cargo test` host tinggal di `build-host.yml` yang berdiri sendiri
-dan tidak menjadi syarat rilis apa pun; akibatnya v6.1.0 sempat terbit pada
-16:21 sementara gerbang itu merah pada commit yang sama pukul 16:15. Job
-`windows` sekarang `needs: [check, host-test]`, dan `release.yml` hanya jalan
-setelah run **Build** sukses — jadi tidak ada jalan memutar: gerbang merah =
-tidak ada `.exe`, tidak ada Release.
-
-Sebagai bonus, kompilasi host Windows tidak lagi dobel di dua workflow.
-
-Test otomatis yang wajib hijau: `cargo test` host (loopback WebRTC +
-pairguard) dan `node --test` Worker. Pengujian perilaku perangkat keras
-(capture DXGI, audio WASAPI) tetap manual setelah EXE dipasang.
+- `main` diproteksi, semua perubahan masuk lewat PR, tanpa force-push;
+- setiap workflow bersifat manual (`workflow_dispatch`) dan dijaga actor
+  guard `xykal`, jadi tidak ada run yang bisa dipicu dari push;
+- jejak audit = PR + `CHANGELOG.md`, bukan tabel status di berkas markdown.
 
 ## Cross-check Windows sebelum push (`tool/check-host-windows.sh`)
 

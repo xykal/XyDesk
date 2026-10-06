@@ -44,6 +44,13 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# ── Kredensial lokal — JANGAN pernah di-commit ──
+# `.env` berisi kunci Resend/Cloudinary/Cloudflare/Vercel/OneSignal/GitHub.
+# Hanya `.env.example` (tanpa nilai asli) yang boleh masuk git.
+.env
+.env.*
+!.env.example
+
 # ── Credential/provider — JANGAN pernah di-commit ──
 **/*firebase-adminsdk*.json
 android/app/google-services.json

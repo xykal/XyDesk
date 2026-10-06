@@ -1,12 +1,11 @@
 # Kontributor XyDesk
 
-Daftar ini **hanya bertambah, tidak pernah berkurang**. Tambahkan namamu di
-baris paling bawah pada commit pertamamu. Dilarang mengubah atau menghapus
-baris milik orang lain. Format nama agent: `Nama - XyVerse Team`
-(lihat `AGENT.md` bagian 3) — kecuali role Operator, yang memakai
-`Operator - XyDesk Team` (lihat `AGENT.md` bagian 2.1).
+Daftar ini **dibekukan 6 Okt 2026** bersama penghapusan sistem role: sejak
+tanggal itu semua commit memakai satu identitas, `xykal` (lihat `AGENT.md`
+bagian 2). Nama-nama di bawah tetap tercatat sebagai jejak siapa mengerjakan
+apa sepanjang 2026 — **jangan diubah, jangan dihapus, dan jangan ditambah.**
 
-| Nama | Role | Aktif sejak |
+| Nama | Area | Aktif |
 |---|---|---|
 | Xyckal (pemilik & pendiri) | Semua area | 2026 |
 | Sena - XyVerse Team | Docs & Audit | 2026-09 |
@@ -20,3 +19,5 @@ baris milik orang lain. Format nama agent: `Nama - XyVerse Team`
 | Raka - XyVerse Team | News & Konten | 2026-09 |
 | Operator - XyDesk Team | Operator (semua area) | 2026-09 |
 | Arka - XyVerse Team | Client Android native | 2026-10 |
+
+Sejak 2026-10-06 kontribusi dicatat atas nama `xykal` (pemilik & pendiri).

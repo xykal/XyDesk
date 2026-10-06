@@ -1,4 +1,14 @@
-# AGENT_BOARD — Papan Koordinasi
+# ARSIP — AGENT_BOARD (beku 6 Okt 2026)
+
+> **Papan ini sudah tidak dipakai.** Sistem role, kunci area, dan antrean
+> izin push dihapus pada 6 Okt 2026: seluruh pekerjaan dikerjakan atas nama
+> pemilik repo lewat PR biasa (lihat `AGENT.md`). Berkas ini disimpan utuh
+> sebagai catatan sejarah — jangan menambah baris baru di sini.
+> Log sebelum 28 Sep 2026 ada di `AGENT_BOARD-2026-09.md`.
+
+---
+
+## Isi papan saat dibekukan
 
 Papan ini adalah satu-satunya sumber kebenaran **siapa lagi kerja apa** dan
 **push siapa yang sudah diizinkan**. `AGENT.md` mewajibkan: baca papan ini di
@@ -83,7 +93,7 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 ## Antrean izin push
 
 > Hanya sesi yang belum selesai. Baris yang sudah `SELESAI` dipindah ke
-> `../archive/AGENT_BOARD-2026-09.md` saat sesi ditutup.
+> `AGENT_BOARD-2026-09.md` saat sesi ditutup.
 
 | ID Sesi | Agent | Ringkasan perubahan | Status izin | Disetujui oleh | Kapan | Run CI |
 |---|---|---|---|---|---|---|
@@ -100,4 +110,4 @@ lintas role; papan ini mencatat *keadaan saat ini* (real-time).
 | SESI-20261004-OPERATOR-ANDROID-HOLD-SAFETY | Operator - XyDesk Team | APK overlay: reset held input saat masuk mode edit supaya key/mouse/gamepad tidak nyangkut | DISETUJUI | Operator | 2026-10-04 | local: `python3 tool/check_version.py`, `git diff --check`; Gradle tidak tersedia di sandbox |
 
 Riwayat lengkap (log pengiriman, antrean lama, riwayat sesi sampai 28 Sep 2026):
-`../archive/AGENT_BOARD-2026-09.md`.
+`AGENT_BOARD-2026-09.md`.
