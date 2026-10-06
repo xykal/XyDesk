@@ -65,6 +65,9 @@ export function LandingPage({ navigate }: { navigate: (r: Route) => void }) {
           </p>
         </div>
         <div className="hero-art" aria-hidden="true">
+          <img className="hero-deco deco-cloud" src="/float-cloud.webp" alt="" width="124" height="124" loading="lazy" decoding="async" />
+          <img className="hero-deco deco-sparkle" src="/float-sparkle.webp" alt="" width="76" height="76" loading="lazy" decoding="async" />
+          <img className="hero-deco deco-globe" src="/float-globe.webp" alt="" width="96" height="96" loading="lazy" decoding="async" />
           <img className="hero-cartoon" src="/hero-cartoon.webp" alt="Ilustrasi remote desktop XyDesk — kontrol PC dari HP" width="640" height="360" loading="eager" decoding="async" />
         </div>
       </section>

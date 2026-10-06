@@ -101,6 +101,8 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   `float-pc-sleep.webp` (PR #99); APK empty state perangkat/host memakai
   `R.drawable.float_pc_sleep` (batch ini).
 - [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
-  hero web & splash — animasi lembut, delay acak per elemen.
+  splash APK — animasi lembut, delay berbeda per elemen. Hero web selesai
+  2026-10-06 (tiga dekorasi + test kontrak `web/test/hero-deco-contract.test.mjs`);
+  sisa yang terbuka hanya splash Android.
 - [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang
   saja; `hero_login.webp` tidak diganti.
