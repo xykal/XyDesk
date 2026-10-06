@@ -24,6 +24,10 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+_Belum ada perubahan setelah 6.11.10._
+
+## [6.11.10] — 2026-10-06
+
 - **Panduan koneksi bergambar:** blok "Cara main" di halaman Connect kini menampilkan ilustrasi yang ikut berganti saat tab Sisi client dan Sisi host ditekan, sehingga sisi mana yang sedang dibaca langsung terlihat tanpa harus mengecek tab. Judul dan kalimat pembukanya diberi ruang supaya tidak pernah tertimpa ilustrasi, termasuk di layar sempit.
 
 - **Ilustrasi beranda dan layar masuk:** empat kartu fitur di beranda kini punya ilustrasi yang sesuai isinya — kontrol, keamanan, kecepatan, dan klien browser — dipasang samar di pojok kartu supaya teksnya tetap penuh lebar dan kontrasnya tidak turun, lalu menguat sedikit saat kartu disentuh. Layar kode verifikasi mendapat ilustrasi amplop agar maksudnya terbaca tanpa menambah kalimat.
