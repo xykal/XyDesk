@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Chat global (sisi server):** ruang obrolan tunggal untuk semua akun yang sudah masuk, berjalan di satu Durable Object dengan WebSocket hibernasi — tanpa server tambahan dan tanpa biaya tetap. Identitas diverifikasi di Worker sebelum soket sampai ke ruang, jadi token tidak pernah masuk ke ruang chat dan alamat email tidak pernah ikut tersiar: yang terlihat peserta lain hanya nama profil atau bagian sebelum `@`. Pesan dibatasi 400 karakter dan 6 baris, satu orang maksimal 5 pesan per 10 detik dengan jarak minimal 0,7 detik, dan 50 pesan terakhir disimpan sebagai riwayat untuk yang baru bergabung. Sanitasi membuang karakter kontrol, spasi nol-lebar, dan penanda arah teks yang bisa dipakai membalik tampilan nama orang lain. Tampilan di aplikasi menyusul.
+
 - **Gerbang host menghormati bentuk jendela:** layar sambutan dan layar masuk kini melewati ritual penutup yang sama dengan panel, sehingga sudut jendela tetap membulat dan tembus pandang. Pemeriksa bentuk dan snapshot juga melewati gerbang, karena tugasnya memotret panel.
 
 - **Panel host wajib masuk akun:** membuka panel kini melewati gerbang — sambutan singkat untuk pemasangan baru, lalu layar masuk lewat akun Google atau email. Sebelum masuk, panel tidak digambar sama sekali, bukan sekadar ditutupi: ID perangkat, kode pairing, dan status mesin tidak lagi terbaca oleh siapa pun yang menemukan PC ini menyala. Engine host juga baru dinyalakan setelah pemiliknya masuk, karena menyalakannya lebih awal berarti mesin siap menerima koneksi sementara layar masih menampilkan layar masuk. Keluar akun langsung mengembalikan panel ke layar masuk.

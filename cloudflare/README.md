@@ -129,8 +129,41 @@ cloudflare/
 ├── wrangler.toml        # binding DO + migrasi
 ├── src/worker.js        # entrypoint: rute + auth HMAC + /issue
 ├── src/hub.js           # Durable Object: registri + relay (hibernation)
+├── src/chat.js          # Durable Object: chat global (hibernation)
 └── .dev.vars            # secret lokal SAJA (jangan commit)
 ```
+
+## Chat global
+
+Satu ruang untuk semua akun yang sudah masuk. Tamu tidak ikut: identitas
+diverifikasi di Worker lewat `AUTH_STORE` (`/auth/me`), lalu dititipkan ke
+Durable Object `ChatRoom` sebagai header internal — token tidak pernah masuk
+ke ruang chat, dan email tidak pernah ikut tersiar (hanya bagian sebelum `@`
+atau nama profil).
+
+| Rute | Keterangan |
+| --- | --- |
+| `GET /chat/ws` | WebSocket. Token lewat `Authorization: Bearer` atau `?token=` (browser tidak bisa memasang header saat upgrade). |
+| `GET /chat/history` | 50 pesan terakhir, untuk muat awal tanpa membuka soket. |
+
+Amplop yang diterima hanya `{"type":"msg","text":"..."}` dan
+`{"type":"ping"}`. Yang dikirim server: `welcome` (nama kamu + riwayat),
+`msg`, `presence` (jumlah online), `pong`, dan `error`.
+
+Rem dan batas, semuanya diuji di `test/chat.test.js`:
+
+| Batas | Nilai |
+| --- | --- |
+| Panjang pesan | 400 karakter, maks 6 baris |
+| Jarak antar pesan | 700 ms |
+| Burst | 5 pesan / 10 detik |
+| Riwayat tersimpan | 50 pesan |
+| Sambungan serentak | 400 |
+
+Sanitasi membuang karakter kontrol, spasi nol-lebar, dan penanda arah teks
+(U+202A–U+202E, U+2066–U+2069) yang bisa dipakai membalik tampilan nama orang
+lain. Yang **belum** ada: moderasi kata, blokir/report pengguna, dan ruang
+selain satu lobi global.
 
 ## Skala
 
