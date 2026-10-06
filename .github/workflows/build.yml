@@ -313,7 +313,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.host == 'true' || needs.changes.outputs.full == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30, bukan 20: run 37470411209 dibatalkan tepat di menit ke-20 saat
+    # memasang MinGW, setelah fmt + clippy + uji unit memakan hampir seluruh
+    # anggaran karena cache Cargo meleset. Yang hilang bukan hanya job ini —
+    # job Windows menunggunya, jadi satu menit kurang membuang seluruh run.
+    timeout-minutes: 30
     steps:
       - name: Validasi operator workflow
         shell: bash
@@ -358,7 +362,12 @@ jobs:
       # Win32 tidak perlu menunggu runner Windows yang antre di belakang
       # build Rust. Lihat catatan di dalam skripnya.
       - name: Pasang MinGW untuk pemeriksaan sintaks Win32
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mingw-w64
+        # Hanya compiler C++ x86-64-nya, bukan metapaket mingw-w64 yang juga
+        # menarik toolchain C, i686, dan runtime Ada/Fortran.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            -o Acquire::Retries=3 g++-mingw-w64-x86-64
 
       - name: Uji tata letak panel native (tanpa Windows)
         run: packaging/tests/test-native-panel-layout.sh
