@@ -38,6 +38,7 @@
 #include <windows.h>
 #include <cmath>
 #include <shellapi.h>
+#include <commdlg.h>
 
 #include "resource.h"
 #include "layout.h"
@@ -66,6 +67,7 @@
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "comdlg32.lib")
 #endif
 
 namespace {
@@ -740,6 +742,8 @@ bool workspaceProbe=false;
 xydesk::session_view::Snapshot sessionView;
 std::future<xydesk::session_view::Snapshot> sessionViewPending;
 std::future<std::string> sessionActionPending;
+std::future<std::string> fileSendPending;
+std::wstring fileSendName;
 unsigned sessionViewPid=0;
 ULONGLONG sessionViewNext=0;
 void pollSessionAction(){
@@ -755,6 +759,29 @@ void pollSessionAction(){
         sessionView={};sessionViewNext=0;
         setFlash(L"Tidak ada sesi aktif yang perlu diputus.",kWarn);
     }
+}
+
+// Jawaban `file-send`. Host hanya menjawab apakah kirimannya **diterima
+// antrean**, bukan apakah berkasnya sampai: perjalanannya bisa menit-menit,
+// dan panel yang menunggu sampai selesai akan terlihat menggantung.
+void pollFileSend(){
+    if(!fileSendPending.valid()||fileSendPending.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready)return;
+    std::string response;
+    try{response=fileSendPending.get();}catch(...){response.clear();}
+    if(response.empty()){
+        setFlash(L"Gagal menghubungi host untuk mengirim berkas.",kBad);
+        return;
+    }
+    if(jsonFlag(response,"ok")){
+        setFlash(fileSendName.empty()?L"Berkas dikirim ke perangkat.":(L"Mengirim " + fileSendName + L" ke perangkat…"),kAccent);
+        return;
+    }
+    // Alasan dari host ditampilkan apa adanya: ia sudah ditulis sebagai
+    // kalimat untuk manusia (\"berkas kosong\", \"tidak ada perangkat yang
+    // tersambung\"), dan menerjemahkannya ulang di sini hanya membuat dua
+    // sumber kebenaran.
+    const auto reason=jsonString(response,"error");
+    setFlash(reason.empty()?L"Host menolak kiriman berkas.":(L"Kiriman ditolak: "+reason),kWarn);
 }
 
 void pollSessionView(){
@@ -779,6 +806,10 @@ bool targetEnabled(Target target) {
         return g.running;
     case Target::StopSession:
         return g.running && controlChannel.endpoint.has_value() && sessionView.known && sessionView.active && !sessionActionPending.valid();
+    case Target::SendFile:
+        // Tanpa perangkat tersambung tidak ada tujuan kiriman; tombol yang
+        // bisa ditekan tetapi selalu gagal lebih buruk daripada tombol mati.
+        return g.running && controlChannel.endpoint.has_value() && sessionView.known && sessionView.active && !fileSendPending.valid();
     case Target::CopyId:
         return !g.deviceId.empty();
     case Target::CopyPassword:
@@ -797,6 +828,7 @@ std::wstring targetLabel(Target target) {
     case Target::OpenLog: return L"Buka log host";
     case Target::RunHost: return L"Ambil alih sesi ini";
     case Target::StopSession: return L"Putus sesi";
+    case Target::SendFile: return L"Kirim berkas…";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1122,6 +1154,7 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
     y+=px(68);
     if(detailed){
         paintButton(surface,layout,dc,Target::StopSession,layout.stopSession);
+        if(layout.sendFile.valid())paintButton(surface,layout,dc,Target::SendFile,layout.sendFile);
         workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,layout.stopSession.bottom()+px(12),width,px(22)},g.fontSmall,kMuted);
         workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,layout.stopSession.bottom()+px(36),width,px(40)},g.fontSmall,kMuted);
     }
@@ -1322,6 +1355,29 @@ std::string narrow(const std::wstring& text) {
     WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), n,
         nullptr, nullptr);
     return out;
+}
+
+/** Nama berkas saja, untuk ditampilkan di bilah status panel. */
+std::wstring fileNameOf(const std::wstring& path) {
+    const auto cut = path.find_last_of(L"\\/");
+    return cut == std::wstring::npos ? path : path.substr(cut + 1);
+}
+
+/** Dialog "Buka" bawaan Windows. Kosong = pengguna membatalkan. */
+std::wstring pickFileToSend(HWND owner) {
+    wchar_t buffer[MAX_PATH * 2];
+    buffer[0] = L'\0';
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = owner;
+    ofn.lpstrFile = buffer;
+    ofn.nMaxFile = static_cast<DWORD>(std::size(buffer));
+    ofn.lpstrTitle = L"Pilih berkas untuk dikirim ke perangkat";
+    ofn.lpstrFilter = L"Semua berkas\0*.*\0";
+    // NOCHANGEDIR: dialog tidak boleh menggeser direktori kerja proses host.
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_EXPLORER;
+    if (!GetOpenFileNameW(&ofn)) return {};
+    return std::wstring(buffer);
 }
 
 /** Dipanggil tiap tick animasi: panen hasil restore/login yang sudah siap. */
@@ -2242,6 +2298,21 @@ void activateTarget(HWND hwnd, Target target) {
         }catch(...){setFlash(L"Gagal memulai permintaan putus sesi.",kBad);}
         break;
     }
+    case Target::SendFile: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(fileSendPending.valid()){setFlash(L"Masih ada kiriman yang diproses.",kWarn);break;}
+        const auto chosen=pickFileToSend(hwnd);
+        if(chosen.empty())break;  // Dibatalkan pengguna: bukan kesalahan.
+        const auto endpoint=*controlChannel.endpoint;
+        const auto body=std::string("{\"action\":\"file-send\",\"path\":")+
+            xydesk::panel_control::quoteJson(narrow(chosen))+"}";
+        fileSendName=fileNameOf(chosen);
+        try{
+            fileSendPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});
+            setFlash(L"Menitipkan berkas ke host…",kAccent);
+        }catch(...){setFlash(L"Gagal memulai kiriman berkas.",kBad);}
+        break;
+    }
     case Target::RunHost: {
         // Jalan pintas takeover: bila engine lama masih hidup di sesi lain,
         // restart dari panel ini supaya instance baru benar-benar lahir di
@@ -2305,6 +2376,7 @@ std::vector<Target> focusOrder() {
         break;
     case Page::Connections:
         order.push_back(Target::StopSession);
+        order.push_back(Target::SendFile);
         break;
     }
     order.push_back(Target::Minimize);
@@ -2408,6 +2480,7 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::OpenLog:
     case Target::RunHost:
     case Target::StopSession:
+    case Target::SendFile:
         return HTCLIENT;
     case Target::TitleBar:
         return HTCAPTION; // geser jendela dari area judul
@@ -2765,6 +2838,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
                 } else if (start) { startHost(); }
             }
             pollSessionAction();
+            pollFileSend();
             pollSessionView();
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {

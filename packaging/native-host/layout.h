@@ -104,6 +104,7 @@ enum class Target {
     OpenLog,
     RunHost,
     StopSession,
+    SendFile,
 };
 
 inline const char* targetName(Target target) {
@@ -135,6 +136,7 @@ inline const char* targetName(Target target) {
     case Target::OpenLog: return "OpenLog";
     case Target::RunHost: return "RunHost";
     case Target::StopSession: return "StopSession";
+    case Target::SendFile: return "SendFile";
     default: return "None";
     }
 }
@@ -202,6 +204,8 @@ struct PanelLayout {
 
     // Halaman Connections.
     Rect stopSession{};
+    // Kirim berkas dari PC ke perangkat yang sedang tersambung.
+    Rect sendFile{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -383,6 +387,13 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
 
     // Halaman Connections: tombol aksi kecil di bawah baris perangkat aktif.
     l.stopSession = Rect{contentX + px(20), topY + px(116), px(168), px(36)};
+    // Tombol kirim berkas bersisian dengan "Putus sesi", tidak pernah
+    // bertumpuk dan tidak pernah keluar dari area konten walau panel
+    // disempitkan — dua hal yang diuji di native-panel-layout-test.cpp.
+    {
+        const int sendW = minValue(px(188), contentX + contentW - px(20) - (l.stopSession.right() + gap));
+        l.sendFile = Rect{l.stopSession.right() + gap, l.stopSession.y, maxValue(sendW, 0), l.stopSession.h};
+    }
 
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
@@ -424,6 +435,7 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::RunHost:
         return page == Page::Status;
     case Target::StopSession:
+    case Target::SendFile:
         return page == Page::Connections;
     default:
         return true;
@@ -462,6 +474,7 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
         if (l.openLog.contains(x, y)) return Target::OpenLog;
     }
     if (targetOnPage(Target::StopSession, page) && l.stopSession.contains(x, y)) return Target::StopSession;
+    if (targetOnPage(Target::SendFile, page) && l.sendFile.valid() && l.sendFile.contains(x, y)) return Target::SendFile;
     if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
         return Target::RunHost;
     }
