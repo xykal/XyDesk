@@ -931,4 +931,73 @@ mod tests {
         let (_, hasil) = jalankan(&data, MAX_CHUNK_BYTES);
         assert_eq!(hasil, data);
     }
+
+    /// Vektor byte yang **dihasilkan oleh kode Kotlin** di
+    /// `android-native/xyadapt/.../FileWire.kt`, ditempel apa adanya.
+    ///
+    /// Dua sisi menulis pengkodeannya sendiri-sendiri; satu sisi yang keliru
+    /// urutan byte (little-endian vs big-endian) atau keliru panjang nama
+    /// tidak akan ketahuan oleh uji mana pun di satu bahasa saja — yang
+    /// terlihat hanyalah transfer yang gagal di perangkat pengguna.
+    #[test]
+    fn vektor_dari_pengirim_kotlin_terbaca_sama() {
+        let offer: Vec<u8> = vec![
+            1, 68, 51, 34, 17, 203, 4, 251, 113, 31, 1, 0, 0, 15, 0, 108, 97, 112, 111, 114, 97,
+            110, 32, 226, 154, 161, 46, 112, 100, 102,
+        ];
+        assert_eq!(
+            decode(&offer),
+            Some(FileMessage::Offer {
+                id: 0x1122_3344,
+                size: 1_234_567_890_123,
+                name: "laporan ⚡.pdf".to_string(),
+            })
+        );
+        assert_eq!(encode(&decode(&offer).unwrap()), offer);
+
+        let chunk: Vec<u8> = vec![4, 7, 0, 0, 0, 4, 3, 2, 1, 1, 2, 3, 4, 5];
+        assert_eq!(
+            decode(&chunk),
+            Some(FileMessage::Chunk {
+                id: 7,
+                seq: 0x0102_0304,
+                data: vec![1, 2, 3, 4, 5],
+            })
+        );
+
+        let mut done: Vec<u8> = vec![5, 7, 0, 0, 0];
+        done.extend((1u8..=32).collect::<Vec<u8>>());
+        let mut sha = [0u8; 32];
+        sha.copy_from_slice(&done[5..37]);
+        assert_eq!(
+            decode(&done),
+            Some(FileMessage::Done { id: 7, sha256: sha })
+        );
+
+        assert_eq!(
+            decode(&[6, 7, 0, 0, 0, 3]),
+            Some(FileMessage::Cancel {
+                id: 7,
+                reason: Reason::HashMismatch,
+            })
+        );
+        assert_eq!(
+            decode(&[2, 9, 0, 0, 0]),
+            Some(FileMessage::Accept { id: 9 })
+        );
+        assert_eq!(
+            decode(&[3, 9, 0, 0, 0, 1]),
+            Some(FileMessage::Reject {
+                id: 9,
+                reason: Reason::TooLarge,
+            })
+        );
+        assert_eq!(
+            decode(&[7, 9, 0, 0, 0, 112, 17, 1, 0, 0, 0, 0, 0]),
+            Some(FileMessage::Ack {
+                id: 9,
+                received: 70_000,
+            })
+        );
+    }
 }

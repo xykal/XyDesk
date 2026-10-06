@@ -92,6 +92,15 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var hostGamepadReason by mutableStateOf("")
     private var gamepadWarned = false
     private var capturedMouse: CapturedMouseView? = null
+    private var fileProgress: FileProgressView? = null
+    private var files: SessionFile? = null
+    private val pickFile = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) return@registerForActivityResult
+        val tolak = files?.start(uri)
+        if (tolak != null) Toast.makeText(this, tolak.tr(store.lang), Toast.LENGTH_LONG).show()
+    }
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
     private val statsTick = object : Runnable {
@@ -181,6 +190,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
             it.onEscape = { store.set(P.POINTER_CAPTURE, false); applyPointerCapture() }
             // Ukuran 1 px: ia hanya perlu bisa memegang fokus, bukan terlihat.
             addContentView(it, android.view.ViewGroup.LayoutParams(1, 1))
+        }
+        files = SessionFile(applicationContext, session::sendFile, session::fileBuffered, ::onFileStatus)
+        fileProgress = FileProgressView(this).also {
+            it.onCancel = { files?.cancel() }
+            addContentView(it, android.view.ViewGroup.LayoutParams(-1, -2))
         }
         // Surface decode native juga harus tampil natural/aspect-fit, bukan stretch/crop.
         b.raw.setZOrderMediaOverlay(false)
@@ -449,6 +463,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         overlayEdit = { setOverlayEditMode(!overlayEdit) },
                         overlayMode = { cycleOverlayMode() },
                         pointerCapture = { on -> store.set(P.POINTER_CAPTURE, on); applyPointerCapture() },
+                        sendFile = {
+                            if (!connected) Toast.makeText(this, "Sesi belum tersambung.".tr(store.lang), Toast.LENGTH_SHORT).show()
+                            else runCatching { pickFile.launch(arrayOf("*/*")) }
+                                .onFailure { Toast.makeText(this, "Tidak ada pemilih berkas di HP ini.".tr(store.lang), Toast.LENGTH_LONG).show() }
+                        },
                         padKbm = {
                             val next = PadKbm.nextMode(store.int(P.PAD_KBM, PadKbm.MODE_AUTO))
                             store.set(P.PAD_KBM, next)
@@ -571,6 +590,19 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
     }
 
+    /** Satu baris kemajuan kiriman berkas di atas video; hilang sendiri setelah selesai. */
+    private fun onFileStatus(st: SessionFile.Status) {
+        val v = fileProgress ?: return
+        if (st.text.isEmpty()) {
+            v.hide()
+            return
+        }
+        v.show(st.text, cancellable = st.active)
+        if (!st.active) ui.postDelayed({ if (files?.busy() != true) v.hide() }, 4000)
+    }
+
+    override fun onFileMessage(bytes: ByteArray) = runOnUiThread { files?.onMessage(bytes) }
+
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
 
     override fun onHostSpecs(specs: HostSpecs) = runOnUiThread { this.specs = specs; record() }
@@ -585,6 +617,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
         connected = phase == Phase.CONNECTED
         if (!connected && ::hid.isInitialized) hid.releaseAll()
+        if (!connected) files?.stop()
         if (phase == Phase.REJECTED) store.setHostPin(hostId, null)
         connectState = connectState.copy(phase = phase, message = message)
         b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
@@ -665,6 +698,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onDestroy() {
+        files?.stop()
         if (overlayEdit) saveOverlayLayout()
         capturedMouse?.release()
         hidMonitor?.stop()

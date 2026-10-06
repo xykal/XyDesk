@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.webrtc.AudioTrack
+import id.xyverse.xyadapt.FileWire
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -54,6 +55,9 @@ interface RtcListener {
      */
     fun onHostGamepad(available: Boolean, reason: String) {}
     fun onHostWallpaper(jpeg: ByteArray) {}
+
+    /** Satu pesan mentah dari data channel `"file"`. */
+    fun onFileMessage(bytes: ByteArray) {}
 }
 
 /**
@@ -82,6 +86,7 @@ class RtcSession(
     private var factory: PeerConnectionFactory
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
+    private var file: DataChannel? = null
     private val wallpaper = WallpaperTransfer().also { it.onJpeg = { jpeg -> listener.onHostWallpaper(jpeg) } }
     private var remoteAudioTrack: AudioTrack? = null
     private var micTrack: AudioTrack? = null
@@ -254,6 +259,20 @@ class RtcSession(
             }
         })
         input = ch
+        // Channel terpisah untuk berkas: satu berkas 200 MB berarti ribuan
+        // pesan, dan kalau ikut mengantre di jalur input setiap klik mouse
+        // ikut tertahan di belakangnya.
+        val fch = conn.createDataChannel(FileWire.CHANNEL, DataChannel.Init())
+        fch?.registerObserver(object : DataChannel.Observer {
+            override fun onBufferedAmountChange(previousAmount: Long) = Unit
+            override fun onStateChange() = Unit
+            override fun onMessage(buffer: DataChannel.Buffer) {
+                val data = ByteArray(buffer.data.remaining())
+                buffer.data.get(data)
+                if (data.isNotEmpty()) listener.onFileMessage(data)
+            }
+        })
+        file = fch
         conn.createOffer(object : NoopSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
                 conn.setLocalDescription(NoopSdp, desc)
@@ -373,6 +392,18 @@ class RtcSession(
         if (ch.state() == DataChannel.State.OPEN) ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true))
     }
 
+    /** Mengirim satu pesan protokol berkas; false = channel belum siap. */
+    fun sendFile(bytes: ByteArray): Boolean {
+        val ch = file ?: return false
+        if (ch.state() != DataChannel.State.OPEN) return false
+        return runCatching { ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true)) }.getOrDefault(false)
+    }
+
+    /** Byte yang masih mengantre di channel berkas — rem untuk pengirim. */
+    fun fileBuffered(): Long = file?.bufferedAmount() ?: 0L
+
+    fun fileReady(): Boolean = file?.state() == DataChannel.State.OPEN
+
     private fun fail(message: String) = stop(Phase.ERROR, message)
 
     fun stop(phase: Phase = Phase.ENDED, message: String? = null) {
@@ -382,6 +413,8 @@ class RtcSession(
         signaling.close()
         input?.unregisterObserver()
         input?.close()
+        file?.unregisterObserver()
+        file?.close()
         pc?.close()
         pc = null
         remoteAudioTrack = null
