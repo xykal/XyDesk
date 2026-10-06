@@ -256,6 +256,7 @@ object P {
     const val NEWS_HOURS = "newsHours"            // 3, 6, 12
     const val TEXT_SIZE = "textSize"              // 0 S, 1 M, 2 L
     const val REMEMBER_DEFAULT = "rememberDefault"
+    const val POINTER_CAPTURE = "pointerCapture"  // tangkap mouse fisik (gerak relatif)
     const val SHOW_ID = "showId"
     val MBPS = listOf(0, 8, 12, 20, 30)
     val HISTORY = listOf(0, 7, 30, 90)

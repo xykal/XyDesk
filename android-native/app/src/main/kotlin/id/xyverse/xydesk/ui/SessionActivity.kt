@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import id.xyverse.xyadapt.FpsOptions
+import id.xyverse.xyadapt.CaptureRules
 import id.xyverse.xyadapt.InputFamily
 import id.xyverse.xyadapt.OverlayRules
 import id.xyverse.xyadapt.ReconnectPolicy
@@ -89,6 +90,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     /** Kosong = host sanggup menerima gamepad. */
     private var hostGamepadReason by mutableStateOf("")
     private var gamepadWarned = false
+    private var capturedMouse: CapturedMouseView? = null
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
     private val statsTick = object : Runnable {
@@ -171,6 +173,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
         hid = SessionHid(session::send)
         hidMonitor = HidMonitor(this) { p -> runOnUiThread { onHid(p) } }
+        capturedMouse = CapturedMouseView(this, session::send).also {
+            it.sensitivity = cfg.speed.coerceIn(0.2f, 5f)
+            it.onEscape = { store.set(P.POINTER_CAPTURE, false); applyPointerCapture() }
+            // Ukuran 1 px: ia hanya perlu bisa memegang fokus, bukan terlihat.
+            addContentView(it, android.view.ViewGroup.LayoutParams(1, 1))
+        }
         // Surface decode native juga harus tampil natural/aspect-fit, bukan stretch/crop.
         b.raw.setZOrderMediaOverlay(false)
         session.attach(b.video)
@@ -237,6 +245,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         overlayEdit = on
         // Mengatur tata letak saat kontrol dimatikan tidak masuk akal:
         // tidak ada yang tergambar untuk dipindahkan.
+        applyPointerCapture()
         if (on && overlayMode == OverlayRules.MODE_OFF) {
             overlayMode = OverlayRules.MODE_AUTO
             store.overlayMode = overlayMode
@@ -296,6 +305,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     private fun setPcKeys(on: Boolean) {
         pcKeysOpen = on && !hidPresent.keyboard
+        applyPointerCapture()
         b.pcKeys.visibility = if (pcKeysOpen && !presenting) View.VISIBLE else View.GONE
         applyChrome()
     }
@@ -303,6 +313,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun onHid(p: HidMonitor.HidPresence) {
         hidPresent = p
         hidState = p
+        applyPointerCapture()
         if (p.keyboard && pcKeysOpen) setPcKeys(false)
         applyChrome()
         val pesan = OverlayRules.detectionMessage(overlayMode, p.keyboard, p.mouse, p.gamepad)
@@ -310,6 +321,25 @@ class SessionActivity : ComponentActivity(), RtcListener {
             hidToastShown = true
             Toast.makeText(this, pesan.tr(store.lang), Toast.LENGTH_LONG).show()
         }
+    }
+
+    /**
+     * Menyalakan atau melepas tangkapan pointer sesuai keadaan sekarang.
+     * Dipanggil dari setiap tempat yang bisa mengubah jawabannya; aturannya
+     * sendiri ada di [CaptureRules] dan diuji di JVM.
+     */
+    private fun applyPointerCapture() {
+        val v = capturedMouse ?: return
+        val mau = CaptureRules.wanted(
+            mousePresent = hidPresent.mouse,
+            connected = connected,
+            enabled = store.bool(P.POINTER_CAPTURE, true),
+            imeOpen = b.keyboardSink.hasFocus() || pcKeysOpen,
+            editing = overlayEdit,
+            presenting = presenting,
+        )
+        v.wantCapture = mau
+        if (mau) v.capture() else v.release()
     }
 
     /** Berputar: otomatis → selalu tampil → mati → otomatis. */
@@ -382,7 +412,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun setupToolbar() {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
         val prefs = SessionPrefs(store.quality, sessionFps(), store.directTouch, store.trackpadSpeed,
-            store.naturalScroll, store.showStats, autohide, FpsOptions.forDisplay(panelRefreshHz()))
+            store.naturalScroll, store.showStats, autohide, store.bool(P.POINTER_CAPTURE, true),
+            FpsOptions.forDisplay(panelRefreshHz()))
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
@@ -412,6 +443,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         present = { setPresenting(true) },
                         overlayEdit = { setOverlayEditMode(!overlayEdit) },
                         overlayMode = { cycleOverlayMode() },
+                        pointerCapture = { on -> store.set(P.POINTER_CAPTURE, on); applyPointerCapture() },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
@@ -434,6 +466,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     /** Mode presentasi: semua overlay disembunyikan; tombol Kembali mengembalikannya. */
     private fun setPresenting(on: Boolean) {
         presenting = on
+        applyPointerCapture()
         b.toolbar.visibility = if (on) View.GONE else View.VISIBLE
         if (on) setPcKeys(false)
         applyChrome()
@@ -544,6 +577,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         connectState = connectState.copy(phase = phase, message = message)
         b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
         applyChrome()
+        applyPointerCapture()
         b.status.visibility = View.GONE
         ui.removeCallbacks(statsTick); ui.removeCallbacks(previewTick)
         if (connected) {
@@ -606,12 +640,14 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     override fun onPause() {
         if (overlayEdit) saveOverlayLayout()
+        capturedMouse?.release()
         hidMonitor?.stop()
         super.onPause()
     }
 
     override fun onDestroy() {
         if (overlayEdit) saveOverlayLayout()
+        capturedMouse?.release()
         hidMonitor?.stop()
         clipboard?.removePrimaryClipChangedListener(clipListener)
         if (outcome == "berjalan") outcome = "ok"

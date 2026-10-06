@@ -97,11 +97,40 @@ Aplikasi memperingatkan **sekali per sesi**, dan hanya kalau tata letakmu
 memang punya tombol gamepad — memberi tahu orang yang tidak memakai gamepad
 bahwa gamepad tidak tersedia hanyalah kebisingan.
 
-## 7. Yang belum ada
+## 7. Tangkapan pointer untuk mouse fisik
+
+Tanpa tangkapan pointer, Android memberi posisi kursornya sendiri dan kursor
+itu berhenti di tepi layar HP. Gerak dikirim sebagai posisi absolut, jadi
+begitu kursor menyentuh tepi, gerak berikutnya ke arah yang sama bernilai
+nol — di PC kursornya ikut berhenti. Untuk game yang memutar pandangan
+dengan gerak relatif tak terbatas, pandangan ikut mentok.
+
+Sekarang mouse fisik ditangkap: kursor HP hilang dan yang diterima adalah
+delta (`AXIS_RELATIVE_X/Y`), dikirim sebagai `0x01 MOUSE_MOVE_REL` — opcode
+yang sudah lama ada di host tetapi tidak pernah dipakai aplikasi.
+
+Tangkapan **dilepas sendiri** saat: mouse dicabut, sesi putus, IME dibuka
+(kursor yang hilang membuat papan ketik mustahil ditutup), tata letak kontrol
+sedang diatur, mode presentasi menyala, atau jendela kehilangan fokus — dan
+diminta ulang begitu fokus kembali, karena sistem melepasnya diam-diam dan
+tanpa permintaan ulang mouse berhenti bekerja setelah satu notifikasi.
+
+Dua hal kecil yang mudah terlewat dan ditangani:
+
+- **Sisa pecahan disimpan.** Protokol mengirim bilangan bulat; membulatkan
+  tiap kejadian sendiri-sendiri membuang sisanya, dan pada gerak pelan
+  (membidik, menyeret tepi jendela) mouse terasa tersangkut karena 0,4
+  piksel berkali-kali menjadi nol selamanya.
+- **Tombol yang masih ditahan dilepas** saat tangkapan berakhir. Kalau
+  tidak, klik kiri yang sedang ditahan tetap "ditekan" di PC dan kursor
+  menyeret apa pun yang disentuhnya sampai sesi berakhir.
+
+Saklarnya: "Tangkap mouse" di panel Atur (bawaan menyala).
+
+## 8. Yang belum ada
 
 - Getaran (rumble) balik dari host ke HP.
 - Pemetaan tombol gamepad fisik ke aksi keyboard/mouse (ada di
   XyDesk-Remote sebagai `XyGamepadActionMapper`, belum di sini).
-- Penangkapan pointer (pointer capture) untuk mouse fisik — gerak mouse
-  dikirim sebagai posisi absolut, jadi mode FPS yang butuh gerak relatif tak
-  terbatas belum sepenuhnya setara.
+- Tangkapan pointer belum pernah dijalankan di perangkat nyata; yang teruji
+  baru aturannya dan matematika deltanya (`PointerCaptureTest`, 10 uji).

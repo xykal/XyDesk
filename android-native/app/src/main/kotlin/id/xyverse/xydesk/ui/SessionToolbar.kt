@@ -66,6 +66,8 @@ class SessionActions(
     val overlayEdit: () -> Unit = {},
     /** Putar mode kontrol di layar: otomatis → selalu tampil → mati. */
     val overlayMode: () -> Unit = {},
+    /** Tangkap mouse fisik: gerak relatif tak terbatas, kursor HP hilang. */
+    val pointerCapture: (on: Boolean) -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -78,6 +80,8 @@ data class SessionPrefs(
     val naturalScroll: Boolean = false,
     val showStats: Boolean = true,
     val autohideMs: Long = 0,
+    /** Tangkapan pointer menyala untuk mouse fisik. */
+    val pointerCapture: Boolean = true,
     /** Anak tangga fps yang pantas untuk panel HP ini (lihat [FpsOptions]). */
     val fpsOptions: List<Int> = FpsOptions.BASE,
 )
@@ -111,6 +115,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var mic by remember { mutableStateOf(false) }
     var clip by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(prefs.showStats) }
+    var capture by remember { mutableStateOf(prefs.pointerCapture) }
     val qLabels = listOf("Auto", "Seimbang", "Lebih halus", "Paling halus")
     var touched by remember { mutableStateOf(0L) }
     if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
@@ -167,6 +172,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         Pill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
                         Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
+                        Pill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
                     }
                     if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption) else XyText("Preset kualitas hanya mengubah bitrate/kompresi; resolusi tetap di pilihan Auto/Manual, tanpa filter tajam buatan.", Xy.caption)
                 }
