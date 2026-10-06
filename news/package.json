@@ -10,7 +10,7 @@
     "db:seed": "wrangler d1 execute xydesk-news --remote --file seed.sql"
   },
   "devDependencies": {
-    "wrangler": "^4.141.0"
+    "wrangler": "^4.147.0"
   },
   "engines": {
     "node": ">=22"
