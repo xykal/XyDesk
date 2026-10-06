@@ -49,6 +49,8 @@ pub mod control_ipc;
 /// di `screen`). Dipisah supaya bisa di-type-check untuk Windows lewat
 /// `tool/wincheck`.
 pub mod dxgi;
+/// Pintu persetujuan berkas masuk: tanya pemilik PC sebelum menulis ke disk.
+pub mod file_consent;
 /// Penyambung channel "file" ke disk: protokol + sink + jaringan.
 pub mod file_dispatch;
 /// Penulisan berkas masuk ke disk: berkas sementara, rename setelah hash

@@ -229,6 +229,60 @@ async fn berkas_berpindah_utuh_lewat_sesi_nyata() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Pintu persetujuan, dibuktikan lewat sesi WebRTC sungguhan.
+///
+/// Dua hal yang tidak bisa dibuktikan uji unit `file_consent`: bahwa gerbang
+/// itu benar-benar tersambung ke jalur jaringan, dan bahwa tawaran yang
+/// ditolak tidak meninggalkan apa pun di folder tujuan.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn kebijakan_never_menolak_berkas_sebelum_menyentuh_disk() -> anyhow::Result<()> {
+    let _serial = SERIAL.lock().await;
+    let dir = folder_tujuan("tolak");
+    let mut lb = bangun(dir.clone()).await?;
+    xydesk_host::file_consent::set_policy(xydesk_host::file_consent::Policy::Never);
+
+    kirim(
+        &lb.dc,
+        &FileMessage::Offer {
+            id: 77,
+            size: 4096,
+            name: "tidak-diminta.bin".into(),
+        },
+    )
+    .await?;
+    let balasan = tunggu(&mut lb.masuk, |m| {
+        matches!(m, FileMessage::Reject { .. } | FileMessage::Accept { .. })
+    })
+    .await?;
+    assert!(
+        matches!(
+            balasan,
+            FileMessage::Reject {
+                reason: Reason::User,
+                ..
+            }
+        ),
+        "tawaran harus ditolak dengan alasan User, bukan {balasan:?}"
+    );
+    // Tidak ada berkas sementara maupun final yang pernah dibuat.
+    let isi: Vec<_> = std::fs::read_dir(&dir)
+        .map(|d| {
+            d.filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().to_string())
+                .collect()
+        })
+        .unwrap_or_default();
+    assert!(
+        isi.is_empty(),
+        "folder tujuan tidak boleh tersentuh: {isi:?}"
+    );
+
+    xydesk_host::file_consent::set_policy(xydesk_host::file_consent::Policy::Ask);
+    lb.client.close().await?;
+    let _ = std::fs::remove_dir_all(&dir);
+    Ok(())
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn hash_yang_tidak_cocok_tidak_meninggalkan_berkas() -> anyhow::Result<()> {
     let _serial = SERIAL.lock().await;

@@ -16,11 +16,13 @@
 //!
 //! ## Persetujuan
 //!
-//! Untuk sekarang host **menerima otomatis** berkas dari client yang sudah
-//! lolos pairing dan masuk akun — pintu persetujuan ada di panel host dan
-//! belum digambar. Kebijakan itu ditulis di satu tempat ([`decide_offer`])
-//! supaya mengubahnya nanti menjadi "tanya pengguna" tidak perlu menyentuh
-//! alur jaringan.
+//! Dua lapis, dan keduanya harus lolos. [`decide_offer`] memeriksa hal-hal
+//! yang tidak ada hubungannya dengan selera pemilik PC — sedang sibuk,
+//! ukuran nol, lebih besar dari batas — lalu [`crate::file_consent`] bertanya
+//! kepada pemiliknya lewat panel. Pertanyaannya tidak bisa dijawab di sini,
+//! jadi tawaran yang menunggu dititipkan ke tugas tersendiri; selama itu
+//! **belum satu byte pun menyentuh disk**: berkas sementara baru dibuat
+//! setelah jawabannya "ya".
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -90,7 +92,10 @@ pub fn download_dir() -> PathBuf {
 
 struct Transfer {
     receiver: Receiver,
-    sink: Sink,
+    /// `None` selama tawaran masih menunggu persetujuan pemilik PC. Berkas
+    /// sementara sengaja belum dibuat: tawaran yang ditolak tidak boleh
+    /// meninggalkan jejak apa pun di disk.
+    sink: Option<Sink>,
 }
 
 /// Antrean kirim milik sesi yang sedang berjalan.
@@ -468,6 +473,36 @@ async fn handle(
             }
             Decision::Accept => {}
         }
+        // Lapis kedua: pemilik PC. `Pending` berarti dialog panel terbuka;
+        // yang menjawabnya adalah tugas di bawah, bukan utas pesan ini —
+        // menunggu di sini akan menahan CANCEL dari pengirim selama satu
+        // menit penuh.
+        match crate::file_consent::offer(
+            *id,
+            receiver.name(),
+            *size,
+            is_risky_extension(receiver.name()),
+        ) {
+            crate::file_consent::Verdict::Accept => {}
+            crate::file_consent::Verdict::Reject(reason) => {
+                let _ = send(channel, &FileMessage::Reject { id: *id, reason }).await;
+                return;
+            }
+            crate::file_consent::Verdict::Pending => {
+                println!(
+                    "[xydesk-host] menunggu persetujuan untuk \"{}\" ({})",
+                    receiver.name(),
+                    crate::filetransfer::human_bytes(*size)
+                );
+                *slot = Some(Transfer {
+                    receiver,
+                    sink: None,
+                });
+                drop(slot);
+                spawn_consent_wait(channel.clone(), state.clone(), dir.to_path_buf(), *id);
+                return;
+            }
+        }
         let sink = match Sink::create(dir, receiver.name()) {
             Ok(sink) => sink,
             Err(e) => {
@@ -491,7 +526,10 @@ async fn handle(
             receiver.name(),
             crate::filetransfer::human_bytes(*size)
         );
-        *slot = Some(Transfer { receiver, sink });
+        *slot = Some(Transfer {
+            receiver,
+            sink: Some(sink),
+        });
         return;
     }
 
@@ -501,7 +539,21 @@ async fn handle(
     let id = transfer.receiver.id();
     match transfer.receiver.handle(&message) {
         Action::Write { data, ack } => {
-            if let Err(e) = transfer.sink.write(&data) {
+            let Some(sink) = transfer.sink.as_mut() else {
+                // Potongan sebelum persetujuan: pengirim melanggar urutan.
+                crate::file_consent::clear(id);
+                let _ = send(
+                    channel,
+                    &FileMessage::Cancel {
+                        id,
+                        reason: Reason::Protocol,
+                    },
+                )
+                .await;
+                *slot = None;
+                return;
+            };
+            if let Err(e) = sink.write(&data) {
                 eprintln!("[xydesk-host] tulis berkas gagal: {e}");
                 let _ = send(
                     channel,
@@ -521,7 +573,8 @@ async fn handle(
         }
         Action::Finish => {
             let Some(done) = slot.take() else { return };
-            match done.sink.commit() {
+            let Some(sink) = done.sink else { return };
+            match sink.commit() {
                 Ok(path) => println!("[xydesk-host] berkas tersimpan: {}", path.display()),
                 Err(e) => {
                     eprintln!("[xydesk-host] simpan berkas gagal: {e}");
@@ -538,6 +591,7 @@ async fn handle(
         }
         Action::Abort(reason) => {
             eprintln!("[xydesk-host] transfer berkas dihentikan: {reason:?}");
+            crate::file_consent::clear(id);
             let _ = send(channel, &FileMessage::Cancel { id, reason }).await;
             *slot = None;
         }
@@ -547,6 +601,77 @@ async fn handle(
             }
         }
     }
+}
+
+/// Menunggu jawaban pemilik PC di luar jalur pesan.
+///
+/// Polling 200 ms, bukan notifikasi: jawabannya datang dari utas HTTP control
+/// API yang tidak mengenal runtime sesi, dan satu dialog per sesi tidak layak
+/// dibayar dengan kanal tambahan lintas utas. Tugas ini berhenti sendiri
+/// begitu tawaran hilang — dijawab, kedaluwarsa, atau dibatalkan pengirim.
+fn spawn_consent_wait(
+    channel: Arc<RTCDataChannel>,
+    state: Arc<Mutex<Option<Transfer>>>,
+    dir: PathBuf,
+    id: u32,
+) {
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+            let verdict = crate::file_consent::poll(id);
+            let mut slot = state.lock().await;
+            // Transfer sudah lenyap (sesi tutup / pengirim membatalkan):
+            // tidak ada lagi yang perlu dijawab.
+            let masih_menunggu = slot
+                .as_ref()
+                .is_some_and(|t| t.sink.is_none() && t.receiver.id() == id);
+            if !masih_menunggu {
+                crate::file_consent::clear(id);
+                return;
+            }
+            match verdict {
+                crate::file_consent::Verdict::Pending => continue,
+                crate::file_consent::Verdict::Reject(reason) => {
+                    *slot = None;
+                    drop(slot);
+                    println!("[xydesk-host] berkas masuk ditolak pemilik PC");
+                    let _ = send(&channel, &FileMessage::Reject { id, reason }).await;
+                    return;
+                }
+                crate::file_consent::Verdict::Accept => {
+                    let Some(transfer) = slot.as_mut() else {
+                        return;
+                    };
+                    let sink = match Sink::create(&dir, transfer.receiver.name()) {
+                        Ok(sink) => sink,
+                        Err(e) => {
+                            eprintln!("[xydesk-host] berkas masuk ditolak: {e}");
+                            *slot = None;
+                            drop(slot);
+                            let _ = send(
+                                &channel,
+                                &FileMessage::Reject {
+                                    id,
+                                    reason: Reason::Io,
+                                },
+                            )
+                            .await;
+                            return;
+                        }
+                    };
+                    let accept = transfer.receiver.accept();
+                    transfer.sink = Some(sink);
+                    let nama = transfer.receiver.name().to_string();
+                    drop(slot);
+                    if let Some(accept) = accept {
+                        let _ = send(&channel, &accept).await;
+                    }
+                    println!("[xydesk-host] berkas masuk disetujui: \"{nama}\"");
+                    return;
+                }
+            }
+        }
+    });
 }
 
 async fn send(

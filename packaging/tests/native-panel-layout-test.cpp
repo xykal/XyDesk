@@ -249,6 +249,31 @@ void testSendFileButton() {
     check(std::string(xydesk::panel::targetName(Target::SendFile))=="SendFile","tombol kirim berkas punya nama probe");
 }
 
+// Baris jawaban berkas masuk: "Terima berkas" + "Tolak" tepat di bawah
+// baris putus/kirim, tanpa pernah bertumpuk dengan keduanya.
+void testIncomingFileRow() {
+    for(int dpi:{96,120,144,192})for(int width:{720,1100,1600})for(bool collapsed:{false,true}){
+        const auto l=xydesk::panel::computeLayout(dpi,width,480,collapsed);
+        if(l.acceptFile.w<=0)continue;
+        check(l.acceptFile.y>=l.stopSession.bottom(),"baris jawaban di bawah baris sesi");
+        check(!overlaps(l.acceptFile,l.stopSession)&&!overlaps(l.acceptFile,l.sendFile),"terima tidak menimpa baris atasnya");
+        check(!overlaps(l.rejectFile,l.acceptFile),"tolak tidak menimpa terima");
+        check(l.acceptFile.x==l.stopSession.x,"dua baris rata kiri");
+        check(insidePanel(l,l.acceptFile),"terima di dalam jendela");
+        check(l.acceptFile.right()<=l.workspaceShell.right(),"terima tidak keluar kartu kerja");
+        if(l.rejectFile.w>0)check(l.rejectFile.right()<=l.workspaceShell.right(),"tolak tidak keluar kartu kerja");
+        const int ax=xydesk::panel::centerX(l.acceptFile),ay=xydesk::panel::centerY(l.acceptFile);
+        check(xydesk::panel::targetAt(l,Page::Connections,ax,ay)==Target::AcceptFile,"terima bisa diklik di halaman koneksi");
+        check(xydesk::panel::targetAt(l,Page::Status,ax,ay)!=Target::AcceptFile,"terima tidak bocor ke halaman lain");
+        if(l.rejectFile.w>0){
+            const int rx=xydesk::panel::centerX(l.rejectFile),ry=xydesk::panel::centerY(l.rejectFile);
+            check(xydesk::panel::targetAt(l,Page::Connections,rx,ry)==Target::RejectFile,"tolak bisa diklik di halaman koneksi");
+        }
+    }
+    check(std::string(xydesk::panel::targetName(Target::AcceptFile))=="AcceptFile","terima punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::RejectFile))=="RejectFile","tolak punya nama probe");
+}
+
 void testTargetNames() {
     check(std::string(xydesk::panel::targetName(Target::Start)) == "Start", "nama sasaran dipakai di berkas probe");
     check(std::string(xydesk::panel::targetName(Target::Minimize)) == "Minimize", "tombol perkecil punya nama");
@@ -269,6 +294,7 @@ int main() {
     testTargetNames();
     testCompactAndCollapsed();
     testSendFileButton();
+    testIncomingFileRow();
 
     if (g_failures == 0) {
         std::printf("Lulus: %d pemeriksaan tata letak panel native.\n", g_checks);

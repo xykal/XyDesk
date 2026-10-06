@@ -105,6 +105,8 @@ enum class Target {
     RunHost,
     StopSession,
     SendFile,
+    AcceptFile,
+    RejectFile,
 };
 
 inline const char* targetName(Target target) {
@@ -137,6 +139,8 @@ inline const char* targetName(Target target) {
     case Target::RunHost: return "RunHost";
     case Target::StopSession: return "StopSession";
     case Target::SendFile: return "SendFile";
+    case Target::AcceptFile: return "AcceptFile";
+    case Target::RejectFile: return "RejectFile";
     default: return "None";
     }
 }
@@ -206,6 +210,10 @@ struct PanelLayout {
     Rect stopSession{};
     // Kirim berkas dari PC ke perangkat yang sedang tersambung.
     Rect sendFile{};
+    // Jawaban atas berkas yang MASUK; barisnya selalu disediakan supaya
+    // teks di bawahnya tidak bergeser saat dialog muncul.
+    Rect acceptFile{};
+    Rect rejectFile{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -395,6 +403,16 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
         l.sendFile = Rect{l.stopSession.right() + gap, l.stopSession.y, maxValue(sendW, 0), l.stopSession.h};
     }
 
+    // Baris kedua: jawaban atas tawaran berkas masuk. Lebarnya dipangkas
+    // mengikuti ruang yang tersisa, sama seperti tombol kirim.
+    {
+        const int right = contentX + contentW - px(20);
+        const int acceptW = minValue(px(176), right - l.stopSession.x);
+        l.acceptFile = Rect{l.stopSession.x, l.stopSession.bottom() + gap, maxValue(acceptW, 0), l.stopSession.h};
+        const int rejectW = minValue(px(120), right - (l.acceptFile.right() + gap));
+        l.rejectFile = Rect{l.acceptFile.right() + gap, l.acceptFile.y, maxValue(rejectW, 0), l.acceptFile.h};
+    }
+
     // Halaman Kontrol: dua baris tombol aksi.
     const int actionH = px(46);
     const int actionX = contentX + px(20), actionY = topY + px(20);
@@ -436,6 +454,8 @@ inline bool targetOnPage(Target target, Page page) {
         return page == Page::Status;
     case Target::StopSession:
     case Target::SendFile:
+    case Target::AcceptFile:
+    case Target::RejectFile:
         return page == Page::Connections;
     default:
         return true;
@@ -475,6 +495,8 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     }
     if (targetOnPage(Target::StopSession, page) && l.stopSession.contains(x, y)) return Target::StopSession;
     if (targetOnPage(Target::SendFile, page) && l.sendFile.valid() && l.sendFile.contains(x, y)) return Target::SendFile;
+    if (targetOnPage(Target::AcceptFile, page) && l.acceptFile.valid() && l.acceptFile.contains(x, y)) return Target::AcceptFile;
+    if (targetOnPage(Target::RejectFile, page) && l.rejectFile.valid() && l.rejectFile.contains(x, y)) return Target::RejectFile;
     if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
         return Target::RunHost;
     }
