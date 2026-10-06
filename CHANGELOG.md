@@ -24,6 +24,12 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Panel host wajib masuk akun:** membuka panel kini melewati gerbang — sambutan singkat untuk pemasangan baru, lalu layar masuk lewat akun Google atau email. Sebelum masuk, panel tidak digambar sama sekali, bukan sekadar ditutupi: ID perangkat, kode pairing, dan status mesin tidak lagi terbaca oleh siapa pun yang menemukan PC ini menyala. Engine host juga baru dinyalakan setelah pemiliknya masuk, karena menyalakannya lebih awal berarti mesin siap menerima koneksi sementara layar masih menampilkan layar masuk. Keluar akun langsung mengembalikan panel ke layar masuk.
+
+- **Tampilan panel host ala macOS:** tombol jendela menjadi tiga lampu lalu lintas di kiri atas — merah, kuning, hijau — dengan glyph yang baru muncul saat kursor mendekat dan warna yang meredup saat jendela tidak aktif. Layar gerbang memakai satu kartu fokus di tengah dengan isinya muncul berurutan, bukan serentak.
+
+- **Animasi berbasis waktu, bukan frame:** kemajuan animasi dihitung dari milidetik nyata. Sebelumnya gerakan dihitung per tick timer, sehingga animasi justru melambat tepat ketika sistem sibuk — yaitu saat sesi remote sedang berjalan.
+
 - **Laju tinggi 120 dan 144 fps:** sesi tidak lagi berhenti di 60 fps. Batasnya kini dihitung dari MaxMBPS level H.264 hasil negosiasi, bukan dari daftar tetap: 720p pada level 5.1 sanggup 144 fps, 1080p pada level 5.1 sanggup 120 fps, sedangkan level 4.0 tetap maksimal 60 dan level 3.1 tetap 30. Hasilnya selalu dibulatkan ke anak tangga yang dikenal, tidak pernah ke angka sisa bagi seperti 68 fps yang akan merusak pacing capture dan VBV.
 
 - **Opsi fps mengikuti layar HP:** panel 120/144 Hz kini mendapat pilihan 120 dan 144 di panel sesi dan di pengaturan bawaan, sementara layar 60 Hz tidak ditawari opsi yang mustahil ia tampilkan. Sesi juga meminta mode layar tercepat pada resolusi yang sama, karena tanpa permintaan itu banyak panel 120 Hz tetap berjalan 60 Hz dan separuh frame yang dikirim host terbuang di tahap tampil.

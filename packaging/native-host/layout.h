@@ -45,6 +45,12 @@ constexpr int kSidebarItemHeight = 48;
 constexpr int kSidebarGap = 6;
 constexpr int kCaptionHeight = 64;
 
+// Lampu lalu lintas macOS: lingkaran 13 px, jarak 11 px, kotak sentuh 24 px.
+// Jarak dipilih supaya kotak sentuh bersisian persis tanpa pernah bertumpuk.
+constexpr int kTrafficLight = 13;
+constexpr int kTrafficLightGap = 11;
+constexpr int kTrafficLightHit = 24;
+
 struct Rect {
     int x = 0;
     int y = 0;
@@ -164,6 +170,7 @@ struct PanelLayout {
     Rect minimizeButton{};
     Rect maximizeButton{};
     Rect closeButton{};
+    Rect trafficLights{}; // kotak gabungan ketiga lampu (untuk hover bersama)
 
     // Sidebar: tiga tombol halaman, masing-masing dengan area ikon + label.
     Rect homeAccess, homeConnections;
@@ -274,16 +281,24 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     l.panel = Rect{0, 0, panelW, panelH};
 
     // ── Caption: logo, nama, subjudul, tiga tombol caption ──
+    // Lampu lalu lintas ala macOS di kiri: tutup, perkecil, perbesar. Lingkaran
+    // kecil berwarna, glyph baru muncul saat kursor mendekat — itu sebabnya
+    // kotak sentuhnya (kLightHit) dibuat lebih besar dari lingkarannya.
     const int logo = px(30);
-    l.toggleSidebar = Rect{pad, pad - px(2), px(32), px(32)};
-    l.logo = Rect{pad + px(42), pad - px(3), logo, logo};
+    const int lightSize = px(kTrafficLight);
+    const int lightHit = px(kTrafficLightHit);
+    const int lightGap = px(kTrafficLightGap);
+    const int lightY = pad + px(3);
+    const int hitInset = (lightHit - lightSize) / 2;
+    l.closeButton = Rect{pad - hitInset, lightY - hitInset, lightHit, lightHit};
+    l.minimizeButton = Rect{l.closeButton.x + lightSize + lightGap, l.closeButton.y, lightHit, lightHit};
+    l.maximizeButton = Rect{l.minimizeButton.x + lightSize + lightGap, l.closeButton.y, lightHit, lightHit};
+    l.trafficLights = Rect{pad, lightY, 3 * lightSize + 2 * lightGap, lightSize};
+    l.toggleSidebar = Rect{l.trafficLights.right() + px(18), pad - px(2), px(32), px(32)};
+    l.logo = Rect{l.toggleSidebar.right() + px(10), pad - px(3), logo, logo};
     const int closeSize = px(32);
-    const int captionGap = px(4);
     const int captionY = pad - px(2);
-    l.closeButton = Rect{panelW - pad - closeSize, captionY, closeSize, closeSize};
-    l.maximizeButton = Rect{l.closeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
-    l.minimizeButton = Rect{l.maximizeButton.x - captionGap - closeSize, captionY, closeSize, closeSize};
-    l.help = Rect{l.minimizeButton.x - px(36), captionY, closeSize, closeSize};
+    l.help = Rect{panelW - pad - closeSize, captionY, closeSize, closeSize};
     l.profile = Rect{l.help.x - px(36), captionY, closeSize, closeSize};
     l.settings = Rect{l.profile.x - px(36), captionY, closeSize, closeSize};
     const int textX = l.logo.right() + px(12);
