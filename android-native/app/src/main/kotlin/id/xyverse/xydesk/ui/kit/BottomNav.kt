@@ -33,14 +33,14 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-enum class Tab(val label: String) { HOME("Koneksi"), DEVICES("Perangkat"), NEWS("Berita"), ACCOUNT("Akun") }
+enum class Tab(val label: String) { HOME("Koneksi"), DEVICES("Perangkat"), CHAT("Obrolan"), NEWS("Berita"), ACCOUNT("Akun") }
 
 /** Bar bawah mengambang berbentuk pil; ikon garis digambar sendiri. */
 @Composable
 fun BottomNav(current: Tab, badge: Tab? = null, onSelect: (Tab) -> Unit) {
     Row(
         Modifier
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
             .shadow(20.dp, RoundedCornerShape(Xy.pill), ambientColor = Xy.shadow, spotColor = Xy.shadow)
             .clip(RoundedCornerShape(Xy.pill))
             .background(Color.White)
@@ -52,7 +52,7 @@ fun BottomNav(current: Tab, badge: Tab? = null, onSelect: (Tab) -> Unit) {
             val active = t == current
             val bg by animateColorAsState(if (active) Xy.accent.copy(alpha = 0.12f) else Color.Transparent, label = "bg")
             val fg by animateColorAsState(if (active) Xy.accent else Xy.textLow, label = "fg")
-            val w by animateDpAsState(if (active) 104.dp else 44.dp, label = "w")
+            val w by animateDpAsState(if (active) 96.dp else 42.dp, label = "w")
             Row(
                 Modifier
                     .width(w)
@@ -87,6 +87,12 @@ private fun DrawScope.icon(t: Tab, c: Color) {
         Tab.DEVICES -> {
             drawRoundRect(c, Offset(w * 0.1f, w * 0.1f), Size(w * 0.5f, w * 0.8f), CornerRadius(w * 0.1f), style = s)
             drawRoundRect(c, Offset(w * 0.55f, w * 0.35f), Size(w * 0.35f, w * 0.55f), CornerRadius(w * 0.08f), style = s)
+        }
+        Tab.CHAT -> {
+            // Gelembung percakapan: kotak membulat dengan ekor di kiri bawah.
+            drawRoundRect(c, Offset(w * 0.1f, w * 0.15f), Size(w * 0.8f, w * 0.6f), CornerRadius(w * 0.2f), style = s)
+            drawLine(c, Offset(w * 0.28f, w * 0.75f), Offset(w * 0.2f, w * 0.92f), s.width)
+            drawLine(c, Offset(w * 0.2f, w * 0.92f), Offset(w * 0.44f, w * 0.75f), s.width)
         }
         Tab.NEWS -> {
             drawRoundRect(c, Offset(w * 0.1f, w * 0.14f), Size(w * 0.8f, w * 0.72f), CornerRadius(w * 0.08f), style = s)
