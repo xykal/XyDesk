@@ -16,6 +16,7 @@ Semua bilangan little-endian.
 0x05 DONE   id:u32  sha256:32 byte
 0x06 CANCEL id:u32  reason:u8
 0x07 ACK    id:u32  received:u64
+0x08 DONE_OK id:u32
 ```
 
 Kode alasan: `0` pengguna, `1` terlalu besar, `2` pelanggaran protokol,
@@ -45,8 +46,26 @@ host                                   client (HP)
   |  ACK id,received  ─────────────────────>|
   |                    … berulang …          |
   |<──────────────────────────  DONE id,sha256
-  |  (diam = tersimpan; CANCEL = gagal)     |
+  |  DONE_OK id  ──────────────────────────>|   (tersimpan permanen)
+  |  CANCEL id,reason  ────────────────────>|   (gagal)
 ```
+
+**`DONE_OK` adalah konfirmasi, bukan kesimpulan (sejak 6.11.12).** Sampai
+6.11.11 keberhasilan disimpulkan dari ketiadaan `CANCEL`: penerima diam
+kalau berkasnya tersimpan. Masalahnya, diam itu sama persis dengan diamnya
+koneksi yang mati sebelum sempat mengeluh — pengirim menampilkan "terkirim"
+untuk berkas yang tidak pernah ada di disk. `DONE_OK` dikirim penerima
+**setelah** dua hal selesai: hash cocok **dan** berkas berpindah dari
+`.xypart` ke tempat permanennya (di HP: setelah salinan ke
+Unduhan/XyDesk lewat MediaStore berhasil). Pemindahan yang gagal mengirim
+`CANCEL(4)`, bukan diam.
+
+Kompatibel dua arah: penerima lama tidak mengenal `DONE_OK` dan tetap diam,
+jadi pengirim baru menunggu 10 detik lalu melaporkan "selesai tanpa
+konfirmasi" — selesai, bukan gagal. Pengirim lama mengabaikan tipe pesan
+yang tidak dikenalnya. Karena satu channel dipakai dua arah, `DONE_OK` juga
+lewat di depan mesin keadaan penerima di sisi lain; di sana ia diabaikan
+dengan sengaja, bukan dianggap pelanggaran protokol.
 
 **Tanda siap wajib ditunggu.** Channel sudah `OPEN` di sisi client beberapa
 saat sebelum host sempat memasang pendengarnya; `OFFER` yang tiba di celah

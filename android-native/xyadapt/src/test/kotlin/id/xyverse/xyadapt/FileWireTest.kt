@@ -64,6 +64,18 @@ class FileWireTest {
         assertFalse(FileWire.isBeacon(FileMsg.Ack(5, 0)))
         assertFalse(FileWire.isBeacon(FileMsg.Accept(0)))
     }
+    @Test
+    fun doneOkBolakBalikDiKawat() {
+        val pesan = FileMsg.DoneOk(0x0A0B0C0D)
+        val b = FileWire.encode(pesan)
+        assertEquals(FileWire.MSG_DONE_OK, b[0].toInt() and 0xFF)
+        assertEquals(5, b.size)
+        assertEquals(pesan, FileWire.decode(b))
+        assertNull(FileWire.decode(byteArrayOf(FileWire.MSG_DONE_OK.toByte())))
+        assertNull(FileWire.decode(byteArrayOf(FileWire.MSG_DONE_OK.toByte(), 1, 2, 3)))
+        assertNull(FileWire.decode(byteArrayOf(FileWire.MSG_DONE_OK.toByte(), 1, 2, 3, 4, 5)))
+    }
+
 }
 
 class FileSenderTest {
@@ -261,5 +273,72 @@ class FileSenderTest {
         assertEquals(1, FileSender.newId { 0 })
         assertEquals(1, FileSender.newId { Int.MIN_VALUE })
         assertTrue(FileSender.newId { -5 } > 0)
+    }
+    /** Satu berkas kecil dikirim sampai DONE, tanpa konfirmasi. */
+    private fun sampaiDone(s: FileSender) {
+        sampaiMengirim(s)
+        var kirim = 0L
+        while (s.state() == FileSender.State.SENDING) {
+            val allow = s.allowance()
+            if (allow <= 0) break
+            s.chunk(ByteArray(allow))
+            kirim += allow
+            s.onMessage(FileMsg.Ack(9, kirim))
+        }
+        s.finish(ByteArray(32))
+    }
+
+    @Test
+    fun doneOkMengonfirmasiPengirim() {
+        val s = sender(size = 1000L, chunk = 1000)
+        sampaiDone(s)
+        assertEquals(FileSender.State.DONE, s.state())
+        assertFalse(s.confirmed())
+        assertNull(s.onMessage(FileMsg.DoneOk(9)))
+        assertTrue(s.confirmed())
+        assertEquals(FileSender.State.CONFIRMED, s.state())
+        assertFalse(s.active())
+        assertEquals(100, s.percent())
+    }
+
+    @Test
+    fun doneOkAsingAtauTerlaluCepatDiabaikan() {
+        val s = sender(size = 1000L, chunk = 1000)
+        s.onMessage(FileMsg.DoneOk(9))
+        assertFalse("konfirmasi sebelum OFFER tidak sah", s.confirmed())
+        sampaiMengirim(s)
+        s.chunk(ByteArray(1000))
+        s.onMessage(FileMsg.Ack(9, 1000))
+        s.onMessage(FileMsg.DoneOk(9))
+        assertFalse("konfirmasi sebelum DONE tidak sah", s.confirmed())
+        s.finish(ByteArray(32))
+        s.onMessage(FileMsg.DoneOk(8))
+        assertFalse("konfirmasi untuk id lain bukan milik kita", s.confirmed())
+        s.onMessage(FileMsg.DoneOk(9))
+        assertTrue(s.confirmed())
+    }
+
+    /** Host lama diam saat berhasil; itu tetap kiriman yang selesai. */
+    @Test
+    fun tanpaDoneOkPengirimTetapSelesai() {
+        val s = sender(size = 1000L, chunk = 1000)
+        sampaiDone(s)
+        assertEquals(FileSender.State.DONE, s.state())
+        assertFalse(s.active())
+        assertFalse(s.confirmed())
+        assertEquals(100, s.percent())
+        assertEquals(-1, s.failReason())
+    }
+
+    /** Yang sudah dikonfirmasi tersimpan tidak bisa digagalkan belakangan. */
+    @Test
+    fun setelahDikonfirmasiPembatalanTidakMengubahApaPun() {
+        val s = sender(size = 1000L, chunk = 1000)
+        sampaiDone(s)
+        s.onMessage(FileMsg.DoneOk(9))
+        assertNull(s.cancel())
+        s.onMessage(FileMsg.Cancel(9, FileReason.IO))
+        assertEquals(FileSender.State.CONFIRMED, s.state())
+        assertTrue(s.confirmed())
     }
 }

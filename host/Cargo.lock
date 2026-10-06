@@ -3108,7 +3108,7 @@ dependencies = [
 
 [[package]]
 name = "xydesk-host"
-version = "6.11.11"
+version = "6.11.12"
 dependencies = [
  "anyhow",
  "axum",
