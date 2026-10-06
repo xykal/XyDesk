@@ -82,12 +82,19 @@ void testGeometry100() {
         check(insidePanel(l, icon), "ikon sidebar di dalam panel");
     }
 
-    // Caption: tiga tombol sejajar, urutan Windows, judul tidak menabrak.
+    // Caption: lampu lalu lintas macOS di kiri — tutup, perkecil, perbesar.
     check(!overlaps(l.minimizeButton, l.maximizeButton) && !overlaps(l.maximizeButton, l.closeButton), "tombol caption tidak bertumpuk");
-    check(l.minimizeButton.x < l.maximizeButton.x && l.maximizeButton.x < l.closeButton.x, "urutan caption: perkecil, perbesar, tutup");
+    check(l.closeButton.x < l.minimizeButton.x && l.minimizeButton.x < l.maximizeButton.x, "urutan macOS: tutup, perkecil, perbesar");
     check(l.minimizeButton.y == l.maximizeButton.y && l.maximizeButton.y == l.closeButton.y, "tombol caption sejajar satu baris");
-    check(!overlaps(l.title, l.minimizeButton) && !overlaps(l.subtitle, l.minimizeButton), "judul tidak bertumpuk dengan tombol caption");
-    check(l.closeButton.right() <= l.panel.right() - 20 + 1, "tombol tutup menghormati padding kanan");
+    check(!overlaps(l.title, l.maximizeButton) && !overlaps(l.subtitle, l.maximizeButton), "judul tidak bertumpuk dengan tombol caption");
+    check(l.closeButton.x >= l.panel.x, "lampu tutup tetap di dalam panel");
+    check(l.trafficLights.x >= l.panel.x + 20 - 1, "gugus lampu menghormati padding kiri");
+    check(l.trafficLights.right() <= l.toggleSidebar.x, "lampu tidak menabrak tombol sidebar");
+    check(l.maximizeButton.right() <= l.logo.x, "lampu berada sebelum logo");
+    check(l.title.x > l.trafficLights.right(), "judul bergeser ke kanan lampu");
+    // Kotak sentuh lebih besar dari lingkarannya supaya tetap mudah diklik.
+    check(l.closeButton.w >= 24 && l.closeButton.h >= 24, "kotak sentuh lampu minimal 24 px");
+    check(l.closeButton.w > 13, "kotak sentuh lebih besar dari lingkaran 13 px");
 
     // Konten per halaman tidak saling menumpuk di halamannya.
     check(!overlaps(l.statusCard, l.captureCard), "kartu status dan capture tidak bertumpuk");

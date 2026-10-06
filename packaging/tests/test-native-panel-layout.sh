@@ -25,6 +25,12 @@ json_binary="$out_dir/native-engine-json-test"
     -o "$json_binary"
 "$json_binary"
 
+onboarding_binary="$out_dir/native-onboarding-test"
+"$cxx" -std=c++20 -O2 -Wall -Wextra -Werror \
+    -I "$root/packaging/native-host" \
+    "$root/packaging/tests/native-onboarding-test.cpp" -o "$onboarding_binary"
+"$onboarding_binary"
+
 contract_binary="$out_dir/native-control-contract-test"
 "$cxx" -std=c++20 -O2 -Wall -Wextra -Werror \
     -I "$root/packaging/native-host" \

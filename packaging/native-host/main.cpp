@@ -41,6 +41,8 @@
 
 #include "resource.h"
 #include "layout.h"
+#include "gate_layout.h"
+#include "onboarding.h"
 #include "engine_json.h"
 #include "control_client.h"
 #include "account_auth.h"
@@ -207,6 +209,18 @@ struct AppState {
     HANDLE logFile = nullptr;
     bool running = false;
     bool startRequested = false;
+
+    // ── Gerbang masuk: sambutan → login → panel ──
+    xydesk::onboarding::Gate gate;
+    xydesk::onboarding::Clock gateMotion;   // kartu muncul / berpindah layar
+    xydesk::panel::GateLayout gateLayout{};
+    int cursorX = -1, cursorY = -1;
+    int gateHot = 0;      // 0 tidak ada, 1 utama, 2 kedua, 3 keluar
+    int gatePressed = 0;
+    std::future<xydesk::account::Result> gateRestore;
+    std::future<xydesk::account::Result> gateLogin;
+    std::atomic_bool gateCancelled{false};
+    std::wstring gateAccount;
 };
 
 AppState g;
@@ -850,71 +864,61 @@ void drawGlyphSegments(HDC dc, COLORREF color, int thickness,
 // sama (latar bulat halus, glyph menerang); hanya tutup yang memerah supaya
 // makna destruktifnya tetap jelas. Tanpa warna mencolok lain — panel harus
 // tetap bersih.
+// Lampu lalu lintas ala macOS. Diam: tiga lingkaran berwarna. Saat kursor
+// berada di gugusnya, glyph kecil muncul di dalam lingkaran — persis kebiasaan
+// macOS, dan alasannya bagus: ikon permanen membuat sudut jendela ramai,
+// sedangkan warna saja sudah cukup untuk dikenali.
 void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
-    const int radius = xydesk::panel::scaled(10, layout.scalePct);
     const int thickness = std::max(1, xydesk::panel::scaled(2, layout.scalePct));
+    const bool clusterHot = layout.trafficLights.contains(g.cursorX, g.cursorY)
+        || g.hot == Target::Close || g.hot == Target::Minimize || g.hot == Target::Maximize;
 
-    const auto hoverFill = [&](Target target, const Rect& rect) {
-        if (g.hot == target || g.pressed == target) {
-            fillRoundedOpaque(surface, rect, radius,
-                g.pressed == target ? kSurfacePressed : kSurface2);
+    const struct { Target target; COLORREF live; COLORREF glyph; } lights[] = {
+        {Target::Close, RGB(255, 95, 86), RGB(77, 0, 0)},
+        {Target::Minimize, RGB(255, 189, 46), RGB(89, 59, 0)},
+        {Target::Maximize, RGB(39, 201, 63), RGB(0, 61, 10)},
+    };
+    const int diameter = xydesk::panel::scaled(xydesk::panel::kTrafficLight, layout.scalePct);
+
+    for (const auto& light : lights) {
+        const Rect& hit = light.target == Target::Close ? layout.closeButton
+            : light.target == Target::Minimize ? layout.minimizeButton : layout.maximizeButton;
+        const Rect circle{
+            xydesk::panel::centerX(hit) - diameter / 2,
+            xydesk::panel::centerY(hit) - diameter / 2,
+            diameter, diameter};
+        // Jendela yang tidak aktif memakai abu-abu, sama seperti macOS.
+        const bool active = GetForegroundWindow() == g.window;
+        COLORREF fill = active ? light.live : RGB(206, 208, 212);
+        if (g.pressed == light.target) {
+            fill = RGB(GetRValue(fill) * 4 / 5, GetGValue(fill) * 4 / 5, GetBValue(fill) * 4 / 5);
         }
-    };
-    const auto glyphColor = [&](Target target, COLORREF hotColor) {
-        return g.hot == target ? hotColor : kMuted;
-    };
+        fillCircleOpaque(surface, circle, fill);
 
-    // Perkecil: satu garis mendatar, bobotnya sama dengan lengan silang.
-    {
-        const Rect& rect = layout.minimizeButton;
-        hoverFill(Target::Minimize, rect);
-        const int arm = xydesk::panel::scaled(13, layout.scalePct) / 2;
-        const int cx = xydesk::panel::centerX(rect);
-        const int cy = xydesk::panel::centerY(rect);
-        drawGlyphSegments(dc, glyphColor(Target::Minimize, kText), thickness,
-            {{{cx - arm, cy}, {cx + arm + 1, cy}}});
-    }
-
-    // Perbesar: kotak kosong. Saat sudah besar, glyph berubah jadi dua kotak
-    // bertumpuk (pulihkan), mengikuti kebiasaan Windows.
-    {
-        const Rect& rect = layout.maximizeButton;
-        hoverFill(Target::Maximize, rect);
-        const COLORREF color = glyphColor(Target::Maximize, kText);
-        const int cx = xydesk::panel::centerX(rect);
-        const int cy = xydesk::panel::centerY(rect);
-        if (!g.maximized) {
-            const int half = xydesk::panel::scaled(12, layout.scalePct) / 2;
-            const int x0 = cx - half, y0 = cy - half;
-            const int x1 = cx + half, y1 = cy + half;
-            drawGlyphSegments(dc, color, thickness,
-                {{{x0, y0}, {x1, y0}}, {{x1, y0}, {x1, y1}},
-                 {{x1, y1}, {x0, y1}}, {{x0, y1}, {x0, y0}}});
+        if (!clusterHot) continue;
+        const int cx = xydesk::panel::centerX(circle);
+        const int cy = xydesk::panel::centerY(circle);
+        const int arm = std::max(2, diameter / 4);
+        if (light.target == Target::Close) {
+            drawGlyphSegments(dc, light.glyph, thickness,
+                {{{cx - arm, cy - arm}, {cx + arm + 1, cy + arm + 1}},
+                 {{cx + arm, cy - arm}, {cx - arm - 1, cy + arm + 1}}});
+        } else if (light.target == Target::Minimize) {
+            drawGlyphSegments(dc, light.glyph, thickness,
+                {{{cx - arm, cy}, {cx + arm + 1, cy}}});
+        } else if (!g.maximized) {
+            // Zoom: dua segitiga kecil saling membelakangi, disederhanakan
+            // menjadi dua sudut panah.
+            drawGlyphSegments(dc, light.glyph, thickness,
+                {{{cx - arm, cy - arm}, {cx + arm, cy - arm}},
+                 {{cx - arm, cy - arm}, {cx - arm, cy + arm}},
+                 {{cx + arm, cy + arm}, {cx - arm, cy + arm}},
+                 {{cx + arm, cy + arm}, {cx + arm, cy - arm}}});
         } else {
-            const int size = xydesk::panel::scaled(12, layout.scalePct);
-            const int offset = xydesk::panel::scaled(3, layout.scalePct);
-            const int back = size - offset;
-            const int bx = cx - size / 2 + offset, by = cy - size / 2 - offset;
-            const int fx = bx - offset, fy = by + offset;
-            // Kotak belakang cukup dua garis (atas + kanan) supaya tidak
-            // ramai di ukuran sekecil ini.
-            drawGlyphSegments(dc, color, thickness,
-                {{{bx, by}, {bx + back, by}}, {{bx + back, by}, {bx + back, by + back}},
-                 {{fx, fy}, {fx + back, fy}}, {{fx + back, fy}, {fx + back, fy + back}},
-                 {{fx + back, fy + back}, {fx, fy + back}}, {{fx, fy + back}, {fx, fy}}});
+            drawGlyphSegments(dc, light.glyph, thickness,
+                {{{cx - arm, cy}, {cx + arm + 1, cy}},
+                 {{cx, cy - arm}, {cx, cy + arm + 1}}});
         }
-    }
-
-    // Tutup: silang dari dua garis tebal; hover memerah sebagai penegas.
-    {
-        const Rect& rect = layout.closeButton;
-        hoverFill(Target::Close, rect);
-        const int arm = xydesk::panel::scaled(13, layout.scalePct) / 2;
-        const int cx = xydesk::panel::centerX(rect);
-        const int cy = xydesk::panel::centerY(rect);
-        drawGlyphSegments(dc, glyphColor(Target::Close, kBad), thickness,
-            {{{cx - arm, cy - arm}, {cx + arm + 1, cy + arm + 1}},
-             {{cx + arm, cy - arm}, {cx - arm - 1, cy + arm + 1}}});
     }
 }
 
@@ -967,6 +971,8 @@ void goPage(HWND hwnd, Page target) {
 
 void tickAnimation(HWND hwnd) {
     bool more = false;
+    pollGate(hwnd);
+    if (g.gateMotion.running) more = true;
     if (g.pageT < 1.0f) {
         g.pageT = std::min(1.0f, g.pageT + 0.10f); // ±160ms
         more = g.pageT < 1.0f;
@@ -1220,6 +1226,255 @@ PanelLayout shiftedContent(const PanelLayout& l, int dx) {
     return s;
 }
 
+// ── Gerbang masuk ───────────────────────────────────────────────────────────
+// Panel host tidak lagi terbuka begitu saja: sambutan untuk pemasangan baru,
+// lalu masuk akun. Aturan tahapnya ada di onboarding.h (teruji tanpa Windows);
+// di sini hanya penyimpanan, menggambar, dan menyalakan animasi.
+
+constexpr wchar_t kGateKey[] = L"Software\\XyDesk\\Panel";
+
+bool welcomeSeenStored() {
+    DWORD value = 0, size = sizeof(value), type = REG_DWORD;
+    if (RegGetValueW(HKEY_CURRENT_USER, kGateKey, L"WelcomeSeen", RRF_RT_REG_DWORD, &type,
+            &value, &size) != ERROR_SUCCESS) {
+        return false;
+    }
+    return value != 0;
+}
+
+void storeWelcomeSeen() {
+    HKEY key = nullptr;
+    if (RegCreateKeyExW(HKEY_CURRENT_USER, kGateKey, 0, nullptr, 0, KEY_SET_VALUE, nullptr, &key,
+            nullptr) != ERROR_SUCCESS) {
+        return;
+    }
+    const DWORD value = 1;
+    RegSetValueExW(key, L"WelcomeSeen", 0, REG_DWORD, reinterpret_cast<const BYTE*>(&value),
+        sizeof(value));
+    RegCloseKey(key);
+}
+
+std::uint64_t nowMs() { return GetTickCount64(); }
+
+void beginGateMotion(HWND hwnd, std::uint32_t duration) {
+    g.gateMotion.begin(nowMs(), duration);
+    startAnim(hwnd);
+}
+
+/** Mulai memulihkan sesi tersimpan tanpa memblokir jendela. */
+void probeAccount(HWND hwnd) {
+    g.gate.start(/*hasSession=*/false, welcomeSeenStored());
+    beginGateMotion(hwnd, xydesk::onboarding::kCardMs);
+    try {
+        g.gateRestore = std::async(std::launch::async, xydesk::account::restore);
+    } catch (...) {
+        // Tanpa thread, gerbang tetap bisa dipakai secara manual.
+    }
+}
+
+void beginSignIn(HWND hwnd) {
+    if (g.gate.busy()) return;
+    g.gate.attempt(xydesk::onboarding::Method::Google);
+    g.gateCancelled = false;
+    try {
+        g.gateLogin = std::async(std::launch::async, [] {
+            return xydesk::account::login(g.gateCancelled);
+        });
+    } catch (...) {
+        g.gate.fail("Proses login tidak dapat dimulai.");
+    }
+    beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+}
+
+std::string narrow(const std::wstring& text) {
+    if (text.empty()) return {};
+    const int n = WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()),
+        nullptr, 0, nullptr, nullptr);
+    if (n <= 0) return {};
+    std::string out(static_cast<size_t>(n), 0);
+    WideCharToMultiByte(CP_UTF8, 0, text.data(), static_cast<int>(text.size()), out.data(), n,
+        nullptr, nullptr);
+    return out;
+}
+
+/** Dipanggil tiap tick animasi: panen hasil restore/login yang sudah siap. */
+void pollGate(HWND hwnd) {
+    const auto ready = [](std::future<xydesk::account::Result>& f) {
+        return f.valid() && f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    };
+    if (ready(g.gateRestore)) {
+        const auto result = g.gateRestore.get();
+        if (result.ok) {
+            g.gateAccount = result.email.empty() ? result.name : result.email;
+            g.gate.succeed(narrow(g.gateAccount));
+            storeWelcomeSeen();
+            if (!g.running) PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        }
+        beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+    }
+    if (ready(g.gateLogin)) {
+        const auto result = g.gateLogin.get();
+        if (result.ok) {
+            g.gateAccount = result.email.empty() ? result.name : result.email;
+            g.gate.succeed(narrow(g.gateAccount));
+            storeWelcomeSeen();
+            if (!g.running) PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        } else {
+            g.gate.fail(narrow(result.message));
+        }
+        beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+    }
+}
+
+/** 0 = tidak ada, 1 = tombol utama, 2 = tombol kedua, 3 = keluar aplikasi. */
+int gateTargetAt(int x, int y) {
+    if (g.gate.panelVisible()) return 0;
+    const auto& l = g.gateLayout;
+    if (l.quit.contains(x, y)) return 3;
+    if (l.primary.contains(x, y)) return 1;
+    if (l.secondary.h > 0 && l.secondary.contains(x, y)) return 2;
+    return 0;
+}
+
+void activateGate(HWND hwnd, int target) {
+    using xydesk::onboarding::Stage;
+    switch (target) {
+    case 1:
+        if (g.gate.stage == Stage::Welcome) {
+            g.gate.beginLogin();
+            storeWelcomeSeen();
+            beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+        } else {
+            beginSignIn(hwnd);
+        }
+        break;
+    case 2:
+        // Masuk lewat email memakai halaman web yang sama; browser yang
+        // menentukan metodenya. Tombol terpisah hanya supaya pengguna tanpa
+        // akun Google tahu jalurnya ada.
+        if (g.gate.stage == Stage::Login) {
+            g.gate.attempt(xydesk::onboarding::Method::Email);
+            ShellExecuteW(nullptr, L"open", L"https://xydesk.my.id/masuk", nullptr, nullptr,
+                SW_SHOWNORMAL);
+            beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+        }
+        break;
+    case 3:
+        g.gateCancelled = true;
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        break;
+    default:
+        break;
+    }
+}
+
+void paintGate(Surface& surface, HDC dc) {
+    using namespace xydesk::onboarding;
+    const bool login = g.gate.stage != Stage::Welcome;
+    g.gateLayout = xydesk::panel::computeGateLayout(g.layout.panel, g.layout.scalePct, login);
+    const auto& l = g.gateLayout;
+
+    const float raw = g.gateMotion.progress(nowMs());
+    const int lift = xydesk::panel::scaled(18, g.layout.scalePct);
+
+    // Latar: permukaan tenang, tanpa sidebar dan tanpa isi panel. Satu kartu
+    // yang jadi fokus — bahasa macOS.
+    fillRectOpaque(surface, g.layout.panel, kSurface2);
+
+    const float cardT = easeOutExpo(staggered(raw, 0, GateLayout::kSteps));
+    const Rect card{l.card.x, l.card.y + mixInt(lift, 0, cardT), l.card.w, l.card.h};
+    fillRoundedOpaque(surface, card, l.radiusCard, kSurface, cardT);
+    strokeRounded(surface, card, l.radiusCard, kEdge, 1);
+
+    const int dy = card.y - l.card.y;
+    const auto shifted = [&](const Rect& r, int index) {
+        const float t = easeOutExpo(staggered(raw, index, GateLayout::kSteps));
+        return Rect{r.x, r.y + dy + mixInt(lift, 0, t), r.w, r.h};
+    };
+
+    // Tanda XyDesk: lingkaran aksen yang mengembang sedikit (easeOutBack).
+    {
+        const float t = easeOutBack(staggered(raw, 1, GateLayout::kSteps));
+        const Rect base = shifted(l.mark, 1);
+        const int size = mixInt(base.w * 7 / 10, base.w, t);
+        const Rect mark{base.x + (base.w - size) / 2, base.y + (base.h - size) / 2, size, size};
+        fillCircleOpaque(surface, mark, kAccent);
+        drawTextCentered(dc, L"Xy", mark, g.fontTitle, kOnAccent);
+    }
+
+    const wchar_t* title = login ? L"Masuk ke XyDesk" : L"Selamat datang di XyDesk";
+    const wchar_t* subtitle = login
+        ? L"Akun dipakai untuk mengenali PC ini dan menyimpan perangkat tepercaya."
+        : L"Kendalikan PC ini dari HP. Siapkan sekali, pakai dari mana saja.";
+    drawTextLine(dc, title, shifted(l.title, 2), g.fontHeading, kText,
+        DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+    drawTextLine(dc, subtitle, shifted(l.subtitle, 2), g.fontSmall, kMuted,
+        DT_CENTER | DT_WORDBREAK);
+
+    // Tombol utama.
+    {
+        const Rect rect = shifted(l.primary, 3);
+        const bool hot = g.gateHot == 1;
+        const bool pressed = g.gatePressed == 1;
+        const COLORREF fill = g.gate.busy() ? kDisabled
+            : pressed ? kAccentPressed : hot ? kAccentHover : kAccent;
+        fillRoundedOpaque(surface, rect, l.radiusControl, fill);
+        const wchar_t* label = !login ? L"Mulai"
+            : g.gate.busy() ? L"Menunggu browser…" : L"Lanjutkan dengan Google";
+        drawTextCentered(dc, label, rect, g.fontSemi, kOnAccent);
+    }
+
+    // Tombol kedua (hanya layar masuk).
+    if (l.secondary.h > 0) {
+        const Rect rect = shifted(l.secondary, 3);
+        const bool pressed = g.gatePressed == 2;
+        if (g.gateHot == 2 || pressed) {
+            fillRoundedOpaque(surface, rect, l.radiusControl, pressed ? kSurfacePressed : kSurface3);
+        }
+        strokeRounded(surface, rect, l.radiusControl, kEdge, 1);
+        drawTextCentered(dc, L"Masuk dengan email", rect, g.fontSemi,
+            g.gate.busy() ? kDisabled : kText);
+    }
+
+    // Catatan / pesan gagal.
+    {
+        const Rect rect = shifted(l.note, 4);
+        if (!g.gate.message.empty()) {
+            const std::wstring message = xydesk::account::wide(g.gate.message);
+            drawTextLine(dc, message, rect, g.fontSmall, kBad, DT_CENTER | DT_WORDBREAK);
+        } else {
+            drawTextLine(dc,
+                login ? L"Login dibuka di browser sistem. Jangan bagikan URL callback."
+                      : L"Perlu akun XyDesk. Membuatnya gratis dan satu menit.",
+                rect, g.fontSmall, kMuted, DT_CENTER | DT_WORDBREAK);
+        }
+    }
+
+    // Dua titik langkah: sambutan → masuk.
+    {
+        const Rect rect = shifted(l.dots, 4);
+        const int dot = xydesk::panel::scaled(6, g.layout.scalePct);
+        const int gap = xydesk::panel::scaled(8, g.layout.scalePct);
+        const int totalW = dot * 2 + gap;
+        int x = rect.x + (rect.w - totalW) / 2;
+        for (int index = 0; index < 2; ++index) {
+            const bool active = (index == 0) == (!login);
+            fillCircleOpaque(surface, Rect{x, rect.y, dot, dot}, active ? kAccent : kSurface3);
+            x += dot + gap;
+        }
+    }
+
+    // Keluar aplikasi dari gerbang: tanpa ini pengguna yang belum punya akun
+    // terjebak di jendela tanpa jalan keluar selain Task Manager.
+    {
+        const Rect rect = shifted(l.quit, 0);
+        if (g.gateHot == 3) fillRoundedOpaque(surface, rect, l.radiusControl, kSurface3);
+        drawTextCentered(dc, L"\u2715", rect, g.fontSmall, kMuted);
+    }
+
+    if (g.gateMotion.running) startAnim(g.window);
+}
+
 bool drawPanelToSurface() {
     if (!ensureSurface(g.surface, g.layout.window.w, g.layout.window.h)) return false;
     Surface& surface = g.surface;
@@ -1236,6 +1491,16 @@ bool drawPanelToSurface() {
     if (!dc) return false;
 
     HFONT previousFont = static_cast<HFONT>(SelectObject(dc, g.fontBody));
+
+    // Sebelum masuk akun, panel tidak digambar sama sekali — bukan sekadar
+    // ditutupi. Tidak ada ID, kode pairing, atau status mesin yang bocor ke
+    // layar bagi orang yang menemukan PC ini menyala.
+    if (!g.gate.panelVisible()) {
+        paintGate(surface, dc);
+        paintCaptionButtons(surface, g.layout, dc);
+        SelectObject(dc, previousFont);
+        return true;
+    }
 
     fillRoundedOpaque(surface,g.layout.workspaceShell,g.layout.radiusPanel,kSurface2);
     paintPageHeading(dc,g.layout,g.page);
@@ -1765,6 +2030,9 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
     if(message==WM_COMMAND&&!state->pending.valid()){
         if(LOWORD(wParam)==IDC_ACCOUNT_LOGOUT){
             if(!xydesk::account::signOut()){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi belum berhasil dihapus dari penyimpanan Windows.");return TRUE;}state->profile={};
+            // Keluar akun menutup panel kembali ke layar masuk: tanpa ini
+            // ID dan kode pairing tetap terbaca setelah sesi dihapus.
+            g.gateAccount.clear();g.gate.signOut();if(g.window){beginGateMotion(g.window,xydesk::onboarding::kStageMs);renderPanel();}
             SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,L"Belum masuk akun");SetDlgItemTextW(hwnd,IDC_ACCOUNT_EMAIL,L"");
             SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi aplikasi dihapus. Login browser tidak ikut dikeluarkan.");return TRUE;
         }
@@ -2037,10 +2305,17 @@ void trackMouse(HWND hwnd) {
 }
 
 void updateHover(int x, int y) {
+    g.cursorX = x;
+    g.cursorY = y;
     const Target target = xydesk::panel::targetAt(g.layout, g.page, x, y, g.sessionMismatch);
     const Target hot = targetEnabled(target) || target == Target::TitleBar ? target : Target::None;
-    if (hot != g.hot) {
+    // Gugus lampu menyala/padam bersama, jadi perpindahan masuk-keluar gugus
+    // perlu menggambar ulang walau Target-nya tetap TitleBar.
+    static bool wasInCluster = false;
+    const bool inCluster = g.layout.trafficLights.contains(x, y);
+    if (hot != g.hot || inCluster != wasInCluster) {
         g.hot = hot;
+        wasInCluster = inCluster;
         renderPanel();
     }
 }
@@ -2121,9 +2396,11 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         if(!workspaceProbe)addTrayIcon(hwnd);
         setStatus(L"Menyalakan host…", kMuted);
         if(!workspaceProbe)SetTimer(hwnd, kTimer, 1000, nullptr);
-        // Panel adalah satu pintu: dibuka berarti host hidup tanpa tombol
-        // kedua. Post agar jendela selesai dibuat dulu.
-        if(!workspaceProbe)PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        // Panel adalah satu pintu, tapi pintunya kini berkunci: engine baru
+        // dinyalakan setelah pemilik PC ini masuk akun. Menyalakannya lebih
+        // awal berarti mesin siap menerima koneksi sementara layar masih
+        // menampilkan layar masuk — persis yang ingin dicegah.
+        if(!workspaceProbe)probeAccount(hwnd);
         return 0;
 
     case kAutoStartMessage:
@@ -2153,10 +2430,18 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case WM_NCHITTEST:
         return handleHitTest(hwnd, lParam);
 
-    case WM_MOUSEMOVE:
+    case WM_MOUSEMOVE: {
         trackMouse(hwnd);
-        updateHover(xFromLParam(lParam), yFromLParam(lParam));
+        const int mx = xFromLParam(lParam), my = yFromLParam(lParam);
+        if (!g.gate.panelVisible()) {
+            g.cursorX = mx; g.cursorY = my;
+            const int hot = gateTargetAt(mx, my);
+            if (hot != g.gateHot) { g.gateHot = hot; renderPanel(); }
+            return 0;
+        }
+        updateHover(mx, my);
         return 0;
+    }
 
     case WM_MOUSELEAVE:
         g.trackingMouse = false;
@@ -2167,6 +2452,11 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_LBUTTONDOWN: {
+        if (!g.gate.panelVisible()) {
+            const int hit = gateTargetAt(xFromLParam(lParam), yFromLParam(lParam));
+            if (hit) { g.gatePressed = hit; SetCapture(hwnd); renderPanel(); }
+            return 0;
+        }
         const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam), g.sessionMismatch);
         if (target != Target::None && target != Target::TitleBar && targetEnabled(target)) {
             g.pressed = target;
@@ -2177,6 +2467,15 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     }
 
     case WM_LBUTTONUP: {
+        if (!g.gate.panelVisible()) {
+            const int hit = gateTargetAt(xFromLParam(lParam), yFromLParam(lParam));
+            const int pressed = g.gatePressed;
+            g.gatePressed = 0;
+            if (GetCapture() == hwnd) ReleaseCapture();
+            if (pressed && pressed == hit) activateGate(hwnd, hit);
+            renderPanel();
+            return 0;
+        }
         const Target target = xydesk::panel::targetAt(g.layout, g.page, xFromLParam(lParam), yFromLParam(lParam), g.sessionMismatch);
         const Target pressed = g.pressed;
         g.pressed = Target::None;
@@ -2216,6 +2515,18 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_KEYDOWN: {
+        if (!g.gate.panelVisible()) {
+            // Di gerbang keyboard sederhana saja: Enter menekan tombol utama,
+            // Esc membatalkan percobaan masuk yang menggantung.
+            if (wParam == VK_RETURN || wParam == VK_SPACE) { activateGate(hwnd, 1); return 0; }
+            if (wParam == VK_ESCAPE) {
+                g.gateCancelled = true;
+                g.gate.cancel();
+                renderPanel();
+                return 0;
+            }
+            return 0;
+        }
         if (wParam == VK_TAB) {
             moveFocus((GetKeyState(VK_SHIFT) & 0x8000) ? -1 : 1);
             return 0;
@@ -2514,6 +2825,13 @@ int runWorkspaceEvidence(HWND hwnd,const std::wstring& directory){
     if(!EqualRect(&bounds,&monitor.rcWork))return 33;
     toggleMaximize(hwnd);GetWindowRect(hwnd,&bounds);if(bounds.right-bounds.left!=1000||bounds.bottom-bounds.top!=680)return 34;
     SetWindowPos(hwnd,nullptr,0,0,1100,720,SWP_NOMOVE|SWP_NOZORDER);
+    // Bukti gerbang dulu (sambutan + layar masuk), baru halaman panel.
+    g.gate.start(false,false);g.gateMotion.begin(nowMs(),1);renderPanel();UpdateWindow(hwnd);
+    if(!saveWindowEvidence(hwnd,directory+L"\\gate-welcome.bmp"))return 37;
+    g.gate.beginLogin();g.gateMotion.begin(nowMs(),1);renderPanel();UpdateWindow(hwnd);
+    if(!saveWindowEvidence(hwnd,directory+L"\\gate-login.bmp"))return 37;
+    // Sisa bukti memotret panel, jadi gerbang dibuka untuk mode pratinjau ini.
+    g.gate.succeed("pratinjau@xydesk.my.id");
     const struct{Page page;const wchar_t* name;} pages[]={{Page::Status,L"home"},{Page::Connections,L"connections-empty"},{Page::Pairing,L"access"},{Page::Control,L"host-control"},{Page::Settings,L"settings-screen"},{Page::Account,L"account-screen"},{Page::Help,L"help-screen"}};
     for(const auto& entry:pages){
         goPage(hwnd,entry.page);renderPanel();UpdateWindow(hwnd);
