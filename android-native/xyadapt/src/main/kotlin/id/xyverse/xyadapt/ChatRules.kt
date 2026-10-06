@@ -92,6 +92,22 @@ object ChatRules {
         return "${if (h < 10) "0$h" else "$h"}.${if (m < 10) "0$m" else "$m"}"
     }
 
+    /**
+     * Tingkat akun yang dikenal gelembung chat. Server mengirimnya sebagai
+     * teks; apa pun selain "vip" diperlakukan biasa — termasuk nilai baru
+     * dari server versi mendatang yang belum dikenal aplikasi ini.
+     */
+    fun isVip(tier: String?): Boolean = tier == "vip"
+
+    /**
+     * Inisial untuk avatar: satu huruf, dari karakter huruf/angka pertama.
+     * Nama yang hanya berisi tanda baca jatuh ke tanda tanya, bukan kosong.
+     */
+    fun initial(name: String): String {
+        val ch = name.firstOrNull { it.isLetterOrDigit() } ?: return "?"
+        return ch.uppercase()
+    }
+
     /** Pesan error dari server diterjemahkan menjadi kalimat untuk pengguna. */
     fun errorText(reason: String, retryMs: Long): String = when (reason) {
         "terlalu-cepat" -> "Sabar sebentar — tunggu ${seconds(retryMs)} detik."

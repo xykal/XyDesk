@@ -147,6 +147,12 @@ export function browserOriginAllowed(request, env) {
 }
 
 export function corsResponse(response, request, env) {
+  // Balasan upgrade WebSocket (101) tidak boleh dibungkus ulang: konstruktor
+  // Response menolak status di luar 200..599, jadi membungkusnya mengubah
+  // sambungan yang sudah berhasil menjadi 500. Header CORS juga tidak
+  // berlaku untuk soket yang sudah terbentuk.
+  if (response.status === 101 || response.webSocket) return response;
+
   const origin = request.headers.get('Origin') || '';
   const configured = allowedOrigins(env);
   const allowOrigin = configured.includes('*')
@@ -601,6 +607,7 @@ async function handleChat(request, url, env) {
   headers.delete('Authorization');
   headers.set('x-xydesk-email', user.email);
   headers.set('x-xydesk-name', typeof user.name === 'string' ? user.name : '');
+  headers.set('x-xydesk-tier', user.tier === 'vip' ? 'vip' : 'free');
   const inner = path === '/chat/history' ? 'https://chat/history' : 'https://chat/ws';
   return stub.fetch(new Request(inner, { method: request.method, headers }));
 }

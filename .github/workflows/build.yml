@@ -199,6 +199,16 @@ jobs:
           npm ci
           npm test
 
+      # Chat global dirangkai dari tiga bagian (Worker, AUTH_STORE, ChatRoom)
+      # dan tes unit tidak pernah menjalankan rangkaiannya. Satu bug di
+      # pembungkus CORS sempat mengubah SETIAP upgrade WebSocket menjadi 500
+      # tanpa satu pun tes unit berubah warna. Langkah ini menjalankan dua
+      # peserta sungguhan di runtime workerd.
+      - name: Uji chat global ujung-ke-ujung (workerd)
+        run: |
+          cd cloudflare
+          npm run test:chat
+
       # Signaling Go adalah jalur cadangan self-host. Formatnya pernah
       # dibiarkan menyimpang berbulan-bulan karena tidak ada yang mengecek, dan
       # aturan keamanannya (role di token, arah relay) pernah lebih lemah dari

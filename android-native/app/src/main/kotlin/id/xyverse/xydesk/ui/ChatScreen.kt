@@ -47,6 +47,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import id.xyverse.xyadapt.ChatRules
 import id.xyverse.xydesk.net.ChatClient
@@ -192,28 +195,33 @@ private fun ChatHeader(link: ChatLink, online: Int) {
 @Composable
 private fun Bubble(m: ChatMessage, head: Boolean, me: String, offsetMs: Int) {
     val mine = m.mine || (me.isNotEmpty() && m.from == me)
-    Column(Modifier.fillMaxWidth().padding(top = if (head) 10.dp else 0.dp)) {
-        if (head) {
-            Row(
-                Modifier.fillMaxWidth().padding(bottom = 3.dp),
-                horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!mine) {
-                    Box(Modifier.size(18.dp).background(hueColor(m.hue), CircleShape), contentAlignment = Alignment.Center) {
-                        XyText(m.from.take(1).uppercase(), Xy.label, color = Color.White, maxLines = 1)
-                    }
-                    Spacer(Modifier.width(7.dp))
-                    XyText(m.from, Xy.label, maxLines = 1)
-                    Spacer(Modifier.width(7.dp))
-                }
-                XyText(ChatRules.clock(m.at, offsetMs), Xy.label, maxLines = 1)
+    Row(
+        Modifier.fillMaxWidth().padding(top = if (head) 10.dp else 2.dp),
+        horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        // Kolom avatar selalu memesan tempat, juga untuk pesan lanjutan,
+        // supaya gelembung satu orang tetap lurus dan tidak bergeser.
+        if (!mine) {
+            Box(Modifier.width(34.dp), contentAlignment = Alignment.Center) {
+                if (head) Avatar(m.from, m.hue, m.vip)
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start) {
+        Column(horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
+            if (head && !mine) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 3.dp)) {
+                    XyText(m.from, Xy.label.copy(color = Xy.textMid, fontWeight = FontWeight.SemiBold), maxLines = 1)
+                    if (m.vip) {
+                        Spacer(Modifier.width(5.dp))
+                        VipBadge()
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    XyText(ChatRules.clock(m.at, offsetMs), Xy.label, maxLines = 1)
+                }
+            }
             Box(
                 Modifier
-                    .widthIn(max = 280.dp)
+                    .widthIn(max = 268.dp)
                     .clip(
                         RoundedCornerShape(
                             topStart = if (mine || head) Xy.radiusM else 6.dp,
@@ -223,11 +231,60 @@ private fun Bubble(m: ChatMessage, head: Boolean, me: String, offsetMs: Int) {
                         ),
                     )
                     .background(if (mine) Xy.accent else Xy.overlay)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 13.dp, vertical = 9.dp),
             ) {
                 XyText(m.text, Xy.body, color = if (mine) Color.White else Xy.textHi)
             }
+            if (head && mine) {
+                XyText(
+                    ChatRules.clock(m.at, offsetMs),
+                    Xy.label,
+                    Modifier.padding(top = 2.dp),
+                    maxLines = 1,
+                )
+            }
         }
+    }
+}
+
+/**
+ * Avatar bulat berisi inisial. Anggota VIP mendapat cincin emas berlapis —
+ * satu lingkaran gelap tipis di luar supaya cincinnya tetap terbaca di atas
+ * latar putih maupun warna avatar yang terang.
+ */
+@Composable
+private fun Avatar(name: String, hue: Int, vip: Boolean) {
+    val size = if (vip) 30.dp else 28.dp
+    Box(contentAlignment = Alignment.Center) {
+        if (vip) {
+            Box(
+                Modifier
+                    .size(size)
+                    .background(Brush.linearGradient(listOf(kVipLight, kVipDeep)), CircleShape)
+                    .border(0.8.dp, kVipDeep.copy(alpha = 0.55f), CircleShape),
+            )
+        }
+        Box(
+            Modifier
+                .size(if (vip) size - 5.dp else size)
+                .background(hueColor(hue), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            XyText(ChatRules.initial(name), Xy.label, color = Color.White, maxLines = 1)
+        }
+    }
+}
+
+/** Lencana kecil di sebelah nama. Sengaja teks, bukan gambar: ikut skala font. */
+@Composable
+private fun VipBadge() {
+    Box(
+        Modifier
+            .clip(RoundedCornerShape(Xy.pill))
+            .background(Brush.linearGradient(listOf(kVipLight, kVipDeep)))
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    ) {
+        XyText("VIP", Xy.label.copy(fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp), color = Color.White, maxLines = 1)
     }
 }
 
@@ -294,6 +351,10 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
         XyText("→", Xy.title, color = Color.White, maxLines = 1)
     }
 }
+
+// Emas VIP. Dua titik gradasi supaya cincinnya tidak terlihat datar.
+private val kVipLight = Color(0xFFF7C948)
+private val kVipDeep = Color(0xFFB07400)
 
 /** Warna avatar dari hue yang dikirim server; saturasi dan terang dikunci. */
 private fun hueColor(hue: Int): Color {

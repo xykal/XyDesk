@@ -18,6 +18,8 @@ data class ChatMessage(
     val text: String,
     val at: Long,
     val mine: Boolean,
+    /** Dari profil akun lewat server — tidak pernah dari isi pesan. */
+    val vip: Boolean = false,
 )
 
 /** Keadaan sambungan yang terlihat di layar. */
@@ -42,6 +44,9 @@ class ChatClient(private val jwt: String) {
 
     private val _me = MutableStateFlow("")
     val me: StateFlow<String> = _me
+
+    private val _meVip = MutableStateFlow(false)
+    val meVip: StateFlow<Boolean> = _meVip
 
     /** Pesan kesalahan sekali tampil; layar yang menghapusnya setelah dibaca. */
     private val _notice = MutableStateFlow<String?>(null)
@@ -112,6 +117,7 @@ class ChatClient(private val jwt: String) {
         when (o.optString("type")) {
             "welcome" -> {
                 _me.value = o.optString("you")
+                _meVip.value = ChatRules.isVip(o.optString("tier"))
                 _online.value = o.optInt("online", 1)
                 val arr = o.optJSONArray("messages") ?: return
                 val list = ArrayList<ChatMessage>(arr.length())
@@ -139,6 +145,7 @@ class ChatClient(private val jwt: String) {
             text = o.optString("text"),
             at = o.optLong("at", System.currentTimeMillis()),
             mine = from.isNotEmpty() && from == _me.value,
+            vip = ChatRules.isVip(o.optString("tier")),
         )
     }
 
