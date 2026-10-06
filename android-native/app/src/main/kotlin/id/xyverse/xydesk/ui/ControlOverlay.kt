@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import id.xyverse.xydesk.core.StreamXy
 import id.xyverse.xydesk.core.XyGamepad
 import id.xyverse.xydesk.core.XyScroll
+import id.xyverse.xyadapt.OverlayRules
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyText
 import org.json.JSONArray
@@ -348,6 +349,12 @@ fun ControlOverlay(
     onToggleTouch: () -> Unit,
     onEdit: (Boolean) -> Unit,
     onSave: () -> Unit,
+    /** 0 otomatis, 1 selalu tampil, 2 mati — lihat [OverlayRules]. */
+    mode: Int = OverlayRules.MODE_AUTO,
+    /** Perangkat fisik yang sedang menempel; hanya memengaruhi mode otomatis. */
+    hidKeyboard: Boolean = false,
+    hidMouse: Boolean = false,
+    hidGamepad: Boolean = false,
 ) {
     val holds = remember { OverlayHolds(send) }
     DisposableEffect(Unit) { onDispose { holds.reset() } }
@@ -360,7 +367,13 @@ fun ControlOverlay(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth.toFloat().coerceAtLeast(1f)
         val h = constraints.maxHeight.toFloat().coerceAtLeast(1f)
-        items.forEach { m ->
+        // Penyaringan per keluarga perangkat: keyboard fisik hanya
+        // menyingkirkan tombol keyboard, bukan seluruh lapisan. Sebelumnya
+        // satu perangkat apa pun menghapus gamepad virtual dari layar.
+        val terlihat = items.filter {
+            OverlayRules.visible(it.kind.name, mode, hidKeyboard, hidMouse, hidGamepad, edit)
+        }
+        terlihat.forEach { m ->
             OverlayButton(
                 m = m,
                 edit = edit,

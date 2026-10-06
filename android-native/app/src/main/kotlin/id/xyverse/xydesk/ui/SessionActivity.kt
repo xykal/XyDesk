@@ -28,6 +28,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import id.xyverse.xyadapt.FpsOptions
+import id.xyverse.xyadapt.InputFamily
+import id.xyverse.xyadapt.OverlayRules
 import id.xyverse.xyadapt.ReconnectPolicy
 import id.xyverse.xyadapt.TrackpadConfig
 import id.xyverse.xyadapt.VideoCmd
@@ -81,6 +83,12 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private var outcome = "berjalan"
     private var overlayItems by mutableStateOf(listOf<OverlayItem>())
     private var overlayEdit by mutableStateOf(false)
+    private var overlayMode by mutableStateOf(OverlayRules.MODE_AUTO)
+    /** Perangkat fisik yang menempel, dibaca ulang oleh Compose. */
+    private var hidState by mutableStateOf(HidMonitor.HidPresence())
+    /** Kosong = host sanggup menerima gamepad. */
+    private var hostGamepadReason by mutableStateOf("")
+    private var gamepadWarned = false
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
     private val statsTick = object : Runnable {
@@ -128,6 +136,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
         showStats = store.showStats
         overlayItems = OverlayLayouts.fromJson(store.overlayJson)
+        overlayMode = OverlayRules.normalizeMode(store.overlayMode)
         session = RtcSession(
             context = applicationContext,
             jwt = intent.getStringExtra("jwt").orEmpty(),
@@ -226,6 +235,13 @@ class SessionActivity : ComponentActivity(), RtcListener {
     private fun setOverlayEditMode(on: Boolean) {
         if (overlayEdit && !on) saveOverlayLayout()
         overlayEdit = on
+        // Mengatur tata letak saat kontrol dimatikan tidak masuk akal:
+        // tidak ada yang tergambar untuk dipindahkan.
+        if (on && overlayMode == OverlayRules.MODE_OFF) {
+            overlayMode = OverlayRules.MODE_AUTO
+            store.overlayMode = overlayMode
+        }
+        applyChrome()
         applyChrome()
     }
 
@@ -244,6 +260,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     },
                     onEdit = { setOverlayEditMode(it) },
                     onSave = { saveOverlayLayout() },
+                    mode = overlayMode,
+                    hidKeyboard = hidState.keyboard,
+                    hidMouse = hidState.mouse,
+                    hidGamepad = hidState.gamepad,
                 )
             }
         }
@@ -282,17 +302,42 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     private fun onHid(p: HidMonitor.HidPresence) {
         hidPresent = p
+        hidState = p
         if (p.keyboard && pcKeysOpen) setPcKeys(false)
         applyChrome()
-        if (p.any && connected && !hidToastShown) {
+        val pesan = OverlayRules.detectionMessage(overlayMode, p.keyboard, p.mouse, p.gamepad)
+        if (pesan.isNotEmpty() && connected && !hidToastShown) {
             hidToastShown = true
-            Toast.makeText(this, "Terhubung: ${p.label()}. Overlay sentuh disembunyikan.".tr(store.lang), Toast.LENGTH_LONG).show()
+            Toast.makeText(this, pesan.tr(store.lang), Toast.LENGTH_LONG).show()
         }
     }
 
-    /** Mapping on-screen hanya jika tidak ada keyboard/mouse/gamepad fisik (OTG/BT). */
+    /** Berputar: otomatis → selalu tampil → mati → otomatis. */
+    private fun cycleOverlayMode() {
+        overlayMode = OverlayRules.nextMode(overlayMode)
+        store.overlayMode = overlayMode
+        applyChrome()
+        Toast.makeText(this, OverlayRules.modeLabel(overlayMode).tr(store.lang), Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Lapisan kontrol dimatikan hanya kalau benar-benar tidak ada tombol yang
+     * tampil. Dulu satu perangkat fisik apa pun — keyboard Bluetooth sekalipun —
+     * menyembunyikan seluruh lapisan, termasuk gamepad virtual yang tidak
+     * punya padanan fisik di mana pun, dan tidak ada cara mengembalikannya.
+     * Sekarang penyaringan dilakukan per tombol di [ControlOverlay]; di sini
+     * tinggal memutuskan apakah seluruh View-nya masih ada gunanya.
+     */
     private fun applyChrome() {
-        val show = connected && !presenting && !pcKeysOpen && !hidPresent.any
+        val adaIsi = OverlayRules.layerVisible(
+            overlayItems.map { it.kind.name },
+            overlayMode,
+            hidPresent.keyboard,
+            hidPresent.mouse,
+            hidPresent.gamepad,
+            overlayEdit,
+        )
+        val show = connected && !presenting && !pcKeysOpen && adaIsi
         b.controlsLayer.visibility = if (show) View.VISIBLE else View.GONE
     }
 
@@ -366,6 +411,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         centerCursor = { session.send(StreamXy.moveAbs(0.5f, 0.5f)) },
                         present = { setPresenting(true) },
                         overlayEdit = { setOverlayEditMode(!overlayEdit) },
+                        overlayMode = { cycleOverlayMode() },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
@@ -464,6 +510,22 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onMicInput(available: Boolean, reason: String) { micInput = available; micReason = reason }
+
+    /**
+     * Peringatan sekali per sesi, dan hanya kalau pengguna benar-benar punya
+     * tombol gamepad di layarnya: memberi tahu orang yang tidak memakai
+     * gamepad bahwa gamepad tidak tersedia hanyalah kebisingan.
+     */
+    override fun onHostGamepad(available: Boolean, reason: String) = runOnUiThread {
+        hostGamepadReason = if (available) "" else reason
+        val punyaTombolGamepad = overlayItems.any {
+            OverlayRules.family(it.kind.name) == InputFamily.GAMEPAD
+        }
+        if (!available && reason.isNotEmpty() && punyaTombolGamepad && !gamepadWarned) {
+            gamepadWarned = true
+            Toast.makeText(this, "Gamepad tidak aktif di PC: $reason".tr(store.lang), Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
 

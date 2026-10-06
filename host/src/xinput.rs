@@ -19,6 +19,76 @@ pub struct GamepadReport {
 
 static PAD: Mutex<Option<Pad>> = Mutex::new(None);
 
+/// Status pad virtual untuk ditampilkan ke pengguna.
+///
+/// Tanpa ini, host yang tidak punya ViGEmBus **menelan diam-diam** setiap
+/// laporan gamepad: pengguna menekan tombol A di layar HP-nya dan tidak ada
+/// apa pun yang terjadi di PC, tanpa satu pun penjelasan di aplikasi. Satu
+/// baris di konsol host tidak terlihat oleh orang yang sedang memegang HP.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Status {
+    /// Laporan gamepad benar-benar sampai ke Windows.
+    pub available: bool,
+    /// Kenapa tidak, dalam kalimat yang boleh dibaca pengguna. Kosong bila
+    /// tersedia.
+    pub reason: &'static str,
+}
+
+/// Alasan baku. Dipisah sebagai fungsi murni supaya bisa diuji di Linux —
+/// kombinasi driver yang ada/tidak ada mustahil dirangkai di sandbox.
+pub fn reason_text(windows: bool, physical: bool, virt: bool) -> Status {
+    if !windows {
+        return Status {
+            available: false,
+            reason: "host bukan Windows",
+        };
+    }
+    if physical {
+        // Pad fisik yang sudah menancap di PC tidak ditimpa: dua pad di slot
+        // yang sama membuat game membaca dua perangkat yang saling melawan.
+        return Status {
+            available: false,
+            reason: "ada gamepad fisik di PC — pad virtual dilewati",
+        };
+    }
+    if virt {
+        return Status {
+            available: true,
+            reason: "",
+        };
+    }
+    Status {
+        available: false,
+        reason: "ViGEmBus belum terpasang di PC",
+    }
+}
+
+/// Status pad saat ini. Membuka pad bila belum pernah dibuka, supaya
+/// jawabannya benar sejak laporan pertama belum dikirim.
+pub fn status() -> Status {
+    let mut g = match PAD.lock() {
+        Ok(g) => g,
+        Err(_) => {
+            return Status {
+                available: false,
+                reason: "status gamepad tidak terbaca",
+            }
+        }
+    };
+    if g.is_none() {
+        *g = Some(Pad::open());
+    }
+    g.as_ref()
+        .map(|p| p.status())
+        .unwrap_or(reason_text(cfg!(target_os = "windows"), false, false))
+}
+
+/// Status gamepad untuk blok META yang dikirim ke klien.
+pub fn telemetry() -> serde_json::Value {
+    let s = status();
+    serde_json::json!({ "available": s.available, "reason": s.reason })
+}
+
 struct Pad {
     #[cfg(target_os = "windows")]
     virt: Option<Vigem>,
@@ -59,6 +129,18 @@ impl Pad {
         {
             let _ = physical;
             Self { physical: false }
+        }
+    }
+
+    fn status(&self) -> Status {
+        #[cfg(target_os = "windows")]
+        {
+            reason_text(true, self.physical, self.virt.is_some())
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = self.physical;
+            reason_text(false, false, false)
         }
     }
 
@@ -197,5 +279,42 @@ mod tests {
     #[test]
     fn default_report_idle() {
         assert_eq!(GamepadReport::default().buttons, 0);
+    }
+
+    #[test]
+    fn tanpa_windows_gamepad_tidak_pernah_tersedia() {
+        let s = reason_text(false, false, false);
+        assert!(!s.available);
+        assert_eq!(s.reason, "host bukan Windows");
+    }
+
+    #[test]
+    fn pad_fisik_mengalahkan_pad_virtual_dan_alasannya_dijelaskan() {
+        let s = reason_text(true, true, true);
+        assert!(!s.available);
+        assert!(s.reason.contains("fisik"));
+    }
+
+    #[test]
+    fn tanpa_vigem_alasannya_menyebut_apa_yang_harus_dipasang() {
+        let s = reason_text(true, false, false);
+        assert!(!s.available);
+        assert!(s.reason.contains("ViGEmBus"));
+    }
+
+    #[test]
+    fn dengan_vigem_tersedia_dan_tanpa_alasan() {
+        let s = reason_text(true, false, true);
+        assert!(s.available);
+        assert_eq!(s.reason, "");
+    }
+
+    #[test]
+    fn telemetri_selalu_membawa_dua_kunci() {
+        let t = telemetry();
+        assert!(t.get("available").is_some());
+        assert!(t.get("reason").is_some());
+        // Di Linux (CI dan sandbox) jawabannya pasti tidak tersedia.
+        assert_eq!(t["available"], serde_json::json!(false));
     }
 }

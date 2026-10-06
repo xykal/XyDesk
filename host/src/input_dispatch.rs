@@ -40,6 +40,9 @@ pub fn meta_json() -> serde_json::Value {
             "route": "virtual-cable",
             "dsp": crate::mic_dsp::telemetry(),
         },
+        // Status pad virtual: klien harus bisa mengatakan "host ini tidak
+        // bisa menerima gamepad" alih-alih diam saat tombolnya ditekan.
+        "gamepad": crate::xinput::telemetry(),
         "mic": {
             "available": crate::audio::mic_capture_available(),
             "pipeline": crate::audio::mic_capture_status(),
