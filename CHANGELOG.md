@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Ilustrasi beranda dan layar masuk:** empat kartu fitur di beranda kini punya ilustrasi yang sesuai isinya — kontrol, keamanan, kecepatan, dan klien browser — dipasang samar di pojok kartu supaya teksnya tetap penuh lebar dan kontrasnya tidak turun, lalu menguat sedikit saat kartu disentuh. Layar kode verifikasi mendapat ilustrasi amplop agar maksudnya terbaca tanpa menambah kalimat.
+
 - **Dekorasi hero web:** beranda kini punya tiga ilustrasi melayang — awan, kilau, dan globe — yang mengambang pelan di sekitar ilustrasi utama dengan durasi berbeda-beda supaya tidak terlihat berayun serempak. Dekorasi ini murni hiasan: tidak dibacakan pembaca layar, tidak menghalangi tombol, dimuat belakangan agar tidak menunda tampilnya hero, dan disembunyikan di layar sempit saat hero menumpuk jadi satu kolom. Gaya orb dan kartu melayang lama yang markup-nya sudah lama dihapus ikut dibuang — berkas gaya web turun 118,1 kB menjadi 115,7 kB.
 
 - **Panel admin naik ke Vite 8:** `admin/` ikut memakai Vite 8 dan `@vitejs/plugin-react` 6 seperti web, sekaligus menutup dua masalah yang selama ini tidak terlihat. Build `admin/` sebenarnya sudah gagal sejak lama (`tsc` tidak menemukan deklarasi untuk impor CSS) karena panel ini belum punya `vite-env.d.ts`, dan satu-satunya berkas testnya tidak pernah benar-benar berjalan sejak `typescript` 7 melepas `transpileModule`. Keduanya diperbaiki: deklarasi tipe ditambahkan, test memakai transformer bawaan Vite seperti di web, dan kontrak uji login admin diselaraskan dengan backend yang sudah melepas kode 2FA sejak 23 September. Bundle panel turun dari 277,7 kB menjadi 268,0 kB.

@@ -450,10 +450,30 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
   gap: 16px;
 }
 .feature-card {
+  position: relative;
+  overflow: hidden;
   background: var(--raised);
   border-radius: var(--radius);
   padding: 26px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+/* Ilustrasi duduk di pojok sebagai latar, bukan sebagai ikon di depan
+   teks: paragraf kartu tetap penuh lebarnya dan tidak perlu dipendekkan.
+   Opasitas rendah supaya kontras teks tidak ikut turun. */
+.feature-art {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 88px;
+  height: auto;
+  opacity: 0.22;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.feature-card:hover .feature-art {
+  opacity: 0.4;
+  transform: translateY(-3px);
 }
 .feature-card:hover {
   transform: translateY(-2px);
@@ -472,6 +492,14 @@ h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; }
 }
 .feature-card h3 { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
 .feature-card p { color: var(--text-mid); font-size: 14.5px; }
+
+/* Ilustrasi layar kode OTP — menegaskan "cek email" tanpa kalimat tambahan. */
+.auth-art {
+  width: clamp(88px, 28vw, 120px);
+  height: auto;
+  margin: 2px auto 10px;
+  opacity: 0.95;
+}
 
 /* ── Berita ─────────────────────────────────────────────────── */
 .home-news, .download-cta {

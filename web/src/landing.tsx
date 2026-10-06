@@ -96,19 +96,19 @@ export function LandingPage({ navigate }: { navigate: (r: Route) => void }) {
       <section className="features">
         <h2>Dibangun untuk terasa lokal</h2>
         <div className="feature-grid">
-          <FeatureCard index="01" title="Main game langsung dari HP">
+          <FeatureCard index="01" art="float-cursor" title="Main game langsung dari HP">
             WASD, tombol yang bisa ditahan, keyboard lengkap, dan trackpad —
             semua kontrol PC ada di layar HP tanpa menutupi jalannya game.
           </FeatureCard>
-          <FeatureCard index="02" title="Koneksi pribadi dan aman">
+          <FeatureCard index="02" art="float-shield" title="Koneksi pribadi dan aman">
             Masuk pakai ID dan password dari PC-mu sendiri. Gambar dan suara
             mengalir langsung antar perangkat, tidak mampir ke server kami.
           </FeatureCard>
-          <FeatureCard index="03" title="Gambar mulus, jaringan hemat">
+          <FeatureCard index="03" art="float-bolt" title="Gambar mulus, jaringan hemat">
             Encoding pakai hardware GPU bila ada, dan bitrate menyesuaikan
             supaya Wi-Fi rumah tetap lega untuk perangkat lain.
           </FeatureCard>
-          <FeatureCard index="04" title="Langsung dari browser">
+          <FeatureCard index="04" art="float-phone" title="Langsung dari browser">
             Tidak sempat pasang aplikasi? Buka halaman Connect, masukkan ID,
             dan PC-mu tampil di tab browser — HP maupun laptop.
           </FeatureCard>
@@ -155,15 +155,18 @@ export function LandingPage({ navigate }: { navigate: (r: Route) => void }) {
 
 export function FeatureCard({
   index,
+  art,
   title,
   children,
 }: {
   index: string;
+  art: string;
   title: string;
   children: string;
 }) {
   return (
     <div className="feature-card">
+      <img className="feature-art" src={`/${art}.webp`} alt="" aria-hidden="true" width="88" height="88" loading="lazy" decoding="async" />
       <span className="feature-index">{index}</span>
       <h3>{title}</h3>
       <p>{children}</p>

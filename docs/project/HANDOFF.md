@@ -92,6 +92,13 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
 - [ ] **Bingkai VIP (`frame_vip`) di semua UI profil pengguna berlangganan** —
   APK (layar akun/profil), web (akun), host panel bila menampilkan identitas
   pengguna. Foto = 48% lebar frame, ring di tengah — jangan `matchParentSize`.
+  **TERHALANG (dicek 2026-10-06): belum ada konsep langganan di produk.**
+  `UserProfile` (web) hanya punya `id`/`email`/`name`/`picture`; Worker tidak
+  menyimpan status bayar per pengguna; APK dan host juga tidak mengenal
+  tingkatan akun. `Billing.tsx` adalah sewa PC per jam yang pemesanannya masih
+  manual lewat WhatsApp. Memasang bingkai sekarang berarti mengarang flag VIP
+  yang tidak punya sumber data. Butuh keputusan produk lebih dulu: apa yang
+  membuat seseorang VIP, dan field mana yang menyatakannya.
 - [ ] **Ilustrasi melayang di onboarding & empty state** — APK + web:
   welcome `float_pc_mascot`, connect `float_phone`+`float_wifi`, gestur
   `float_cursor`+`float_keycap`, host `float_monitor`, riwayat kosong
@@ -100,9 +107,14 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   Progres 2026-10-04: web Devices/History empty state memakai
   `float-pc-sleep.webp` (PR #99); APK empty state perangkat/host memakai
   `R.drawable.float_pc_sleep` (batch ini).
+  Progres 2026-10-06: web kartu fitur beranda memakai `float-cursor`,
+  `float-shield`, `float-bolt`, `float-phone`; layar OTP memakai
+  `float-mail`. Sisa untuk web: welcome `float_pc_mascot`, connect
+  `float_phone`+`float_wifi` di layar Connect, gestur `float_keycap`,
+  host `float_monitor`. Sisi APK belum tersentuh.
 - [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
   splash APK — animasi lembut, delay berbeda per elemen. Hero web selesai
-  2026-10-06 (tiga dekorasi + test kontrak `web/test/hero-deco-contract.test.mjs`);
-  sisa yang terbuka hanya splash Android.
+  2026-10-06 (tiga dekorasi + `web/test/hero-deco-contract.test.mjs`); sisa
+  yang terbuka hanya splash Android.
 - [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang
   saja; `hero_login.webp` tidak diganti.
