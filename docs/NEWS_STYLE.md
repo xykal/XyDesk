@@ -44,10 +44,10 @@ Ringkasnya:
 - **Tiap agent menulis bahan artikel untuk kerjanya sendiri** saat sesinya
   ditutup: blok dampak pengguna (apa + kenapa) + screenshot asli, mengikuti
   gaya dokumen ini.
-- **Satu rilis = SATU artikel.** Role CI/Release menyatukan bahan semua agent
-  menjadi satu artikel saat rilis; jangan menerbitkan artikel per fitur.
-  Detail alurnya di [`project/AGENT_BOARD.md`](project/AGENT_BOARD.md) → "Aturan
-  operator" dan [`../news/README.md`](../news/README.md).
+- **Satu rilis = SATU artikel.** Bahan dari seluruh perubahan dalam satu
+  versi disatukan menjadi satu artikel saat rilis; jangan menerbitkan artikel
+  per fitur. Detail alurnya di [`../news/README.md`](../news/README.md), dan
+  gerbang izinnya di [`../AGENT.md`](../AGENT.md) bagian 4.
 
 ---
 

@@ -24,6 +24,10 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Cara kerja repo:** sistem role agent dihapus. Pembagian sembilan role, identitas git karangan `Nama - XyVerse Team`, kunci area, dan antrean izin push `Izin: <ID-SESI>` tidak dipakai lagi — semua pekerjaan dikerjakan atas nama pemilik repo lewat PR biasa. `AGENT.md` ditulis ulang tanpa birokrasi role tetapi dengan kewajiban bukti, changelog, dan gerbang izin versi/berita/rilis yang tetap penuh; `docs/project/AGENT_BOARD.md` dibekukan ke `docs/archive/AGENT_BOARD-2026-10.md`; `docs/project/HANDOFF.md` dikelompokkan per area kode, bukan per role; `docs/project/CONTRIBUTORS.md` dibekukan dengan seluruh nama lama tetap utuh sebagai catatan sejarah. `docs/CI.md`, `docs/NEWS_STYLE.md`, dan filter `meta` di `build.yml` ikut disesuaikan.
+
+- **Keamanan kredensial:** `.env` dan turunannya kini diabaikan git (hanya `.env.example` yang boleh masuk), supaya kunci Resend/Cloudinary/Cloudflare/Vercel/OneSignal/GitHub tidak pernah ikut ter-commit dari working tree.
+
 - **Android UX polish:** onboarding kini memakai komposisi ilustrasi yang lebih jelas per halaman, splash mendapat aura gradasi gelap berputar, Google login pindah ke account-picker popup, trackpad default lebih ringan/halus, dock tombol lama dihapus dari UI, dan IME sesi memakai text input penuh (bukan field password).
 
 - **Session natural render:** Web dan Android kini mengunci video sesi ke scaling natural/aspect-fit tanpa CSS `filter`, `image-rendering: pixelated/crisp`, atau copy “tajam”; SurfaceView native juga langsung letterbox dari ukuran frame awal agar tidak terasa stretch/sharpen saat decode mulai.

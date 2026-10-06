@@ -140,7 +140,6 @@ jobs:
               - 'tool/**'
               - 'docs/**'
               - 'AGENT.md'
-              - 'docs/project/AGENT_BOARD.md'
               - 'docs/project/HANDOFF.md'
               - 'CHANGELOG.md'
               - 'docs/project/CONTRIBUTORS.md'
