@@ -30,6 +30,15 @@
 //! aliran yang menyimpang: potongan ganda, potongan yang dilewati, atau
 //! pengirim yang memulai di tengah.
 //!
+//! ## Tanda siap
+//!
+//! Begitu host selesai memasang pendengarnya, ia mengirim `ACK` dengan
+//! `id = 0` — id yang tidak pernah dipakai transfer sungguhan. Pengirim
+//! wajib menunggu tanda ini sebelum mengirim `OFFER`: channel sudah OPEN di
+//! sisi pengirim beberapa saat sebelum penerima sempat memasang handler,
+//! dan `OFFER` yang tiba di celah itu hilang tanpa jejak — transfer lalu
+//! menggantung tanpa satu pun pesan kesalahan.
+//!
 //! ## Yang sengaja tidak dipercaya dari lawan
 //!
 //! Nama berkas datang dari mesin lain dan **tidak pernah** dipakai apa
