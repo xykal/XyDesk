@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import id.xyverse.xyadapt.FpsOptions
 import id.xyverse.xyadapt.CaptureRules
+import id.xyverse.xyadapt.PadKbm
 import id.xyverse.xyadapt.InputFamily
 import id.xyverse.xyadapt.OverlayRules
 import id.xyverse.xyadapt.ReconnectPolicy
@@ -171,7 +172,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
         }
         touch.directTouch = store.directTouch
         keys = SessionKeyboard(this, b.keyboardSink, session::send)
-        hid = SessionHid(session::send)
+        hid = SessionHid(session::send).also {
+            it.kbmMode = store.int(P.PAD_KBM, PadKbm.MODE_AUTO)
+        }
         hidMonitor = HidMonitor(this) { p -> runOnUiThread { onHid(p) } }
         capturedMouse = CapturedMouseView(this, session::send).also {
             it.sensitivity = cfg.speed.coerceIn(0.2f, 5f)
@@ -314,6 +317,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         hidPresent = p
         hidState = p
         applyPointerCapture()
+        if (::hid.isInitialized) hid.padPresent = p.gamepad
         if (p.keyboard && pcKeysOpen) setPcKeys(false)
         applyChrome()
         val pesan = OverlayRules.detectionMessage(overlayMode, p.keyboard, p.mouse, p.gamepad)
@@ -413,6 +417,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
         val prefs = SessionPrefs(store.quality, sessionFps(), store.directTouch, store.trackpadSpeed,
             store.naturalScroll, store.showStats, autohide, store.bool(P.POINTER_CAPTURE, true),
+            store.int(P.PAD_KBM, PadKbm.MODE_AUTO), PadKbm.modeLabel(store.int(P.PAD_KBM, PadKbm.MODE_AUTO)),
             FpsOptions.forDisplay(panelRefreshHz()))
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
@@ -444,6 +449,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         overlayEdit = { setOverlayEditMode(!overlayEdit) },
                         overlayMode = { cycleOverlayMode() },
                         pointerCapture = { on -> store.set(P.POINTER_CAPTURE, on); applyPointerCapture() },
+                        padKbm = {
+                            val next = PadKbm.nextMode(store.int(P.PAD_KBM, PadKbm.MODE_AUTO))
+                            store.set(P.PAD_KBM, next)
+                            hid.kbmMode = next
+                        },
                         disconnect = { outcome = "putus"; finish() },
                     ),
                     prefs,
@@ -551,6 +561,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
      */
     override fun onHostGamepad(available: Boolean, reason: String) = runOnUiThread {
         hostGamepadReason = if (available) "" else reason
+        if (::hid.isInitialized) hid.hostGamepadAvailable = available
         val punyaTombolGamepad = overlayItems.any {
             OverlayRules.family(it.kind.name) == InputFamily.GAMEPAD
         }
@@ -573,6 +584,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
 
     override fun onPhase(phase: Phase, message: String?) = runOnUiThread {
         connected = phase == Phase.CONNECTED
+        if (!connected && ::hid.isInitialized) hid.releaseAll()
         if (phase == Phase.REJECTED) store.setHostPin(hostId, null)
         connectState = connectState.copy(phase = phase, message = message)
         b.overlay.visibility = if (connected) View.GONE else View.VISIBLE
@@ -636,6 +648,13 @@ class SessionActivity : ComponentActivity(), RtcListener {
     override fun onResume() {
         super.onResume()
         hidMonitor?.start()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Aplikasi ke latar: tombol yang masih ditahan pemeta pad harus
+        // dilepas, kalau tidak PC menerima W tertekan selamanya.
+        if (::hid.isInitialized) hid.releaseAll()
     }
 
     override fun onPause() {

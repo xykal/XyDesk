@@ -127,10 +127,62 @@ Dua hal kecil yang mudah terlewat dan ditangani:
 
 Saklarnya: "Tangkap mouse" di panel Atur (bawaan menyala).
 
-## 8. Yang belum ada
+## 8. Gamepad fisik jadi keyboard + mouse
+
+Jalur biasa mengirim pad apa adanya sebagai laporan XInput lewat ViGEm. Jalur
+itu hanya bekerja bila **drivernya terpasang** — dan bahkan ketika terpasang,
+ada seluruh kelas program yang tidak pernah membaca XInput: peramban,
+penjelajah berkas, banyak game lama, hampir semua aplikasi kerja. Di situ pad
+di tangan pengguna jadi benda mati.
+
+`PadKbm` menerjemahkannya ke penekanan tombol dan gerak mouse, yang diterima
+setiap program Windows tanpa driver apa pun (jalur `SendInput` yang sama
+dengan keyboard Bluetooth).
+
+Profil bawaan (bisa diganti nanti):
+
+| Pad | Kirim |
+|---|---|
+| Stik kiri | W / A / S / D |
+| Stik kanan | gerak mouse (`MOUSE_MOVE_REL`) |
+| RT / LT | klik kiri / klik kanan |
+| A B X Y | Space, Ctrl, E, R |
+| LB / RB | Q / Shift |
+| L3 / R3 | C / F |
+| Start / Back | Esc / Tab |
+| D-pad | panah |
+
+Profil kedua, **Desktop**, membuang WASD dan memetakan tombol ke Enter, Esc,
+Backspace, Tab — pad sebagai penunjuk, bukan pemain game.
+
+Yang tidak sepele dan sudah ditangani:
+
+- **Histeresis stik.** Ambang nyala 0,50 dan ambang mati 0,35. Kalau kedua
+  ambang sama, jempol yang diam persis di ambang membuat W menekan-melepas
+  puluhan kali per detik.
+- **Pemompa 16 ms.** Stik yang ditahan tidak menghasilkan kejadian baru dari
+  Android, jadi tanpa pompa sendiri pandangan bergerak sekali lalu berhenti
+  padahal jempol masih mendorong. Kecepatannya diskalakan dengan jarak waktu
+  nyata supaya pad 60 Hz dan pad 250 Hz terasa sama.
+- **Zona mati radial + kurva pangkat dua.** Drift stik tidak menggeser kursor;
+  dorongan kecil untuk membidik, dorongan penuh untuk memutar badan.
+- **Sisa pecahan** dipakai ulang dari `RelMotion` — sama seperti mouse fisik.
+- **Semua dilepas** saat mode dimatikan, sesi putus, atau aplikasi ke latar.
+  Tanpa itu W tertinggal tertekan di PC dan pengguna tidak punya cara
+  melepasnya dari HP.
+
+Tiga mode di panel Atur ("Pad → kibor"): **Otomatis** (bawaan — hidup hanya
+bila host memberi tahu ViGEm tidak tersedia), **Selalu**, **Mati**. Saat
+pemetaan menyala, pad virtual dinolkan lebih dulu supaya tidak ada tombol
+XInput tersangkut.
+
+15 uji JVM (`PadMappingTest`).
+
+## 9. Yang belum ada
 
 - Getaran (rumble) balik dari host ke HP.
-- Pemetaan tombol gamepad fisik ke aksi keyboard/mouse (ada di
-  XyDesk-Remote sebagai `XyGamepadActionMapper`, belum di sini).
-- Tangkapan pointer belum pernah dijalankan di perangkat nyata; yang teruji
-  baru aturannya dan matematika deltanya (`PointerCaptureTest`, 10 uji).
+- Antarmuka untuk menyusun profil pemetaan pad sendiri (saat ini dua profil
+  bawaan; `PadProfile` sudah menerima peta bebas).
+- Tangkapan pointer dan pemetaan pad belum pernah dijalankan di perangkat
+  nyata; yang teruji baru aturan dan matematikanya (`PointerCaptureTest` 10
+  uji, `PadMappingTest` 15 uji).
