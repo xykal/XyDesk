@@ -49,6 +49,9 @@ pub mod control_ipc;
 /// di `screen`). Dipisah supaya bisa di-type-check untuk Windows lewat
 /// `tool/wincheck`.
 pub mod dxgi;
+/// Protokol transfer berkas dan mesin keadaan penerima (murni logika, teruji
+/// di Linux; penulisan ke disk ada di pemanggilnya).
+pub mod filetransfer;
 /// Primitif capture GDI BitBlt (piksel mentah saja; encode ada di `screen`).
 /// Dipisah supaya bisa di-type-check untuk Windows lewat `tool/wincheck`.
 pub mod gdi;
