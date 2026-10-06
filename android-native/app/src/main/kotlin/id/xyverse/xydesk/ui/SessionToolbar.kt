@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Xy
+import id.xyverse.xyadapt.PadKbm
 import id.xyverse.xydesk.ui.kit.XyIcon
 import id.xyverse.xydesk.ui.kit.XyText
 
@@ -68,6 +69,8 @@ class SessionActions(
     val overlayMode: () -> Unit = {},
     /** Tangkap mouse fisik: gerak relatif tak terbatas, kursor HP hilang. */
     val pointerCapture: (on: Boolean) -> Unit = {},
+    /** Putar mode pad→keyboard/mouse: otomatis → selalu → mati. */
+    val padKbm: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -82,6 +85,9 @@ data class SessionPrefs(
     val autohideMs: Long = 0,
     /** Tangkapan pointer menyala untuk mouse fisik. */
     val pointerCapture: Boolean = true,
+    /** Mode pemetaan gamepad fisik → keyboard/mouse (lihat PadKbm). */
+    val padKbmMode: Int = 2,
+    val padKbmLabel: String = "Otomatis",
     /** Anak tangga fps yang pantas untuk panel HP ini (lihat [FpsOptions]). */
     val fpsOptions: List<Int> = FpsOptions.BASE,
 )
@@ -116,6 +122,8 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
     var clip by remember { mutableStateOf(false) }
     var stats by remember { mutableStateOf(prefs.showStats) }
     var capture by remember { mutableStateOf(prefs.pointerCapture) }
+    var padMode by remember { mutableStateOf(prefs.padKbmMode) }
+    var padLabel by remember { mutableStateOf(prefs.padKbmLabel) }
     val qLabels = listOf("Auto", "Seimbang", "Lebih halus", "Paling halus")
     var touched by remember { mutableStateOf(0L) }
     if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
@@ -173,6 +181,11 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                         Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
                         Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
                         Pill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
+                        Pill("Pad → kibor: $padLabel", accent = padMode == 1) {
+                            padMode = PadKbm.nextMode(padMode)
+                            padLabel = PadKbm.modeLabel(padMode)
+                            actions.padKbm()
+                        }
                     }
                     if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption) else XyText("Preset kualitas hanya mengubah bitrate/kompresi; resolusi tetap di pilihan Auto/Manual, tanpa filter tajam buatan.", Xy.caption)
                 }
