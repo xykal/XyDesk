@@ -24,6 +24,12 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Panel admin naik ke Vite 8:** `admin/` ikut memakai Vite 8 dan `@vitejs/plugin-react` 6 seperti web, sekaligus menutup dua masalah yang selama ini tidak terlihat. Build `admin/` sebenarnya sudah gagal sejak lama (`tsc` tidak menemukan deklarasi untuk impor CSS) karena panel ini belum punya `vite-env.d.ts`, dan satu-satunya berkas testnya tidak pernah benar-benar berjalan sejak `typescript` 7 melepas `transpileModule`. Keduanya diperbaiki: deklarasi tipe ditambahkan, test memakai transformer bawaan Vite seperti di web, dan kontrak uji login admin diselaraskan dengan backend yang sudah melepas kode 2FA sejak 23 September. Bundle panel turun dari 277,7 kB menjadi 268,0 kB.
+
+- **CI panel admin:** `admin/` kini punya job sendiri di Build (test + `npm run build`) dengan filter area `admin/**`, sehingga kerusakan serupa tidak lagi lolos diam-diam.
+
+- **Dependensi:** `wrangler` 4.141 → 4.147 di Worker signaling dan Worker berita, Vite 8.3.1 → 8.3.2 di web, dan `gradle/actions/setup-gradle` 6.3.0 → 6.4.0 (pin SHA diverifikasi terhadap tag resmi).
+
 - **Cara kerja repo:** sistem role agent dihapus. Pembagian sembilan role, identitas git karangan `Nama - XyVerse Team`, kunci area, dan antrean izin push `Izin: <ID-SESI>` tidak dipakai lagi — semua pekerjaan dikerjakan atas nama pemilik repo lewat PR biasa. `AGENT.md` ditulis ulang tanpa birokrasi role tetapi dengan kewajiban bukti, changelog, dan gerbang izin versi/berita/rilis yang tetap penuh; `docs/project/AGENT_BOARD.md` dibekukan ke `docs/archive/AGENT_BOARD-2026-10.md`; `docs/project/HANDOFF.md` dikelompokkan per area kode, bukan per role; `docs/project/CONTRIBUTORS.md` dibekukan dengan seluruh nama lama tetap utuh sebagai catatan sejarah. `docs/CI.md`, `docs/NEWS_STYLE.md`, dan filter `meta` di `build.yml` ikut disesuaikan.
 
 - **Keamanan kredensial:** `.env` dan turunannya kini diabaikan git (hanya `.env.example` yang boleh masuk), supaya kunci Resend/Cloudinary/Cloudflare/Vercel/OneSignal/GitHub tidak pernah ikut ter-commit dari working tree.
