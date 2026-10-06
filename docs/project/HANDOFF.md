@@ -109,9 +109,15 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   `R.drawable.float_pc_sleep` (batch ini).
   Progres 2026-10-06: web kartu fitur beranda memakai `float-cursor`,
   `float-shield`, `float-bolt`, `float-phone`; layar OTP memakai
-  `float-mail`. Sisa untuk web: welcome `float_pc_mascot`, connect
-  `float_phone`+`float_wifi` di layar Connect, gestur `float_keycap`,
-  host `float_monitor`. Sisi APK belum tersentuh.
+  `float-mail`; blok "Cara main" memakai `float-phone`/`float-monitor`
+  yang berganti mengikuti tab client/host.
+  **Sisi web dianggap selesai.** Tiga aset sisanya tidak dipasang karena
+  layarnya memang tidak ada di web, bukan karena terlewat:
+  `float_pc_mascot` butuh layar welcome (web langsung mendarat di beranda,
+  dan `hero-cartoon` tidak boleh diganti), `float_keycap` butuh tutorial
+  gestur (`session_guidance.ts` isinya pesan kegagalan relay, bukan
+  tutorial), dan `float_wifi` butuh indikator status signaling yang berdiri
+  sendiri. Ketiganya tetap relevan untuk **APK**, yang belum tersentuh.
 - [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
   splash APK — animasi lembut, delay berbeda per elemen. Hero web selesai
   2026-10-06 (tiga dekorasi + `web/test/hero-deco-contract.test.mjs`); sisa

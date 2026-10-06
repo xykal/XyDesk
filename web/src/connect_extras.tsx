@@ -187,6 +187,16 @@ export function ConnectGuide() {
     <section className="connect-guide surface-card">
       <h2>Cara main</h2>
       <p className="muted">Ikuti langkah sesuai sisi yang sedang kamu siapkan.</p>
+      <img
+        className="guide-art"
+        src={side === 'client' ? '/float-phone.webp' : '/float-monitor.webp'}
+        alt=""
+        aria-hidden="true"
+        width="96"
+        height="96"
+        loading="lazy"
+        decoding="async"
+      />
       <div className="guide-toggle" role="tablist">
         <button
           type="button"
