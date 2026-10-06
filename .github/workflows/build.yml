@@ -209,6 +209,25 @@ jobs:
           cd cloudflare
           npm run test:chat
 
+      # Harness admin ini ada sejak lama tapi tidak pernah dipanggil CI, jadi
+      # ia membusuk diam-diam: masih meminta rahasia TOTP dari /admin/setup/start
+      # berbulan-bulan setelah TOTP dicabut dari alur masuk admin. Sekarang ikut
+      # jalan di sini supaya tidak bisa membusuk lagi.
+      - name: Uji admin + SQLite di runtime (workerd)
+        run: |
+          cd cloudflare
+          npm run test:runtime
+
+      # Tiga harness runtime lain bernasib sama: ada di repo, tidak pernah
+      # dipanggil siapa pun. Mereka menguji hal yang paling mahal kalau rusak —
+      # pencabutan sesi anggota, riwayat di SQLite nyata, dan umur sesi terikat.
+      - name: Uji anggota, riwayat, dan sesi terikat (workerd)
+        run: |
+          cd cloudflare
+          npm run test:member
+          npm run test:history
+          npm run test:bound
+
       # Signaling Go adalah jalur cadangan self-host. Formatnya pernah
       # dibiarkan menyimpang berbulan-bulan karena tidak ada yang mengecek, dan
       # aturan keamanannya (role di token, arah relay) pernah lebih lemah dari
