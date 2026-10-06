@@ -46,6 +46,7 @@
 #include "engine_json.h"
 #include "control_client.h"
 #include "account_auth.h"
+#include "update_fetch.h"
 #include "session_view.h"
 #include "vendor/qrcodegen/qrcodegen.hpp"
 // Build workflows compile one panel translation unit; retain upstream implementation.
@@ -115,6 +116,30 @@ constexpr int kTrayStop = 1012;
 constexpr int kTrayWeb = 1013;
 constexpr int kTrayQuit = 1014;
 constexpr int kTrayRestart = 1015;
+constexpr int kTrayUpdate = 1016;
+
+// Versi host diisi compiler dari berkas VERSION (lihat build.yml). Build
+// lokal tanpa definisi itu memakai nilai kosong: pemeriksa pembaruan lebih
+// baik mengaku tidak tahu versinya sendiri daripada menebak, lalu menawarkan
+// pemasangan ulang yang tidak perlu.
+#ifndef XYDESK_VERSION
+#define XYDESK_VERSION ""
+#endif
+constexpr char kHostVersion[] = XYDESK_VERSION;
+constexpr UINT kUpdateCheckedMessage = WM_APP + 13;
+constexpr UINT kUpdateInstalledMessage = WM_APP + 14;
+
+// Keadaan pembaruan ditaruh di luar AppState karena diisi dari thread lain:
+// hasilnya baru dibaca thread UI setelah pesan jendela sampai.
+struct UpdateState {
+    std::future<void> worker;
+    std::atomic_bool busy{false};
+    std::atomic_bool cancelled{false};
+    xydesk::updater::Decision decision = xydesk::updater::Decision::Unreadable;
+    xydesk::updater::Release release;
+    xydesk::updater::InstallResult install = xydesk::updater::InstallResult::NetworkFailed;
+};
+UpdateState updateState;
 
 COLORREF mixColor(COLORREF from, COLORREF to, float t) {
     t = std::clamp(t, 0.0f, 1.0f);
@@ -1888,6 +1913,8 @@ void showTrayMenu(HWND hwnd) {
     AppendMenuW(menu, g.running ? MF_STRING : MF_GRAYED, kTrayStop, L"Hentikan host");
     AppendMenuW(menu, MF_STRING, kTrayRestart, L"Restart host");
     AppendMenuW(menu, MF_STRING, kTrayWeb, L"Buka XyDesk Web");
+    AppendMenuW(menu, updateState.busy.load() ? MF_GRAYED : MF_STRING, kTrayUpdate,
+                updateState.busy.load() ? L"Memeriksa pembaruan\u2026" : L"Cek pembaruan");
     AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
     AppendMenuW(menu, MF_STRING, kTrayQuit, L"Keluar XyDesk");
     SetMenuDefaultItem(menu, kTrayOpen, FALSE);
@@ -2391,6 +2418,96 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
 }
 
 
+// ── Pembaruan host ──
+// Keputusan "boleh dipasang atau tidak" seluruhnya ada di updater.h yang
+// diuji di Linux. Di sini hanya urutan tindakannya: periksa di thread lain,
+// lapor lewat pesan jendela, lalu pasang kalau pengguna setuju.
+void startUpdateCheck(HWND hwnd) {
+    if (updateState.busy.exchange(true)) return;
+    updateState.cancelled.store(false);
+    updateState.worker = std::async(std::launch::async, [hwnd]() {
+        xydesk::updater::Release release;
+        const auto decision =
+            xydesk::updater::check(kHostVersion, release, &updateState.cancelled);
+        updateState.decision = decision;
+        updateState.release = release;
+        PostMessageW(hwnd, kUpdateCheckedMessage, 0, 0);
+    });
+}
+
+void startUpdateInstall(HWND hwnd) {
+    if (updateState.busy.exchange(true)) return;
+    updateState.worker = std::async(std::launch::async, [hwnd]() {
+        std::wstring path;
+        updateState.install =
+            xydesk::updater::downloadAndRun(updateState.release, path, &updateState.cancelled);
+        PostMessageW(hwnd, kUpdateInstalledMessage, 0, 0);
+    });
+}
+
+void onUpdateChecked(HWND hwnd) {
+    updateState.busy.store(false);
+    using xydesk::updater::Decision;
+    if (updateState.decision == Decision::UpToDate) {
+        const std::wstring text =
+            L"XyDesk " + xydesk::account::wide(kHostVersion) + L" sudah versi terbaru.";
+        MessageBoxW(hwnd, text.c_str(), L"XyDesk", MB_OK | MB_ICONINFORMATION);
+        return;
+    }
+    if (updateState.decision != Decision::Available) {
+        MessageBoxW(hwnd,
+                    L"Tidak bisa memeriksa pembaruan sekarang.\n\n"
+                    L"Periksa koneksi internet, lalu coba lagi. Unduhan manual selalu "
+                    L"tersedia di github.com/xykal/XyDesk/releases.",
+                    L"XyDesk", MB_OK | MB_ICONWARNING);
+        return;
+    }
+    const std::wstring text =
+        xydesk::account::wide(xydesk::updater::offerText(updateState.release)) +
+        L"\n\nXyDesk akan mengunduh installer resmi, memeriksa sidik SHA-256-nya, lalu "
+        L"menjalankannya. Sesi yang sedang berjalan akan terputus.\n\nUnduh dan pasang "
+        L"sekarang?";
+    if (MessageBoxW(hwnd, text.c_str(), L"Pembaruan tersedia", MB_YESNO | MB_ICONQUESTION) != IDYES) {
+        return;
+    }
+    startUpdateInstall(hwnd);
+}
+
+void onUpdateInstalled(HWND hwnd) {
+    updateState.busy.store(false);
+    using xydesk::updater::InstallResult;
+    switch (updateState.install) {
+    case InstallResult::Started:
+        // Installer sudah berjalan; panel menutup diri supaya berkasnya
+        // tidak terkunci saat ditimpa.
+        removeTrayIcon();
+        DestroyWindow(hwnd);
+        return;
+    case InstallResult::Cancelled:
+        return;
+    case InstallResult::HashMismatch:
+        MessageBoxW(hwnd,
+                    L"Berkas yang terunduh tidak cocok dengan sidik SHA-256 di catatan "
+                    L"rilis, jadi tidak dijalankan dan sudah dihapus.\n\nCoba lagi nanti, "
+                    L"atau unduh manual dari github.com/xykal/XyDesk/releases.",
+                    L"Pembaruan dibatalkan", MB_OK | MB_ICONERROR);
+        return;
+    case InstallResult::WriteFailed:
+        MessageBoxW(hwnd, L"Tidak bisa menulis installer ke folder sementara.", L"XyDesk",
+                    MB_OK | MB_ICONERROR);
+        return;
+    case InstallResult::LaunchFailed:
+        MessageBoxW(hwnd, L"Installer terunduh dan sah, tetapi Windows menolak menjalankannya.",
+                    L"XyDesk", MB_OK | MB_ICONERROR);
+        return;
+    case InstallResult::NetworkFailed:
+    default:
+        MessageBoxW(hwnd, L"Unduhan pembaruan gagal atau terputus.", L"XyDesk",
+                    MB_OK | MB_ICONWARNING);
+        return;
+    }
+}
+
 LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     // Explorer mengirim pesan ini saat taskbar/tray restart (Explorer crash):
     // ikon tray didaftarkan ulang supaya tidak hilang sampai sesi Windows mati.
@@ -2672,6 +2789,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         case kTrayStop: stopHost(); return 0;
         case kTrayRestart: restartHost(); return 0;
         case kTrayWeb: ShellExecuteW(hwnd, L"open", kWebUrl, nullptr, nullptr, SW_SHOWNORMAL); return 0;
+        case kTrayUpdate: startUpdateCheck(hwnd); return 0;
         case kTrayQuit:
             removeTrayIcon();
             DestroyWindow(hwnd);
@@ -2679,6 +2797,14 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         default:
             break;
         }
+        return 0;
+
+    case kUpdateCheckedMessage:
+        onUpdateChecked(hwnd);
+        return 0;
+
+    case kUpdateInstalledMessage:
+        onUpdateInstalled(hwnd);
         return 0;
 
     case kTrayMessage: {
