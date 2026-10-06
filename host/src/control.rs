@@ -206,6 +206,8 @@ pub struct Status {
     pub pending_file: Option<crate::file_consent::PendingView>,
     /// Kebijakan berkas masuk: `ask`, `always`, atau `never`.
     pub file_policy: String,
+    /// Jumlah perangkat yang pernah diberi "ingat perangkat ini".
+    pub trusted_file_devices: usize,
     pub last_error: Option<String>,
 }
 
@@ -334,6 +336,7 @@ impl ControlState {
             target_bitrate_bps: crate::screen::target_bitrate_bps(),
             pending_file: crate::file_consent::view(),
             file_policy: crate::file_consent::policy().as_str().to_string(),
+            trusted_file_devices: crate::file_consent::trusted_count(),
             last_error: self.last_error.clone(),
         }
     }
@@ -416,6 +419,9 @@ pub struct ActionRequest {
     /// Jawaban pemilik PC untuk aksi `file-consent`.
     #[serde(default)]
     pub allow: Option<bool>,
+    /// Ingat perangkat ini untuk aksi `file-consent` (hanya saat `allow`).
+    #[serde(default)]
+    pub remember: Option<bool>,
     /// Nilai kebijakan untuk aksi `file-policy`: `ask`, `always`, `never`.
     #[serde(default, alias = "policy")]
     pub value: Option<String>,
@@ -699,7 +705,7 @@ async fn action(
             let Some(allow) = req.allow else {
                 return Ok(Json(ActionResponse::err("allow tidak disertakan")));
             };
-            if crate::file_consent::answer(id, allow) {
+            if crate::file_consent::answer(id, allow, req.remember.unwrap_or(false)) {
                 Ok(Json(ActionResponse {
                     ok: true,
                     error: None,
@@ -714,6 +720,16 @@ async fn action(
                     "tawaran berkas itu sudah tidak menunggu jawaban",
                 )))
             }
+        }
+        // Lupakan semua perangkat yang pernah diberi "ingat perangkat ini".
+        "file-trust-clear" => {
+            crate::file_consent::forget_all();
+            Ok(Json(ActionResponse {
+                ok: true,
+                error: None,
+                password: None,
+                stopped: None,
+            }))
         }
         // Kebijakan berkas masuk: ask (bawaan), always, never.
         "file-policy" => {

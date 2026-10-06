@@ -11,6 +11,9 @@ struct Snapshot {
  // `pendingId==0` berarti tidak ada yang menunggu: host memakai id transfer
  // bukan-nol, dan 0 dipakai protokol sebagai beacon "siap".
  bool pendingRisky=false;unsigned long pendingId=0;unsigned long long pendingSize=0,pendingSeconds=0;std::wstring pendingName;
+ // Kebijakan berkas masuk ("ask"/"always"/"never") dan jumlah perangkat yang
+ // pernah diingat. Kosong = host lama yang belum melaporkannya.
+ std::wstring filePolicy;unsigned long trustedDevices=0;
 };
 inline std::wstring text(const nlohmann::json& object,const char* field){
  auto it=object.find(field);if(it==object.end()||!it->is_string())return {};
@@ -24,6 +27,8 @@ inline bool redmiNote12(const std::wstring& name){
 inline Snapshot parse(const std::string& raw){
  auto data=nlohmann::json::parse(raw,nullptr,false);if(!data.is_object()||!data.contains("session"))return {};
  Snapshot result;result.known=true;result.state=text(data,"state");
+ result.filePolicy=text(data,"filePolicy");
+ if(data.contains("trustedFileDevices")&&data["trustedFileDevices"].is_number_unsigned())result.trustedDevices=data["trustedFileDevices"].get<unsigned long>();
  if(auto pending=data.find("pendingFile");pending!=data.end()&&pending->is_object()){
   const auto& offer=*pending;
   if(offer.contains("id")&&offer["id"].is_number_unsigned()){

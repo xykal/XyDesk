@@ -106,7 +106,10 @@ enum class Target {
     StopSession,
     SendFile,
     AcceptFile,
+    TrustFile,
     RejectFile,
+    FilePolicy,
+    ForgetTrusted,
 };
 
 inline const char* targetName(Target target) {
@@ -140,6 +143,9 @@ inline const char* targetName(Target target) {
     case Target::StopSession: return "StopSession";
     case Target::SendFile: return "SendFile";
     case Target::AcceptFile: return "AcceptFile";
+    case Target::TrustFile: return "TrustFile";
+    case Target::FilePolicy: return "FilePolicy";
+    case Target::ForgetTrusted: return "ForgetTrusted";
     case Target::RejectFile: return "RejectFile";
     default: return "None";
     }
@@ -213,7 +219,11 @@ struct PanelLayout {
     // Jawaban atas berkas yang MASUK; barisnya selalu disediakan supaya
     // teks di bawahnya tidak bergeser saat dialog muncul.
     Rect acceptFile{};
+    Rect trustFile{};
     Rect rejectFile{};
+    // Baris kebijakan: putar ask/always/never dan lupakan perangkat.
+    Rect filePolicy{};
+    Rect forgetTrusted{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -407,10 +417,20 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     // mengikuti ruang yang tersisa, sama seperti tombol kirim.
     {
         const int right = contentX + contentW - px(20);
-        const int acceptW = minValue(px(176), right - l.stopSession.x);
+        const int acceptW = minValue(px(140), right - l.stopSession.x);
         l.acceptFile = Rect{l.stopSession.x, l.stopSession.bottom() + gap, maxValue(acceptW, 0), l.stopSession.h};
-        const int rejectW = minValue(px(120), right - (l.acceptFile.right() + gap));
-        l.rejectFile = Rect{l.acceptFile.right() + gap, l.acceptFile.y, maxValue(rejectW, 0), l.acceptFile.h};
+        const int trustW = minValue(px(170), right - (l.acceptFile.right() + gap));
+        l.trustFile = Rect{l.acceptFile.right() + gap, l.acceptFile.y, maxValue(trustW, 0), l.acceptFile.h};
+        const int rejectW = minValue(px(92), right - (l.trustFile.right() + gap));
+        l.rejectFile = Rect{l.trustFile.right() + gap, l.acceptFile.y, maxValue(rejectW, 0), l.acceptFile.h};
+
+        // Baris ketiga: kebijakan. Selalu ada, juga saat tidak ada tawaran —
+        // pemilik PC harus bisa mengubahnya sebelum berkas pertama datang,
+        // bukan hanya saat sedang ditanya.
+        const int policyW = minValue(px(236), right - l.stopSession.x);
+        l.filePolicy = Rect{l.stopSession.x, l.acceptFile.bottom() + gap, maxValue(policyW, 0), l.stopSession.h};
+        const int forgetW = minValue(px(210), right - (l.filePolicy.right() + gap));
+        l.forgetTrusted = Rect{l.filePolicy.right() + gap, l.filePolicy.y, maxValue(forgetW, 0), l.filePolicy.h};
     }
 
     // Halaman Kontrol: dua baris tombol aksi.
@@ -455,7 +475,10 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::StopSession:
     case Target::SendFile:
     case Target::AcceptFile:
+    case Target::TrustFile:
     case Target::RejectFile:
+    case Target::FilePolicy:
+    case Target::ForgetTrusted:
         return page == Page::Connections;
     default:
         return true;
@@ -496,7 +519,10 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (targetOnPage(Target::StopSession, page) && l.stopSession.contains(x, y)) return Target::StopSession;
     if (targetOnPage(Target::SendFile, page) && l.sendFile.valid() && l.sendFile.contains(x, y)) return Target::SendFile;
     if (targetOnPage(Target::AcceptFile, page) && l.acceptFile.valid() && l.acceptFile.contains(x, y)) return Target::AcceptFile;
+    if (targetOnPage(Target::TrustFile, page) && l.trustFile.valid() && l.trustFile.contains(x, y)) return Target::TrustFile;
     if (targetOnPage(Target::RejectFile, page) && l.rejectFile.valid() && l.rejectFile.contains(x, y)) return Target::RejectFile;
+    if (targetOnPage(Target::FilePolicy, page) && l.filePolicy.valid() && l.filePolicy.contains(x, y)) return Target::FilePolicy;
+    if (targetOnPage(Target::ForgetTrusted, page) && l.forgetTrusted.valid() && l.forgetTrusted.contains(x, y)) return Target::ForgetTrusted;
     if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
         return Target::RunHost;
     }

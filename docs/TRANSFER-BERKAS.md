@@ -212,9 +212,27 @@ siang adalah pintu yang hanya tampak seperti pintu.
 tidak meninggalkan jejak. Potongan yang datang sebelum persetujuan dijawab
 `CANCEL Protocol`.
 
+**Perangkat yang diingat.** Menjawab pertanyaan yang sama untuk perangkat
+yang sama setiap kali adalah cara tercepat membuat orang berhenti membacanya.
+Tombol ketiga, "Terima & ingat perangkat", menyimpan id client ke
+`~/.xydesk/file-trusted`; tawaran berikutnya dari perangkat itu lewat tanpa
+bertanya — **dan tetap ditulis ke log**, karena penerimaan yang tidak terlihat
+di mana pun tidak bisa diaudit siapa pun. Hanya penerimaan yang bisa diingat;
+"tolak & ingat" tidak ditawarkan, dan id kosong tidak pernah dipercaya.
+`never` mengalahkan daftar ini: "tolak semua" yang punya pengecualian bukan
+"tolak semua". Pencabutan hanya sekaligus
+(`{"action":"file-trust-clear"}`, tombol "Lupakan N perangkat tepercaya") —
+daftar per perangkat di panel belum ada, dan tombol yang tidak bisa menunjuk
+perangkat mana pun hanya akan menipu.
+
+**Kebijakan bertahan antar-restart** di `~/.xydesk/file-policy`, satu kata,
+bisa diperbaiki dengan Notepad saat panel tidak bisa dibuka. Isi yang tidak
+dikenal jatuh ke `ask`: kebijakan yang tidak terbaca tidak boleh diam-diam
+menjadi "terima semua".
+
 Panel menampilkan nama, ukuran, peringatan bila ekstensinya langsung
 dijalankan Windows, dan sisa waktu; jawabannya dikirim lewat
-`POST /action {"action":"file-consent","id":42,"allow":true}`. Tawaran yang
+`POST /action {"action":"file-consent","id":42,"allow":true,"remember":false}`. Tawaran yang
 sudah kedaluwarsa dijawab apa adanya ("sudah tidak menunggu jawaban"), bukan
 "gagal" — jawaban yang terlambat satu detik tidak boleh menyetujui tawaran
 berikutnya.

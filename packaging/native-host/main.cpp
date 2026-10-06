@@ -747,6 +747,9 @@ std::wstring fileSendName;
 /// Jawaban "Terima"/"Tolak" yang sedang dikirim ke host.
 std::future<std::string> fileConsentPending;
 bool fileConsentAllow=false;
+/// Perubahan kebijakan / pelupaan perangkat yang sedang dikirim ke host.
+std::future<std::string> filePolicyPending;
+std::wstring filePolicyNote;
 unsigned sessionViewPid=0;
 ULONGLONG sessionViewNext=0;
 void pollSessionAction(){
@@ -801,6 +804,17 @@ void pollFileConsent(){
     setFlash(reason.empty()?L"Jawaban tidak diterima host.":reason,kWarn);
 }
 
+// Jawaban atas tombol kebijakan dan "lupakan perangkat tepercaya".
+void pollFilePolicy(){
+    if(!filePolicyPending.valid()||filePolicyPending.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready)return;
+    std::string response;
+    try{response=filePolicyPending.get();}catch(...){response.clear();}
+    if(response.empty()){setFlash(L"Gagal menghubungi host.",kBad);return;}
+    if(jsonFlag(response,"ok")){setFlash(filePolicyNote,kAccent);return;}
+    const auto reason=jsonString(response,"error");
+    setFlash(reason.empty()?L"Host menolak perubahan itu.":reason,kWarn);
+}
+
 void pollSessionView(){
     if(sessionViewPending.valid()&&sessionViewPending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
         try{auto value=sessionViewPending.get();if(g.process&&GetProcessId(g.process)==sessionViewPid)sessionView=std::move(value);else sessionView={};}catch(...){sessionView={};}
@@ -828,9 +842,15 @@ bool targetEnabled(Target target) {
         // bisa ditekan tetapi selalu gagal lebih buruk daripada tombol mati.
         return g.running && controlChannel.endpoint.has_value() && sessionView.known && sessionView.active && !fileSendPending.valid();
     case Target::AcceptFile:
+    case Target::TrustFile:
     case Target::RejectFile:
         // Hanya hidup selama ada tawaran yang benar-benar menunggu.
         return controlChannel.endpoint.has_value() && sessionView.pendingId != 0 && !fileConsentPending.valid();
+    case Target::FilePolicy:
+        return controlChannel.endpoint.has_value() && !sessionView.filePolicy.empty() && !filePolicyPending.valid();
+    case Target::ForgetTrusted:
+        // Tombol yang tidak punya apa pun untuk dilupakan adalah tombol mati.
+        return controlChannel.endpoint.has_value() && sessionView.trustedDevices > 0 && !filePolicyPending.valid();
     case Target::CopyId:
         return !g.deviceId.empty();
     case Target::CopyPassword:
@@ -838,6 +858,18 @@ bool targetEnabled(Target target) {
     default:
         return true;
     }
+}
+
+/// "Berkas masuk: Tanya" — kata kerja yang dipakai, bukan nilai mentahnya.
+std::wstring filePolicyLabel() {
+    const auto& value=sessionView.filePolicy;
+    if(value==L"always")return L"Berkas masuk: Terima otomatis";
+    if(value==L"never")return L"Berkas masuk: Tolak semua";
+    return L"Berkas masuk: Tanya dulu";
+}
+
+std::wstring forgetTrustedLabel() {
+    return L"Lupakan "+std::to_wstring(sessionView.trustedDevices)+L" perangkat tepercaya";
 }
 
 std::wstring targetLabel(Target target) {
@@ -850,8 +882,11 @@ std::wstring targetLabel(Target target) {
     case Target::RunHost: return L"Ambil alih sesi ini";
     case Target::StopSession: return L"Putus sesi";
     case Target::SendFile: return L"Kirim berkas…";
-    case Target::AcceptFile: return L"Terima berkas";
+    case Target::AcceptFile: return L"Terima";
+    case Target::TrustFile: return L"Terima & ingat perangkat";
     case Target::RejectFile: return L"Tolak";
+    case Target::FilePolicy: return filePolicyLabel();
+    case Target::ForgetTrusted: return forgetTrustedLabel();
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1187,6 +1222,7 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
             drawTextLine(dc,judul,{x,layout.stopSession.bottom()+px(6),width,px(20)},g.fontSmall,kText,
                 DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
             paintButton(surface,layout,dc,Target::AcceptFile,layout.acceptFile);
+            if(layout.trustFile.valid())paintButton(surface,layout,dc,Target::TrustFile,layout.trustFile);
             if(layout.rejectFile.valid())paintButton(surface,layout,dc,Target::RejectFile,layout.rejectFile);
             const std::wstring sisa=sessionView.pendingRisky
                 ?(L"Berkas ini langsung dijalankan Windows. Ditolak sendiri dalam "+std::to_wstring(sessionView.pendingSeconds)+L" detik bila didiamkan.")
@@ -1194,6 +1230,12 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
             drawTextLine(dc,sisa,{x,layout.acceptFile.bottom()+px(4),width,px(20)},g.fontSmall,sessionView.pendingRisky?kWarn:kMuted,
                 DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
             below=layout.acceptFile.bottom()+px(24);
+        }
+        if(!sessionView.filePolicy.empty()&&layout.filePolicy.valid()){
+            paintButton(surface,layout,dc,Target::FilePolicy,layout.filePolicy);
+            if(sessionView.trustedDevices>0&&layout.forgetTrusted.valid())
+                paintButton(surface,layout,dc,Target::ForgetTrusted,layout.forgetTrusted);
+            below=layout.filePolicy.bottom();
         }
         workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,below+px(12),width,px(22)},g.fontSmall,kMuted);
         workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,below+px(36),width,px(40)},g.fontSmall,kMuted);
@@ -2353,15 +2395,41 @@ void activateTarget(HWND hwnd, Target target) {
         }catch(...){setFlash(L"Gagal memulai kiriman berkas.",kBad);}
         break;
     }
+    case Target::FilePolicy: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(filePolicyPending.valid())break;
+        // Putaran tiga nilai; nilai berikutnya dihitung dari yang dilaporkan
+        // host, bukan dari tebakan panel — dua panel yang terbuka bersamaan
+        // tidak boleh saling menimpa dengan nilai usang.
+        const std::wstring now=sessionView.filePolicy;
+        const char* next = now==L"ask" ? "always" : (now==L"always" ? "never" : "ask");
+        const auto endpoint=*controlChannel.endpoint;
+        const auto body=std::string("{\"action\":\"file-policy\",\"value\":\"")+next+"\"}";
+        filePolicyNote=L"Kebijakan berkas masuk diubah.";
+        try{filePolicyPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});}
+        catch(...){setFlash(L"Gagal mengubah kebijakan.",kBad);}
+        break;
+    }
+    case Target::ForgetTrusted: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(filePolicyPending.valid())break;
+        const auto endpoint=*controlChannel.endpoint;
+        filePolicyNote=L"Semua perangkat tepercaya dilupakan.";
+        try{filePolicyPending=std::async(std::launch::async,[endpoint]{return xydesk::panel_control::action(endpoint,"{\"action\":\"file-trust-clear\"}");});}
+        catch(...){setFlash(L"Gagal melupakan perangkat.",kBad);}
+        break;
+    }
     case Target::AcceptFile:
+    case Target::TrustFile:
     case Target::RejectFile: {
         if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
         if(sessionView.pendingId==0){setFlash(L"Tidak ada tawaran berkas yang menunggu.",kWarn);break;}
         if(fileConsentPending.valid())break;
-        const bool allow=target==Target::AcceptFile;
+        const bool allow=target!=Target::RejectFile;
+        const bool remember=target==Target::TrustFile;
         const auto endpoint=*controlChannel.endpoint;
         const auto body=std::string("{\"action\":\"file-consent\",\"id\":")+std::to_string(sessionView.pendingId)+
-            ",\"allow\":"+(allow?"true":"false")+"}";
+            ",\"allow\":"+(allow?"true":"false")+",\"remember\":"+(remember?"true":"false")+"}";
         fileConsentAllow=allow;
         try{
             fileConsentPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});
@@ -2433,7 +2501,10 @@ std::vector<Target> focusOrder() {
         order.push_back(Target::StopSession);
         order.push_back(Target::SendFile);
         order.push_back(Target::AcceptFile);
+        order.push_back(Target::TrustFile);
         order.push_back(Target::RejectFile);
+        order.push_back(Target::FilePolicy);
+        order.push_back(Target::ForgetTrusted);
         break;
     }
     order.push_back(Target::Minimize);
@@ -2539,7 +2610,10 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::StopSession:
     case Target::SendFile:
     case Target::AcceptFile:
+    case Target::TrustFile:
     case Target::RejectFile:
+    case Target::FilePolicy:
+    case Target::ForgetTrusted:
         return HTCLIENT;
     case Target::TitleBar:
         return HTCAPTION; // geser jendela dari area judul
@@ -2899,6 +2973,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             pollSessionAction();
             pollFileSend();
             pollFileConsent();
+            pollFilePolicy();
             pollSessionView();
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {
