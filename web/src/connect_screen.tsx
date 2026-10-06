@@ -67,6 +67,7 @@ export function AuthPanel(props: AuthPanelProps) {
         </>
       ) : (
         <>
+          <img className="auth-art" src="/float-mail.webp" alt="" aria-hidden="true" width="120" height="120" loading="lazy" decoding="async" />
           <p className="muted">Enam digit dikirim ke {props.email}.</p>
           <input aria-label="Kode verifikasi enam digit" autoComplete="one-time-code" className="otp-input" inputMode="numeric" maxLength={6} placeholder="000000" value={props.otp} autoFocus onChange={(e) => props.setOtp(e.target.value.replace(/\D/g, ''))} />
           {props.error && <p className="error" role="alert">{props.error}</p>}
