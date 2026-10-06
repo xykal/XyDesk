@@ -134,3 +134,30 @@ Batas bukti: uji SDP/RTP/decoder sintetis bukan bukti Windows/RDP atau Chrome An
 ## Browser adaptive video and FPS (2026-09-19)
 Authenticated input-channel packet `0x0f fps:u8` accepts exactly30 or60. Host advertises `video.fpsControl`, `fpsRequested`, and negotiated `fpsLimit`. Level3.1 caps720p30; Level4.0 allows720p60 but1080p30; Level5.1 allows1080p60, native4K remains15. Never changes the Windows display mode. Actual decoded FPS is measured separately. Old hosts omit capability and receive no FPS command.
 Browser presets are bitrate ceilings; interval packet loss, jitter-buffer delay and RTT reduce targets, with12s cooldown and20 healthy samples before gradual recovery. No upscaling or latency guarantee.
+
+## Pemilihan monitor host (client → host)
+
+Paket kanal input `0x07 DISPLAY_SELECT index:u8` memindahkan capture ke monitor
+dengan **indeks sistem** tersebut. Berlaku di tengah sesi: host memanggil
+`screen::select_display`, capture di-respawn, satu keyframe diminta, lalu meta
+baru dikirim balik. Host menolak diam-diam (tanpa pesan galat) bila indeks di
+luar daftar atau dilarang `virtual_target::permits_index` — jadi client tidak
+boleh menganggap permintaannya pasti berhasil, dan harus menunggu meta untuk
+mengetahui monitor yang benar-benar aktif.
+
+Daftar monitor datang dari pesan meta kanal input:
+
+```json
+{"type":"meta",
+ "displays":[{"index":0,"name":"\\\\.\\DISPLAY1","width":2560,"height":1440,
+              "refreshRate":144,"isPrimary":true}],
+ "wanted":0}
+```
+
+`refreshRate` **dihilangkan** bila driver tidak melaporkannya (sebagian driver
+virtual menulis 0/1 Hz); client menyembunyikan barisnya alih-alih menulis
+"0 Hz". `wanted` adalah monitor yang dipilih untuk capture dan bisa menunjuk
+monitor yang baru saja dicabut — pilihan jatuh ke monitor utama.
+
+Dukungan client: web (`rtc.ts: selectDisplay`) dan Android (`DisplayRules` +
+panel sesi). Keduanya membangun daftar dari meta, bukan dari angka tetap.
