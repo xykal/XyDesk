@@ -369,6 +369,3 @@ function LogsPage(){
 function SettingsPage(){
   return (<><h1 style={{fontSize:20}}>Settings</h1><div className="grid2" style={{marginTop:12}}><div className="card"><h3>Brand</h3><p className="muted" style={{fontSize:12}}>Kotak tegas, no rounded, custom total, #7C3AED.</p><div className="row" style={{marginTop:8}}><span style={{width:28, height:28, background:'#7C3AED', display:'inline-block', border:'1px solid var(--border)'}}/><span style={{width:28, height:28, background:'#EDE9FE', display:'inline-block', border:'1px solid var(--border)'}}/></div></div><div className="card"><h3>Keamanan</h3><p className="muted" style={{fontSize:12}}>Username, password, dan Cloudflare Turnstile. Sesi disimpan dalam cookie HttpOnly.</p><div className="row"><span className="badge dark"><ShieldCheck size={12}/> Turnstile ON</span><span className="badge ok"><Activity size={12}/> Password aktif</span></div></div></div></>)
 }
-
-// @ts-ignore
-declare const __APP_VERSION__: string

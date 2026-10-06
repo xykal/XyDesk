@@ -1,11 +1,13 @@
 import test, { afterEach } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import ts from 'typescript'
+import { transformWithOxc } from 'vite'
 
+// `typescript` 7 tidak lagi mengekspor transpileModule, jadi pembuangan tipe
+// memakai transformer bawaan Vite — sama seperti test di web/.
 const source = readFileSync(new URL('../src/api.ts', import.meta.url), 'utf8')
-const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } })
-const api = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`)
+const { code } = await transformWithOxc(source, 'api.fixture.ts')
+const api = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
 const originalFetch = globalThis.fetch
 const storage = new Map()
 globalThis.localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key,value) => storage.set(key,value), removeItem: key => storage.delete(key) }
@@ -75,10 +77,10 @@ test('login password mengirim cookie dan tidak menyimpan sesi baru di localStora
   globalThis.fetch=async(url,init)=>{
     assert.equal(url,'https://signal.xydesk.my.id/admin/password-login')
     assert.equal(init.credentials,'include')
-    assert.deepEqual(JSON.parse(init.body),{username:'owner',password:'test-long-password',code:'123456',recovery:false,turnstileToken:'captcha'})
+    assert.deepEqual(JSON.parse(init.body),{username:'owner',password:'test-long-password',turnstileToken:'captcha'})
     return Response.json({email:'owner@example.com',username:'owner',setupRequired:false})
   }
-  const session=await api.passwordLogin('owner','test-long-password','123456',false,'captcha')
+  const session=await api.passwordLogin('owner','test-long-password','captcha')
   assert.equal(session.setupRequired,false);assert.equal(api.getAdminToken(),null)
 })
 test('logout gagal tidak mengaku sesi sudah dihapus',async()=>{

@@ -127,6 +127,8 @@ jobs:
               - 'VERSION'
             web:
               - 'web/**'
+            admin:
+              - 'admin/**'
             news:
               - 'news/**'
             backend:
@@ -494,6 +496,38 @@ jobs:
           path: web/dist/*
           retention-days: 30
 
+  # ── 5b. Panel admin ──
+  # Sempat tidak punya gerbang sama sekali: `tsc -b` di admin/ gagal berbulan
+  # tanpa ketahuan karena tidak ada job yang menjalankannya. Job ini kecil,
+  # tapi ia yang menahan regresi berikutnya.
+  admin:
+    name: Admin Panel
+    needs: changes
+    if: needs.changes.outputs.admin == 'true' || needs.changes.outputs.full == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Pasang dependensi
+        working-directory: admin
+        run: npm install --no-audit --no-fund
+      - name: Uji kontrak API admin
+        working-directory: admin
+        run: npm test
+      - name: Build Admin Panel
+        working-directory: admin
+        run: npm run build
+
   # ── 6. Lint installer MSI + NSIS ──
   # Kedua format harus bisa dibangun dari payload yang sama sebelum installer
   # final dijalankan. Tidak ada lagi lint Inno Setup sebagai jalur produksi.
@@ -625,7 +659,7 @@ jobs:
   summary:
     name: Ringkasan
     needs: [changes, check-news, check-signaling, check-meta,
-            host-test, android, windows, web, installer-lint]
+            host-test, android, windows, web, admin, installer-lint]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -642,6 +676,7 @@ jobs:
           ANDROID: ${{ needs.changes.outputs.android }}
           HOST: ${{ needs.changes.outputs.host }}
           WEB: ${{ needs.changes.outputs.web }}
+          ADMIN: ${{ needs.changes.outputs.admin }}
           NEWS: ${{ needs.changes.outputs.news }}
           BACKEND: ${{ needs.changes.outputs.backend }}
           PACKAGING: ${{ needs.changes.outputs.packaging }}
@@ -655,8 +690,9 @@ jobs:
           if [ "$FULL" = "true" ]; then
             echo "- build penuh (workflow_dispatch)" >> "$GITHUB_STEP_SUMMARY"
           else
-            for pair in "$ANDROID:android" "$HOST:host" "$WEB:web" "$NEWS:news" \
-                        "$BACKEND:backend" "$PACKAGING:packaging" "$META:meta"; do
+            for pair in "$ANDROID:android" "$HOST:host" "$WEB:web" "$ADMIN:admin" \
+                        "$NEWS:news" "$BACKEND:backend" "$PACKAGING:packaging" \
+                        "$META:meta"; do
               val="${pair%%:*}"
               name="${pair##*:}"
               if [ "$val" = "true" ]; then
@@ -675,6 +711,7 @@ jobs:
             echo "| Android APK (ARM Universal) | ${{ needs.android.result }} | \`XyDesk-Android-APK\` |"
             echo "| Windows Desktop (EXE)       | ${{ needs.windows.result }} | \`XyDesk-Windows-<arch>\` |"
             echo "| Web Application             | ${{ needs.web.result }}     | \`XyDesk-Web\`         |"
+            echo "| Admin Panel                 | ${{ needs.admin.result }}   | gerbang mutu, tanpa artefak |"
             echo "| Lint Installer Windows      | ${{ needs['installer-lint'].result }} | \`packaging/windows\` |"
             echo ""
             echo "Job dengan status \`skipped\` berarti area itu TIDAK tersentuh pada"
