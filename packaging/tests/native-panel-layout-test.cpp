@@ -229,6 +229,26 @@ void testCompactAndCollapsed() {
     }
 }
 
+// Tombol "Kirim berkas" hidup berdampingan dengan "Putus sesi" di halaman
+// koneksi. Yang diuji di sini hanya yang murni angka: ia tidak menimpa
+// tetangganya, tidak keluar dari kartu kerja, dan hanya bisa diklik di
+// halaman koneksi.
+void testSendFileButton() {
+    for(int dpi:{96,120,144,192})for(int width:{720,1100,1600})for(bool collapsed:{false,true}){
+        const auto l=xydesk::panel::computeLayout(dpi,width,480,collapsed);
+        if(l.sendFile.w<=0)continue;  // Panel terlalu sempit: tombol memang dilipat.
+        check(!overlaps(l.sendFile,l.stopSession),"kirim berkas tidak menimpa putus sesi");
+        check(l.sendFile.x>=l.stopSession.right(),"kirim berkas di kanan putus sesi");
+        check(l.sendFile.y==l.stopSession.y&&l.sendFile.h==l.stopSession.h,"dua tombol sesi sebaris");
+        check(insidePanel(l,l.sendFile),"kirim berkas di dalam jendela");
+        check(l.sendFile.right()<=l.workspaceShell.right(),"kirim berkas tidak keluar kartu kerja");
+        const int cx=xydesk::panel::centerX(l.sendFile),cy=xydesk::panel::centerY(l.sendFile);
+        check(xydesk::panel::targetAt(l,Page::Connections,cx,cy)==Target::SendFile,"kirim berkas bisa diklik di halaman koneksi");
+        check(xydesk::panel::targetAt(l,Page::Status,cx,cy)!=Target::SendFile,"kirim berkas tidak bocor ke halaman lain");
+    }
+    check(std::string(xydesk::panel::targetName(Target::SendFile))=="SendFile","tombol kirim berkas punya nama probe");
+}
+
 void testTargetNames() {
     check(std::string(xydesk::panel::targetName(Target::Start)) == "Start", "nama sasaran dipakai di berkas probe");
     check(std::string(xydesk::panel::targetName(Target::Minimize)) == "Minimize", "tombol perkecil punya nama");
@@ -248,6 +268,7 @@ int main() {
     testRoundingMath();
     testTargetNames();
     testCompactAndCollapsed();
+    testSendFileButton();
 
     if (g_failures == 0) {
         std::printf("Lulus: %d pemeriksaan tata letak panel native.\n", g_checks);

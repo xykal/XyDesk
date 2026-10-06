@@ -155,11 +155,32 @@ sendiri-sendiri: satu sisi yang keliru urutan byte tidak akan ketahuan oleh
 uji mana pun di satu bahasa saja — yang terlihat hanyalah transfer yang gagal
 di perangkat pengguna.
 
+## 5b. Tombol di panel host
+
+Halaman **Koneksi** panel native menggambar "Kirim berkas…" di sebelah
+"Putus sesi". Tombolnya hanya hidup bila host berjalan **dan** ada sesi
+aktif: tanpa perangkat tersambung tidak ada tujuan kiriman, dan tombol yang
+selalu gagal lebih buruk daripada tombol mati.
+
+Klik membuka dialog "Buka" bawaan Windows (`GetOpenFileNameW`, dengan
+`OFN_NOCHANGEDIR` supaya direktori kerja proses host tidak ikut bergeser),
+lalu path-nya dititipkan ke control API di thread terpisah — `action()`
+bersifat sinkron, dan memanggilnya di thread UI akan membekukan panel.
+
+Panel hanya menunggu jawaban **"kiriman diterima antrean"**, bukan "berkas
+sampai": perjalanan berkas besar bisa menit-menit. Jawaban `{"ok":false}`
+ditampilkan apa adanya dari field `error` host, karena host sudah menulisnya
+sebagai kalimat untuk manusia dan menerjemahkannya ulang di panel hanya
+membuat dua sumber kebenaran.
+
+Yang diuji di Linux (`packaging/tests/native-panel-layout-test.cpp`) hanya
+yang murni angka: tombol tidak menimpa "Putus sesi", tidak keluar dari kartu
+kerja pada 4 DPI × 3 lebar × 2 keadaan sidebar, dan hit-test-nya hanya
+mengembalikan `SendFile` di halaman Koneksi. Sintaks `main.cpp` disaring
+MinGW `-fsyntax-only`; kompilasi penuhnya tetap job Windows CI.
+
 ## 6. Yang belum ada
 
-- **Tombol "Kirim berkas" di panel host.** Jalurnya sudah ada dan bisa
-  dipanggil (`POST /action {"action":"file-send"}`), tetapi panel native
-  C++ belum menggambar tombolnya.
 - **Pintu persetujuan di PC.** Host menerima otomatis dari client yang sudah
   lolos pairing. Arah sebaliknya **selalu** bertanya di HP.
 - **Konfirmasi sukses.** Host diam bila berkas tersimpan; pengirim
