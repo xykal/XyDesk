@@ -100,6 +100,27 @@ class ChatRulesTest {
     }
 
     @Test
+    fun `hanya tier vip yang mendapat bingkai`() {
+        assertTrue(ChatRules.isVip("vip"))
+        assertFalse(ChatRules.isVip("free"))
+        assertFalse(ChatRules.isVip(null))
+        assertFalse(ChatRules.isVip(""))
+        // Nilai baru dari server mendatang tidak boleh diam-diam jadi VIP.
+        assertFalse(ChatRules.isVip("VIP"))
+        assertFalse(ChatRules.isVip("premium"))
+    }
+
+    @Test
+    fun `inisial avatar selalu satu karakter yang terbaca`() {
+        assertEquals("B", ChatRules.initial("Budi"))
+        assertEquals("S", ChatRules.initial("siti"))
+        assertEquals("7", ChatRules.initial("7even"))
+        assertEquals("A", ChatRules.initial("...andi"))
+        assertEquals("?", ChatRules.initial("..."))
+        assertEquals("?", ChatRules.initial(""))
+    }
+
+    @Test
     fun `jeda sambung ulang naik lalu berhenti di lima belas detik`() {
         assertEquals(1_000L, ChatRules.retryDelayMs(0))
         assertEquals(2_000L, ChatRules.retryDelayMs(1))

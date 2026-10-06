@@ -729,6 +729,11 @@ export class AuthStore {
       email: user.email,
       name: user.name || null,
       picture: user.picture || null,
+      // Tingkat akun. Fitur VIP belum ada, jadi nilainya selalu 'free'
+      // kecuali seseorang menaruh 'vip' di catatan pengguna. Field ini
+      // sengaja ada lebih dulu supaya chat tidak perlu diubah lagi saat
+      // VIP benar-benar dibuat.
+      tier: user.tier === 'vip' ? 'vip' : 'free',
     };
   }
 

@@ -107,13 +107,21 @@ export function trimHistory(history, message) {
   return next.length > HISTORY_SIZE ? next.slice(next.length - HISTORY_SIZE) : next;
 }
 
+/** Tingkat akun yang diakui ruang chat. Apa pun selain 'vip' = biasa. */
+export function normalizeTier(tier) {
+  return tier === 'vip' ? 'vip' : 'free';
+}
+
 /** Bentuk pesan yang dikirim ke semua orang. Tidak pernah memuat email penuh. */
-export function buildMessage({ id, email, name, text, at }) {
+export function buildMessage({ id, email, name, tier, text, at }) {
   return {
     type: 'msg',
     id,
     from: pickName(name, email),
     hue: avatarHue(email),
+    // Bingkai VIP digambar klien dari tanda ini. Nilainya datang dari profil
+    // akun lewat Worker, tidak pernah dari pesan yang dikirim client.
+    tier: normalizeTier(tier),
     text,
     at,
   };
@@ -168,6 +176,7 @@ export class ChatRoom {
     // DO tidak pernah memercayai body untuk soal identitas.
     const email = request.headers.get('x-xydesk-email') || '';
     const name = request.headers.get('x-xydesk-name') || '';
+    const tier = normalizeTier(request.headers.get('x-xydesk-tier'));
     if (!email) return json({ error: 'unauthorized' }, 401);
 
     if (url.pathname === '/history') {
@@ -184,13 +193,14 @@ export class ChatRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ email, name, stamps: [], since: Date.now() });
+    server.serializeAttachment({ email, name, tier, stamps: [], since: Date.now() });
 
     try {
       server.send(JSON.stringify({
         type: 'welcome',
         you: pickName(name, email),
         hue: avatarHue(email),
+        tier,
         online: this.sockets().length,
         messages: await this.history(),
       }));
@@ -233,7 +243,14 @@ export class ChatRoom {
     }
     ws.serializeAttachment({ ...meta, stamps: check.state.stamps });
 
-    const message = buildMessage({ id: crypto.randomUUID(), email, name: meta.name, text: parsed.text, at: now });
+    const message = buildMessage({
+      id: crypto.randomUUID(),
+      email,
+      name: meta.name,
+      tier: meta.tier,
+      text: parsed.text,
+      at: now,
+    });
     await this.ctx.storage.put('history', trimHistory(await this.history(), message));
     this.broadcast(message);
   }

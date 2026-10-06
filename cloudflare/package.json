@@ -9,6 +9,7 @@
     "test": "node --test",
     "check": "npm test && wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "test:runtime": "wrangler deploy --dry-run --outdir .wrangler/runtime-test && node tool/runtime-check.mjs",
+    "test:chat": "wrangler deploy --dry-run --outdir .wrangler/runtime-test && node tool/chat-check.mjs",
     "test:remote": "node tool/remote-core-check.mjs"
   },
   "devDependencies": {
