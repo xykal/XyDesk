@@ -24,6 +24,14 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Laju tinggi 120 dan 144 fps:** sesi tidak lagi berhenti di 60 fps. Batasnya kini dihitung dari MaxMBPS level H.264 hasil negosiasi, bukan dari daftar tetap: 720p pada level 5.1 sanggup 144 fps, 1080p pada level 5.1 sanggup 120 fps, sedangkan level 4.0 tetap maksimal 60 dan level 3.1 tetap 30. Hasilnya selalu dibulatkan ke anak tangga yang dikenal, tidak pernah ke angka sisa bagi seperti 68 fps yang akan merusak pacing capture dan VBV.
+
+- **Opsi fps mengikuti layar HP:** panel 120/144 Hz kini mendapat pilihan 120 dan 144 di panel sesi dan di pengaturan bawaan, sementara layar 60 Hz tidak ditawari opsi yang mustahil ia tampilkan. Sesi juga meminta mode layar tercepat pada resolusi yang sama, karena tanpa permintaan itu banyak panel 120 Hz tetap berjalan 60 Hz dan separuh frame yang dikirim host terbuang di tahap tampil.
+
+- **GOP mengikuti laju:** jarak antar-IDR dijaga sekitar dua detik di laju mana pun. Sebelumnya konstanta 120 frame berarti pemulihan packet loss baru datang empat detik sekali di 30 fps, dan sebaliknya membuang bit untuk IDR tiap 0,8 detik di 144 fps.
+
+- **Uji unit Android ikut berjalan di CI:** job APK kini menjalankan `:xyadapt:test` sebelum merakit rilis. Modul itu sudah punya uji sejak lama, tetapi tidak pernah sekali pun dieksekusi oleh pipeline.
+
 - **CI installer:** pemasangan NSIS kini diulang sampai tiga kali dan keberhasilannya diukur dari ada tidaknya `makensis.exe`, bukan dari kode keluar Chocolatey yang bisa nol walau pengunduhan paketnya ditolak server. Satu balasan 503 sesaat sebelumnya cukup untuk menjatuhkan seluruh Build yang menjadi syarat rilis.
 
 - **Gerbang versi:** `tool/check_version.py` kini ikut memeriksa `host/Cargo.lock` dan `admin/package.json`. Bump versi yang melewatkan lock Rust sebelumnya lolos semua pemeriksaan lokal lalu menggagalkan job Windows di CI, setelah antre di belakang build Rust yang panjang.

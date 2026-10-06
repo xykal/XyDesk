@@ -98,6 +98,13 @@ pub const ENCODE_FPS: u32 = 60;
 /// tanpa membebani bitrate (IDR jauh lebih besar dari P-frame).
 pub const GOP_LENGTH: u32 = 120;
 
+/// GOP setara ~2 detik untuk laju apa pun (30→60, 60→120, 120→240, 144→288).
+/// Dipakai `nvenc.rs` setelah laju sesi diketahui; `GOP_LENGTH` tetap jadi
+/// nilai bawaan perakit config.
+pub fn gop_for_fps(fps: u32) -> u32 {
+    fps.clamp(1, 240) * 2
+}
+
 /// Rakit `NV_ENC_CONFIG` low-latency untuk H264 CBR `width`x`height` @
 /// `bitrate_bps`.
 ///
@@ -289,6 +296,22 @@ mod tests {
             [0xb9, 0xd2, 0xcd, 0x6d, 0x73, 0xa0, 0x86, 0x81]
         );
         assert_eq!(NV_ENC_H264_PROFILE_BASELINE_GUID.Data1, 0x0727bcaa);
+    }
+
+    #[test]
+    fn gop_selalu_sekitar_dua_detik() {
+        // IDR tiap ~2 dtk di laju mana pun — bukan 4 dtk di 30 fps atau
+        // 0,8 dtk di 144 fps seperti saat GOP masih konstanta 120.
+        for fps in [30u32, 60, 120, 144] {
+            let gop = gop_for_fps(fps);
+            assert_eq!(gop, fps * 2, "GOP {fps} fps harus 2 detik");
+            let detik = gop as f64 / fps as f64;
+            assert!((detik - 2.0).abs() < 0.01);
+        }
+        assert_eq!(gop_for_fps(60), GOP_LENGTH, "60 fps = perilaku lama");
+        // Tidak pernah nol (pembagi di pemanggil) dan tidak meledak.
+        assert_eq!(gop_for_fps(0), 2);
+        assert_eq!(gop_for_fps(10_000), 480);
     }
 
     #[test]
