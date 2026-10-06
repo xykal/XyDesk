@@ -204,8 +204,22 @@ async fn berkas_berpindah_utuh_lewat_sesi_nyata() -> anyhow::Result<()> {
     )
     .await?;
 
-    // Berkas final muncul setelah host memverifikasi hash.
+    // Konfirmasi harus datang, dan janjinya kuat: saat `DONE_OK` tiba,
+    // berkas finalnya sudah ada — bukan sekadar byte terakhir yang sampai.
     let tujuan = dir.join("laporan rahasia.pdf");
+    let ok = tunggu(&mut lb.masuk, |m| {
+        matches!(m, FileMessage::DoneOk { .. } | FileMessage::Cancel { .. })
+    })
+    .await?;
+    assert!(
+        matches!(ok, FileMessage::DoneOk { id: 42 }),
+        "bukan konfirmasi untuk transfer ini: {ok:?}"
+    );
+    assert!(
+        tujuan.exists(),
+        "DONE_OK datang sebelum berkasnya tersimpan"
+    );
+
     let batas = std::time::Instant::now() + Duration::from_secs(20);
     while !tujuan.exists() && std::time::Instant::now() < batas {
         tokio::time::sleep(Duration::from_millis(100)).await;
@@ -425,6 +439,25 @@ async fn host_mengirim_berkas_ke_client() -> anyhow::Result<()> {
     assert_eq!(diterima, isi, "isi berkas berubah di jalan");
     let sha_asli: [u8; 32] = Sha256::digest(&isi).into();
     assert_eq!(sha_akhir, sha_asli, "SHA-256 di DONE tidak cocok");
+
+    // Konfirmasi balik: host menunggunya sebelum melepaskan slot pengirim.
+    // Kalau jalurnya putus, slot baru bebas setelah 10 detik timeout — jadi
+    // batas 5 detik di bawah ini benar-benar menguji bahwa `DONE_OK`
+    // sampai ke `Sender` dan bukan sekadar terlewat.
+    kirim(&lb.dc, &FileMessage::DoneOk { id }).await?;
+    let kedua = dir.join("kiriman kedua.bin");
+    std::fs::write(&kedua, b"halo")?;
+    let batas = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match xydesk_host::file_dispatch::queue_outgoing(kedua.clone()) {
+            Ok(()) => break,
+            Err(e) if std::time::Instant::now() < batas => {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                let _ = e;
+            }
+            Err(e) => anyhow::bail!("slot pengirim tidak pernah bebas setelah DONE_OK: {e}"),
+        }
+    }
 
     lb.client.close().await?;
     let _ = std::fs::remove_dir_all(&dir);

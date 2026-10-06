@@ -221,4 +221,18 @@ class FileReceiveTest {
         assertArrayEquals(data, keluar.toByteArray())
         assertEquals(100, s.percent())
     }
+    /**
+     * Satu channel dipakai dua arah, jadi konfirmasi milik arah sebaliknya
+     * ikut lewat di depan penerima. Itu bukan pelanggaran protokol dan tidak
+     * boleh menggugurkan transfer yang sedang berjalan.
+     */
+    @Test
+    fun penerimaMembiarkanDoneOkLewat() {
+        val r = FileReceiver(5, "a.bin", 10)
+        r.accept()
+        assertEquals(FileAction.None, r.handle(FileMsg.DoneOk(5)))
+        assertEquals(FileAction.None, r.handle(FileMsg.DoneOk(99)))
+        assertEquals(FileReceiver.Phase.RECEIVING, r.phase())
+        assertEquals(-1, r.failReason())
+    }
 }

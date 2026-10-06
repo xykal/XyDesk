@@ -13,7 +13,15 @@ package id.xyverse.xyadapt
  * 0x05 DONE   id:u32  sha256:32 byte
  * 0x06 CANCEL id:u32  reason:u8
  * 0x07 ACK    id:u32  received:u64
+ * 0x08 DONE_OK id:u32
  * ```
+ *
+ * `DONE_OK` adalah konfirmasi akhir dari penerima: dikirim setelah hash
+ * cocok **dan** berkas dipindahkan ke tempat permanennya, bukan saat byte
+ * terakhir tiba. Sebelum 6.11.12 keberhasilan hanya disimpulkan dari
+ * ketiadaan `CANCEL` — diam yang sama persis dengan diamnya koneksi yang
+ * mati. Host lama tidak mengirimnya; pengirim di sini tetap menyebut
+ * kirimannya selesai, hanya tanpa label "tersimpan".
  *
  * Semua bilangan little-endian. Tidak ada I/O di berkas ini: byte berkasnya
  * dibaca pemanggil, di sini hanya diputuskan **boleh atau tidak** dan
@@ -28,6 +36,7 @@ object FileWire {
     const val MSG_DONE = 0x05
     const val MSG_CANCEL = 0x06
     const val MSG_ACK = 0x07
+    const val MSG_DONE_OK = 0x08
 
     const val CHANNEL = "file"
 
@@ -72,6 +81,9 @@ object FileWire {
         is FileMsg.Ack -> ByteArray(13).also {
             it[0] = MSG_ACK.toByte(); putI32(it, 1, m.id); putI64(it, 5, m.received)
         }
+        is FileMsg.DoneOk -> ByteArray(5).also {
+            it[0] = MSG_DONE_OK.toByte(); putI32(it, 1, m.id)
+        }
     }
 
     /**
@@ -99,6 +111,7 @@ object FileWire {
             MSG_CHUNK -> if (rest < 8) null else FileMsg.Chunk(id(), i32(b, 5), b.copyOfRange(9, b.size))
             MSG_DONE -> if (rest != 36) null else FileMsg.Done(id(), b.copyOfRange(5, 37))
             MSG_ACK -> if (rest != 12) null else FileMsg.Ack(id(), i64(b, 5))
+            MSG_DONE_OK -> if (rest != 4) null else FileMsg.DoneOk(id())
             else -> null
         }
     }
@@ -175,6 +188,9 @@ sealed class FileMsg {
 
     data class Cancel(val id: Int, val reason: Int) : FileMsg()
     data class Ack(val id: Int, val received: Long) : FileMsg()
+
+    /** Penerima: berkas sudah terverifikasi dan tersimpan permanen. */
+    data class DoneOk(val id: Int) : FileMsg()
 }
 
 /**
@@ -201,7 +217,13 @@ class FileSender(
     val size: Long,
     private val chunkSize: Int = FileRules.SEND_CHUNK_BYTES,
 ) {
-    enum class State { WAIT_READY, OFFERED, SENDING, FINISHING, DONE, FAILED }
+    /**
+     * `DONE` berarti byte terakhir dan hash sudah keluar; `CONFIRMED`
+     * berarti host menyatakan berkasnya benar-benar tersimpan. Host lama
+     * tidak pernah mengirim konfirmasi, jadi `CONFIRMED` bukan syarat
+     * keberhasilan — hanya bukti yang lebih kuat kalau ada.
+     */
+    enum class State { WAIT_READY, OFFERED, SENDING, FINISHING, DONE, CONFIRMED, FAILED }
 
     /** Nama yang dibersihkan — yang dilihat pengguna harus yang ditulis host. */
     val name: String = FileRules.sanitizeName(rawName)
@@ -216,7 +238,10 @@ class FileSender(
     fun sentBytes(): Long = sent
     fun ackedBytes(): Long = acked
     fun failReason(): Int = reason
-    fun active(): Boolean = state != State.DONE && state != State.FAILED
+    fun active(): Boolean = state != State.DONE && state != State.CONFIRMED && state != State.FAILED
+
+    /** Benar bila host sudah menyatakan berkasnya tersimpan permanen. */
+    fun confirmed(): Boolean = state == State.CONFIRMED
 
     /** Kemajuan yang ditunjukkan ke pengguna: byte yang sampai di disk PC. */
     fun percent(): Int = FileRules.percent(acked, size)
@@ -232,6 +257,13 @@ class FileSender(
      * harus dikirim (hanya `OFFER` saat tanda siap tiba), atau `null`.
      */
     fun onMessage(m: FileMsg): FileMsg? {
+        // Konfirmasi justru datang setelah pengirim berhenti aktif, jadi ia
+        // diperiksa sebelum penjagaan di bawah. Konfirmasi untuk transfer
+        // lain, atau yang mendahului `DONE`, diabaikan — bukan dipercaya.
+        if (m is FileMsg.DoneOk) {
+            if (m.id == id && state == State.DONE) state = State.CONFIRMED
+            return null
+        }
         if (!active()) return null
         if (FileWire.isBeacon(m)) {
             if (state != State.WAIT_READY) return null
@@ -251,6 +283,7 @@ class FileSender(
             is FileMsg.Done -> m.id
             is FileMsg.Cancel -> m.id
             is FileMsg.Ack -> m.id
+            is FileMsg.DoneOk -> m.id
         }
         if (other != id) return null
         when (m) {
@@ -306,10 +339,10 @@ class FileSender(
     fun ready(): Boolean = state == State.FINISHING
 
     /**
-     * `DONE` dengan SHA-256 berkas. Host diam bila berkasnya tersimpan dan
-     * mengirim `CANCEL` bila hashnya tidak cocok — jadi keadaan di sini
-     * menjadi DONE, dan pembatalan yang datang kemudian tetap membuatnya
-     * gagal.
+     * `DONE` dengan SHA-256 berkas. Host 6.11.12 membalas `DONE_OK` setelah
+     * berkasnya tersimpan dan `CANCEL` bila hashnya tidak cocok; host lama
+     * hanya diam saat berhasil. Jadi keadaan di sini menjadi DONE, dan
+     * pembatalan yang datang kemudian tetap membuatnya gagal.
      */
     fun finish(sha256: ByteArray): FileMsg? {
         if (state != State.FINISHING) return null
@@ -329,7 +362,10 @@ class FileSender(
     }
 
     private fun fail(code: Int) {
-        if (state == State.DONE && code == FileReason.USER) return
+        if ((state == State.DONE || state == State.CONFIRMED) && code == FileReason.USER) return
+        // Berkas yang sudah dikonfirmasi tersimpan tidak bisa digagalkan
+        // oleh apa pun yang datang sesudahnya.
+        if (state == State.CONFIRMED) return
         state = State.FAILED
         reason = code
     }

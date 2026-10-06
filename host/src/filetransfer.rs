@@ -22,7 +22,20 @@
 //! 0x05 DONE   id:u32  sha256:32 byte
 //! 0x06 CANCEL id:u32  reason:u8
 //! 0x07 ACK    id:u32  received:u64
+//! 0x08 DONE_OK id:u32
 //! ```
+//!
+//! ## Konfirmasi, bukan kesimpulan
+//!
+//! Sampai 6.11.11 keberhasilan disimpulkan dari ketiadaan `CANCEL`: penerima
+//! diam kalau berkasnya tersimpan. Diam adalah jawaban yang sama persis
+//! dengan "koneksi mati sebelum sempat mengeluh", jadi pengirim mengaku
+//! berhasil untuk berkas yang tidak pernah ada di disk. `DONE_OK` dikirim
+//! penerima **setelah** hash cocok dan berkas dipindahkan ke tempat
+//! permanennya — bukan saat byte terakhir tiba. Penerima lama tidak
+//! mengenalnya dan tetap diam; pengirim memperlakukan itu seperti dulu
+//! ("terkirim, belum dikonfirmasi") dan tidak pernah menampilkannya sebagai
+//! kegagalan.
 //!
 //! `seq` dimulai dari 0 dan **wajib** naik satu per satu. SCTP di WebRTC
 //! sudah memberi pengiriman terurut dan andal pada channel bawaan, jadi
@@ -60,6 +73,8 @@ pub const MSG_CHUNK: u8 = 0x04;
 pub const MSG_DONE: u8 = 0x05;
 pub const MSG_CANCEL: u8 = 0x06;
 pub const MSG_ACK: u8 = 0x07;
+/// Penerima: berkas sudah terverifikasi dan tersimpan permanen.
+pub const MSG_DONE_OK: u8 = 0x08;
 
 /// Nama data channel untuk transfer berkas.
 pub const FILE_CHANNEL: &str = "file";
@@ -141,13 +156,39 @@ impl Reason {
 /// Pesan protokol hasil dekode.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FileMessage {
-    Offer { id: u32, size: u64, name: String },
-    Accept { id: u32 },
-    Reject { id: u32, reason: Reason },
-    Chunk { id: u32, seq: u32, data: Vec<u8> },
-    Done { id: u32, sha256: [u8; 32] },
-    Cancel { id: u32, reason: Reason },
-    Ack { id: u32, received: u64 },
+    Offer {
+        id: u32,
+        size: u64,
+        name: String,
+    },
+    Accept {
+        id: u32,
+    },
+    Reject {
+        id: u32,
+        reason: Reason,
+    },
+    Chunk {
+        id: u32,
+        seq: u32,
+        data: Vec<u8>,
+    },
+    Done {
+        id: u32,
+        sha256: [u8; 32],
+    },
+    Cancel {
+        id: u32,
+        reason: Reason,
+    },
+    Ack {
+        id: u32,
+        received: u64,
+    },
+    /// Konfirmasi akhir dari penerima: hash cocok, berkas sudah di tempatnya.
+    DoneOk {
+        id: u32,
+    },
 }
 
 /// Mendekode satu pesan channel `"file"`.
@@ -207,6 +248,12 @@ pub fn decode(bytes: &[u8]) -> Option<FileMessage> {
                 sha256,
             })
         }
+        MSG_DONE_OK => {
+            if rest.len() != 4 {
+                return None;
+            }
+            Some(FileMessage::DoneOk { id: id(rest)? })
+        }
         MSG_ACK => {
             if rest.len() != 12 {
                 return None;
@@ -262,6 +309,10 @@ pub fn encode(message: &FileMessage) -> Vec<u8> {
             out.push(MSG_ACK);
             out.extend_from_slice(&id.to_le_bytes());
             out.extend_from_slice(&received.to_le_bytes());
+        }
+        FileMessage::DoneOk { id } => {
+            out.push(MSG_DONE_OK);
+            out.extend_from_slice(&id.to_le_bytes());
         }
     }
     out
@@ -351,8 +402,12 @@ pub enum SendState {
     Sending,
     /// Semua byte keluar; tinggal `DONE`.
     Finishing,
-    /// `DONE` terkirim.
+    /// `DONE` terkirim; penerima belum (atau tidak akan) mengonfirmasi.
     Done,
+    /// `DONE_OK` diterima: berkas benar-benar tersimpan di seberang. Penerima
+    /// lama tidak pernah mengirimnya, jadi keadaan ini **tidak** wajib
+    /// dicapai untuk disebut berhasil.
+    Confirmed,
     Failed(Reason),
 }
 
@@ -418,7 +473,15 @@ impl Sender {
         self.acked
     }
     pub fn active(&self) -> bool {
-        !matches!(self.state, SendState::Done | SendState::Failed(_))
+        !matches!(
+            self.state,
+            SendState::Done | SendState::Confirmed | SendState::Failed(_)
+        )
+    }
+
+    /// Benar bila penerima sudah menyatakan berkasnya tersimpan.
+    pub fn confirmed(&self) -> bool {
+        self.state == SendState::Confirmed
     }
     pub fn ready(&self) -> bool {
         self.state == SendState::Finishing
@@ -435,6 +498,15 @@ impl Sender {
     /// Menyuapkan satu pesan dari penerima. Mengembalikan pesan yang harus
     /// dikirim — hanya `OFFER`, saat tanda siap tiba.
     pub fn on_message(&mut self, message: &FileMessage) -> Option<FileMessage> {
+        // Konfirmasi datang justru setelah pengirim berhenti aktif, jadi ia
+        // diperiksa sebelum penjagaan di bawah. Konfirmasi untuk transfer
+        // lain, atau yang datang sebelum DONE, diabaikan — bukan dipercaya.
+        if let FileMessage::DoneOk { id } = message {
+            if *id == self.id && self.state == SendState::Done {
+                self.state = SendState::Confirmed;
+            }
+            return None;
+        }
         if !self.active() {
             return None;
         }
@@ -460,7 +532,8 @@ impl Sender {
             | FileMessage::Chunk { id, .. }
             | FileMessage::Done { id, .. }
             | FileMessage::Cancel { id, .. }
-            | FileMessage::Ack { id, .. } => *id,
+            | FileMessage::Ack { id, .. }
+            | FileMessage::DoneOk { id } => *id,
         };
         if other != self.id {
             return None;
@@ -689,7 +762,8 @@ impl Receiver {
             | FileMessage::Chunk { id, .. }
             | FileMessage::Done { id, .. }
             | FileMessage::Cancel { id, .. }
-            | FileMessage::Ack { id, .. } => *id,
+            | FileMessage::Ack { id, .. }
+            | FileMessage::DoneOk { id } => *id,
         };
         if other_id != self.id {
             return Action::None;
@@ -741,6 +815,10 @@ impl Receiver {
                 let _ = (size, name);
                 self.fail(Reason::Protocol)
             }
+            // Konfirmasi milik pengirim di arah sebaliknya. Satu channel
+            // dipakai dua arah, jadi ia boleh lewat tanpa dianggap
+            // pelanggaran — tetapi tidak mengubah apa pun di sini.
+            FileMessage::DoneOk { .. } => Action::None,
             // ACCEPT/REJECT/ACK adalah pesan untuk pengirim; menerimanya di
             // sisi penerima berarti ada yang salah membaca arah.
             _ => self.fail(Reason::Protocol),
@@ -1441,5 +1519,85 @@ mod tests {
         assert!(matches!(r.handle(&potongan), Action::Write { .. }));
         let done = s.finish([0u8; 32]).unwrap();
         assert_eq!(r.handle(&done), Action::Abort(Reason::HashMismatch));
+    }
+    /// `DONE_OK` harus pulang-pergi lewat kawat tanpa berubah, dan panjang
+    /// yang salah tidak boleh diterima sebagai konfirmasi.
+    #[test]
+    fn done_ok_bolak_balik_di_kawat() {
+        let pesan = FileMessage::DoneOk { id: 0x0A0B0C0D };
+        let byte = encode(&pesan);
+        assert_eq!(byte[0], MSG_DONE_OK);
+        assert_eq!(byte.len(), 5);
+        assert_eq!(decode(&byte), Some(pesan));
+        assert_eq!(decode(&[MSG_DONE_OK]), None);
+        assert_eq!(decode(&[MSG_DONE_OK, 1, 2, 3]), None);
+        assert_eq!(decode(&[MSG_DONE_OK, 1, 2, 3, 4, 5]), None);
+    }
+
+    /// Jalur bahagia: setelah DONE, konfirmasi penerima menaikkan keadaan
+    /// pengirim dari "terkirim" menjadi "tersimpan".
+    #[test]
+    fn done_ok_mengonfirmasi_pengirim() {
+        let mut s = Sender::new(7, "a.bin", 4);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 7 });
+        let _ = s.chunk(vec![1, 2, 3, 4]);
+        s.on_message(&FileMessage::Ack { id: 7, received: 4 });
+        let _ = s.finish([0u8; 32]).unwrap();
+        assert_eq!(s.state(), SendState::Done);
+        assert!(!s.confirmed());
+        assert!(s.on_message(&FileMessage::DoneOk { id: 7 }).is_none());
+        assert!(s.confirmed());
+        assert_eq!(s.state(), SendState::Confirmed);
+        assert!(!s.active());
+    }
+
+    /// Konfirmasi hanya dipercaya kalau datang untuk transfer ini dan setelah
+    /// DONE. Id asing atau konfirmasi yang mendahului DONE diabaikan — bukan
+    /// dianggap bukti bahwa berkas tersimpan.
+    #[test]
+    fn done_ok_asing_atau_terlalu_cepat_diabaikan() {
+        let mut s = Sender::new(7, "a.bin", 4);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::DoneOk { id: 7 });
+        assert!(!s.confirmed());
+        s.on_message(&FileMessage::Accept { id: 7 });
+        let _ = s.chunk(vec![1, 2, 3, 4]);
+        s.on_message(&FileMessage::Ack { id: 7, received: 4 });
+        s.on_message(&FileMessage::DoneOk { id: 7 });
+        assert!(!s.confirmed(), "konfirmasi sebelum DONE tidak sah");
+        let _ = s.finish([0u8; 32]).unwrap();
+        s.on_message(&FileMessage::DoneOk { id: 8 });
+        assert!(!s.confirmed(), "konfirmasi untuk id lain bukan milik kita");
+        s.on_message(&FileMessage::DoneOk { id: 7 });
+        assert!(s.confirmed());
+    }
+
+    /// Penerima lama tidak pernah membalas. Pengirim tetap boleh menyebut
+    /// kirimannya selesai; yang hilang hanya konfirmasinya.
+    #[test]
+    fn tanpa_done_ok_pengirim_tetap_selesai() {
+        let mut s = Sender::new(7, "a.bin", 4);
+        s.on_message(&FileMessage::Ack { id: 0, received: 0 });
+        s.on_message(&FileMessage::Accept { id: 7 });
+        let _ = s.chunk(vec![1, 2, 3, 4]);
+        s.on_message(&FileMessage::Ack { id: 7, received: 4 });
+        let _ = s.finish([0u8; 32]).unwrap();
+        assert_eq!(s.state(), SendState::Done);
+        assert!(!s.active());
+        assert!(!s.confirmed());
+        assert_eq!(s.percent(), 100);
+    }
+
+    /// Satu channel dipakai dua arah, jadi konfirmasi milik arah sebaliknya
+    /// akan ikut lewat di depan penerima. Itu bukan pelanggaran protokol dan
+    /// tidak boleh menggugurkan transfer yang sedang berjalan.
+    #[test]
+    fn penerima_membiarkan_done_ok_lewat() {
+        let mut r = Receiver::from_offer(5, 10, "a.bin", MAX_FILE_BYTES);
+        let _ = r.accept().unwrap();
+        assert_eq!(r.handle(&FileMessage::DoneOk { id: 5 }), Action::None);
+        assert_eq!(r.handle(&FileMessage::DoneOk { id: 99 }), Action::None);
+        assert_eq!(*r.phase(), Phase::Receiving);
     }
 }

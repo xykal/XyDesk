@@ -252,6 +252,14 @@ class SessionFile(
         tmp.delete()
         part = null
         receiver = null
+        // Konfirmasi hanya dikirim kalau berkasnya benar-benar mendarat di
+        // Unduhan. Gagal menyalin tetap berarti gagal, dan PC harus tahu itu
+        // alih-alih menampilkan "terkirim" untuk berkas yang tidak ada.
+        if (ok) {
+            send(FileWire.encode(FileMsg.DoneOk(r.id)))
+        } else {
+            send(FileWire.encode(FileMsg.Cancel(r.id, FileReason.IO)))
+        }
         post(
             if (ok) Status(false, r.name, 100, "${r.name} tersimpan di Unduhan/XyDesk.")
             else Status(false, r.name, 100, "Berkas diterima tapi gagal disimpan.", failed = true),
@@ -368,6 +376,18 @@ class SessionFile(
             if (s.ready()) {
                 s.finish(digest.digest())?.let { send(FileWire.encode(it)) }
                 post(Status(false, s.name, 100, "${s.name} terkirim."))
+                // PC 6.11.12 membalas DONE_OK setelah berkasnya tersimpan
+                // permanen. Menunggunya sebentar mengubah "terkirim" menjadi
+                // "tersimpan"; PC lama tidak pernah membalas, jadi diamnya
+                // tidak boleh ditampilkan sebagai kegagalan.
+                val batas = System.currentTimeMillis() + CONFIRM_WAIT_MS
+                while (!s.confirmed() && System.currentTimeMillis() < batas) {
+                    if (Thread.currentThread().isInterrupted) break
+                    Thread.sleep(50)
+                }
+                if (s.confirmed()) {
+                    post(Status(false, s.name, 100, "${s.name} tersimpan di PC."))
+                }
                 sender = null
                 return
             }
@@ -433,5 +453,12 @@ class SessionFile(
     companion object {
         /** Antrean channel maksimum sebelum pengirim menahan diri. */
         const val BUFFER_CAP = 1L * 1024 * 1024
+
+        /**
+         * Berapa lama menunggu `DONE_OK` sebelum berhenti menunggu. Cukup
+         * untuk perjalanan pulang-pergi plus penyalinan berkas besar di PC,
+         * jauh di bawah kesabaran pengguna.
+         */
+        const val CONFIRM_WAIT_MS = 10_000L
     }
 }

@@ -289,7 +289,8 @@ async fn route_outgoing(
     let mine = match message {
         FileMessage::Accept { id }
         | FileMessage::Reject { id, .. }
-        | FileMessage::Ack { id, .. } => *id == sender.id(),
+        | FileMessage::Ack { id, .. }
+        | FileMessage::DoneOk { id } => *id == sender.id(),
         _ => false,
     };
     // CANCEL dengan id kiriman kita juga milik kita; CANCEL dengan id lain
@@ -430,6 +431,36 @@ async fn send_file(channel: &Arc<RTCDataChannel>, out: &Arc<Mutex<Outgoing>>, pa
         }
     }
 
+    // Setelah DONE keluar, penerima yang mengerti protokol 6.11.12 membalas
+    // `DONE_OK` begitu berkasnya tersimpan permanen. Menunggunya sebentar
+    // mengubah "terkirim" menjadi "sampai"; kalau tidak ada balasan dalam
+    // jendela ini, kiriman tetap dianggap selesai — penerima lama memang
+    // tidak pernah membalas, dan menuduhnya gagal akan lebih menyesatkan
+    // daripada diam.
+    if matches!(
+        out.lock().await.sender.as_ref().map(|s| s.state()),
+        Some(SendState::Done)
+    ) {
+        let batas = std::time::Instant::now() + CONFIRM_WAIT;
+        loop {
+            if out
+                .lock()
+                .await
+                .sender
+                .as_ref()
+                .is_some_and(|s| s.confirmed())
+            {
+                println!("[xydesk-host] kiriman {name} dikonfirmasi tersimpan di perangkat");
+                break;
+            }
+            if std::time::Instant::now() >= batas {
+                println!("[xydesk-host] kiriman {name} selesai tanpa konfirmasi (perangkat lama?)");
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+    }
+
     let mut guard = out.lock().await;
     if let Some(sender) = guard.sender.as_ref() {
         if let SendState::Failed(reason) = sender.state() {
@@ -438,6 +469,11 @@ async fn send_file(channel: &Arc<RTCDataChannel>, out: &Arc<Mutex<Outgoing>>, pa
     }
     guard.sender = None;
 }
+
+/// Berapa lama menunggu `DONE_OK` sebelum menyerah dan menyebut kiriman
+/// "selesai tanpa konfirmasi". Cukup untuk perjalanan pulang-pergi plus
+/// `fsync` berkas besar di ponsel, jauh di bawah kesabaran pengguna.
+const CONFIRM_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// Id transfer baru. Tidak pernah 0: id itu milik tanda siap.
 fn new_transfer_id() -> u32 {
@@ -584,7 +620,16 @@ async fn handle(
             let Some(done) = slot.take() else { return };
             let Some(sink) = done.sink else { return };
             match sink.commit() {
-                Ok(path) => println!("[xydesk-host] berkas tersimpan: {}", path.display()),
+                Ok(path) => {
+                    println!("[xydesk-host] berkas tersimpan: {}", path.display());
+                    // Konfirmasi dikirim setelah commit, bukan setelah hash
+                    // cocok: yang ingin diketahui pengirim adalah "berkasnya
+                    // ada di disk", dan sampai `commit()` kembali berkas itu
+                    // masih bernama `.xypart`. Penerima lama tidak mengirim
+                    // apa pun di sini dan pengirim lama mengabaikan pesan
+                    // yang tidak dikenalnya, jadi keduanya tetap cocok.
+                    let _ = send(channel, &FileMessage::DoneOk { id }).await;
+                }
                 Err(e) => {
                     eprintln!("[xydesk-host] simpan berkas gagal: {e}");
                     let _ = send(

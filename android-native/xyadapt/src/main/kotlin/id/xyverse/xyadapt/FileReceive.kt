@@ -75,6 +75,7 @@ class FileReceiver(
             is FileMsg.Done -> m.id
             is FileMsg.Cancel -> m.id
             is FileMsg.Ack -> m.id
+            is FileMsg.DoneOk -> m.id
         }
         // Pesan untuk transfer lain tidak boleh menyentuh keadaan ini: tanpa
         // penjagaan ini, pengirim bisa membatalkan transfer berjalan dengan
@@ -109,6 +110,10 @@ class FileReceiver(
             // OFFER kedua dengan id yang sama bukan percobaan ulang yang sah:
             // id dipilih pengirim dan harus baru setiap berkas.
             is FileMsg.Offer -> fail(FileReason.PROTOCOL)
+            // Konfirmasi milik pengirim di arah sebaliknya; satu channel
+            // dipakai dua arah, jadi ia boleh lewat tanpa dianggap
+            // pelanggaran — dan tanpa mengubah apa pun di sini.
+            is FileMsg.DoneOk -> FileAction.None
             // ACCEPT/REJECT/ACK adalah pesan untuk pengirim.
             else -> fail(FileReason.PROTOCOL)
         }
@@ -134,7 +139,12 @@ sealed class FileAction {
         override fun hashCode(): Int = ack.hashCode() * 31 + data.contentHashCode()
     }
 
-    /** Berkas utuh dan terverifikasi; pindahkan dari berkas sementara. */
+    /**
+     * Berkas utuh dan terverifikasi; pindahkan dari berkas sementara, lalu
+     * kirim [FileMsg.DoneOk] — **setelah** pemindahan berhasil, bukan
+     * sebelumnya. Konfirmasi yang dikirim lebih awal hanya mengulang apa
+     * yang sudah diketahui pengirim.
+     */
     object Finish : FileAction()
 
     /** Hentikan dan kirim `CANCEL` dengan alasan ini. */
