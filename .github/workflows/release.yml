@@ -627,11 +627,42 @@ jobs:
           done
 
       - name: Siapkan isi changelog untuk Release
+        # Hanya bagian versi INI yang masuk catatan rilis.
+        #
+        # Sebelumnya: `sed -n '/^## \[/,$p' | head -n 120`. Pola itu mulai
+        # dari judul '## [' yang PERTAMA — yaitu '[Belum terbit]' — lalu
+        # mengambil 120 baris apa pun isinya, sehingga catatan rilis 6.11.11
+        # ikut memuat seluruh bagian 6.11.10 dan 6.11.9. Digabung dengan
+        # `generate_release_notes`, hasilnya 91 kB: dua rilis lama ditambah
+        # daftar seratusan PR sejak v6.8.6 (tag non-draft terakhir, karena
+        # semua rilis setelahnya masih draft).
+        #
+        # Sekarang: awk berhenti di judul '## [' berikutnya, dan ringkasan
+        # pengguna di changelogs/<versi>.md dipasang di depan sebagai
+        # pembuka. Kalau berkas ringkasan itu belum ada, langkah ini tetap
+        # jalan tanpa pembuka.
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
         run: |
+          set -euo pipefail
+          section=$(awk -v v="## [$VERSION]" '
+            index($0, v) == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md)
+          if [ -z "$(printf '%s' "$section" | tr -d '[:space:]')" ]; then
+            echo "::error::Bagian '## [$VERSION]' tidak ditemukan di CHANGELOG.md."
+            exit 1
+          fi
           {
-            echo 'CHANGELOG_BODY<<EOF'
-            sed -n '/^## \[/,$p' CHANGELOG.md | head -n 120
-            echo 'EOF'
+            echo 'CHANGELOG_BODY<<XYDESK_EOF'
+            if [ -f "changelogs/$VERSION.md" ]; then
+              tail -n +2 "changelogs/$VERSION.md"
+              echo
+              echo '### Rincian'
+            fi
+            printf '%s\n' "$section"
+            echo 'XYDESK_EOF'
           } >> "$GITHUB_ENV"
 
       - name: Publikasikan GitHub Release
@@ -653,7 +684,11 @@ jobs:
           # lama' sebelum publish — action-gh-release v2 TIDAK punya input
           # 'update_release' (memicu warning "Unexpected input"), cukup
           # ditimpa lewat penghapusan + upload ulang.
-          generate_release_notes: true
+          # Dimatikan sejak 6.11.11: ia menempelkan daftar commit sejak tag
+          # non-draft terakhir. Karena semua rilis sejak v6.8.6 masih draft,
+          # yang menempel adalah seratusan PR dari sembilan rilis sekaligus.
+          # Tautan perbandingan ditulis manual di body, sudah cukup.
+          generate_release_notes: false
           # Draft juga bisa dipaksa lewat repo variable RELEASE_DRAFT=true
           # (berlaku untuk rilis otomatis pasca-Build, bukan hanya dispatch).
           draft: ${{ inputs.draft == true || vars.RELEASE_DRAFT == 'true' }}
@@ -681,6 +716,9 @@ jobs:
 
             > APK ditandatangani dengan keystore rilis. Windows EXE belum
             > code-signed sehingga SmartScreen dapat menampilkan peringatan.
+
+            Perubahan lengkap:
+            https://github.com/${{ github.repository }}/commits/${{ needs.prepare.outputs.tag }}
 
       - name: Kirim OneSignal hanya ke build Android lama
         if: ${{ inputs.draft != true && vars.RELEASE_DRAFT != 'true' }}

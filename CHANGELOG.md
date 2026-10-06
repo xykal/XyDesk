@@ -24,7 +24,7 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
-_Belum ada perubahan setelah 6.11.11._
+- **Catatan rilis hanya memuat versinya sendiri:** `release.yml` dulu mengambil changelog mulai dari judul pertama lalu memotong di baris ke-120, sehingga catatan rilis satu versi ikut memuat dua versi sebelumnya; ditambah daftar commit otomatis sejak tag non-draft terakhir, badannya membengkak jadi 91 kB berisi seratusan PR dari sembilan rilis. Sekarang bagian versi diambil tepat sampai judul berikutnya, ringkasan pengguna di `changelogs/<versi>.md` dipasang sebagai pembuka, dan daftar commit otomatis dimatikan — tautan perbandingan ditulis sendiri.
 
 ## [6.11.11] — 2026-10-06
 
