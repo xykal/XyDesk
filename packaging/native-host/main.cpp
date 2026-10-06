@@ -1379,12 +1379,18 @@ void paintGate(Surface& surface, HDC dc) {
     const float raw = g.gateMotion.progress(nowMs());
     const int lift = xydesk::panel::scaled(18, g.layout.scalePct);
 
-    // Latar: permukaan tenang, tanpa sidebar dan tanpa isi panel. Satu kartu
-    // yang jadi fokus — bahasa macOS.
-    fillRectOpaque(surface, g.layout.panel, kSurface2);
+    // Latar: warna latar panel yang sama seperti biasa — bukan abu-abu —
+    // supaya padding dan sudut jendela tetap lolos pemeriksa bentuk. Fokus
+    // datang dari kartu yang lebih terang di atasnya, bukan dari latar gelap.
+    fillRectOpaque(surface, g.layout.panel, kBackground);
 
     const float cardT = easeOutExpo(staggered(raw, 0, xydesk::panel::GateLayout::kSteps));
     const Rect card{l.card.x, l.card.y + mixInt(lift, 0, cardT), l.card.w, l.card.h};
+    // Kartu terang di atas bidang redup: kontrasnya datang dari pasangan ini,
+    // sementara tepi panel tetap putih bersih.
+    const Rect well = card.inset(-xydesk::panel::scaled(10, g.layout.scalePct));
+    fillRoundedOpaque(surface, well, l.radiusCard + xydesk::panel::scaled(6, g.layout.scalePct),
+        kSurface2, cardT);
     fillRoundedOpaque(surface, card, l.radiusCard, kSurface, cardT);
     strokeRounded(surface, card, l.radiusCard, kEdge, 1);
 
@@ -1501,6 +1507,10 @@ bool drawPanelToSurface() {
         paintGate(surface, dc);
         paintCaptionButtons(surface, g.layout, dc);
         SelectObject(dc, previousFont);
+        GdiFlush();
+        // Ritual penutup yang sama dengan panel: tanpa ini sudut jendela tetap
+        // kotak dan opak, dan pemeriksa bentuk di CI menangkapnya.
+        applyWindowShape(surface, g.layout);
         return true;
     }
 
@@ -2963,6 +2973,15 @@ bool hasArgument(const wchar_t* name) {
 } // namespace
 
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
+    // Pemeriksa bentuk dan snapshot memotret PANEL, bukan gerbang: tanpa baris
+    // ini semuanya akan memotret layar masuk dan melaporkan panel "hilang".
+    // Bukti gerbang sendiri dibuat terpisah oleh --workspace-snapshots, yang
+    // menyetel tahapnya sendiri sebelum memotret.
+    if (hasArgument(L"--dialog-snapshots") || hasArgument(L"--panel-probe")
+        || hasArgument(L"--panel-pairing-snapshot") || hasArgument(L"--panel-collapsed-snapshot")
+        || hasArgument(L"--panel-snapshot")) {
+        g.gate.succeed("probe@xydesk.my.id");
+    }
     if (hasArgument(L"--dialog-snapshots"))return runDialogSnapshots(commandLineArgument(L"--dialog-snapshots"));
     if (hasArgument(L"--panel-probe")) {
         return runPanelProbe(commandLineArgument(L"--panel-probe"));
