@@ -1,5 +1,6 @@
 package id.xyverse.xydesk.ui
 
+import id.xyverse.xyadapt.FpsOptions
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -75,6 +76,8 @@ data class SessionPrefs(
     val naturalScroll: Boolean = false,
     val showStats: Boolean = true,
     val autohideMs: Long = 0,
+    /** Anak tangga fps yang pantas untuk panel HP ini (lihat [FpsOptions]). */
+    val fpsOptions: List<Int> = FpsOptions.BASE,
 )
 
 enum class QuickKey(val label: String) {
@@ -147,7 +150,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                     Wrap { qLabels.forEachIndexed { i, l -> Pill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
                     XyText("FPS · RESOLUSI", Xy.label)
                     Wrap {
-                        listOf(30, 60).forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
+                        prefs.fpsOptions.forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
                         Pill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
                         listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; actions.resolution(i) } }
                     }

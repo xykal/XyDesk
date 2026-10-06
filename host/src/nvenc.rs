@@ -254,6 +254,10 @@ impl NvEnc {
             cfg.encodeCodecConfig.h264Config.level = u32::from(crate::video_policy::level());
             cfg.rcParams.vbvBufferSize = bitrate_bps / crate::video_policy::fps();
             cfg.rcParams.vbvInitialDelay = cfg.rcParams.vbvBufferSize;
+            // GOP ikut laju, bukan konstanta 120: pada 120/144 fps konstanta itu
+            // berarti IDR tiap 0,8–1 dtk (boros bit), pada 30 fps tiap 4 dtk
+            // (pemulihan packet loss lambat). Kunci di ~2 detik.
+            cfg.gopLength = crate::nvenc_config::gop_for_fps(crate::video_policy::fps());
             let mut init = build_init(width, height, &mut cfg);
             init.frameRateNum = crate::video_policy::fps();
 

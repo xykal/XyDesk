@@ -283,6 +283,9 @@ jobs:
             echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/xydesk.jks"
             echo "file=$RUNNER_TEMP/xydesk.jks" >> "$GITHUB_OUTPUT"
           fi
+      - name: Uji unit xyadapt
+        run: gradle --no-daemon :xyadapt:test
+
       - name: Build APK release per ABI
         env:
           GOOGLE_WEB_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}

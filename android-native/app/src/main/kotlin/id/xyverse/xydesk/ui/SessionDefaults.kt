@@ -17,7 +17,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
+import id.xyverse.xyadapt.FpsOptions
 import id.xyverse.xydesk.core.HUD_ALL
 import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.ui.kit.Xy
@@ -49,7 +51,13 @@ fun SessionDefaults(store: Store) {
         Line("Kualitas") {
             Segmented(listOf("Auto" to 0, "Seimbang" to 1, "Halus" to 2, "Paling halus" to 3), quality) { quality = it; store.quality = it }
         }
-        Line("FPS") { Segmented(listOf("30" to 30, "60" to 60), fps) { fps = it; store.targetFps = it } }
+        val hz = LocalView.current.display?.refreshRate ?: 0f
+        val fpsChoices = FpsOptions.forDisplay(hz)
+        Line("FPS") {
+            Segmented(fpsChoices.map { "$it" to it }, FpsOptions.clampToDisplay(fps, hz)) {
+                fps = it; store.targetFps = it
+            }
+        }
         Box(Modifier.padding(horizontal = 6.dp)) {
             XyToggle("HUD di pojok", "Label kecil lalu angkanya, ditumpuk ke bawah, tanpa latar.", stats) { stats = it; store.showStats = it }
         }

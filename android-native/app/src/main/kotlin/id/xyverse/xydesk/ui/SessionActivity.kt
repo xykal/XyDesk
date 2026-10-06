@@ -27,6 +27,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import id.xyverse.xyadapt.FpsOptions
 import id.xyverse.xyadapt.ReconnectPolicy
 import id.xyverse.xyadapt.TrackpadConfig
 import id.xyverse.xyadapt.VideoCmd
@@ -110,6 +111,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b = ActivitySessionBinding.inflate(layoutInflater)
         setContentView(b.root)
         if (store.keepAwake) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        requestHighestRefreshRate()
         applyLayoutPrefs()
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
@@ -140,7 +142,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             forceRelay = store.bool(P.FORCE_RELAY, false),
         )
         metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
-        metrics.targetFps = store.targetFps
+        metrics.targetFps = sessionFps()
         metrics.auto = store.quality == 0
         val tunedTrackpadSpeed = store.trackpadSpeed.coerceAtLeast(1.8f)
         if (store.trackpadSpeed < tunedTrackpadSpeed) store.trackpadSpeed = tunedTrackpadSpeed
@@ -294,9 +296,48 @@ class SessionActivity : ComponentActivity(), RtcListener {
         b.controlsLayer.visibility = if (show) View.VISIBLE else View.GONE
     }
 
+    /** Display aktif; `Activity.getDisplay()` baru ada di API 30. */
+    @Suppress("DEPRECATION")
+    private fun activeDisplay(): android.view.Display? =
+        if (Build.VERSION.SDK_INT >= 30) display else windowManager.defaultDisplay
+
+    /**
+     * Refresh rate panel saat ini. Dipakai untuk memutuskan apakah 120/144 fps
+     * pantas ditawarkan — meminta laju di atas kemampuan panel hanya membakar
+     * bitrate dan baterai tanpa satu frame tambahan yang terlihat.
+     */
+    private fun panelRefreshHz(): Float = activeDisplay()?.refreshRate ?: 0f
+
+    /**
+     * Minta mode layar tercepat selama sesi, pada resolusi yang sama persis.
+     * Tanpa ini panel 120 Hz di banyak HP tetap berjalan 60 Hz karena aplikasi
+     * tidak pernah memintanya — 120 fps dari host akan dibuang separuhnya di
+     * tahap tampil. Mode dengan resolusi berbeda sengaja tidak dipilih supaya
+     * sistem tidak mengubah ukuran layar demi mengejar Hz.
+     */
+    private fun requestHighestRefreshRate() {
+        val d = activeDisplay() ?: return
+        val current = d.mode ?: return
+        val best = d.supportedModes
+            ?.filter {
+                it.physicalWidth == current.physicalWidth && it.physicalHeight == current.physicalHeight
+            }
+            ?.maxByOrNull { it.refreshRate } ?: return
+        if (best.refreshRate <= current.refreshRate + 0.1f) return
+        window.attributes = window.attributes.apply { preferredDisplayModeId = best.modeId }
+    }
+
+    /** Preferensi fps tersimpan, dijatuhkan ke yang masih masuk akal di panel ini. */
+    private fun sessionFps(): Int {
+        val fps = FpsOptions.clampToDisplay(store.targetFps, panelRefreshHz())
+        if (fps != store.targetFps) store.targetFps = fps
+        return fps
+    }
+
     private fun setupToolbar() {
         val autohide = listOf(0L, 5000L, 10000L, 20000L)[store.int(P.RAIL_AUTOHIDE, 0)]
-        val prefs = SessionPrefs(store.quality, store.targetFps, store.directTouch, store.trackpadSpeed, store.naturalScroll, store.showStats, autohide)
+        val prefs = SessionPrefs(store.quality, sessionFps(), store.directTouch, store.trackpadSpeed,
+            store.naturalScroll, store.showStats, autohide, FpsOptions.forDisplay(panelRefreshHz()))
         b.toolbar.setContent {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
