@@ -167,9 +167,9 @@ struct Outgoing {
 
 /// Melayani channel berkas satu sesi sampai sesinya berakhir, menulis ke
 /// [`download_dir`].
-pub async fn serve(session: Arc<Session>) {
+pub async fn serve(session: Arc<Session>, peer: String) {
     let dir = download_dir();
-    serve_in(session, dir).await
+    serve_in_as(session, dir, peer).await
 }
 
 /// Seperti [`serve`], tetapi folder tujuannya ditentukan pemanggil.
@@ -179,6 +179,12 @@ pub async fn serve(session: Arc<Session>) {
 /// berbeda, dan test yang berjalan paralel tidak boleh saling menimpa lewat
 /// satu variabel lingkungan global.
 pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
+    serve_in_as(session, dir, String::new()).await
+}
+
+/// Seperti [`serve_in`], ditambah id perangkat lawan untuk "ingat perangkat
+/// ini". Id kosong berarti sesi tanpa identitas — tidak pernah dipercaya.
+pub async fn serve_in_as(session: Arc<Session>, dir: PathBuf, peer: String) {
     let dc = session.wait_file_channel().await;
     println!("[xydesk-host] data channel berkas terbuka");
     let state: Arc<Mutex<Option<Transfer>>> = Arc::new(Mutex::new(None));
@@ -208,6 +214,7 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
         let channel = Arc::clone(&channel);
         let out_msg = Arc::clone(&out_handler);
         let dir = dir.clone();
+        let peer = peer.clone();
         Box::pin(async move {
             let Some(message) = decode(&msg.data) else {
                 // Pesan cacat tidak pernah ditebak isinya.
@@ -227,7 +234,7 @@ pub async fn serve_in(session: Arc<Session>, dir: PathBuf) {
             if route_outgoing(&channel, &out_msg, &message).await {
                 return;
             }
-            handle(&channel, &state, &dir, message).await;
+            handle(&channel, &state, &dir, &peer, message).await;
         })
     }));
 
@@ -454,6 +461,7 @@ async fn handle(
     channel: &Arc<RTCDataChannel>,
     state: &Arc<Mutex<Option<Transfer>>>,
     dir: &std::path::Path,
+    peer: &str,
     message: FileMessage,
 ) {
     let mut slot = state.lock().await;
@@ -478,6 +486,7 @@ async fn handle(
         // menunggu di sini akan menahan CANCEL dari pengirim selama satu
         // menit penuh.
         match crate::file_consent::offer(
+            peer,
             *id,
             receiver.name(),
             *size,

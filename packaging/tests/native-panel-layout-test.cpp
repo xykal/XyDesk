@@ -269,9 +269,34 @@ void testIncomingFileRow() {
             const int rx=xydesk::panel::centerX(l.rejectFile),ry=xydesk::panel::centerY(l.rejectFile);
             check(xydesk::panel::targetAt(l,Page::Connections,rx,ry)==Target::RejectFile,"tolak bisa diklik di halaman koneksi");
         }
+        if(l.trustFile.w>0){
+            check(!overlaps(l.trustFile,l.acceptFile)&&!overlaps(l.trustFile,l.rejectFile),"terima & ingat berdiri sendiri");
+            check(l.trustFile.right()<=l.workspaceShell.right(),"terima & ingat tidak keluar kartu kerja");
+            const int tx=xydesk::panel::centerX(l.trustFile),ty=xydesk::panel::centerY(l.trustFile);
+            check(xydesk::panel::targetAt(l,Page::Connections,tx,ty)==Target::TrustFile,"terima & ingat bisa diklik");
+        }
+        // Baris kebijakan selalu ada, juga saat tidak ada tawaran.
+        if(l.filePolicy.w>0){
+            check(l.filePolicy.y>=l.acceptFile.bottom(),"baris kebijakan di bawah baris jawaban");
+            check(!overlaps(l.filePolicy,l.acceptFile)&&!overlaps(l.filePolicy,l.trustFile),"kebijakan tidak menimpa jawaban");
+            check(!overlaps(l.filePolicy,l.forgetTrusted),"kebijakan dan lupakan tidak bertumpuk");
+            check(insidePanel(l,l.filePolicy),"kebijakan di dalam jendela");
+            check(l.filePolicy.right()<=l.workspaceShell.right(),"kebijakan tidak keluar kartu kerja");
+            const int px=xydesk::panel::centerX(l.filePolicy),py=xydesk::panel::centerY(l.filePolicy);
+            check(xydesk::panel::targetAt(l,Page::Connections,px,py)==Target::FilePolicy,"kebijakan bisa diklik");
+            check(xydesk::panel::targetAt(l,Page::Status,px,py)!=Target::FilePolicy,"kebijakan tidak bocor ke halaman lain");
+        }
+        if(l.forgetTrusted.w>0){
+            check(l.forgetTrusted.right()<=l.workspaceShell.right(),"lupakan tidak keluar kartu kerja");
+            const int fx=xydesk::panel::centerX(l.forgetTrusted),fy=xydesk::panel::centerY(l.forgetTrusted);
+            check(xydesk::panel::targetAt(l,Page::Connections,fx,fy)==Target::ForgetTrusted,"lupakan bisa diklik");
+        }
     }
     check(std::string(xydesk::panel::targetName(Target::AcceptFile))=="AcceptFile","terima punya nama probe");
     check(std::string(xydesk::panel::targetName(Target::RejectFile))=="RejectFile","tolak punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::TrustFile))=="TrustFile","terima & ingat punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::FilePolicy))=="FilePolicy","kebijakan punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::ForgetTrusted))=="ForgetTrusted","lupakan punya nama probe");
 }
 
 void testTargetNames() {

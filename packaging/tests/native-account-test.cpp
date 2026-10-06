@@ -29,6 +29,11 @@ int main(){
  assert(xydesk::session_view::parse(R"({"session":null,"pendingFile":null})").pendingId==0);
  assert(xydesk::session_view::parse(R"({"session":null,"pendingFile":{"name":"x"}})").pendingId==0);
  assert(!xydesk::session_view::parse(R"({"session":null,"pendingFile":{"id":7,"name":"x.txt","size":10}})").pendingRisky);
+ // Kebijakan dan jumlah perangkat tepercaya; host lama tidak mengirimnya.
+ auto kebijakan=xydesk::session_view::parse(R"({"session":null,"filePolicy":"never","trustedFileDevices":3})");
+ assert(kebijakan.filePolicy==L"never"&&kebijakan.trustedDevices==3);
+ auto lama=xydesk::session_view::parse(R"({"session":null})");
+ assert(lama.filePolicy.empty()&&lama.trustedDevices==0);
  assert(xydesk::session_view::redmiNote12(L"23021RAAEG · Fixture"));assert(!xydesk::session_view::redmiNote12(L"Redmi Note 12 Pro"));assert(!xydesk::session_view::redmiNote12(L"Chrome di Android"));
  std::cout<<"Native account PKCE, randomness, callback parsing, profile and header safety: passed\n";
 }
