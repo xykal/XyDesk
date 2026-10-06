@@ -179,10 +179,48 @@ kerja pada 4 DPI × 3 lebar × 2 keadaan sidebar, dan hit-test-nya hanya
 mengembalikan `SendFile` di halaman Koneksi. Sintaks `main.cpp` disaring
 MinGW `-fsyntax-only`; kompilasi penuhnya tetap job Windows CI.
 
+## 5c. Pintu persetujuan di PC
+
+Arah HP → PC dulu diterima otomatis: client yang lolos pairing boleh menulis
+ke `Downloads\XyDesk` tanpa pemilik PC tahu. Pairing menjawab "siapa yang
+boleh menyambung", bukan "apa yang boleh ia tulis ke disk saya".
+
+Kebijakan (`crate::file_consent`), bawaan di tengah:
+
+| Nilai | Arti |
+|---|---|
+| `always` | terima otomatis (perilaku lama) |
+| **`ask`** | tanya pemilik PC **bila ada yang bisa menjawab** |
+| `never` | tolak semua berkas masuk |
+
+Diubah lewat `POST /action {"action":"file-policy","value":"ask"}`.
+
+**"Bila ada yang bisa menjawab".** Dialognya digambar panel host, dan panel
+tidak selalu berjalan. Pertanyaan yang tidak dilihat siapa pun bukan
+perlindungan — ia hanya membuat setiap transfer gagal setelah satu menit
+hening. Host menganggap ada yang menonton bila panel memanggil `/status`
+dalam 10 detik terakhir; bila tidak, `ask` berperilaku seperti `always`
+**dan menulisnya ke log**. Yang menginginkan penolakan tanpa syarat memakai
+`never`.
+
+**Diam bukan izin.** Tawaran yang tidak dijawab dalam 60 detik ditolak
+(`Reason::User`). Dialog yang berubah menjadi izin karena ditinggal makan
+siang adalah pintu yang hanya tampak seperti pintu.
+
+**Belum satu byte pun menyentuh disk selama menunggu.** Berkas sementara
+(`.xypart`) baru dibuat setelah jawabannya "ya", jadi tawaran yang ditolak
+tidak meninggalkan jejak. Potongan yang datang sebelum persetujuan dijawab
+`CANCEL Protocol`.
+
+Panel menampilkan nama, ukuran, peringatan bila ekstensinya langsung
+dijalankan Windows, dan sisa waktu; jawabannya dikirim lewat
+`POST /action {"action":"file-consent","id":42,"allow":true}`. Tawaran yang
+sudah kedaluwarsa dijawab apa adanya ("sudah tidak menunggu jawaban"), bukan
+"gagal" — jawaban yang terlambat satu detik tidak boleh menyetujui tawaran
+berikutnya.
+
 ## 6. Yang belum ada
 
-- **Pintu persetujuan di PC.** Host menerima otomatis dari client yang sudah
-  lolos pairing. Arah sebaliknya **selalu** bertanya di HP.
 - **Konfirmasi sukses.** Host diam bila berkas tersimpan; pengirim
   menyimpulkan berhasil dari ketiadaan `CANCEL`. Pesan `DONE-OK` eksplisit
   akan lebih jujur.

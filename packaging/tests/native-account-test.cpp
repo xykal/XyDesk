@@ -22,6 +22,13 @@ int main(){
  auto noSession=xydesk::session_view::parse(R"({"session":null,"password":"NEVER DISPLAY"})");assert(noSession.known&&!noSession.active);
  auto active=xydesk::session_view::parse(R"({"session":{"clientId":"fixture","clientName":"Redmi Note 12","clientPlatform":"android","durationMs":125000},"password":"NEVER DISPLAY"})");assert(active.active&&active.name==L"Redmi Note 12"&&active.seconds==125);
  assert(!xydesk::session_view::parse(R"({"session":false})").known);
+ // Tawaran berkas masuk yang menunggu jawaban pemilik PC.
+ auto pending=xydesk::session_view::parse(R"({"session":null,"pendingFile":{"id":42,"name":"pasang.exe","size":2048,"risky":true,"secondsLeft":51}})");
+ assert(pending.known&&pending.pendingId==42&&pending.pendingName==L"pasang.exe"&&pending.pendingSize==2048&&pending.pendingRisky&&pending.pendingSeconds==51);
+ // Tanpa tawaran, dan dengan tawaran rusak, panel tidak boleh mengira ada dialog.
+ assert(xydesk::session_view::parse(R"({"session":null,"pendingFile":null})").pendingId==0);
+ assert(xydesk::session_view::parse(R"({"session":null,"pendingFile":{"name":"x"}})").pendingId==0);
+ assert(!xydesk::session_view::parse(R"({"session":null,"pendingFile":{"id":7,"name":"x.txt","size":10}})").pendingRisky);
  assert(xydesk::session_view::redmiNote12(L"23021RAAEG · Fixture"));assert(!xydesk::session_view::redmiNote12(L"Redmi Note 12 Pro"));assert(!xydesk::session_view::redmiNote12(L"Chrome di Android"));
  std::cout<<"Native account PKCE, randomness, callback parsing, profile and header safety: passed\n";
 }

@@ -5,7 +5,13 @@
 #include "control_client.h"
 #include "vendor/json/json.hpp"
 namespace xydesk::session_view {
-struct Snapshot {bool known=false,active=false;std::wstring name,platform,id,state;unsigned long long seconds=0;};
+struct Snapshot {
+ bool known=false,active=false;std::wstring name,platform,id,state;unsigned long long seconds=0;
+ // Tawaran berkas masuk yang menunggu jawaban pemilik PC (`pendingFile`).
+ // `pendingId==0` berarti tidak ada yang menunggu: host memakai id transfer
+ // bukan-nol, dan 0 dipakai protokol sebagai beacon "siap".
+ bool pendingRisky=false;unsigned long pendingId=0;unsigned long long pendingSize=0,pendingSeconds=0;std::wstring pendingName;
+};
 inline std::wstring text(const nlohmann::json& object,const char* field){
  auto it=object.find(field);if(it==object.end()||!it->is_string())return {};
  const auto value=it->get<std::string>();if(value.size()>256)return {};
@@ -18,6 +24,16 @@ inline bool redmiNote12(const std::wstring& name){
 inline Snapshot parse(const std::string& raw){
  auto data=nlohmann::json::parse(raw,nullptr,false);if(!data.is_object()||!data.contains("session"))return {};
  Snapshot result;result.known=true;result.state=text(data,"state");
+ if(auto pending=data.find("pendingFile");pending!=data.end()&&pending->is_object()){
+  const auto& offer=*pending;
+  if(offer.contains("id")&&offer["id"].is_number_unsigned()){
+   result.pendingId=offer["id"].get<unsigned long>();
+   result.pendingName=text(offer,"name");
+   if(offer.contains("size")&&offer["size"].is_number_unsigned())result.pendingSize=offer["size"].get<unsigned long long>();
+   if(offer.contains("secondsLeft")&&offer["secondsLeft"].is_number_unsigned())result.pendingSeconds=offer["secondsLeft"].get<unsigned long long>();
+   result.pendingRisky=offer.contains("risky")&&offer["risky"].is_boolean()&&offer["risky"].get<bool>();
+  }
+ }
  if(data["session"].is_null())return result;
  if(!data["session"].is_object())return {};
  const auto& session=data["session"];result.id=text(session,"clientId");if(result.id.empty())return {};

@@ -744,6 +744,9 @@ std::future<xydesk::session_view::Snapshot> sessionViewPending;
 std::future<std::string> sessionActionPending;
 std::future<std::string> fileSendPending;
 std::wstring fileSendName;
+/// Jawaban "Terima"/"Tolak" yang sedang dikirim ke host.
+std::future<std::string> fileConsentPending;
+bool fileConsentAllow=false;
 unsigned sessionViewPid=0;
 ULONGLONG sessionViewNext=0;
 void pollSessionAction(){
@@ -784,6 +787,20 @@ void pollFileSend(){
     setFlash(reason.empty()?L"Host menolak kiriman berkas.":(L"Kiriman ditolak: "+reason),kWarn);
 }
 
+// Jawaban atas tombol Terima/Tolak berkas masuk.
+void pollFileConsent(){
+    if(!fileConsentPending.valid()||fileConsentPending.wait_for(std::chrono::milliseconds(0))!=std::future_status::ready)return;
+    std::string response;
+    try{response=fileConsentPending.get();}catch(...){response.clear();}
+    if(response.empty()){setFlash(L"Gagal menghubungi host untuk menjawab tawaran berkas.",kBad);return;}
+    if(jsonFlag(response,"ok")){
+        setFlash(fileConsentAllow?L"Berkas masuk disetujui.":L"Berkas masuk ditolak.",fileConsentAllow?kAccent:kMuted);
+        return;
+    }
+    const auto reason=jsonString(response,"error");
+    setFlash(reason.empty()?L"Jawaban tidak diterima host.":reason,kWarn);
+}
+
 void pollSessionView(){
     if(sessionViewPending.valid()&&sessionViewPending.wait_for(std::chrono::milliseconds(0))==std::future_status::ready){
         try{auto value=sessionViewPending.get();if(g.process&&GetProcessId(g.process)==sessionViewPid)sessionView=std::move(value);else sessionView={};}catch(...){sessionView={};}
@@ -810,6 +827,10 @@ bool targetEnabled(Target target) {
         // Tanpa perangkat tersambung tidak ada tujuan kiriman; tombol yang
         // bisa ditekan tetapi selalu gagal lebih buruk daripada tombol mati.
         return g.running && controlChannel.endpoint.has_value() && sessionView.known && sessionView.active && !fileSendPending.valid();
+    case Target::AcceptFile:
+    case Target::RejectFile:
+        // Hanya hidup selama ada tawaran yang benar-benar menunggu.
+        return controlChannel.endpoint.has_value() && sessionView.pendingId != 0 && !fileConsentPending.valid();
     case Target::CopyId:
         return !g.deviceId.empty();
     case Target::CopyPassword:
@@ -829,6 +850,8 @@ std::wstring targetLabel(Target target) {
     case Target::RunHost: return L"Ambil alih sesi ini";
     case Target::StopSession: return L"Putus sesi";
     case Target::SendFile: return L"Kirim berkas…";
+    case Target::AcceptFile: return L"Terima berkas";
+    case Target::RejectFile: return L"Tolak";
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1155,8 +1178,25 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
     if(detailed){
         paintButton(surface,layout,dc,Target::StopSession,layout.stopSession);
         if(layout.sendFile.valid())paintButton(surface,layout,dc,Target::SendFile,layout.sendFile);
-        workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,layout.stopSession.bottom()+px(12),width,px(22)},g.fontSmall,kMuted);
-        workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,layout.stopSession.bottom()+px(36),width,px(40)},g.fontSmall,kMuted);
+        int below=layout.acceptFile.bottom();
+        if(sessionView.pendingId!=0){
+            // Nama berkas boleh dipilih lawan, jadi ia digambar satu baris
+            // dengan ellipsis dan tidak pernah melebar melewati kartu.
+            const std::wstring judul=L"Berkas masuk: "+(sessionView.pendingName.empty()?std::wstring(L"tanpa nama"):sessionView.pendingName)+
+                L"  ·  "+xydesk::account::wide(xydesk::updater::humanBytes(static_cast<std::int64_t>(sessionView.pendingSize)));
+            drawTextLine(dc,judul,{x,layout.stopSession.bottom()+px(6),width,px(20)},g.fontSmall,kText,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+            paintButton(surface,layout,dc,Target::AcceptFile,layout.acceptFile);
+            if(layout.rejectFile.valid())paintButton(surface,layout,dc,Target::RejectFile,layout.rejectFile);
+            const std::wstring sisa=sessionView.pendingRisky
+                ?(L"Berkas ini langsung dijalankan Windows. Ditolak sendiri dalam "+std::to_wstring(sessionView.pendingSeconds)+L" detik bila didiamkan.")
+                :(L"Ditolak sendiri dalam "+std::to_wstring(sessionView.pendingSeconds)+L" detik bila didiamkan.");
+            drawTextLine(dc,sisa,{x,layout.acceptFile.bottom()+px(4),width,px(20)},g.fontSmall,sessionView.pendingRisky?kWarn:kMuted,
+                DT_LEFT|DT_VCENTER|DT_SINGLELINE|DT_END_ELLIPSIS|DT_NOPREFIX);
+            below=layout.acceptFile.bottom()+px(24);
+        }
+        workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,below+px(12),width,px(22)},g.fontSmall,kMuted);
+        workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,below+px(36),width,px(40)},g.fontSmall,kMuted);
     }
 }
 void paintAccessGuide(Surface& surface,const PanelLayout& l,HDC dc){
@@ -2313,6 +2353,21 @@ void activateTarget(HWND hwnd, Target target) {
         }catch(...){setFlash(L"Gagal memulai kiriman berkas.",kBad);}
         break;
     }
+    case Target::AcceptFile:
+    case Target::RejectFile: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(sessionView.pendingId==0){setFlash(L"Tidak ada tawaran berkas yang menunggu.",kWarn);break;}
+        if(fileConsentPending.valid())break;
+        const bool allow=target==Target::AcceptFile;
+        const auto endpoint=*controlChannel.endpoint;
+        const auto body=std::string("{\"action\":\"file-consent\",\"id\":")+std::to_string(sessionView.pendingId)+
+            ",\"allow\":"+(allow?"true":"false")+"}";
+        fileConsentAllow=allow;
+        try{
+            fileConsentPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});
+        }catch(...){setFlash(L"Gagal mengirim jawaban ke host.",kBad);}
+        break;
+    }
     case Target::RunHost: {
         // Jalan pintas takeover: bila engine lama masih hidup di sesi lain,
         // restart dari panel ini supaya instance baru benar-benar lahir di
@@ -2377,6 +2432,8 @@ std::vector<Target> focusOrder() {
     case Page::Connections:
         order.push_back(Target::StopSession);
         order.push_back(Target::SendFile);
+        order.push_back(Target::AcceptFile);
+        order.push_back(Target::RejectFile);
         break;
     }
     order.push_back(Target::Minimize);
@@ -2481,6 +2538,8 @@ LRESULT handleHitTest(HWND hwnd, LPARAM lParam) {
     case Target::RunHost:
     case Target::StopSession:
     case Target::SendFile:
+    case Target::AcceptFile:
+    case Target::RejectFile:
         return HTCLIENT;
     case Target::TitleBar:
         return HTCAPTION; // geser jendela dari area judul
@@ -2839,6 +2898,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
             }
             pollSessionAction();
             pollFileSend();
+            pollFileConsent();
             pollSessionView();
             readCaptureStatus();
             if (!g.flashText.empty() && GetTickCount64() >= g.flashUntil) {

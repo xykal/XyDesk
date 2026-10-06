@@ -198,6 +198,14 @@ pub struct Status {
     /// untuk memberi tahu bahwa jalur relay tidak ada — bukan membiarkan
     /// pengguna menebak kenapa koneksi tidak pernah jadi.
     pub relay: serde_json::Value,
+    /// Tawaran berkas masuk yang sedang menunggu jawaban pemilik PC, bila ada.
+    /// Panel menggambar dialognya dari sini; `null` berarti tidak ada yang
+    /// menunggu. Membaca `/status` sekaligus menandai bahwa panel masih
+    /// menonton — tanpa itu host tidak punya cara tahu apakah pertanyaannya
+    /// akan terlihat seseorang (lihat `file_consent`).
+    pub pending_file: Option<crate::file_consent::PendingView>,
+    /// Kebijakan berkas masuk: `ask`, `always`, atau `never`.
+    pub file_policy: String,
     pub last_error: Option<String>,
 }
 
@@ -324,6 +332,8 @@ impl ControlState {
                 wanted: crate::screen::wanted_display(),
             },
             target_bitrate_bps: crate::screen::target_bitrate_bps(),
+            pending_file: crate::file_consent::view(),
+            file_policy: crate::file_consent::policy().as_str().to_string(),
             last_error: self.last_error.clone(),
         }
     }
@@ -400,6 +410,15 @@ pub struct ActionRequest {
     /// Indeks monitor untuk aksi `display-select`.
     #[serde(default)]
     pub index: Option<usize>,
+    /// Id tawaran berkas untuk aksi `file-consent`.
+    #[serde(default, alias = "transferId")]
+    pub id: Option<u32>,
+    /// Jawaban pemilik PC untuk aksi `file-consent`.
+    #[serde(default)]
+    pub allow: Option<bool>,
+    /// Nilai kebijakan untuk aksi `file-policy`: `ask`, `always`, `never`.
+    #[serde(default, alias = "policy")]
+    pub value: Option<String>,
     /// Target bitrate (Mbps) untuk aksi `video-bitrate`. 0 = Auto.
     ///
     /// `ActionRequest` TIDAK di-`rename_all` (bidang lain snake_case apa adanya,
@@ -550,6 +569,8 @@ async fn status(
     if !token_ok(&headers, &s.token_hash) {
         return Err(unauthorized());
     }
+    // Panel yang membaca status = panel yang masih bisa menjawab pertanyaan.
+    crate::file_consent::touch_watcher();
     Ok(Json(recover_lock(&s.control).snapshot()))
 }
 
@@ -668,6 +689,50 @@ async fn action(
                 Ok(Json(ActionResponse::err(
                     "gagal setel volume (WASAPI tidak tersedia di platform ini)",
                 )))
+            }
+        }
+        // Jawaban pemilik PC atas tawaran berkas masuk.
+        "file-consent" => {
+            let Some(id) = req.id else {
+                return Ok(Json(ActionResponse::err("id tidak disertakan")));
+            };
+            let Some(allow) = req.allow else {
+                return Ok(Json(ActionResponse::err("allow tidak disertakan")));
+            };
+            if crate::file_consent::answer(id, allow) {
+                Ok(Json(ActionResponse {
+                    ok: true,
+                    error: None,
+                    password: None,
+                    stopped: None,
+                }))
+            } else {
+                // Tawaran sudah kedaluwarsa atau dibatalkan pengirim. Ini
+                // bukan kesalahan panel; pesannya harus mengatakan apa
+                // adanya alih-alih "gagal".
+                Ok(Json(ActionResponse::err(
+                    "tawaran berkas itu sudah tidak menunggu jawaban",
+                )))
+            }
+        }
+        // Kebijakan berkas masuk: ask (bawaan), always, never.
+        "file-policy" => {
+            let Some(value) = req.value.as_deref() else {
+                return Ok(Json(ActionResponse::err("value tidak disertakan")));
+            };
+            match crate::file_consent::Policy::parse(value) {
+                Some(p) => {
+                    crate::file_consent::set_policy(p);
+                    Ok(Json(ActionResponse {
+                        ok: true,
+                        error: None,
+                        password: None,
+                        stopped: None,
+                    }))
+                }
+                None => Ok(Json(ActionResponse::err(
+                    "kebijakan tidak dikenal (ask, always, never)",
+                ))),
             }
         }
         // Pilih monitor untuk sesi berikutnya (0 = primer). Ditolak bila
