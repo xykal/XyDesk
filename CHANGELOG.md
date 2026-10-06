@@ -24,7 +24,7 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
-_Belum ada perubahan setelah 6.11.10._
+- **Gerbang versi:** `tool/check_version.py` kini ikut memeriksa `host/Cargo.lock` dan `admin/package.json`. Bump versi yang melewatkan lock Rust sebelumnya lolos semua pemeriksaan lokal lalu menggagalkan job Windows di CI, setelah antre di belakang build Rust yang panjang.
 
 ## [6.11.10] — 2026-10-06
 
