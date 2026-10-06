@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Gerbang host menghormati bentuk jendela:** layar sambutan dan layar masuk kini melewati ritual penutup yang sama dengan panel, sehingga sudut jendela tetap membulat dan tembus pandang. Pemeriksa bentuk dan snapshot juga melewati gerbang, karena tugasnya memotret panel.
+
 - **Panel host wajib masuk akun:** membuka panel kini melewati gerbang — sambutan singkat untuk pemasangan baru, lalu layar masuk lewat akun Google atau email. Sebelum masuk, panel tidak digambar sama sekali, bukan sekadar ditutupi: ID perangkat, kode pairing, dan status mesin tidak lagi terbaca oleh siapa pun yang menemukan PC ini menyala. Engine host juga baru dinyalakan setelah pemiliknya masuk, karena menyalakannya lebih awal berarti mesin siap menerima koneksi sementara layar masih menampilkan layar masuk. Keluar akun langsung mengembalikan panel ke layar masuk.
 
 - **Tampilan panel host ala macOS:** tombol jendela menjadi tiga lampu lalu lintas di kiri atas — merah, kuning, hijau — dengan glyph yang baru muncul saat kursor mendekat dan warna yang meredup saat jendela tidak aktif. Layar gerbang memakai satu kartu fokus di tengah dengan isinya muncul berurutan, bukan serentak.
