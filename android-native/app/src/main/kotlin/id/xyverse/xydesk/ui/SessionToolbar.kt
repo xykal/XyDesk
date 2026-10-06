@@ -64,6 +64,8 @@ class SessionActions(
     val centerCursor: () -> Unit = {},
     val present: () -> Unit = {},
     val overlayEdit: () -> Unit = {},
+    /** Putar mode kontrol di layar: otomatis → selalu tampil → mati. */
+    val overlayMode: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -190,6 +192,7 @@ fun SessionToolbar(actions: SessionActions, prefs: SessionPrefs = SessionPrefs()
                 RailButton(Icon.KEYBOARD, "Keyboard") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol", active = panel == Panel.CONTROLS) { panel = if (panel == Panel.CONTROLS) Panel.NONE else Panel.CONTROLS }
                 RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); panel = Panel.NONE }
+                RailButton(Icon.CONTROLS, "Tampil") { actions.overlayMode(); panel = Panel.NONE }
                 RailButton(Icon.SETTINGS, "Atur", active = panel == Panel.SETTINGS) { panel = if (panel == Panel.SETTINGS) Panel.NONE else Panel.SETTINGS }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))

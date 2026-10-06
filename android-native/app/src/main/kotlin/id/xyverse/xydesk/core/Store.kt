@@ -62,6 +62,10 @@ class Store(context: Context) {
     var devicesGrid: Boolean
         get() = prefs.getBoolean("devicesGrid", false)
         set(v) = prefs.edit().putBoolean("devicesGrid", v).apply()
+    /** Mode kontrol di layar: 0 otomatis, 1 selalu tampil, 2 mati. */
+    var overlayMode: Int
+        get() = prefs.getInt("overlayMode", 0)
+        set(v) = prefs.edit().putInt("overlayMode", v).apply()
     var overlayJson: String
         get() = prefs.getString("overlayJson", null).orEmpty()
         set(v) = prefs.edit().putString("overlayJson", v).apply()

@@ -46,6 +46,13 @@ interface RtcListener {
     fun onRemoteClipboard(text: String) {}
     fun onHostSpecs(specs: HostSpecs) {}
     fun onMicInput(available: Boolean, reason: String) {}
+
+    /**
+     * Apakah host sanggup menerima laporan gamepad, dan kalau tidak,
+     * kenapa. Tanpa ini tombol gamepad di layar diam saja tanpa penjelasan
+     * di PC yang belum punya ViGEmBus.
+     */
+    fun onHostGamepad(available: Boolean, reason: String) {}
     fun onHostWallpaper(jpeg: ByteArray) {}
 }
 
@@ -267,6 +274,7 @@ class RtcSession(
         }
         val meta = runCatching { JSONObject(text) }.getOrNull()?.takeIf { it.optString("type") == "meta" } ?: return
         meta.optJSONObject("micInput")?.let { listener.onMicInput(it.optBoolean("available", true), it.optString("reason", "")) }
+        meta.optJSONObject("gamepad")?.let { listener.onHostGamepad(it.optBoolean("available", false), it.optString("reason", "")) }
         if (specsSent) return
         val hw = meta.optJSONObject("hardware") ?: return
         val specs = HostSpecs.from(hw)
