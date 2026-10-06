@@ -28,6 +28,8 @@ Kebijakan rilis:
 
 - **Tampilan panel host ala macOS:** tombol jendela menjadi tiga lampu lalu lintas di kiri atas — merah, kuning, hijau — dengan glyph yang baru muncul saat kursor mendekat dan warna yang meredup saat jendela tidak aktif. Layar gerbang memakai satu kartu fokus di tengah dengan isinya muncul berurutan, bukan serentak.
 
+- **Panel Win32 diperiksa sintaksnya di Linux:** `main.cpp` sebelumnya hanya dikompilasi oleh runner Windows, sehingga kesalahan sepele seperti identifier yang belum dideklarasikan baru ketahuan setelah antre di belakang build Rust yang panjang. MinGW kini mengurai berkas yang sama di job Linux dalam hitungan detik. Ini bukan pengganti build MSVC, hanya penyaring cepat di depan.
+
 - **Animasi berbasis waktu, bukan frame:** kemajuan animasi dihitung dari milidetik nyata. Sebelumnya gerakan dihitung per tick timer, sehingga animasi justru melambat tepat ketika sistem sibuk — yaitu saat sesi remote sedang berjalan.
 
 - **Laju tinggi 120 dan 144 fps:** sesi tidak lagi berhenti di 60 fps. Batasnya kini dihitung dari MaxMBPS level H.264 hasil negosiasi, bukan dari daftar tetap: 720p pada level 5.1 sanggup 144 fps, 1080p pada level 5.1 sanggup 120 fps, sedangkan level 4.0 tetap maksimal 60 dan level 3.1 tetap 30. Hasilnya selalu dibulatkan ke anak tangga yang dikenal, tidak pernah ke angka sisa bagi seperti 68 fps yang akan merusak pacing capture dan VBV.

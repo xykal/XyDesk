@@ -969,6 +969,8 @@ void goPage(HWND hwnd, Page target) {
     KillTimer(hwnd,kAnimTimer);g.animOn=false;syncEmbeddedPage();renderPanel();
 }
 
+void pollGate(HWND hwnd); // definisi ada di blok gerbang, di bawah.
+
 void tickAnimation(HWND hwnd) {
     bool more = false;
     pollGate(hwnd);
@@ -1381,20 +1383,20 @@ void paintGate(Surface& surface, HDC dc) {
     // yang jadi fokus — bahasa macOS.
     fillRectOpaque(surface, g.layout.panel, kSurface2);
 
-    const float cardT = easeOutExpo(staggered(raw, 0, GateLayout::kSteps));
+    const float cardT = easeOutExpo(staggered(raw, 0, xydesk::panel::GateLayout::kSteps));
     const Rect card{l.card.x, l.card.y + mixInt(lift, 0, cardT), l.card.w, l.card.h};
     fillRoundedOpaque(surface, card, l.radiusCard, kSurface, cardT);
     strokeRounded(surface, card, l.radiusCard, kEdge, 1);
 
     const int dy = card.y - l.card.y;
     const auto shifted = [&](const Rect& r, int index) {
-        const float t = easeOutExpo(staggered(raw, index, GateLayout::kSteps));
+        const float t = easeOutExpo(staggered(raw, index, xydesk::panel::GateLayout::kSteps));
         return Rect{r.x, r.y + dy + mixInt(lift, 0, t), r.w, r.h};
     };
 
     // Tanda XyDesk: lingkaran aksen yang mengembang sedikit (easeOutBack).
     {
-        const float t = easeOutBack(staggered(raw, 1, GateLayout::kSteps));
+        const float t = easeOutBack(staggered(raw, 1, xydesk::panel::GateLayout::kSteps));
         const Rect base = shifted(l.mark, 1);
         const int size = mixInt(base.w * 7 / 10, base.w, t);
         const Rect mark{base.x + (base.w - size) / 2, base.y + (base.h - size) / 2, size, size};
