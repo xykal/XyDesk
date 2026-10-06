@@ -6,11 +6,19 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.provider.OpenableColumns
+import android.content.ContentValues
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import id.xyverse.xyadapt.FileAction
 import id.xyverse.xyadapt.FileMsg
 import id.xyverse.xyadapt.FileReason
+import id.xyverse.xyadapt.FileReceiver
 import id.xyverse.xyadapt.FileRules
 import id.xyverse.xyadapt.FileSender
 import id.xyverse.xyadapt.FileWire
+import java.io.File
+import java.io.OutputStream
 import java.security.MessageDigest
 
 /**
@@ -27,7 +35,21 @@ class SessionFile(
     private val send: (ByteArray) -> Boolean,
     private val buffered: () -> Long,
     private val onState: (Status) -> Unit,
+    /**
+     * Menanyakan ke pengguna apakah berkas dari PC boleh masuk. Arah PC → HP
+     * selalu bertanya: PC yang memilih nama, ukuran, dan isinya, sementara
+     * yang terisi adalah penyimpanan pribadi pemilik HP.
+     */
+    private val ask: (Ask) -> Unit = {},
 ) {
+    /** Tawaran berkas masuk yang menunggu jawaban pengguna. */
+    data class Ask(
+        val name: String,
+        val size: Long,
+        val risky: Boolean,
+        val accept: () -> Unit,
+        val reject: () -> Unit,
+    )
     data class Status(
         val active: Boolean = false,
         val name: String = "",
@@ -50,7 +72,13 @@ class SessionFile(
 
     @Volatile private var startedAt = 0L
 
-    fun busy(): Boolean = sender?.active() == true
+    // --- arah PC → HP ---
+    @Volatile private var receiver: FileReceiver? = null
+    private var sink: OutputStream? = null
+    private var part: File? = null
+    @Volatile private var inAt = 0L
+
+    fun busy(): Boolean = sender?.active() == true || receiver?.phase() == FileReceiver.Phase.RECEIVING
 
     /** Dipanggil saat sesi putus atau layar ditutup. */
     fun stop() {
@@ -59,6 +87,13 @@ class SessionFile(
         worker = null
         sender = null
         hostReady = false
+        receiver?.let {
+            it.disconnected()
+            // Berkas separuh dibuang, bukan ditinggalkan di folder unduhan
+            // dengan nama aslinya: berkas rusak yang terlihat utuh lebih
+            // berbahaya daripada berkas yang tidak ada.
+            discardIncoming()
+        }
     }
 
     fun cancel() {
@@ -76,13 +111,197 @@ class SessionFile(
             sender?.cancel(FileReason.PROTOCOL)?.let { send(FileWire.encode(it)) }
             return
         }
-        if (FileWire.isBeacon(m) && sender == null) {
-            hostReady = true
+        if (FileWire.isBeacon(m)) {
+            if (sender == null) hostReady = true
+            // Balas dengan tanda siap kita sendiri. PC baru boleh menawarkan
+            // berkas setelah menerimanya: pendengar di sisi ini terpasang
+            // beberapa saat setelah channel terbuka, dan tawaran yang tiba di
+            // celah itu hilang tanpa jejak.
+            send(FileWire.encode(FileMsg.Ack(FileWire.BEACON_ID, 0)))
+            return
+        }
+        if (m is FileMsg.Offer) {
+            incomingOffer(m)
+            return
+        }
+        // Potongan dan DONE selalu milik penerima; ACCEPT/REJECT/ACK milik
+        // pengirim. Memisahkannya di sini mencegah satu arah mengacaukan
+        // keadaan arah yang lain.
+        if (m is FileMsg.Chunk || m is FileMsg.Done) {
+            incoming(m)
+            return
+        }
+        if (m is FileMsg.Cancel && receiver != null && sender == null) {
+            incoming(m)
             return
         }
         val s = sender ?: return
         s.onMessage(m)?.let { send(FileWire.encode(it)) }
         if (!s.active()) report(s)
+    }
+
+    /** Tawaran berkas dari PC. */
+    private fun incomingOffer(m: FileMsg.Offer) {
+        if (busy() || receiver != null) {
+            // Satu transfer dalam satu waktu; menolak membuat batasnya jelas
+            // bagi kedua sisi, mengantre tidak.
+            send(FileWire.encode(FileMsg.Reject(m.id, FileReason.PROTOCOL)))
+            return
+        }
+        val r = FileReceiver(m.id, m.name, m.size)
+        receiver = r
+        if (r.phase() == FileReceiver.Phase.FAILED) {
+            send(FileWire.encode(FileMsg.Reject(m.id, r.failReason())))
+            receiver = null
+            return
+        }
+        post(Status(true, r.name, 0, "PC menawarkan ${r.name} (${FileRules.humanBytes(m.size)})…"))
+        ui.post {
+            ask(
+                Ask(
+                    name = r.name,
+                    size = m.size,
+                    risky = r.risky,
+                    accept = { acceptIncoming(r) },
+                    reject = {
+                        send(FileWire.encode(r.reject()))
+                        receiver = null
+                        post(Status(false, r.name, 0, "Kiriman dari PC ditolak.", failed = true))
+                    },
+                ),
+            )
+        }
+    }
+
+    private fun acceptIncoming(r: FileReceiver) {
+        val tmp = runCatching { File.createTempFile("xydesk", ".xypart", ctx.cacheDir) }.getOrNull()
+        if (tmp == null) {
+            send(FileWire.encode(r.reject(FileReason.IO)))
+            receiver = null
+            post(Status(false, r.name, 0, "Tidak ada ruang untuk menerima berkas.", failed = true))
+            return
+        }
+        part = tmp
+        sink = tmp.outputStream().buffered()
+        inAt = System.currentTimeMillis()
+        r.accept()?.let { send(FileWire.encode(it)) }
+        post(Status(true, r.name, 0, "Menerima ${r.name}…"))
+    }
+
+    private fun incoming(m: FileMsg) {
+        val r = receiver ?: return
+        when (val aksi = r.handle(m)) {
+            is FileAction.Write -> {
+                val out = sink
+                if (out == null) {
+                    send(FileWire.encode(FileMsg.Cancel(r.id, FileReason.IO)))
+                    discardIncoming()
+                    return
+                }
+                val ditulis = runCatching { out.write(aksi.data) }.isSuccess
+                if (!ditulis) {
+                    send(FileWire.encode(FileMsg.Cancel(r.id, FileReason.IO)))
+                    discardIncoming()
+                    post(Status(false, r.name, r.percent(), "Gagal menulis berkas masuk.", failed = true))
+                    return
+                }
+                // ACK dikirim per potongan supaya PC bisa menahan lajunya;
+                // tanpa itu PC hanya tahu byte-nya sudah keluar dari dirinya
+                // sendiri, bukan bahwa byte itu sampai di HP.
+                send(FileWire.encode(FileMsg.Ack(r.id, aksi.ack)))
+                val eta = FileRules.etaSeconds(r.received(), r.declared, System.currentTimeMillis() - inAt)
+                val sisa = if (eta == null) "" else " · ${eta}s lagi"
+                post(
+                    Status(
+                        true, r.name, r.percent(),
+                        "Masuk: ${r.name} · ${r.percent()}% · " +
+                            "${FileRules.humanBytes(r.received())}/${FileRules.humanBytes(r.declared)}$sisa",
+                    ),
+                )
+            }
+            FileAction.Finish -> finishIncoming(r)
+            is FileAction.Abort -> {
+                send(FileWire.encode(FileMsg.Cancel(r.id, aksi.reason)))
+                discardIncoming()
+                post(Status(false, r.name, 0, "Kiriman dari PC gagal: ${FileReason.label(aksi.reason)}", failed = true))
+            }
+            FileAction.None -> {
+                if (r.phase() == FileReceiver.Phase.FAILED) {
+                    val alasan = r.failReason()
+                    discardIncoming()
+                    post(Status(false, r.name, 0, "Kiriman dari PC dibatalkan: ${FileReason.label(alasan)}", failed = true))
+                }
+            }
+        }
+    }
+
+    /**
+     * Berkas baru dipindahkan ke folder Unduhan **setelah** SHA-256 cocok.
+     * Sebelum itu ia hanya berkas sementara di cache aplikasi — transfer yang
+     * putus tidak meninggalkan berkas yang terlihat utuh padahal rusak.
+     */
+    private fun finishIncoming(r: FileReceiver) {
+        runCatching { sink?.flush(); sink?.close() }
+        sink = null
+        val tmp = part
+        if (tmp == null) {
+            discardIncoming()
+            return
+        }
+        val ok = runCatching { publish(tmp, r.name) }.getOrDefault(false)
+        tmp.delete()
+        part = null
+        receiver = null
+        post(
+            if (ok) Status(false, r.name, 100, "${r.name} tersimpan di Unduhan/XyDesk.")
+            else Status(false, r.name, 100, "Berkas diterima tapi gagal disimpan.", failed = true),
+        )
+    }
+
+    /** Menyalin berkas sementara ke Unduhan/XyDesk lewat MediaStore. */
+    private fun publish(tmp: File, name: String): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val values = ContentValues().apply {
+                put(MediaStore.Downloads.DISPLAY_NAME, name)
+                put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/XyDesk")
+                // IS_PENDING menyembunyikan berkas dari aplikasi lain sampai
+                // isinya benar-benar lengkap.
+                put(MediaStore.Downloads.IS_PENDING, 1)
+            }
+            val uri = ctx.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                ?: return false
+            ctx.contentResolver.openOutputStream(uri)?.use { out -> tmp.inputStream().use { it.copyTo(out) } }
+                ?: return false
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            ctx.contentResolver.update(uri, values, null, null)
+            return true
+        }
+        val dir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "XyDesk",
+        )
+        if (!dir.exists() && !dir.mkdirs()) return false
+        var target = File(dir, name)
+        var n = 2
+        // Nama yang bertabrakan dinomori, tidak menimpa berkas pengguna.
+        while (target.exists()) {
+            val titik = name.lastIndexOf('.')
+            val batang = if (titik > 0) name.substring(0, titik) else name
+            val ekor = if (titik > 0) name.substring(titik) else ""
+            target = File(dir, "$batang ($n)$ekor")
+            n++
+        }
+        tmp.inputStream().use { input -> target.outputStream().use { input.copyTo(it) } }
+        return true
+    }
+
+    private fun discardIncoming() {
+        runCatching { sink?.close() }
+        sink = null
+        part?.delete()
+        part = null
+        receiver = null
     }
 
     /**
@@ -120,7 +339,7 @@ class SessionFile(
                     fail(s, "Berkas tidak bisa dibuka.")
                     return
                 }
-                val buf = ByteArray(FileRules.MAX_CHUNK_BYTES)
+                val buf = ByteArray(FileRules.SEND_CHUNK_BYTES)
                 while (s.active() && !s.ready()) {
                     if (Thread.currentThread().isInterrupted) return
                     val allow = s.allowance()

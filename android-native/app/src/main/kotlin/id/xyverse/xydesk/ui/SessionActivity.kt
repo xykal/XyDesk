@@ -191,7 +191,9 @@ class SessionActivity : ComponentActivity(), RtcListener {
             // Ukuran 1 px: ia hanya perlu bisa memegang fokus, bukan terlihat.
             addContentView(it, android.view.ViewGroup.LayoutParams(1, 1))
         }
-        files = SessionFile(applicationContext, session::sendFile, session::fileBuffered, ::onFileStatus)
+        files = SessionFile(
+            applicationContext, session::sendFile, session::fileBuffered, ::onFileStatus, ::askIncomingFile,
+        )
         fileProgress = FileProgressView(this).also {
             it.onCancel = { files?.cancel() }
             addContentView(it, android.view.ViewGroup.LayoutParams(-1, -2))
@@ -588,6 +590,24 @@ class SessionActivity : ComponentActivity(), RtcListener {
             gamepadWarned = true
             Toast.makeText(this, "Gamepad tidak aktif di PC: $reason".tr(store.lang), Toast.LENGTH_LONG).show()
         }
+    }
+
+    /**
+     * Tawaran berkas dari PC selalu ditanyakan dulu. PC yang memilih nama,
+     * ukuran, dan isinya, sementara yang terisi adalah penyimpanan pribadi
+     * pemilik HP — menerima diam-diam berarti pemilik HP tidak pernah punya
+     * kesempatan berkata tidak.
+     */
+    private fun askIncomingFile(a: SessionFile.Ask) {
+        val ukuran = id.xyverse.xyadapt.FileRules.humanBytes(a.size)
+        val peringatan = if (a.risky) "\n\nBerkas ini langsung dijalankan sistem bila dibuka." else ""
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Berkas dari PC".tr(store.lang))
+            .setMessage("${a.name}\n$ukuran$peringatan")
+            .setPositiveButton("Terima".tr(store.lang)) { _, _ -> a.accept() }
+            .setNegativeButton("Tolak".tr(store.lang)) { _, _ -> a.reject() }
+            .setOnCancelListener { a.reject() }
+            .show()
     }
 
     /** Satu baris kemajuan kiriman berkas di atas video; hilang sendiri setelah selesai. */

@@ -199,7 +199,7 @@ class FileSender(
     val id: Int,
     rawName: String,
     val size: Long,
-    private val chunkSize: Int = FileRules.MAX_CHUNK_BYTES,
+    private val chunkSize: Int = FileRules.SEND_CHUNK_BYTES,
 ) {
     enum class State { WAIT_READY, OFFERED, SENDING, FINISHING, DONE, FAILED }
 

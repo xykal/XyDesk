@@ -15,6 +15,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.webrtc.AudioTrack
+import id.xyverse.xyadapt.FileMsg
 import id.xyverse.xyadapt.FileWire
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
@@ -265,7 +266,18 @@ class RtcSession(
         val fch = conn.createDataChannel(FileWire.CHANNEL, DataChannel.Init())
         fch?.registerObserver(object : DataChannel.Observer {
             override fun onBufferedAmountChange(previousAmount: Long) = Unit
-            override fun onStateChange() = Unit
+
+            /**
+             * Tanda siap ke host: pendengar di sisi kita sudah terpasang.
+             * Host wajib menunggunya sebelum menawarkan berkas — tanpa itu
+             * tawaran pertama bisa tiba sebelum ada yang mendengarkan dan
+             * hilang tanpa jejak.
+             */
+            override fun onStateChange() {
+                if (fch.state() == DataChannel.State.OPEN) {
+                    sendFile(FileWire.encode(FileMsg.Ack(FileWire.BEACON_ID, 0)))
+                }
+            }
             override fun onMessage(buffer: DataChannel.Buffer) {
                 val data = ByteArray(buffer.data.remaining())
                 buffer.data.get(data)

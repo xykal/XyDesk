@@ -19,6 +19,18 @@ object FileRules {
     /** Isi satu potongan: 64 KiB, sama dengan `MAX_CHUNK_BYTES` di host. */
     const val MAX_CHUNK_BYTES: Int = 64 * 1024
 
+    /**
+     * Isi satu potongan yang **dikirim**: 16 KiB.
+     *
+     * Batas protokol tetap 64 KiB supaya pengirim lama tetap diterima,
+     * tetapi mengirim sebesar itu sendiri tidak aman: satu pesan SCTP
+     * dibatasi 64 KiB **termasuk** 9 byte header `CHUNK`, jadi potongan
+     * 65536 byte menghasilkan pesan 65545 byte yang tidak pernah berangkat —
+     * pengiriman menggantung tanpa satu pun pesan kesalahan. Ditemukan oleh
+     * uji loopback arah host → client, bukan oleh uji unit mana pun.
+     */
+    const val SEND_CHUNK_BYTES: Int = 16 * 1024
+
     /** Panjang nama setelah dibersihkan, dalam karakter. */
     const val MAX_NAME_CHARS: Int = 120
 

@@ -33,6 +33,12 @@ use webrtc::rtp_transceiver::RTCRtpTransceiverInit;
 use xydesk_host::filetransfer::{decode, encode, FileMessage, Reason, FILE_CHANNEL};
 use xydesk_host::session::Session;
 
+/// Pengirim host memakai antrean proses-global (`file_dispatch::queue_outgoing`),
+/// jadi tiga test di berkas ini tidak boleh punya sesi hidup bersamaan:
+/// sesi kedua akan mengambil alih antrean milik sesi pertama. Lock ini yang
+/// menjaganya, dan sekaligus membuat kegagalan test mudah dibaca.
+static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 /// Folder tujuan khusus per test, supaya dua test tidak saling menimpa dan
 /// tidak pernah menyentuh folder unduhan asli mesin yang menjalankan CI.
 fn folder_tujuan(nama: &str) -> std::path::PathBuf {
@@ -154,6 +160,7 @@ async fn kirim(
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn berkas_berpindah_utuh_lewat_sesi_nyata() -> anyhow::Result<()> {
+    let _serial = SERIAL.lock().await;
     let dir = folder_tujuan("utuh");
     let mut lb = bangun(dir.clone()).await?;
     // 300 KB, pola yang tidak bisa dipalsukan dengan buffer nol.
@@ -224,6 +231,7 @@ async fn berkas_berpindah_utuh_lewat_sesi_nyata() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn hash_yang_tidak_cocok_tidak_meninggalkan_berkas() -> anyhow::Result<()> {
+    let _serial = SERIAL.lock().await;
     let dir = folder_tujuan("hash");
     let mut lb = bangun(dir.clone()).await?;
     let isi = vec![7u8; 4096];
@@ -277,6 +285,92 @@ async fn hash_yang_tidak_cocok_tidak_meninggalkan_berkas() -> anyhow::Result<()>
         isi_folder.is_empty(),
         "folder tujuan tidak bersih: {isi_folder:?}"
     );
+
+    lb.client.close().await?;
+    let _ = std::fs::remove_dir_all(&dir);
+    Ok(())
+}
+
+/// Arah sebaliknya: **host yang mengirim**, client yang menerima.
+///
+/// Jalur ini melewati antrean control API (`queue_outgoing`), tugas pengirim
+/// milik sesi, dan `Sender` — potongan yang tidak pernah tersentuh uji unit
+/// mana pun karena semuanya butuh channel sungguhan. Yang dibuktikan:
+/// tawaran keluar hanya setelah tanda siap, semua byte tiba berurutan, dan
+/// SHA-256 di `DONE` cocok dengan isi berkas aslinya.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn host_mengirim_berkas_ke_client() -> anyhow::Result<()> {
+    let _serial = SERIAL.lock().await;
+    let dir = folder_tujuan("kirim");
+    let mut lb = bangun(dir.clone()).await?;
+
+    let isi: Vec<u8> = (0..300_000u32).map(|i| (i % 241) as u8).collect();
+    let sumber = dir.join("kiriman dari pc.bin");
+    std::fs::write(&sumber, &isi)?;
+
+    // Host mengirim tanda siapnya lebih dulu; aplikasi membalas dengan tanda
+    // siapnya sendiri. Balasan itu yang dipakai host sebelum menawarkan —
+    // mengirimnya lebih awal tidak aman, karena pendengar di sisi host baru
+    // terpasang beberapa saat setelah channel terbuka.
+    kirim(&lb.dc, &FileMessage::Ack { id: 0, received: 0 }).await?;
+
+    // Antrean baru terdaftar setelah `serve` memegang channel.
+    let batas = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        match xydesk_host::file_dispatch::queue_outgoing(sumber.clone()) {
+            Ok(()) => break,
+            Err(e) if std::time::Instant::now() < batas => {
+                if !e.contains("tersambung") {
+                    anyhow::bail!("titip kiriman ditolak: {e}");
+                }
+                tokio::time::sleep(Duration::from_millis(100)).await;
+            }
+            Err(e) => anyhow::bail!("titip kiriman tidak pernah diterima: {e}"),
+        }
+    }
+
+    let tawaran = tunggu(&mut lb.masuk, |m| matches!(m, FileMessage::Offer { .. })).await?;
+    let (id, size, name) = match tawaran {
+        FileMessage::Offer { id, size, name } => (id, size, name),
+        lain => anyhow::bail!("bukan OFFER: {lain:?}"),
+    };
+    assert_eq!(size, isi.len() as u64);
+    assert_eq!(name, "kiriman dari pc.bin");
+    kirim(&lb.dc, &FileMessage::Accept { id }).await?;
+
+    let mut diterima: Vec<u8> = Vec::with_capacity(isi.len());
+    let mut urut = 0u32;
+    let sha_akhir = loop {
+        let pesan = tunggu(&mut lb.masuk, |_| true).await?;
+        match pesan {
+            FileMessage::Chunk { id: cid, seq, data } => {
+                assert_eq!(cid, id, "potongan untuk transfer lain");
+                assert_eq!(seq, urut, "nomor urut melompat");
+                urut += 1;
+                diterima.extend_from_slice(&data);
+                // ACK adalah rem produksi: tanpa ini pengirim berhenti di
+                // 512 KiB dan test menggantung — itu justru yang diuji.
+                kirim(
+                    &lb.dc,
+                    &FileMessage::Ack {
+                        id,
+                        received: diterima.len() as u64,
+                    },
+                )
+                .await?;
+            }
+            FileMessage::Done { id: did, sha256 } => {
+                assert_eq!(did, id);
+                break sha256;
+            }
+            FileMessage::Cancel { reason, .. } => anyhow::bail!("kiriman dibatalkan: {reason:?}"),
+            _ => {}
+        }
+    };
+
+    assert_eq!(diterima, isi, "isi berkas berubah di jalan");
+    let sha_asli: [u8; 32] = Sha256::digest(&isi).into();
+    assert_eq!(sha_akhir, sha_asli, "SHA-256 di DONE tidak cocok");
 
     lb.client.close().await?;
     let _ = std::fs::remove_dir_all(&dir);

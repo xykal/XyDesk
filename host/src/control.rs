@@ -437,6 +437,9 @@ pub struct ActionRequest {
     pub noise_gate_db: Option<f32>,
     #[serde(default, alias = "gainDb")]
     pub gain_db: Option<f32>,
+    /// Path berkas untuk aksi `file-send` (kirim dari PC ke perangkat).
+    #[serde(default)]
+    pub path: Option<String>,
 }
 
 /// Jawaban aksi. `password` berisi nilai baru untuk `new-password` dan
@@ -601,6 +604,25 @@ async fn action(
         }
         // Akhiri sesi streaming aktif. Semantiknya sama dengan `bye` dari
         // client: tutup peer connection + cabut izin (wajib pairing ulang).
+        // Kirim satu berkas dari PC ke perangkat yang sedang tersambung.
+        // Semua pemeriksaan (ada sesi, berkas ada, tidak kosong, tidak
+        // melebihi batas) dilakukan sebelum jawaban `ok` diberikan, supaya
+        // panel tidak pernah memberi tahu pengguna bahwa kiriman dimulai
+        // padahal tidak ada yang berangkat.
+        "file-send" => {
+            let Some(raw) = req.path.as_deref().filter(|p| !p.trim().is_empty()) else {
+                return Ok(Json(ActionResponse::err("path berkas tidak disertakan")));
+            };
+            match crate::file_dispatch::queue_outgoing(std::path::PathBuf::from(raw)) {
+                Ok(()) => Ok(Json(ActionResponse {
+                    ok: true,
+                    error: None,
+                    password: None,
+                    stopped: None,
+                })),
+                Err(e) => Ok(Json(ActionResponse::err(e))),
+            }
+        }
         "stop-session" => {
             // Guard mutex dibatasi block INI agar tidak hidup melintasi
             // await di bawah (MutexGuard tidak Send — handler wajib Send).
@@ -1033,6 +1055,76 @@ mod tests {
         let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
         assert_eq!(v["ok"], true);
         assert_eq!(v["stopped"], false);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn aksi_file_send_menolak_dengan_alasan_yang_jelas() {
+        let (addr, token) = spawn().await;
+        // Tanpa path.
+        let (_, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(r#"{"action":"file-send"}"#),
+        );
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false);
+        assert!(v["error"].as_str().unwrap().contains("path"));
+
+        // Path yang tidak ada: gagal sebelum menyentuh sesi mana pun, supaya
+        // panel tidak pernah mengabarkan kiriman yang tidak berangkat.
+        let (_, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(r#"{"action":"file-send","path":"/tidak/ada/berkas.bin"}"#),
+        );
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false);
+        assert!(v["error"].as_str().unwrap().contains("tidak terbaca"));
+
+        // Berkas kosong ditolak sebelum menanyakan ada-tidaknya sesi.
+        let dir = std::env::temp_dir().join("xydesk-file-send-test");
+        std::fs::create_dir_all(&dir).expect("folder uji");
+        let kosong = dir.join("kosong.bin");
+        std::fs::write(&kosong, b"").expect("tulis");
+        let payload = serde_json::json!({
+            "action": "file-send",
+            "path": kosong.to_string_lossy(),
+        })
+        .to_string();
+        let (_, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(&payload),
+        );
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false);
+        assert!(v["error"].as_str().unwrap().contains("kosong"));
+
+        // Berkas sah tetapi tidak ada perangkat tersambung.
+        let isi = dir.join("isi.bin");
+        std::fs::write(&isi, b"halo").expect("tulis");
+        let payload = serde_json::json!({
+            "action": "file-send",
+            "path": isi.to_string_lossy(),
+        })
+        .to_string();
+        let (_, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(&payload),
+        );
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false);
+        assert!(v["error"].as_str().unwrap().contains("tersambung"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
