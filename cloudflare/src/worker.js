@@ -14,15 +14,18 @@ import { signBoundTicket, readBoundTicket, checkPrincipal } from './bound_ticket
 //        utk aplikasi terpasang (Electron): PKCE ditukar di sini supaya
 //        client_secret tidak pernah ikut terdistribusi ke installer.
 //   GET  /auth/me          (Bearer JWT)                     -> { user }
+//   GET  /chat/ws          (Bearer JWT atau ?token=)         -> WebSocket chat global
+//   GET  /chat/history     (Bearer JWT atau ?token=)         -> 50 pesan terakhir
 //
 // Auth signaling: token HMAC-SHA256 berumur 5 menit (format ts.purpose.sig).
 import { Hub } from './hub.js';
+import { ChatRoom } from './chat.js';
 import { AuthStore } from './authstore.js';
 import { collectIceServers, TURN_PROVIDERS } from './turn.js';
 import { handleAdmin } from './admin.js';
 
 // Wrangler mewajibkan kelas Durable Object diekspor dari entrypoint.
-export { Hub, AuthStore };
+export { Hub, AuthStore, ChatRoom };
 
 export default {
   async fetch(request, env, ctx) {
@@ -33,7 +36,7 @@ export default {
     // (client web di app.xydesk.my.id berbeda origin dari Worker ini).
     if (
       request.method === 'OPTIONS' &&
-      (path.startsWith('/auth/') || path === '/signal-token' || path === '/turn-ice' || path === '/host-token')
+      (path.startsWith('/auth/') || path.startsWith('/chat/') || path === '/signal-token' || path === '/turn-ice' || path === '/host-token')
     ) {
       return corsResponse(new Response(null, { status: 204 }), request, env);
     }
@@ -60,6 +63,10 @@ export default {
 
     if (path.startsWith('/admin/')) {
       return handleAdmin(request, env, url);
+    }
+
+    if (path.startsWith('/chat/')) {
+      return corsResponse(await handleChat(request, url, env), request, env);
     }
 
     if (path.startsWith('/auth/')) {
@@ -552,4 +559,48 @@ async function handleTurnIce(request, url, env) {
     }),
     { status: 200, headers: { 'content-type': 'application/json' } },
   );
+}
+
+// ── Chat global ─────────────────────────────────────────────────────────────
+// Hanya akun yang sudah masuk (bukan tamu) yang boleh ikut: identitas
+// diverifikasi di Worker lewat AUTH_STORE, lalu dititipkan ke Durable Object
+// sebagai header internal. Token tidak pernah diteruskan ke ruang chat.
+async function handleChat(request, url, env) {
+  const path = url.pathname;
+  if (path !== '/chat/ws' && path !== '/chat/history') {
+    return new Response('not found', { status: 404 });
+  }
+  if (!browserOriginAllowed(request, env)) {
+    return new Response('origin not allowed', { status: 403 });
+  }
+
+  // Browser tidak bisa memasang header saat upgrade WebSocket, jadi token
+  // boleh lewat query. Jalur HTTP biasa tetap memakai Authorization.
+  const header = request.headers.get('Authorization') || '';
+  const bearer = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const token = bearer || url.searchParams.get('token') || '';
+  if (!token) return new Response('unauthorized', { status: 401 });
+
+  let user;
+  try {
+    const store = env.AUTH_STORE.get(env.AUTH_STORE.idFromName('auth'));
+    const result = await store.fetch(new Request('https://internal/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    }));
+    if (!result.ok) return new Response('unauthorized', { status: result.status >= 500 ? 503 : 401 });
+    const body = await result.json();
+    user = body && body.user;
+    if (!user || typeof user.email !== 'string' || !user.email) throw new Error('invalid-user');
+  } catch {
+    return new Response('authorization unavailable', { status: 503 });
+  }
+
+  if (!env.CHAT) return new Response('chat unavailable', { status: 503 });
+  const stub = env.CHAT.get(env.CHAT.idFromName('global'));
+  const headers = new Headers(request.headers);
+  headers.delete('Authorization');
+  headers.set('x-xydesk-email', user.email);
+  headers.set('x-xydesk-name', typeof user.name === 'string' ? user.name : '');
+  const inner = path === '/chat/history' ? 'https://chat/history' : 'https://chat/ws';
+  return stub.fetch(new Request(inner, { method: request.method, headers }));
 }

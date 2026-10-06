@@ -29,6 +29,7 @@ GOOGLE_DESKTOP_CLIENT_ID = "335906355717-r2em6iirn8uv39qo6ol9iti8ijcv0et8.apps.g
 bindings = [
   { name = "HUB", class_name = "Hub" },
   { name = "AUTH_STORE", class_name = "AuthStore" },
+  { name = "CHAT", class_name = "ChatRoom" },
 ]
 
 [[migrations]]
@@ -38,6 +39,10 @@ new_sqlite_classes = ["Hub"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["AuthStore"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["ChatRoom"]
 
 # ── Variabel environment (rahasia ditaruh di wrangler secret, BUKAN di sini) ──
 #   npx wrangler secret put XYDESK_SECRET   # rahasia bersama HMAC
