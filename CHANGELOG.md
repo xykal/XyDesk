@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Obrolan di aplikasi Android:** tab baru "Obrolan" di bar bawah membuka ruang chat global. Gelembung berturut-turut dari orang yang sama dalam tiga menit digabung menjadi satu kelompok, avatar berwarna tetap per orang, jumlah orang yang sedang di ruang terlihat di kepala layar, dan sambungan yang putus menyambung ulang sendiri dengan jeda menanjak 1→15 detik. Tombol kirim mati sendiri saat rem laju menyala, jadi aplikasi tidak mengirim pesan yang sudah pasti ditolak server: batas 400 karakter, jeda 0,7 detik, dan 5 pesan per 10 detik dipakai bersama oleh klien dan server, dan diuji di kedua sisi.
+
 - **Chat global (sisi server):** ruang obrolan tunggal untuk semua akun yang sudah masuk, berjalan di satu Durable Object dengan WebSocket hibernasi — tanpa server tambahan dan tanpa biaya tetap. Identitas diverifikasi di Worker sebelum soket sampai ke ruang, jadi token tidak pernah masuk ke ruang chat dan alamat email tidak pernah ikut tersiar: yang terlihat peserta lain hanya nama profil atau bagian sebelum `@`. Pesan dibatasi 400 karakter dan 6 baris, satu orang maksimal 5 pesan per 10 detik dengan jarak minimal 0,7 detik, dan 50 pesan terakhir disimpan sebagai riwayat untuk yang baru bergabung. Sanitasi membuang karakter kontrol, spasi nol-lebar, dan penanda arah teks yang bisa dipakai membalik tampilan nama orang lain. Tampilan di aplikasi menyusul.
 
 - **Gerbang host menghormati bentuk jendela:** layar sambutan dan layar masuk kini melewati ritual penutup yang sama dengan panel, sehingga sudut jendela tetap membulat dan tembus pandang. Pemeriksa bentuk dan snapshot juga melewati gerbang, karena tugasnya memotret panel.

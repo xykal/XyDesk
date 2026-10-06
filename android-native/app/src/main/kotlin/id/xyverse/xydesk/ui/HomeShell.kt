@@ -144,6 +144,10 @@ fun HomeShell(
                         else DevicesSection(shown.take(30), grid = grid, onLong = { editing = it }, onSession = { detail = it }) { host -> quickConnect(host) }
                     }
                 }
+                Tab.CHAT -> store?.jwt?.let { ChatScreen(it) }
+                    ?: Page("Obrolan", "Ruang obrolan untuk semua pengguna XyDesk.") {
+                        XyText("Sesi tidak ditemukan. Masuk ulang untuk ikut mengobrol.", Xy.caption)
+                    }
                 Tab.NEWS -> reading?.let { p -> NewsDetailScreen(p, store?.newsFp.orEmpty(), email, googleToken, onShare) { reading = null } }
                     ?: Page("Berita", "Rilis, fitur baru, dan info XyDesk.") {
                         NewsScreen(posts, offline, seen) { p -> reading = p; seen = p.slug; store?.newsSeen = p.slug }
