@@ -49,6 +49,11 @@ pub mod control_ipc;
 /// di `screen`). Dipisah supaya bisa di-type-check untuk Windows lewat
 /// `tool/wincheck`.
 pub mod dxgi;
+/// Penyambung channel "file" ke disk: protokol + sink + jaringan.
+pub mod file_dispatch;
+/// Penulisan berkas masuk ke disk: berkas sementara, rename setelah hash
+/// cocok, dan penomoran saat nama bertabrakan.
+pub mod filesink;
 /// Protokol transfer berkas dan mesin keadaan penerima (murni logika, teruji
 /// di Linux; penulisan ke disk ada di pemanggilnya).
 pub mod filetransfer;

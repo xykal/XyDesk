@@ -1096,6 +1096,10 @@ async fn main() -> Result<()> {
                     }
 
                     tokio::spawn(xydesk_host::input_dispatch::serve(session.clone()));
+                    // Channel berkas opsional: client lama tidak pernah
+                    // membukanya, jadi task ini menunggu tanpa batas dan
+                    // mati bersama sesinya.
+                    tokio::spawn(xydesk_host::file_dispatch::serve(session.clone()));
 
                     // Sumber video: capture layar (Windows DXGI) atau pola uji.
                     // Frame H264 ter-encode diambil dari channel, ditulis ke track

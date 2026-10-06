@@ -27,6 +27,13 @@ use webrtc::track::track_remote::TrackRemote;
 /// Nama data channel untuk input kontrol (sama di sisi client Flutter).
 pub const INPUT_CHANNEL: &str = "input";
 
+/// Nama data channel untuk transfer berkas.
+///
+/// Sengaja terpisah dari [`INPUT_CHANNEL`]: satu berkas besar berarti ribuan
+/// pesan beruntun, dan kalau ikut antrean input setiap gerak mouse menunggu
+/// di belakang potongan berkas.
+pub use crate::filetransfer::FILE_CHANNEL;
+
 /// Lama yang diberikan kepada sesi untuk pulih sendiri setelah koneksi
 /// terlepas sebentar, sebelum host mencabut slotnya.
 ///
@@ -90,6 +97,10 @@ pub struct Session {
     incoming_rx: tokio::sync::Mutex<mpsc::UnboundedReceiver<Arc<RTCDataChannel>>>,
     /// Track audio jarak jauh dari client (mic passthrough), bila ada.
     remote_audio: Arc<tokio::sync::Mutex<Option<Arc<TrackRemote>>>>,
+    /// Channel transfer berkas, diisi begitu client membukanya.
+    file_channel: Arc<tokio::sync::Mutex<Option<Arc<RTCDataChannel>>>>,
+    /// Pemberitahuan bahwa `file_channel` baru saja terisi.
+    file_ready: Arc<tokio::sync::Notify>,
 }
 
 // RTCPeerConnection tidak implement Debug; cukup identitas struct saja.
@@ -176,11 +187,26 @@ impl Session {
             .await?,
         );
 
-        // Tangkap data channel masuk ke antrean.
+        // Tangkap data channel masuk ke antrean. Channel berkas dipisahkan
+        // di sini, bukan di `receive_input_channels`: loop itu berhenti
+        // begitu channel input ketemu, sedangkan channel berkas boleh dibuka
+        // kapan saja selama sesi — termasuk satu jam setelah sesi mulai.
         let (tx, rx) = mpsc::unbounded_channel();
+        let file_channel: Arc<tokio::sync::Mutex<Option<Arc<RTCDataChannel>>>> =
+            Arc::new(tokio::sync::Mutex::new(None));
+        let file_ready = Arc::new(tokio::sync::Notify::new());
+        let file_slot = Arc::clone(&file_channel);
+        let file_signal = Arc::clone(&file_ready);
         pc.on_data_channel(Box::new(move |dc: Arc<RTCDataChannel>| {
             let tx = tx.clone();
+            let file_slot = Arc::clone(&file_slot);
+            let file_signal = Arc::clone(&file_signal);
             Box::pin(async move {
+                if dc.label() == FILE_CHANNEL {
+                    *file_slot.lock().await = Some(dc);
+                    file_signal.notify_waiters();
+                    return;
+                }
                 let _ = tx.send(dc);
             })
         }));
@@ -203,6 +229,8 @@ impl Session {
             video_level,
             incoming_rx: tokio::sync::Mutex::new(rx),
             remote_audio,
+            file_channel,
+            file_ready,
         })
     }
 
@@ -464,6 +492,30 @@ impl Session {
             }
         }
         Ok((input.expect("input channel wajib ada"), pointer))
+    }
+
+    /// Menunggu client membuka channel `"file"`.
+    ///
+    /// Client lama tidak pernah membukanya, jadi pemanggil harus siap
+    /// menunggu selamanya — jalankan di task sendiri dan biarkan ia mati
+    /// bersama sesinya.
+    pub async fn wait_file_channel(&self) -> Arc<RTCDataChannel> {
+        loop {
+            // Pendaftaran `notified()` dilakukan SEBELUM memeriksa isi slot.
+            // Urutan terbalik membuat channel yang tiba di antara pemeriksaan
+            // dan penungguan hilang tanpa jejak, dan transfer berkas
+            // menggantung tanpa alasan yang terlihat.
+            let ready = self.file_ready.notified();
+            if let Some(dc) = self.file_channel.lock().await.clone() {
+                return dc;
+            }
+            ready.await;
+        }
+    }
+
+    /// Channel berkas bila sudah ada, tanpa menunggu.
+    pub async fn file_channel(&self) -> Option<Arc<RTCDataChannel>> {
+        self.file_channel.lock().await.clone()
     }
 
     /// Kompatibilitas untuk test/klien lama yang hanya memakai `input`.
