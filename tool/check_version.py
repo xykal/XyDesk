@@ -68,7 +68,21 @@ def main() -> None:
             f"host/Cargo.toml = {m.group(1) if m else 'tidak ada'}, seharusnya {version}"
         )
 
-    for pkg in ("web/package.json",):
+    # host/Cargo.lock — `cargo build --locked` di CI menolak lock yang tidak
+    # sinkron dengan Cargo.toml. Bump versi yang melewatkan berkas ini lolos
+    # semua pemeriksaan lokal lalu gagal di job Windows, setelah antre di
+    # belakang build Rust yang panjang (kejadian pada 6.11.10).
+    m = re.search(
+        r'^\[\[package\]\]\nname = "xydesk-host"\nversion = "([^"]+)"',
+        read("host/Cargo.lock"),
+        re.M,
+    )
+    if not m or m.group(1) != version:
+        problems.append(
+            f"host/Cargo.lock = {m.group(1) if m else 'tidak ada'}, seharusnya {version}"
+        )
+
+    for pkg in ("web/package.json", "admin/package.json"):
         path = ROOT / pkg
         if not path.exists():
             continue
