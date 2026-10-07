@@ -74,6 +74,7 @@ class SessionKeyboard(private val context: Context, private val sink: EditText, 
             QuickKey.COPY -> chord(0xA2, 0x43)
             QuickKey.PASTE -> chord(0xA2, 0x56)
             QuickKey.UNDO -> chord(0xA2, 0x5A)
+            QuickKey.SAVE -> chord(0xA2, 0x53)
             QuickKey.ALT_TAB -> chord(0xA4, 0x09)
             QuickKey.ALT_F4 -> chord(0xA4, 0x73)
             QuickKey.F11 -> tap(0x7A)
