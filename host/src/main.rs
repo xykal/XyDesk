@@ -1048,22 +1048,6 @@ async fn main() -> Result<()> {
                         }
                     };
                     xydesk_host::video_policy::configure(video_level);
-                    if !args.keep_desktop_resolution && !args.virtual_display_720p {
-                        let wanted = xydesk_host::screen::wanted_display();
-                        if let Some(display) = xydesk_host::screen::list_displays()
-                            .into_iter()
-                            .find(|d| d.index == wanted)
-                        {
-                            match tokio::task::spawn_blocking(move || {
-                                xydesk_host::desktop_mode::request(display.name, video_level)
-                            })
-                            .await
-                            {
-                                Ok(report) => eprintln!("[xydesk-host] desktop 16:9: {report:?}"),
-                                Err(e) => eprintln!("[xydesk-host] permintaan desktop gagal: {e}"),
-                            }
-                        }
-                    }
 
                     let video_track = media.video;
                     let audio_track = media.audio;

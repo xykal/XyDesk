@@ -22,6 +22,10 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
+## [6.11.21] — 2026-10-08
+
+- **Perbaikan koneksi stabil tanpa reset resolusi tidak diminta (menghilangkan loop "loading percobaan" pada Cloud GPU VM).** Menghilangkan pemanggilan otomatis `ChangeDisplaySettingsExW` saat inisialisasi koneksi di host Windows, sehingga sesi capture DXGI dan driver tampilan tidak ter-reset/rusak di tengah jalan, mencegah putus mendadak dan loop auto-reconnect pada klien.
+
 ## [6.11.20] — 2026-10-08
 
 - **Pemasangan aset logo asli resmi XyDesk, pengembalian tema putih bersih & elegan signature XyDesk, dan kustomisasi kontrol overlay penuh.** Pembaruan visual dan kontrol sesi: (1) **Logo Asli Resmi XyDesk:** Menggunakan file logo resmi asli XyDesk (`web/public/logo.png` -> `logo_xy.webp`) langsung pada `XyDeskMark` di Android dan panel Windows, menggantikan bentuk gambar buatan. (2) **Pengembalian Tema Putih Signature XyDesk:** Toolbar sesi (`SessionToolbar`), On-Screen PC Keyboard HUD (`SessionPcKeyboard`), dan bilah mapping kontrol overlay kembali menggunakan palet putih terang (`#FFFFFF` / `#F8FFFFFF`) yang bersih, elegan, dan kontras tinggi dengan aksen violet elektrik signature `#7C3AED`. (3) **Kustomisasi Kontrol Penuh & Preset Lengkap:** Pustaka kontrol lengkap (Stik analog, Mouse click & scroll, semua keyboard VK, Pintasan chord, Tombol gamepad konsol), 6 preset lengkap, dan drag-and-drop kustomisasi penuh dengan opsi ukuran (+ / −).
