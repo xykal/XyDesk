@@ -31,6 +31,12 @@ onboarding_binary="$out_dir/native-onboarding-test"
     "$root/packaging/tests/native-onboarding-test.cpp" -o "$onboarding_binary"
 "$onboarding_binary"
 
+email_binary="$out_dir/native-email-login-test"
+"$cxx" -std=c++20 -O2 -Wall -Wextra -Werror \
+    -I "$root/packaging/native-host" \
+    "$root/packaging/tests/native-email-login-test.cpp" -o "$email_binary"
+"$email_binary"
+
 updater_binary="$out_dir/native-updater-test"
 "$cxx" -std=c++20 -O2 -Wall -Wextra -Werror \
     -I "$root/packaging/native-host" \

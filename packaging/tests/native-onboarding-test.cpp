@@ -306,6 +306,29 @@ void tombolKeluarSelaluDiPojokKartu() {
     }
 }
 
+void kartuFormulirEmailPunyaKotakIsian() {
+    using xydesk::panel::computeGateLayout;
+    using xydesk::panel::Rect;
+    for (int scale : {100, 125, 150, 200}) {
+        const auto polos = computeGateLayout(Rect{0, 0, 1100, 720}, scale, true, false);
+        const auto form = computeGateLayout(Rect{0, 0, 1100, 720}, scale, true, true);
+        check(polos.field.h == 0, "tanpa formulir tidak ada kotak isian");
+        check(form.field.h > 0, "formulir email punya kotak isian");
+        check(form.field.h == form.primary.h, "kotak isian setinggi tombol utama");
+        check(form.field.bottom() <= form.primary.y, "kotak isian di atas tombol utama");
+        check(form.field.x == form.primary.x && form.field.w == form.primary.w,
+            "kotak isian selebar tombol");
+        check(form.field.y >= form.subtitle.bottom(), "kotak isian di bawah subjudul");
+        check(form.card.h > polos.card.h, "kartu tumbuh untuk menampung kotak isian");
+        check(form.primary.bottom() <= form.secondary.y, "tombol utama tetap di atas tombol kedua");
+        check(form.secondary.bottom() <= form.note.y, "catatan tetap paling bawah");
+        check(form.card.bottom() <= 720 || form.card.y >= 0,
+            "kartu formulir tetap masuk akal di panel");
+        check(form.field.y > form.card.y && form.field.bottom() < form.card.bottom(),
+            "kotak isian di dalam kartu");
+    }
+}
+
 } // namespace
 
 int main() {
@@ -327,6 +350,7 @@ int main() {
     isiKartuBerurutanDanTidakSalingTimpa();
     kartuMenyempitTapiTidakHilangDiPanelSempit();
     tombolKeluarSelaluDiPojokKartu();
+    kartuFormulirEmailPunyaKotakIsian();
 
     if (failures) {
         std::printf("%d pemeriksaan gagal\n", failures);

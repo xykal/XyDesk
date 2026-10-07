@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.11.14](./6.11.14.md) - 2026-10-07 — Palet panel host disamakan dengan APK (#7C3AED), tombol jendela pindah ke kanan tanpa tiga lampu macOS, masuk lewat email di dalam aplikasi, logo Google asli
 - [6.11.13](./6.11.13.md) - 2026-10-06 — Gerbang kehadiran: PC bisa menolak koneksi saat tidak ada yang menungguinya, plus izin sementara sebelum pergi
 - [6.11.12](./6.11.12.md) - 2026-10-06 — Konfirmasi `DONE_OK` di transfer berkas: "terkirim" hanya ditulis saat berkasnya benar-benar tersimpan
 - [6.8.8](./6.8.8.md) - 2026-09-29 — Encoder hardware AMD/Intel lewat Media Foundation (NVENC > MFT > openh264), CRT statis, rilis draft
