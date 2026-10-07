@@ -239,7 +239,8 @@ mod windows_probe {
     const REG_BUF_WCHARS: usize = 1024;
     use windows::core::PCWSTR;
     use windows::Win32::Graphics::Gdi::{
-        EnumDisplaySettingsW, DEVMODEW, ENUM_DISPLAY_SETTINGS_MODE,
+        EnumDisplayDevicesW, EnumDisplaySettingsW, DEVMODEW, DISPLAY_DEVICEW,
+        DISPLAY_DEVICE_ATTACHED_TO_DESKTOP, ENUM_DISPLAY_SETTINGS_MODE,
     };
 
     /// Mode "pengaturan saat ini" untuk `EnumDisplaySettingsW` (= -1).
@@ -359,21 +360,40 @@ mod windows_probe {
     const VGA_CLASS_KEY: &str =
         r"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
 
-    /// Nama semua adapter grafis terdaftar.
+    /// Nama adapter grafis aktif.
     ///
-    /// Sengaja melaporkan **semua** yang terdaftar, termasuk yang tidak sedang
-    /// menempel ke desktop: di mesin hybrid (iGPU + dGPU) keduanya nyata, dan
-    /// menyembunyikan salah satunya membuat diagnosis encoder salah — NVENC
-    /// butuh NVIDIA, bukan Intel UHD. Duplikat disaring `gpu_label`.
+    /// Memprioritaskan adapter yang sedang terpasang di desktop (via EnumDisplayDevicesW)
+    /// agar entri historis/bekas instalasi pada VM template (mis. RTX 3060 + RTX 5060)
+    /// tidak ikut terlaporkan secara keliru.
     fn gpu_names() -> Vec<String> {
         let mut out: Vec<String> = Vec::new();
-        // Delapan subkunci pertama sudah mencakup mesin dengan banyak GPU;
-        // adapter yang tidak terbaca lebih baik tidak dilaporkan daripada
-        // dikarang (aturan kejujuran #2).
+        for i in 0..16u32 {
+            let mut d: DISPLAY_DEVICEW = unsafe { std::mem::zeroed() };
+            d.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as u32;
+            if unsafe { EnumDisplayDevicesW(None, i, &mut d, 0) }.as_bool() {
+                if (d.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0 {
+                    let name = String::from_utf16_lossy(&d.DeviceString)
+                        .trim_end_matches('\0')
+                        .trim()
+                        .to_string();
+                    if !name.is_empty() && !out.contains(&name) {
+                        out.push(name);
+                    }
+                }
+            } else {
+                break;
+            }
+        }
+        if !out.is_empty() {
+            return out;
+        }
         for i in 0..8u32 {
             let sub = format!("{VGA_CLASS_KEY}\\{i:04}");
             if let Some(desc) = reg_string(&sub, "DriverDesc") {
-                out.push(desc);
+                if !out.contains(&desc) {
+                    out.push(desc);
+                    break;
+                }
             }
         }
         out

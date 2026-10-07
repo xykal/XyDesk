@@ -62,7 +62,8 @@ class SessionKeyboard(private val context: Context, private val sink: EditText, 
         programmatic = false
         mirror = ""
         sink.requestFocus()
-        context.getSystemService(InputMethodManager::class.java).showSoftInput(sink, InputMethodManager.SHOW_IMPLICIT)
+        val imm = context.getSystemService(InputMethodManager::class.java)
+        imm?.showSoftInput(sink, InputMethodManager.SHOW_FORCED)
     }
 
     fun quick(combo: QuickKey) {
