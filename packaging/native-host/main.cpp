@@ -3816,11 +3816,11 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show) {
         WS_POPUP | WS_SYSMENU | WS_THICKFRAME | WS_CLIPCHILDREN, x, y, g.layout.window.w, g.layout.window.h,
         nullptr, nullptr, instance, nullptr);
     if (!window) return 1;
-    // Jangan ikut tertangkap DXGI/capture sesi (privacy screen panel host).
-    SetWindowDisplayAffinity(window, 0x00000011);
+    // Tampilkan jendela secara normal di semua lingkungan (termasuk Cloud GPU VM seperti ThinkMay, Parsec, dan taskbar thumbnail DWM).
+    SetWindowDisplayAffinity(window, 0);
 
     applyDpi(window, windowDpi(window), true);
-    ShowWindow(window, show);
+    ShowWindow(window, (show == SW_SHOWMINNOACTIVE || show == SW_MINIMIZE || show == SW_SHOWMINIMIZED) ? show : SW_SHOWNORMAL);
     UpdateWindow(window);
     SetForegroundWindow(window);
 
