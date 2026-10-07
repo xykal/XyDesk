@@ -28,6 +28,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.hapticfeedback.HapticFeedback
@@ -113,7 +114,7 @@ class MainActivity : ComponentActivity() {
                     } else if (!loggedIn) {
                         LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
-                            lifecycleScope.launch {
+                            CoroutineScope(Dispatchers.IO).launch {
                                 runCatching {
                                     val user = id.xyverse.xydesk.net.Api.me(token).optJSONObject("user")
                                     val name = user?.optString("name")
@@ -128,12 +129,14 @@ class MainActivity : ComponentActivity() {
                         LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
                         LaunchedEffect(jwt) {
                             if (!jwt.isNullOrBlank() && store.userName.isNullOrBlank()) {
-                                runCatching {
-                                    val user = id.xyverse.xydesk.net.Api.me(jwt!!).optJSONObject("user")
-                                    val name = user?.optString("name")
-                                    val pic = user?.optString("picture")
-                                    if (!name.isNullOrBlank()) store.userName = name
-                                    if (!pic.isNullOrBlank()) store.userPhoto = pic
+                                withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        val user = id.xyverse.xydesk.net.Api.me(jwt!!).optJSONObject("user")
+                                        val name = user?.optString("name")
+                                        val pic = user?.optString("picture")
+                                        if (!name.isNullOrBlank()) store.userName = name
+                                        if (!pic.isNullOrBlank()) store.userPhoto = pic
+                                    }
                                 }
                             }
                         }

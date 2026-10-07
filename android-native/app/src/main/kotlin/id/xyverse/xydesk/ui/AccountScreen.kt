@@ -278,20 +278,18 @@ private fun ProfileBody(email: String, settings: Settings) {
 
         XyField(
             value = nameInput,
-            onValueChange = { nameInput = it; if (notice.isNotBlank()) notice = "" },
+            onChange = { nameInput = it; if (notice.isNotBlank()) notice = "" },
             label = "Nama Tampilan",
             hint = "Nama kamu di ruang obrolan",
-            enabled = !busy,
         )
 
         Spacer(Modifier.height(14.dp))
 
         XyField(
             value = photoInput,
-            onValueChange = { photoInput = it.trim(); if (notice.isNotBlank()) notice = "" },
+            onChange = { photoInput = it.trim(); if (notice.isNotBlank()) notice = "" },
             label = "URL Foto Profil (Opsional)",
             hint = "https://lh3.googleusercontent.com/...",
-            enabled = !busy,
         )
 
         if (notice.isNotBlank()) {
@@ -304,7 +302,7 @@ private fun ProfileBody(email: String, settings: Settings) {
         val canSave = !busy && nameInput.trim().length >= 2 && nameInput.trim() != (store?.userName.orEmpty()) || photoInput != store?.userPhoto.orEmpty()
 
         XyButton(
-            label = if (busy) "Menyimpan…" else "Simpan Perubahan",
+            text = if (busy) "Menyimpan…" else "Simpan Perubahan",
             enabled = canSave && nameInput.trim().length >= 2,
         ) {
             busy = true

@@ -116,11 +116,10 @@ fun LoginScreen(
             XyCard {
                 XyField(
                     value = email,
-                    onValueChange = { email = it.trim(); if (notice.isNotBlank()) notice = "" },
+                    onChange = { email = it.trim(); if (notice.isNotBlank()) notice = "" },
                     label = "Alamat Email",
                     keyboard = KeyboardType.Email,
                     hint = "nama@domain.com",
-                    enabled = !busy && !sent,
                 )
 
                 AnimatedVisibility(
@@ -132,12 +131,11 @@ fun LoginScreen(
                         Spacer(Modifier.height(Xy.gap))
                         XyField(
                             value = otp,
-                            onValueChange = { otp = it.filter(Char::isDigit).take(6); if (notice.isNotBlank()) notice = "" },
+                            onChange = { otp = it.filter(Char::isDigit).take(6); if (notice.isNotBlank()) notice = "" },
                             label = "Kode OTP (6 Digit)",
                             keyboard = KeyboardType.Number,
                             mono = true,
                             hint = "••••••",
-                            enabled = !busy,
                         )
                         Spacer(Modifier.height(6.dp))
                         Row(
@@ -183,7 +181,7 @@ fun LoginScreen(
                 }
 
                 XyButton(
-                    label = if (sent) "Masuk" else "Kirim Kode Masuk",
+                    text = if (sent) "Masuk" else "Kirim Kode Masuk",
                     enabled = canSubmit,
                 ) {
                     if (!sent) {
