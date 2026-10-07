@@ -33,6 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -40,8 +43,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.xyverse.xydesk.ui.kit.Icon
@@ -112,13 +113,13 @@ enum class QuickKey(val label: String) {
     ALT_TAB("⌥⇥"), ALT_F4("⌥F4"), F11("F11"), PRTSC("PrtSc"), CAD("⌃⌥⌦ CAD"),
 }
 
-private val kGlassBg = Color(0xF2161622)
-private val kPillBg = Color(0x3328283C)
-private val kBorder = Color(0x2EFFFFFF)
+private val kPanelBg = Color(0xF8FFFFFF)
+private val kPillInactiveBg = Color(0xFFF1F1F6)
+private val kPanelBorder = Color(0xFFE4E4EC)
 
 /**
  * Rel vertikal tepi kanan: Kibor, Kontrol, Mapping, Atur, Putus.
- * Desain elegan frosted glass khas XyDesk yang bersih dan tidak membingungkan.
+ * Desain bersih, elegan, dan jernih khas tema putih signature XyDesk.
  */
 @Composable
 fun SessionToolbar(
@@ -156,23 +157,28 @@ fun SessionToolbar(
     ) {
         AnimatedVisibility(!hidden && settingsOpen, enter = slideInHorizontally { it / 2 } + fadeIn(), exit = slideOutHorizontally { it / 2 } + fadeOut()) {
             Column(
-                Modifier.width(252.dp).clip(RoundedCornerShape(Xy.radiusL)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.radiusL)).padding(14.dp)
+                Modifier.width(256.dp)
+                    .shadow(12.dp, RoundedCornerShape(Xy.radiusL), ambientColor = Color(0x1A000000), spotColor = Color(0x227C3AED))
+                    .clip(RoundedCornerShape(Xy.radiusL))
+                    .background(kPanelBg)
+                    .border(1.dp, kPanelBorder, RoundedCornerShape(Xy.radiusL))
+                    .padding(14.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 XyText("KUALITAS STREAM", Xy.label.copy(color = Xy.accent))
-                Wrap { qLabels.forEachIndexed { i, l -> GlassPill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
+                Wrap { qLabels.forEachIndexed { i, l -> WhitePill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
 
                 XyText("FPS & RESOLUSI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    prefs.fpsOptions.forEach { f -> GlassPill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
-                    GlassPill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
-                    listOf("720p", "1080p").forEachIndexed { i, l -> GlassPill(l, accent = res == i) { res = i; actions.resolution(i) } }
+                    prefs.fpsOptions.forEach { f -> WhitePill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
+                    WhitePill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
+                    listOf("720p", "1080p").forEachIndexed { i, l -> WhitePill(l, accent = res == i) { res = i; actions.resolution(i) } }
                 }
 
                 if (quality != 0) {
                     XyText("BITRATE", Xy.label.copy(color = Xy.accent))
-                    Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> GlassPill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
+                    Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> WhitePill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
                 }
 
                 val layar = displayState?.value ?: DisplayState()
@@ -180,37 +186,37 @@ fun SessionToolbar(
                 if (DisplayRules.shouldOffer(layar.displays)) {
                     Wrap {
                         layar.displays.forEachIndexed { i, d ->
-                            GlassPill(DisplayRules.label(d, i), accent = d.index == layar.active) {
+                            WhitePill(DisplayRules.label(d, i), accent = d.index == layar.active) {
                                 DisplayRules.request(layar.displays, layar.active, d.index)?.let(actions.display)
                             }
                         }
                     }
                 } else if (layar.displays.size == 1) {
-                    XyText("PC ini hanya punya satu layar.", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f)))
+                    XyText("PC ini hanya punya satu layar.", Xy.caption)
                 } else {
-                    XyText("Daftar layar belum diterima dari PC.", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f)))
+                    XyText("Daftar layar belum diterima dari PC.", Xy.caption)
                 }
 
                 XyText("SENTUH & TRACKPAD", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    GlassPill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
-                    GlassPill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
+                    WhitePill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
+                    WhitePill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
                 }
                 Wrap {
-                    GlassPill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
-                    GlassPill("Kecepatan %.1f".format(speed), accent = true) {}
-                    GlassPill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
-                    GlassPill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
+                    WhitePill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
+                    WhitePill("Kecepatan %.1f".format(speed), accent = true) {}
+                    WhitePill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
+                    WhitePill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
                 }
 
                 XyText("FITUR SESI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    GlassPill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
-                    GlassPill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
-                    GlassPill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
-                    GlassPill("Stats HUD", accent = stats) { stats = !stats; actions.stats(stats) }
-                    GlassPill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
-                    GlassPill("Pad → kibor: $padLabel", accent = padMode == 1) {
+                    WhitePill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
+                    WhitePill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
+                    WhitePill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
+                    WhitePill("Stats HUD", accent = stats) { stats = !stats; actions.stats(stats) }
+                    WhitePill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
+                    WhitePill("Pad → kibor: $padLabel", accent = padMode == 1) {
                         padMode = PadKbm.nextMode(padMode)
                         padLabel = PadKbm.modeLabel(padMode)
                         actions.padKbm()
@@ -219,21 +225,30 @@ fun SessionToolbar(
 
                 XyText("ALAT SESI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    GlassPill("Pusatkan kursor") { actions.centerCursor() }
-                    GlassPill("Kirim berkas") { settingsOpen = false; actions.sendFile() }
-                    GlassPill("Mode presentasi") { settingsOpen = false; actions.present() }
+                    WhitePill("Pusatkan kursor") { actions.centerCursor() }
+                    WhitePill("Kirim berkas") { settingsOpen = false; actions.sendFile() }
+                    WhitePill("Mode presentasi") { settingsOpen = false; actions.present() }
                 }
             }
         }
         if (hidden) {
             Box(
-                Modifier.size(width = 16.dp, height = 58.dp).clip(RoundedCornerShape(Xy.pill)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.pill))
+                Modifier.size(width = 16.dp, height = 58.dp)
+                    .shadow(8.dp, RoundedCornerShape(Xy.pill), ambientColor = Color(0x15000000))
+                    .clip(RoundedCornerShape(Xy.pill))
+                    .background(kPanelBg)
+                    .border(1.dp, kPanelBorder, RoundedCornerShape(Xy.pill))
                     .clickable(remember { MutableInteractionSource() }, null) { hidden = false },
                 contentAlignment = Alignment.Center,
             ) { Box(Modifier.size(3.dp, 22.dp).clip(CircleShape).background(Xy.accent)) }
         } else {
             Column(
-                Modifier.clip(RoundedCornerShape(Xy.pill)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.pill)).padding(6.dp),
+                Modifier
+                    .shadow(8.dp, RoundedCornerShape(Xy.pill), ambientColor = Color(0x15000000))
+                    .clip(RoundedCornerShape(Xy.pill))
+                    .background(kPanelBg)
+                    .border(1.dp, kPanelBorder, RoundedCornerShape(Xy.pill))
+                    .padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -241,7 +256,7 @@ fun SessionToolbar(
                     Modifier.size(width = 44.dp, height = 22.dp)
                         .clickable(remember { MutableInteractionSource() }, null) { hidden = true; settingsOpen = false },
                     contentAlignment = Alignment.Center,
-                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.35f))) }
+                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color(0xFFCBD5E1))) }
                 RailButton(Icon.KEYBOARD, "Kibor") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol") { actions.overlayMode(); settingsOpen = false }
                 RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); settingsOpen = false }
@@ -255,15 +270,15 @@ fun SessionToolbar(
 
 @Composable
 private fun RailButton(icon: Icon, label: String, active: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
-    val bg = when { danger -> Xy.danger.copy(alpha = 0.18f); active -> Xy.accent; else -> Color(0x332E2E42) }
-    val fg = when { danger -> Xy.danger; active -> Color.White; else -> Color(0xFFE2E8F0) }
+    val bg = when { danger -> Color(0x1AF43F5E); active -> Xy.accent; else -> Color(0xFFF1F1F6) }
+    val fg = when { danger -> Color(0xFFE11D48); active -> Color.White; else -> Xy.textHi }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(44.dp).background(bg, CircleShape).border(1.dp, if (active) Color.White.copy(alpha = 0.6f) else Color(0x22FFFFFF), CircleShape)
+            Modifier.size(44.dp).background(bg, CircleShape).border(1.dp, if (active) Xy.accent else Color(0xFFE4E4EC), CircleShape)
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) { XyIcon(icon, tint = fg, size = 20.dp) }
-        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Xy.danger else Color(0xFF94A3B8)))
+        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Color(0xFFE11D48) else if (active) Xy.accent else Xy.textMid))
     }
 }
 
@@ -274,10 +289,10 @@ private fun Wrap(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun GlassPill(text: String, accent: Boolean = false, onClick: () -> Unit) {
+private fun WhitePill(text: String, accent: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kPillBg)
-            .border(1.dp, if (accent) Color.White.copy(alpha = 0.5f) else Color(0x22FFFFFF), RoundedCornerShape(Xy.pill))
+        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kPillInactiveBg)
+            .border(1.dp, if (accent) Xy.accent else kPanelBorder, RoundedCornerShape(Xy.pill))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 11.dp, vertical = 7.dp),
-    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Color(0xFFE2E8F0))) }
+    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Xy.textHi)) }
 }

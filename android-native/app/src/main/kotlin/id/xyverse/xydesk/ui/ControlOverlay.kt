@@ -480,7 +480,8 @@ fun ControlOverlay(
         if (edit) {
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-                    .clip(RoundedCornerShape(16.dp)).background(Color(0xF008080E)).border(1.dp, Color(0x33A78BFA), RoundedCornerShape(16.dp))
+                    .shadow(16.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x1A000000), spotColor = Color(0x227C3AED))
+                    .clip(RoundedCornerShape(16.dp)).background(Color(0xF8FFFFFF)).border(1.dp, Color(0xFFE4E4EC), RoundedCornerShape(16.dp))
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -492,7 +493,7 @@ fun ControlOverlay(
                         val id = selected
                         if (id != null) { onItems(items.filter { it.id != id }); selected = null }
                     }
-                    Box(Modifier.width(1.dp).height(20.dp).background(Color(0x33FFFFFF)))
+                    Box(Modifier.width(1.dp).height(20.dp).background(Color(0xFFE4E4EC)))
                     DarkChip("Transparan", on = style == ControlStyle.TRANSPARENT_BORDER) { onStyle(ControlStyle.TRANSPARENT_BORDER) }
                     DarkChip("Bingkai Game", on = style == ControlStyle.GAMING_FRAME) { onStyle(ControlStyle.GAMING_FRAME) }
                     DarkChip("Solid Gelap", on = style == ControlStyle.SOLID_DARK) { onStyle(ControlStyle.SOLID_DARK) }
@@ -506,7 +507,7 @@ fun ControlOverlay(
                 val cur = items.find { it.id == selected }
                 if (cur != null && !library) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        XyText("${cur.label()} · ${cur.size.roundToInt()}dp · geser untuk posisikan", Xy.caption.copy(color = Color(0xFFC4B5FD)))
+                        XyText("${cur.label()} · ${cur.size.roundToInt()}dp · geser untuk posisikan", Xy.caption.copy(color = Xy.accent))
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             DarkChip("−") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size - 8f).coerceAtLeast(34f), radius = ((it.size - 8f) / 2).coerceAtLeast(0f)) else it }) }
                             DarkChip("+") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size + 8f).coerceAtMost(180f), radius = ((it.size + 8f) / 2).coerceAtMost(90f)) else it }) }
@@ -1137,19 +1138,19 @@ private fun item(kind: OverlayKind, code: Int, display: String = "") =
 @Composable
 private fun DarkChip(text: String, on: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
     val bg = when {
-        danger -> Color(0x33EF4444)
+        danger -> Color(0x1AF43F5E)
         on -> Xy.accent
-        else -> Color(0x33222234)
+        else -> Color(0xFFF1F1F6)
     }
     val border = when {
-        danger -> Color(0x88EF4444)
-        on -> Color(0xFFC084FC)
-        else -> Color(0x22FFFFFF)
+        danger -> Color(0x66F43F5E)
+        on -> Xy.accent
+        else -> Color(0xFFE4E4EC)
     }
     val fg = when {
-        danger -> Color(0xFFFCA5A5)
+        danger -> Color(0xFFE11D48)
         on -> Color.White
-        else -> Color(0xFFE2E8F0)
+        else -> Xy.textHi
     }
     Box(
         Modifier
