@@ -1,6 +1,6 @@
 {
   "name": "xydesk-admin",
-  "version": "6.11.20",
+  "version": "6.11.21",
   "private": true,
   "type": "module",
   "scripts": {
