@@ -454,7 +454,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
                     actions = SessionActions(
-                        keyboard = { keys.toggle() },
+                        keyboard = {
+                            setPcKeys(!pcKeysOpen)
+                            if (pcKeysOpen) keys.toggle()
+                        },
                         quality = { store.quality = it; metrics.auto = it == 0; if (it > 0) session.send(StreamXy.quality(it)) },
                         resolution = { session.send(StreamXy.resolution(it)) },
                         fps = { store.targetFps = it; metrics.targetFps = it; session.send(StreamXy.fps(it)) },

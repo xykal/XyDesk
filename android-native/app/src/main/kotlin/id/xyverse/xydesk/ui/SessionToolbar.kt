@@ -112,13 +112,13 @@ enum class QuickKey(val label: String) {
     ALT_TAB("⌥⇥"), ALT_F4("⌥F4"), F11("F11"), PRTSC("PrtSc"), CAD("⌃⌥⌦ CAD"),
 }
 
-private val kDarkGlass = Color(0xF008080E)
-private val kDarkPillBg = Color(0x33262638)
-private val kDarkBorder = Color(0x33A78BFA)
+private val kGlassBg = Color(0xF2161622)
+private val kPillBg = Color(0x3328283C)
+private val kBorder = Color(0x2EFFFFFF)
 
 /**
- * Rel vertikal tetap di tepi kanan: Keyboard, Mapping, Tampil, Atur, Putus.
- * Desain hitam pekat gaming dengan neon aksen, tanpa duplikasi kontrol yang sudah ada di overlay.
+ * Rel vertikal tepi kanan: Kibor, Kontrol, Mapping, Atur, Putus.
+ * Desain elegan frosted glass khas XyDesk yang bersih dan tidak membingungkan.
  */
 @Composable
 fun SessionToolbar(
@@ -156,23 +156,23 @@ fun SessionToolbar(
     ) {
         AnimatedVisibility(!hidden && settingsOpen, enter = slideInHorizontally { it / 2 } + fadeIn(), exit = slideOutHorizontally { it / 2 } + fadeOut()) {
             Column(
-                Modifier.width(248.dp).clip(RoundedCornerShape(Xy.radiusL)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.radiusL)).padding(12.dp)
+                Modifier.width(252.dp).clip(RoundedCornerShape(Xy.radiusL)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.radiusL)).padding(14.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                XyText("KUALITAS & STREAM", Xy.label.copy(color = Xy.accent))
-                Wrap { qLabels.forEachIndexed { i, l -> DarkPill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
+                XyText("KUALITAS STREAM", Xy.label.copy(color = Xy.accent))
+                Wrap { qLabels.forEachIndexed { i, l -> GlassPill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
 
-                XyText("FPS · RESOLUSI", Xy.label.copy(color = Xy.accent))
+                XyText("FPS & RESOLUSI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    prefs.fpsOptions.forEach { f -> DarkPill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
-                    DarkPill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
-                    listOf("720p", "1080p").forEachIndexed { i, l -> DarkPill(l, accent = res == i) { res = i; actions.resolution(i) } }
+                    prefs.fpsOptions.forEach { f -> GlassPill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
+                    GlassPill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
+                    listOf("720p", "1080p").forEachIndexed { i, l -> GlassPill(l, accent = res == i) { res = i; actions.resolution(i) } }
                 }
 
                 if (quality != 0) {
                     XyText("BITRATE", Xy.label.copy(color = Xy.accent))
-                    Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> DarkPill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
+                    Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> GlassPill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
                 }
 
                 val layar = displayState?.value ?: DisplayState()
@@ -180,7 +180,7 @@ fun SessionToolbar(
                 if (DisplayRules.shouldOffer(layar.displays)) {
                     Wrap {
                         layar.displays.forEachIndexed { i, d ->
-                            DarkPill(DisplayRules.label(d, i), accent = d.index == layar.active) {
+                            GlassPill(DisplayRules.label(d, i), accent = d.index == layar.active) {
                                 DisplayRules.request(layar.displays, layar.active, d.index)?.let(actions.display)
                             }
                         }
@@ -193,24 +193,24 @@ fun SessionToolbar(
 
                 XyText("SENTUH & TRACKPAD", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    DarkPill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
-                    DarkPill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
+                    GlassPill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
+                    GlassPill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
                 }
                 Wrap {
-                    DarkPill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
-                    DarkPill("Kecepatan %.1f".format(speed), accent = true) {}
-                    DarkPill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
-                    DarkPill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
+                    GlassPill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
+                    GlassPill("Kecepatan %.1f".format(speed), accent = true) {}
+                    GlassPill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
+                    GlassPill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
                 }
 
                 XyText("FITUR SESI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    DarkPill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
-                    DarkPill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
-                    DarkPill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
-                    DarkPill("Stats HUD", accent = stats) { stats = !stats; actions.stats(stats) }
-                    DarkPill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
-                    DarkPill("Pad → kibor: $padLabel", accent = padMode == 1) {
+                    GlassPill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
+                    GlassPill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
+                    GlassPill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
+                    GlassPill("Stats HUD", accent = stats) { stats = !stats; actions.stats(stats) }
+                    GlassPill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
+                    GlassPill("Pad → kibor: $padLabel", accent = padMode == 1) {
                         padMode = PadKbm.nextMode(padMode)
                         padLabel = PadKbm.modeLabel(padMode)
                         actions.padKbm()
@@ -219,21 +219,21 @@ fun SessionToolbar(
 
                 XyText("ALAT SESI", Xy.label.copy(color = Xy.accent))
                 Wrap {
-                    DarkPill("Pusatkan kursor") { actions.centerCursor() }
-                    DarkPill("Kirim berkas") { settingsOpen = false; actions.sendFile() }
-                    DarkPill("Mode presentasi") { settingsOpen = false; actions.present() }
+                    GlassPill("Pusatkan kursor") { actions.centerCursor() }
+                    GlassPill("Kirim berkas") { settingsOpen = false; actions.sendFile() }
+                    GlassPill("Mode presentasi") { settingsOpen = false; actions.present() }
                 }
             }
         }
         if (hidden) {
             Box(
-                Modifier.size(width = 16.dp, height = 58.dp).clip(RoundedCornerShape(Xy.pill)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.pill))
+                Modifier.size(width = 16.dp, height = 58.dp).clip(RoundedCornerShape(Xy.pill)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.pill))
                     .clickable(remember { MutableInteractionSource() }, null) { hidden = false },
                 contentAlignment = Alignment.Center,
             ) { Box(Modifier.size(3.dp, 22.dp).clip(CircleShape).background(Xy.accent)) }
         } else {
             Column(
-                Modifier.clip(RoundedCornerShape(Xy.pill)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.pill)).padding(6.dp),
+                Modifier.clip(RoundedCornerShape(Xy.pill)).background(kGlassBg).border(1.dp, kBorder, RoundedCornerShape(Xy.pill)).padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -243,8 +243,8 @@ fun SessionToolbar(
                     contentAlignment = Alignment.Center,
                 ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.35f))) }
                 RailButton(Icon.KEYBOARD, "Kibor") { actions.keyboard() }
+                RailButton(Icon.CONTROLS, "Kontrol") { actions.overlayMode(); settingsOpen = false }
                 RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); settingsOpen = false }
-                RailButton(Icon.CONTROLS, "Tampil") { actions.overlayMode(); settingsOpen = false }
                 RailButton(Icon.SETTINGS, "Atur", active = settingsOpen) { settingsOpen = !settingsOpen }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))
@@ -255,7 +255,7 @@ fun SessionToolbar(
 
 @Composable
 private fun RailButton(icon: Icon, label: String, active: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
-    val bg = when { danger -> Xy.danger.copy(alpha = 0.18f); active -> Xy.accent; else -> Color(0x2E1E1E2C) }
+    val bg = when { danger -> Xy.danger.copy(alpha = 0.18f); active -> Xy.accent; else -> Color(0x332E2E42) }
     val fg = when { danger -> Xy.danger; active -> Color.White; else -> Color(0xFFE2E8F0) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
@@ -274,9 +274,9 @@ private fun Wrap(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun DarkPill(text: String, accent: Boolean = false, onClick: () -> Unit) {
+private fun GlassPill(text: String, accent: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kDarkPillBg)
+        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kPillBg)
             .border(1.dp, if (accent) Color.White.copy(alpha = 0.5f) else Color(0x22FFFFFF), RoundedCornerShape(Xy.pill))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 11.dp, vertical = 7.dp),
     ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Color(0xFFE2E8F0))) }

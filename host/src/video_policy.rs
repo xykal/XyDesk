@@ -24,17 +24,15 @@ pub fn requested() -> u8 {
     )
 }
 pub fn configure(level: u8) {
-    LEVEL.store(
-        if level >= 51 {
-            51
-        } else if level >= 40 {
-            40
-        } else {
-            31
-        },
-        Ordering::Relaxed,
-    );
-    FPS.store(30, Ordering::Relaxed);
+    let lvl = if level >= 51 {
+        51
+    } else if level >= 40 {
+        40
+    } else {
+        31
+    };
+    LEVEL.store(lvl, Ordering::Relaxed);
+    FPS.store(if lvl >= 40 { 60 } else { 30 }, Ordering::Relaxed);
     // Mulai pada HD 1280x720; client tetap boleh memilih 1080p setelah meta.
     REQUESTED.store(0, Ordering::Relaxed);
     record(None);
@@ -210,13 +208,11 @@ pub fn offer_level(sdp: &str) -> u8 {
                 return None;
             }
             let profile = p.get("profile-level-id")?;
-            if !profile.is_ascii()
-                || profile.len() != 6
-                || !profile[..4].eq_ignore_ascii_case("42e0")
-            {
+            if !profile.is_ascii() || profile.len() < 6 {
                 return None;
             }
-            u8::from_str_radix(&profile[4..], 16).ok()
+            let hex_level = &profile[4..6];
+            u8::from_str_radix(hex_level, 16).ok()
         })
         .max()
         .map(|n| {

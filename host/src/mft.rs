@@ -49,17 +49,6 @@ impl Mft {
         if !width.is_multiple_of(2) || !height.is_multiple_of(2) {
             return Err(format!("dimensi MFT harus genap: {width}x{height}"));
         }
-        let layout = crate::video_layout::VideoLayout::new(
-            width as usize,
-            height as usize,
-            crate::video_policy::requested(),
-            crate::video_policy::level(),
-        )?;
-        if layout.canvas != [width as usize, height as usize]
-            || layout.crop != [0, 0, width as usize, height as usize]
-        {
-            return Err("crop/resize diperlukan; gunakan software".into());
-        }
         let activate = enumerate()?
             .into_iter()
             .next()
