@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.11.17](./6.11.17.md) - 2026-10-07 — UI kontrol sesi hitam pekat gaming, 3 varian gaya kontrol, simbol visual keyboard, analog arah WASD menyala, preset lengkap, simpan PIN otomatis, wallpaper edge-to-edge, dan WhatsApp iOS-style chat focus
 - [6.11.16](./6.11.16.md) - 2026-10-07 — Login anti-stuck (Google & Email), logo resmi XyDesk di semua platform, tata letak seimbang, dan edit profil di APK
 - [6.11.15](./6.11.15.md) - 2026-10-07 — Obrolan global instan tanpa loading, foto profil asli, swipe untuk balas, fokus gelembung & latar buram (iOS style)
 - [6.11.14](./6.11.14.md) - 2026-10-07 — Palet panel host disamakan dengan APK (#7C3AED), tombol jendela pindah ke kanan tanpa tiga lampu macOS, masuk lewat email di dalam aplikasi, logo Google asli

@@ -290,6 +290,8 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     onEdit = { setOverlayEditMode(it) },
                     onSave = { saveOverlayLayout() },
                     mode = overlayMode,
+                    style = store.overlayStyle,
+                    onStyle = { store.overlayStyle = it },
                     hidKeyboard = hidState.keyboard,
                     hidMouse = hidState.mouse,
                     hidGamepad = hidState.gamepad,
@@ -668,6 +670,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (connected) {
             everConnected = true
             reconnect.reset()
+            val currentPin = intent.getStringExtra("pin").orEmpty()
+            if (currentPin.isNotEmpty()) {
+                store.setHostPin(hostId, currentPin)
+            }
             b.controlsLayer.bringToFront()
             b.toolbar.bringToFront()
             startService(Intent(this, SessionKeep::class.java))
