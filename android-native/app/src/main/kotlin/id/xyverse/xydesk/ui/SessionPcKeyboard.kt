@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -29,18 +30,21 @@ import id.xyverse.xydesk.ui.kit.XyText
 
 private enum class KbLayer { ABC, NUM, FN, PAD, FULL }
 
-private val kDarkKbBg = Color(0xF208080E)
-private val kDarkKeyBg = Color(0xE0171722)
-private val kDarkBorder = Color(0x33FFFFFF)
+private val kKbBg = Color(0xF8FFFFFF)
+private val kKeyBg = Color(0xFFF1F1F6)
+private val kBorder = Color(0xFFE4E4EC)
 
-/** Keyboard PC di HUD (bukan IME HP): huruf, angka, F1–F12, numpad dengan tema hitam pekat & visual icon simbolis. */
+/** Keyboard PC di HUD (bukan IME HP): huruf, angka, F1–F12, numpad dengan tema signature XyDesk yang bersih dan jernih. */
 @Composable
 fun SessionPcKeyboard(onKey: (vk: Int) -> Unit, onIme: () -> Unit, onClose: () -> Unit) {
     var layer by remember { mutableStateOf(KbLayer.ABC) }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .background(kDarkKbBg).border(1.dp, kDarkBorder, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .padding(10.dp),
+        Modifier.fillMaxWidth()
+            .shadow(16.dp, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp), ambientColor = Color(0x1A000000), spotColor = Color(0x227C3AED))
+            .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+            .background(kKbBg)
+            .border(1.dp, kBorder, RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
+            .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -104,10 +108,10 @@ private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
             val wide = label in setOf("␣", "↵", "⇧", "⇪", "0", "Spasi", "Enter", "Shift", "Caps")
             Box(
                 Modifier.weight(if (wide) 1.6f else 1f).height(42.dp).clip(RoundedCornerShape(10.dp))
-                    .background(kDarkKeyBg).border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                    .background(kKeyBg).border(1.dp, kBorder, RoundedCornerShape(10.dp))
                     .clickable(remember { MutableInteractionSource() }, null) { onKey(vk) },
                 contentAlignment = Alignment.Center,
-            ) { XyText(label, Xy.label.copy(fontSize = 12.sp, color = Color.White)) }
+            ) { XyText(label, Xy.label.copy(fontSize = 12.sp, color = Xy.textHi)) }
         }
     }
 }
@@ -115,10 +119,11 @@ private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
 @Composable
 private fun Chip(text: String, on: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.height(36.dp).widthIn(min = 48.dp).clip(RoundedCornerShape(Xy.pill))
-            .background(if (on) Xy.accent else Color(0x33FFFFFF))
+        Modifier.height(34.dp).widthIn(min = 44.dp).clip(RoundedCornerShape(Xy.pill))
+            .background(if (on) Xy.accent else kKeyBg)
+            .border(1.dp, if (on) Xy.accent else kBorder, RoundedCornerShape(Xy.pill))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
-    ) { XyText(text, Xy.label.copy(fontSize = 10.sp, color = Color.White)) }
+    ) { XyText(text, Xy.label.copy(fontSize = 10.sp, color = if (on) Color.White else Xy.textHi)) }
 }

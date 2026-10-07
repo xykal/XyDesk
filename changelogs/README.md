@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.11.20](./6.11.20.md) - 2026-10-08 — Pemasangan aset logo asli resmi XyDesk, pengembalian tema putih bersih & elegan signature XyDesk, dan kustomisasi kontrol overlay penuh
 - [6.11.19](./6.11.19.md) - 2026-10-08 — Perbaikan hardware encoder H.264 (NVENC/MFT 60 FPS), deteksi GPU aktif akurat, pembukaan keyboard virtual Android, dan penyegaran UI kontrol overlay
 - [6.11.18](./6.11.18.md) - 2026-10-07 — Perbaikan tampilan panel host pada Cloud GPU VM (ThinkMay, Shadow, Parsec) dan pratinjau thumbnail taskbar DWM Windows
 - [6.11.17](./6.11.17.md) - 2026-10-07 — UI kontrol sesi hitam pekat gaming, 3 varian gaya kontrol, simbol visual keyboard, analog arah WASD menyala, preset lengkap, simpan PIN otomatis, wallpaper edge-to-edge, dan WhatsApp iOS-style chat focus
