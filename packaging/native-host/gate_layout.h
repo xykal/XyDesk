@@ -23,7 +23,8 @@ struct GateLayout {
     Rect mark{};      // logo bulat di atas
     Rect title{};     // judul besar
     Rect subtitle{};  // satu-dua baris penjelas
-    Rect primary{};   // tombol utama (Mulai / Lanjut dengan Google)
+    Rect field{};     // kotak isian (email / kode) — kosong di luar formulir
+    Rect primary{};   // tombol utama (Mulai / Lanjut dengan Google / Kirim kode)
     Rect secondary{}; // tombol kedua (Masuk dengan email) — kosong di sambutan
     Rect note{};      // catatan kecil / pesan gagal
     Rect dots{};      // indikator langkah, dua titik
@@ -37,8 +38,10 @@ struct GateLayout {
  * Hitung kartu gerbang untuk panel `panelRect`.
  * `withSecondary` = sediakan baris tombol kedua (layar masuk), false untuk
  * sambutan yang hanya punya satu tombol.
+ * `withField` = layar formulir email: satu kotak isian di atas tombol utama.
  */
-inline GateLayout computeGateLayout(const Rect& panelRect, int scalePct, bool withSecondary) {
+inline GateLayout computeGateLayout(const Rect& panelRect, int scalePct, bool withSecondary,
+    bool withField = false) {
     GateLayout g;
     g.scalePct = scalePct;
     g.panel = panelRect;
@@ -62,6 +65,7 @@ inline GateLayout computeGateLayout(const Rect& panelRect, int scalePct, bool wi
 
     int cardHeight = pad + markSize + gap + titleHeight + scaled(6, scalePct) + subtitleHeight
         + scaled(20, scalePct) + button;
+    if (withField) cardHeight += button + gap;
     if (withSecondary) cardHeight += gap + button;
     cardHeight += gap + noteHeight + scaled(10, scalePct) + dotsHeight + pad;
 
@@ -84,6 +88,13 @@ inline GateLayout computeGateLayout(const Rect& panelRect, int scalePct, bool wi
 
     g.subtitle = Rect{left, y, innerWidth, subtitleHeight};
     y += subtitleHeight + scaled(20, scalePct);
+
+    if (withField) {
+        g.field = Rect{left, y, innerWidth, button};
+        y += button + gap;
+    } else {
+        g.field = Rect{left, y, innerWidth, 0};
+    }
 
     g.primary = Rect{left, y, innerWidth, button};
     y += button;

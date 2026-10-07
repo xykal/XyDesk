@@ -44,6 +44,7 @@
 #include "layout.h"
 #include "gate_layout.h"
 #include "onboarding.h"
+#include "email_login.h"
 #include "engine_json.h"
 #include "control_client.h"
 #include "account_auth.h"
@@ -92,25 +93,29 @@ constexpr UINT kFlashDurationMs = 2600;
 constexpr UINT WM_DPICHANGED = 0x02E0;
 #endif
 
-// ── Palet "Paper" — dicerminkan dari web/src/style.css (kanonik sejak
-// unifikasi Sep 2026: web = acuan). Latar terang, aksen ungu #7c3aed, status
-// memakai varian teks-terang tokens.dart supaya kontras di atas putih. ──
-constexpr COLORREF kBackground = RGB(255, 255, 255); // --bg
-constexpr COLORREF kSurface = RGB(255, 255, 255);    // kartu putih + garis tepi
-constexpr COLORREF kSurface2 = RGB(244, 246, 248);   // --overlay
-constexpr COLORREF kSurface3 = RGB(229, 232, 236);   // overlay ditekan/hover
-constexpr COLORREF kSurfacePressed = RGB(222, 226, 231);
-constexpr COLORREF kEdge = RGB(228, 228, 231);       // garis tepi zinc-200
-constexpr COLORREF kText = RGB(24, 24, 27);          // --ink
-constexpr COLORREF kMuted = RGB(82, 82, 91);         // --ink-soft
-constexpr COLORREF kDisabled = RGB(154, 154, 162);   // --text-low
-constexpr COLORREF kOnAccent = RGB(255, 255, 255);   // teks di atas ungu
-constexpr COLORREF kAccent = RGB(48, 53, 60);      // --accent #7c3aed
-constexpr COLORREF kAccentHover = RGB(64, 71, 80);
-constexpr COLORREF kAccentPressed = RGB(34, 39, 45); // --accent-deep
-constexpr COLORREF kGood = RGB(22, 115, 71);         // --success
-constexpr COLORREF kWarn = RGB(133, 84, 0);          // --warning
-constexpr COLORREF kBad = RGB(165, 42, 54);          // --danger
+// ── Palet XyDesk — satu sumber dengan aplikasi Android
+// (`android-native/.../ui/kit/Theme.kt`, objek `Xy`). Panel sempat memakai
+// aksen abu-abu gelap #30353C sementara APK, web, dan ikonnya memakai ungu
+// #7C3AED: satu produk dengan dua warna utama terlihat seperti dua program
+// yang kebetulan senama. Nilai di bawah disalin apa adanya dari `Xy` supaya
+// perbedaan berikutnya ketahuan sebagai perbedaan angka, bukan selera.
+constexpr COLORREF kBackground = RGB(255, 255, 255);  // Xy.bg
+constexpr COLORREF kSurface = RGB(255, 255, 255);     // Xy.raised
+constexpr COLORREF kSurface2 = RGB(244, 244, 247);    // Xy.overlay #F4F4F7
+constexpr COLORREF kSurface3 = RGB(236, 236, 242);    // overlay hover
+constexpr COLORREF kSurfacePressed = RGB(226, 226, 234);
+constexpr COLORREF kEdge = RGB(232, 232, 237);        // Xy.line #E8E8ED
+constexpr COLORREF kText = RGB(24, 24, 27);           // Xy.textHi #18181B
+constexpr COLORREF kMuted = RGB(107, 107, 118);       // Xy.textMid #6B6B76
+constexpr COLORREF kDisabled = RGB(154, 154, 162);    // Xy.textLow #9A9AA2
+constexpr COLORREF kOnAccent = RGB(255, 255, 255);    // teks di atas ungu
+constexpr COLORREF kAccent = RGB(124, 58, 237);       // Xy.accent #7C3AED
+constexpr COLORREF kAccentHover = RGB(139, 92, 246);  // #8B5CF6
+constexpr COLORREF kAccentPressed = RGB(109, 40, 217);// Xy.accentDeep #6D28D9
+constexpr COLORREF kAccentSoft = RGB(243, 238, 255);  // latar lembut aksen
+constexpr COLORREF kGood = RGB(22, 115, 71);          // Xy.success #167347
+constexpr COLORREF kWarn = RGB(133, 84, 0);           // Xy.warning #855400
+constexpr COLORREF kBad = RGB(180, 35, 50);           // Xy.danger #B42332
 
 constexpr int kTrayOpen = 1010;
 constexpr int kTrayStart = 1011;
@@ -130,6 +135,9 @@ constexpr int kTrayUpdate = 1016;
 constexpr char kHostVersion[] = XYDESK_VERSION;
 constexpr UINT kUpdateCheckedMessage = WM_APP + 13;
 constexpr UINT kUpdateInstalledMessage = WM_APP + 14;
+constexpr UINT kGateSubmitMessage = WM_APP + 15; // Enter di kotak isian gerbang
+constexpr UINT kGateBackMessage = WM_APP + 16;   // Esc di kotak isian gerbang
+constexpr int kGateEditId = 1301;
 
 // Keadaan pembaruan ditaruh di luar AppState karena diisi dari thread lain:
 // hasilnya baru dibaca thread UI setelah pesan jendela sampai.
@@ -248,6 +256,15 @@ struct AppState {
     std::future<xydesk::account::Result> gateLogin;
     std::atomic_bool gateCancelled{false};
     std::wstring gateAccount;
+    // Formulir masuk-email di dalam kartu gerbang. `gateEmail` menyala saat
+    // pengguna memilih jalur email; `gateEditBox` adalah satu-satunya kontrol
+    // Windows di layar gerbang (kotak isian), sisanya tetap digambar sendiri.
+    bool gateEmail = false;
+    xydesk::emaillogin::Form gateForm;
+    HWND gateEditBox = nullptr;
+    WNDPROC gateEditBase = nullptr;
+    std::future<xydesk::account::OtpResult> gateOtp;
+    bool gateOtpVerifying = false;
 };
 
 AppState g;
@@ -1005,64 +1022,65 @@ void drawGlyphSegments(HDC dc, COLORREF color, int thickness,
     if (previousPen) DeleteObject(SelectObject(dc, previousPen));
 }
 
-// Tiga tombol caption: perkecil, perbesar/pulihkan, tutup. Rasa hover-nya
-// sama (latar bulat halus, glyph menerang); hanya tutup yang memerah supaya
-// makna destruktifnya tetap jelas. Tanpa warna mencolok lain — panel harus
-// tetap bersih.
-// Lampu lalu lintas ala macOS. Diam: tiga lingkaran berwarna. Saat kursor
-// berada di gugusnya, glyph kecil muncul di dalam lingkaran — persis kebiasaan
-// macOS, dan alasannya bagus: ikon permanen membuat sudut jendela ramai,
-// sedangkan warna saja sudah cukup untuk dikenali.
+// Tiga tombol caption di kanan: perkecil, perbesar/pulihkan, tutup.
+//
+// Yang diambil dari macOS adalah gayanya — kotak membulat tanpa bingkai,
+// latar yang baru muncul saat disentuh, glyph tipis 2 px — bukan tiga
+// lingkaran merah/kuning/hijau di pojok kiri. Di jendela Windows lingkaran
+// itu hanya membuat orang mencari tombol tutup di tempat yang salah, dan
+// tetap tidak membuat panel ini terasa seperti aplikasi macOS. Hanya tombol
+// tutup yang memerah saat disentuh, supaya makna destruktifnya jelas tanpa
+// menambah warna mencolok lain ke caption.
 void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
     const int thickness = std::max(1, xydesk::panel::scaled(2, layout.scalePct));
-    const bool clusterHot = layout.trafficLights.contains(g.cursorX, g.cursorY)
-        || g.hot == Target::Close || g.hot == Target::Minimize || g.hot == Target::Maximize;
+    const int radius = xydesk::panel::scaled(9, layout.scalePct);
+    const bool active = GetForegroundWindow() == g.window;
 
-    const struct { Target target; COLORREF live; COLORREF glyph; } lights[] = {
-        {Target::Close, RGB(255, 95, 86), RGB(77, 0, 0)},
-        {Target::Minimize, RGB(255, 189, 46), RGB(89, 59, 0)},
-        {Target::Maximize, RGB(39, 201, 63), RGB(0, 61, 10)},
+    const struct { Target target; const Rect& hit; } buttons[] = {
+        {Target::Minimize, layout.minimizeButton},
+        {Target::Maximize, layout.maximizeButton},
+        {Target::Close, layout.closeButton},
     };
-    const int diameter = xydesk::panel::scaled(xydesk::panel::kTrafficLight, layout.scalePct);
 
-    for (const auto& light : lights) {
-        const Rect& hit = light.target == Target::Close ? layout.closeButton
-            : light.target == Target::Minimize ? layout.minimizeButton : layout.maximizeButton;
-        const Rect circle{
-            xydesk::panel::centerX(hit) - diameter / 2,
-            xydesk::panel::centerY(hit) - diameter / 2,
-            diameter, diameter};
-        // Jendela yang tidak aktif memakai abu-abu, sama seperti macOS.
-        const bool active = GetForegroundWindow() == g.window;
-        COLORREF fill = active ? light.live : RGB(206, 208, 212);
-        if (g.pressed == light.target) {
-            fill = RGB(GetRValue(fill) * 4 / 5, GetGValue(fill) * 4 / 5, GetBValue(fill) * 4 / 5);
+    for (const auto& button : buttons) {
+        const bool hot = g.hot == button.target;
+        const bool pressed = g.pressed == button.target;
+        COLORREF glyph = active ? kMuted : kDisabled;
+        if (button.target == Target::Close && (hot || pressed)) {
+            fillRoundedOpaque(surface, button.hit, radius, kBad, pressed ? 1.0f : 0.92f);
+            glyph = kOnAccent;
+        } else if (hot || pressed) {
+            fillRoundedOpaque(surface, button.hit, radius,
+                pressed ? kSurfacePressed : kSurface2);
+            glyph = kText;
         }
-        fillCircleOpaque(surface, circle, fill);
 
-        if (!clusterHot) continue;
-        const int cx = xydesk::panel::centerX(circle);
-        const int cy = xydesk::panel::centerY(circle);
-        const int arm = std::max(2, diameter / 4);
-        if (light.target == Target::Close) {
-            drawGlyphSegments(dc, light.glyph, thickness,
+        const int cx = xydesk::panel::centerX(button.hit);
+        const int cy = xydesk::panel::centerY(button.hit);
+        const int arm = std::max(3, xydesk::panel::scaled(5, layout.scalePct));
+        if (button.target == Target::Close) {
+            drawGlyphSegments(dc, glyph, thickness,
                 {{{cx - arm, cy - arm}, {cx + arm + 1, cy + arm + 1}},
                  {{cx + arm, cy - arm}, {cx - arm - 1, cy + arm + 1}}});
-        } else if (light.target == Target::Minimize) {
-            drawGlyphSegments(dc, light.glyph, thickness,
+        } else if (button.target == Target::Minimize) {
+            drawGlyphSegments(dc, glyph, thickness,
                 {{{cx - arm, cy}, {cx + arm + 1, cy}}});
         } else if (!g.maximized) {
-            // Zoom: dua segitiga kecil saling membelakangi, disederhanakan
-            // menjadi dua sudut panah.
-            drawGlyphSegments(dc, light.glyph, thickness,
+            drawGlyphSegments(dc, glyph, thickness,
                 {{{cx - arm, cy - arm}, {cx + arm, cy - arm}},
                  {{cx - arm, cy - arm}, {cx - arm, cy + arm}},
                  {{cx + arm, cy + arm}, {cx - arm, cy + arm}},
                  {{cx + arm, cy + arm}, {cx + arm, cy - arm}}});
         } else {
-            drawGlyphSegments(dc, light.glyph, thickness,
-                {{{cx - arm, cy}, {cx + arm + 1, cy}},
-                 {{cx, cy - arm}, {cx, cy + arm + 1}}});
+            // Sudah dizoom: dua kotak bertumpuk = "pulihkan ukuran".
+            const int small = arm - 1;
+            drawGlyphSegments(dc, glyph, thickness,
+                {{{cx - arm, cy - small}, {cx + small, cy - small}},
+                 {{cx - arm, cy - small}, {cx - arm, cy + arm}},
+                 {{cx + small, cy + arm}, {cx - arm, cy + arm}},
+                 {{cx + small, cy + arm}, {cx + small, cy - small}},
+                 {{cx - small, cy - arm}, {cx + arm, cy - arm}},
+                 {{cx + arm, cy - arm}, {cx + arm, cy + small}}});
         }
     }
 }
@@ -1475,6 +1493,184 @@ std::string narrow(const std::wstring& text) {
     return out;
 }
 
+// ── Formulir masuk lewat email ──────────────────────────────────────────────
+//
+// Satu-satunya kontrol Windows di layar gerbang adalah kotak isian EDIT.
+// Alasannya praktis: mengetik alamat email butuh seleksi, tempel, IME, dan
+// tombol Home/End yang benar — menuliskannya sendiri di atas GDI berarti
+// menulis ulang editor teks dan tetap kalah. Sisa kartu tetap digambar
+// manual supaya bentuk dan animasinya tidak berubah.
+
+void beginGateMotion(HWND hwnd, std::uint32_t duration);
+
+LRESULT CALLBACK gateEditProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_CHAR:
+        // Enter dan Esc di EDIT satu baris berbunyi "beep" kalau diteruskan;
+        // keduanya sudah ditangani di WM_KEYDOWN.
+        if (wParam == VK_RETURN || wParam == VK_ESCAPE) return 0;
+        break;
+    case WM_KEYDOWN:
+        if (wParam == VK_RETURN) {
+            PostMessageW(GetParent(hwnd), kGateSubmitMessage, 0, 0);
+            return 0;
+        }
+        if (wParam == VK_ESCAPE) {
+            PostMessageW(GetParent(hwnd), kGateBackMessage, 0, 0);
+            return 0;
+        }
+        break;
+    default:
+        break;
+    }
+    return CallWindowProcW(g.gateEditBase, hwnd, message, wParam, lParam);
+}
+
+/** Salin isi kotak ke formulir (dipanggil tiap EN_CHANGE). */
+void readGateEdit() {
+    if (!g.gateEditBox) return;
+    wchar_t buffer[320] = {};
+    GetWindowTextW(g.gateEditBox, buffer, static_cast<int>(std::size(buffer)));
+    g.gateForm.typed = narrow(buffer);
+}
+
+/** Tempatkan, isi, atau sembunyikan kotak sesuai keadaan gerbang. */
+void syncGateEdit() {
+    using xydesk::emaillogin::Step;
+    const bool wanted = g.gateEmail && !g.gate.panelVisible()
+        && g.gate.stage != xydesk::onboarding::Stage::Welcome
+        && g.gateForm.step != Step::Done;
+    if (!wanted) {
+        if (g.gateEditBox) ShowWindow(g.gateEditBox, SW_HIDE);
+        return;
+    }
+    const auto& field = g.gateLayout.field;
+    if (field.h <= 0) return;
+    if (!g.gateEditBox) {
+        g.gateEditBox = CreateWindowExW(0, L"EDIT", L"",
+            WS_CHILD | WS_TABSTOP | ES_AUTOHSCROLL, field.x, field.y, field.w, field.h,
+            g.window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(kGateEditId)),
+            GetModuleHandleW(nullptr), nullptr);
+        if (!g.gateEditBox) return;
+        g.gateEditBase = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(g.gateEditBox, GWLP_WNDPROC,
+            reinterpret_cast<LONG_PTR>(gateEditProc)));
+        SendMessageW(g.gateEditBox, EM_SETMARGINS, EC_LEFTMARGIN | EC_RIGHTMARGIN,
+            MAKELPARAM(xydesk::panel::scaled(14, g.layout.scalePct),
+                xydesk::panel::scaled(14, g.layout.scalePct)));
+    }
+    SendMessageW(g.gateEditBox, WM_SETFONT, reinterpret_cast<WPARAM>(g.fontBody), TRUE);
+    const bool code = g.gateForm.step == Step::Code;
+    SendMessageW(g.gateEditBox, EM_SETLIMITTEXT, code ? 16 : 254, 0);
+    // Kotak kode hanya menampung enam digit, tapi batasnya dilonggarkan supaya
+    // tempelan "123 456" tetap masuk; penyaringan dilakukan di email_login.h.
+    const int inset = xydesk::panel::scaled(1, g.layout.scalePct);
+    SetWindowPos(g.gateEditBox, HWND_TOP, field.x + inset, field.y + inset,
+        field.w - 2 * inset, field.h - 2 * inset, SWP_NOACTIVATE);
+    EnableWindow(g.gateEditBox, g.gateForm.busy ? FALSE : TRUE);
+    if (!IsWindowVisible(g.gateEditBox)) {
+        ShowWindow(g.gateEditBox, SW_SHOW);
+        SetFocus(g.gateEditBox);
+    }
+    wchar_t current[320] = {};
+    GetWindowTextW(g.gateEditBox, current, static_cast<int>(std::size(current)));
+    const auto wanted_text = xydesk::account::wide(g.gateForm.typed);
+    if (wanted_text != current) {
+        SetWindowTextW(g.gateEditBox, wanted_text.c_str());
+        SendMessageW(g.gateEditBox, EM_SETSEL, static_cast<WPARAM>(wanted_text.size()),
+            static_cast<LPARAM>(wanted_text.size()));
+    }
+}
+
+/** Mulai permintaan kode (`/auth/request-otp`) di utas latar. */
+void beginOtpRequest(HWND hwnd) {
+    const auto body = g.gateForm.beginRequest(nowMs());
+    if (body.empty()) {
+        beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+        return;
+    }
+    const auto email = g.gateForm.email;
+    g.gateOtpVerifying = false;
+    try {
+        g.gateOtp = std::async(std::launch::async, [email, body] {
+            return xydesk::account::sendOtp(email, body);
+        });
+    } catch (...) {
+        g.gateForm.onOffline();
+    }
+    beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+}
+
+/** Tukar enam digit jadi sesi (`/auth/verify-otp`) di utas latar. */
+void beginOtpVerify(HWND hwnd) {
+    const auto body = g.gateForm.beginVerify();
+    if (body.empty()) {
+        beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+        return;
+    }
+    g.gateOtpVerifying = true;
+    try {
+        g.gateOtp = std::async(std::launch::async, [body] {
+            return xydesk::account::verifyOtp(body);
+        });
+    } catch (...) {
+        g.gateForm.onOffline();
+    }
+    beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+}
+
+/** Tombol utama formulir: kirim kode atau masuk, tergantung langkah. */
+void submitGateForm(HWND hwnd) {
+    using xydesk::emaillogin::Step;
+    if (!g.gateEmail || g.gateForm.busy) return;
+    readGateEdit();
+    if (g.gateForm.step == Step::Code) beginOtpVerify(hwnd);
+    else beginOtpRequest(hwnd);
+}
+
+/** Esc / tombol kedua: mundur satu langkah, bukan menutup aplikasi. */
+void gateFormBack(HWND hwnd) {
+    using xydesk::emaillogin::Step;
+    if (g.gateForm.busy) return;
+    if (g.gateForm.step == Step::Code) {
+        g.gateForm.backToEmail();
+    } else {
+        g.gateEmail = false;
+        g.gateForm.reset();
+    }
+    syncGateEdit();
+    beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+}
+
+/** Panen hasil request/verify OTP; dipanggil dari pollGate tiap tick. */
+void pollGateOtp(HWND hwnd) {
+    if (!g.gateOtp.valid()
+        || g.gateOtp.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+        return;
+    }
+    const auto result = g.gateOtp.get();
+    const auto now = nowMs();
+    if (g.gateOtpVerifying) {
+        if (result.ok) {
+            g.gateForm.onVerified();
+            g.gateAccount = result.user.email.empty() ? result.user.name : result.user.email;
+            g.gate.succeed(narrow(g.gateAccount));
+            g.gateEmail = false;
+            storeWelcomeSeen();
+            if (!g.running) PostMessageW(hwnd, kAutoStartMessage, 0, 0);
+        } else if (result.offline) {
+            g.gateForm.onOffline();
+        } else {
+            g.gateForm.onVerifyFailed(now, result.error);
+        }
+    } else {
+        if (result.ok) g.gateForm.onCodeSent(now);
+        else if (result.offline) g.gateForm.onOffline();
+        else g.gateForm.onRequestFailed(now, result.error, result.retryIn);
+    }
+    syncGateEdit();
+    beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+}
+
 /** Nama berkas saja, untuk ditampilkan di bilah status panel. */
 std::wstring fileNameOf(const std::wstring& path) {
     const auto cut = path.find_last_of(L"\\/");
@@ -1500,6 +1696,7 @@ std::wstring pickFileToSend(HWND owner) {
 
 /** Dipanggil tiap tick animasi: panen hasil restore/login yang sudah siap. */
 void pollGate(HWND hwnd) {
+    pollGateOtp(hwnd);
     const auto ready = [](std::future<xydesk::account::Result>& f) {
         return f.valid() && f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
     };
@@ -1527,7 +1724,11 @@ void pollGate(HWND hwnd) {
     }
 }
 
-/** 0 = tidak ada, 1 = tombol utama, 2 = tombol kedua, 3 = keluar aplikasi. */
+/**
+ * 0 = tidak ada, 1 = tombol utama, 2 = tombol kedua, 3 = keluar aplikasi.
+ * Di formulir email artinya: 1 = kirim kode / masuk, 2 = kirim ulang atau
+ * kembali, 3 tetap keluar.
+ */
 int gateTargetAt(int x, int y) {
     if (g.gate.panelVisible()) return 0;
     const auto& l = g.gateLayout;
@@ -1541,7 +1742,9 @@ void activateGate(HWND hwnd, int target) {
     using xydesk::onboarding::Stage;
     switch (target) {
     case 1:
-        if (g.gate.stage == Stage::Welcome) {
+        if (g.gateEmail && g.gate.stage == Stage::Login) {
+            submitGateForm(hwnd);
+        } else if (g.gate.stage == Stage::Welcome) {
             g.gate.beginLogin();
             storeWelcomeSeen();
             beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
@@ -1550,14 +1753,24 @@ void activateGate(HWND hwnd, int target) {
         }
         break;
     case 2:
-        // Masuk lewat email memakai halaman web yang sama; browser yang
-        // menentukan metodenya. Tombol terpisah hanya supaya pengguna tanpa
-        // akun Google tahu jalurnya ada.
+        // Masuk lewat email terjadi di dalam aplikasi: kode sekali pakai ke
+        // alamat yang diketik di kartu ini. Versi lama hanya membuka
+        // xydesk.my.id/masuk di browser — sesinya tertinggal di browser dan
+        // panel tetap meminta login, jadi tombolnya praktis jalan buntu.
         if (g.gate.stage == Stage::Login) {
-            g.gate.attempt(xydesk::onboarding::Method::Email);
-            ShellExecuteW(nullptr, L"open", L"https://xydesk.my.id/masuk", nullptr, nullptr,
-                SW_SHOWNORMAL);
-            beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+            if (!g.gateEmail) {
+                g.gateEmail = true;
+                g.gateForm.reset();
+                g.gate.attempt(xydesk::onboarding::Method::Email);
+                g.gate.cancel(); // tidak ada yang ditunggu; tombol tetap hidup
+                syncGateEdit();
+                beginGateMotion(hwnd, xydesk::onboarding::kStageMs);
+            } else if (g.gateForm.step == xydesk::emaillogin::Step::Code
+                && g.gateForm.canResend(nowMs())) {
+                beginOtpRequest(hwnd);
+            } else {
+                gateFormBack(hwnd);
+            }
         }
         break;
     case 3:
@@ -1569,10 +1782,65 @@ void activateGate(HWND hwnd, int target) {
     }
 }
 
+/**
+ * Logo "G" Google, digambar dengan GDI pada empat warna resminya
+ * (#4285F4 biru, #34A853 hijau, #FBBC05 kuning, #EA4335 merah).
+ *
+ * Kenapa digambar, bukan ditempel sebagai PNG: panel menggambar seluruh
+ * permukaannya sendiri ke DIB 32-bit premultiplied, jadi sebuah bitmap juga
+ * harus melewati jalur yang sama, dan ikon statis akan buram di 125%/150%.
+ * Busur mengikuti skala, jadi tajam di DPI berapa pun.
+ *
+ * Bentuknya: cincin yang dipotong menjadi empat busur berwarna, ditambah
+ * batang biru horizontal ke tengah — susunan yang sama dengan lambang resmi.
+ */
+void paintGoogleMark(HDC dc, const Rect& box) {
+    const int size = std::min(box.w, box.h);
+    if (size < 8) return;
+    const int cx = xydesk::panel::centerX(box);
+    const int cy = xydesk::panel::centerY(box);
+    const int radius = size / 2;
+    const int stroke = std::max(2, size * 22 / 100);
+    const int inner = radius - stroke;
+    if (inner <= 1) return;
+
+    const RECT ring{cx - radius, cy - radius, cx + radius, cy + radius};
+    const HGDIOBJ noBrush = SelectObject(dc, GetStockObject(NULL_BRUSH));
+    const struct { COLORREF color; double from; double to; } arcs[] = {
+        {RGB(234, 67, 53), 45.0, 135.0},    // merah: atas
+        {RGB(251, 188, 5), 135.0, 215.0},   // kuning: kiri
+        {RGB(52, 168, 83), 215.0, 315.0},   // hijau: bawah
+        {RGB(66, 133, 244), 315.0, 405.0},  // biru: kanan
+    };
+    constexpr double pi = 3.14159265358979323846;
+    for (const auto& arc : arcs) {
+        const HPEN pen = CreatePen(PS_SOLID, stroke, arc.color);
+        const HGDIOBJ previous = SelectObject(dc, pen);
+        const double a0 = arc.from * pi / 180.0;
+        const double a1 = arc.to * pi / 180.0;
+        const double mid = (radius + inner) / 2.0;
+        Arc(dc, ring.left, ring.top, ring.right, ring.bottom,
+            cx + static_cast<int>(std::lround(std::cos(a0) * mid)),
+            cy - static_cast<int>(std::lround(std::sin(a0) * mid)),
+            cx + static_cast<int>(std::lround(std::cos(a1) * mid)),
+            cy - static_cast<int>(std::lround(std::sin(a1) * mid)));
+        SelectObject(dc, previous);
+        DeleteObject(pen);
+    }
+    SelectObject(dc, noBrush);
+
+    // Batang biru: dari tengah lingkaran ke tepi kanan, setinggi stroke.
+    const HBRUSH bar = CreateSolidBrush(RGB(66, 133, 244));
+    RECT barRect{cx, cy - stroke / 2, cx + radius, cy + stroke - stroke / 2};
+    FillRect(dc, &barRect, bar);
+    DeleteObject(bar);
+}
+
 void paintGate(Surface& surface, HDC dc) {
     using namespace xydesk::onboarding;
     const bool login = g.gate.stage != Stage::Welcome;
-    g.gateLayout = xydesk::panel::computeGateLayout(g.layout.panel, g.layout.scalePct, login);
+    const bool form = g.gateEmail && login;
+    g.gateLayout = xydesk::panel::computeGateLayout(g.layout.panel, g.layout.scalePct, login, form);
     const auto& l = g.gateLayout;
 
     const float raw = g.gateMotion.progress(nowMs());
@@ -1609,26 +1877,68 @@ void paintGate(Surface& surface, HDC dc) {
         drawTextCentered(dc, L"Xy", mark, g.fontTitle, kOnAccent);
     }
 
-    const wchar_t* title = login ? L"Masuk ke XyDesk" : L"Selamat datang di XyDesk";
-    const wchar_t* subtitle = login
-        ? L"Akun dipakai untuk mengenali PC ini dan menyimpan perangkat tepercaya."
-        : L"Kendalikan PC ini dari HP. Siapkan sekali, pakai dari mana saja.";
+    using xydesk::emaillogin::Step;
+    const bool codeStep = form && g.gateForm.step == Step::Code;
+    const std::wstring emailWide = xydesk::account::wide(g.gateForm.email);
+    const wchar_t* title = !login ? L"Selamat datang di XyDesk"
+        : form ? (codeStep ? L"Cek email kamu" : L"Masuk dengan email")
+               : L"Masuk ke XyDesk";
+    const std::wstring subtitleText = !login
+        ? L"Kendalikan PC ini dari HP. Siapkan sekali, pakai dari mana saja."
+        : form ? (codeStep
+            ? L"Kami kirim enam digit ke " + emailWide + L". Masukkan di bawah."
+            : std::wstring(L"Masukkan alamat email kamu. Kami kirim kode sekali pakai."))
+        : std::wstring(L"Akun dipakai untuk mengenali PC ini dan menyimpan perangkat tepercaya.");
+    const wchar_t* subtitle = subtitleText.c_str();
     drawTextLine(dc, title, shifted(l.title, 2), g.fontHeading, kText,
         DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
     drawTextLine(dc, subtitle, shifted(l.subtitle, 2), g.fontSmall, kMuted,
         DT_CENTER | DT_WORDBREAK);
+
+    // Kotak isian formulir email. Teksnya digambar oleh kontrol EDIT asli
+    // Windows (lihat syncGateEdit); di sini hanya kulitnya.
+    if (form && l.field.h > 0) {
+        const Rect rect = shifted(l.field, 3);
+        fillRoundedOpaque(surface, rect, l.radiusControl, kSurface2);
+        const bool focused = g.gateEditBox && GetFocus() == g.gateEditBox;
+        strokeRounded(surface, rect, l.radiusControl, focused ? kAccent
+            : g.gateForm.error ? kBad : kEdge, focused ? 2 : 1);
+        if (g.gateForm.typed.empty() && !focused) {
+            drawTextCentered(dc, codeStep ? L"6 digit dari email" : L"nama@email.com",
+                rect, g.fontBody, kDisabled);
+        }
+    }
 
     // Tombol utama.
     {
         const Rect rect = shifted(l.primary, 3);
         const bool hot = g.gateHot == 1;
         const bool pressed = g.gatePressed == 1;
-        const COLORREF fill = g.gate.busy() ? kDisabled
+        const bool ready = !form
+            || (codeStep ? g.gateForm.canSubmitCode() : g.gateForm.canSubmitEmail());
+        const bool busy = form ? g.gateForm.busy : g.gate.busy();
+        const COLORREF fill = (busy || !ready) ? kDisabled
             : pressed ? kAccentPressed : hot ? kAccentHover : kAccent;
         fillRoundedOpaque(surface, rect, l.radiusControl, fill);
-        const wchar_t* label = !login ? L"Mulai"
-            : g.gate.busy() ? L"Menunggu browser…" : L"Lanjutkan dengan Google";
-        drawTextCentered(dc, label, rect, g.fontSemi, kOnAccent);
+        const std::wstring label = !login ? L"Mulai"
+            : form ? xydesk::account::wide(g.gateForm.actionLabel())
+            : g.gate.busy() ? std::wstring(L"Menunggu browser…")
+                            : std::wstring(L"Lanjutkan dengan Google");
+        if (!login || form) {
+            drawTextCentered(dc, label, rect, g.fontSemi, kOnAccent);
+        } else {
+            // Tombol Google memakai lambang resminya di dalam keping putih,
+            // lalu teks di sisa ruang. Tanpa lambang, tombol itu cuma kalimat
+            // dan orang ragu apakah benar menuju Google.
+            const int markBox = xydesk::panel::scaled(28, g.layout.scalePct);
+            const Rect chip{rect.x + xydesk::panel::scaled(8, g.layout.scalePct),
+                rect.y + (rect.h - markBox) / 2, markBox, markBox};
+            fillRoundedOpaque(surface, chip, markBox / 2, kSurface);
+            paintGoogleMark(dc, chip.inset(xydesk::panel::scaled(5, g.layout.scalePct)));
+            const Rect text{chip.right(), rect.y, rect.right() - chip.right()
+                - xydesk::panel::scaled(8, g.layout.scalePct), rect.h};
+            drawTextCentered(dc, label, text, g.fontSemi, kOnAccent);
+        }
     }
 
     // Tombol kedua (hanya layar masuk).
@@ -1639,14 +1949,23 @@ void paintGate(Surface& surface, HDC dc) {
             fillRoundedOpaque(surface, rect, l.radiusControl, pressed ? kSurfacePressed : kSurface3);
         }
         strokeRounded(surface, rect, l.radiusControl, kEdge, 1);
-        drawTextCentered(dc, L"Masuk dengan email", rect, g.fontSemi,
-            g.gate.busy() ? kDisabled : kText);
+        const int wait = form ? g.gateForm.resendInSec(nowMs()) : 0;
+        const std::wstring label = !form ? std::wstring(L"Masuk dengan email")
+            : !codeStep ? std::wstring(L"Kembali ke pilihan masuk")
+            : wait > 0 ? L"Kirim ulang kode (" + std::to_wstring(wait) + L" dtk)"
+                       : std::wstring(L"Kirim ulang kode");
+        const bool dim = form ? (g.gateForm.busy || (codeStep && wait > 0)) : g.gate.busy();
+        drawTextCentered(dc, label, rect, g.fontSemi, dim ? kDisabled : kText);
     }
 
     // Catatan / pesan gagal.
     {
         const Rect rect = shifted(l.note, 4);
-        if (!g.gate.message.empty()) {
+        if (form) {
+            const std::wstring hint = xydesk::account::wide(g.gateForm.hint(nowMs()));
+            drawTextLine(dc, hint, rect, g.fontSmall, g.gateForm.error ? kBad : kMuted,
+                DT_CENTER | DT_WORDBREAK);
+        } else if (!g.gate.message.empty()) {
             const std::wstring message = xydesk::account::wide(g.gate.message);
             drawTextLine(dc, message, rect, g.fontSmall, kBad, DT_CENTER | DT_WORDBREAK);
         } else {
@@ -1679,6 +1998,7 @@ void paintGate(Surface& surface, HDC dc) {
         drawTextCentered(dc, L"\u2715", rect, g.fontSmall, kMuted);
     }
 
+    syncGateEdit();
     if (g.gateMotion.running) startAnim(g.window);
 }
 
@@ -2245,7 +2565,7 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
             if(!xydesk::account::signOut()){SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi belum berhasil dihapus dari penyimpanan Windows.");return TRUE;}state->profile={};
             // Keluar akun menutup panel kembali ke layar masuk: tanpa ini
             // ID dan kode pairing tetap terbaca setelah sesi dihapus.
-            g.gateAccount.clear();g.gate.signOut();if(g.window){beginGateMotion(g.window,xydesk::onboarding::kStageMs);renderPanel();}
+            g.gateAccount.clear();g.gateEmail=false;g.gateForm.reset();syncGateEdit();g.gate.signOut();if(g.window){beginGateMotion(g.window,xydesk::onboarding::kStageMs);renderPanel();}
             SetDlgItemTextW(hwnd,IDC_ACCOUNT_NAME,L"Belum masuk akun");SetDlgItemTextW(hwnd,IDC_ACCOUNT_EMAIL,L"");
             SetDlgItemTextW(hwnd,IDC_ACCOUNT_STATUS,L"Sesi aplikasi dihapus. Login browser tidak ikut dikeluarkan.");return TRUE;
         }
@@ -2612,13 +2932,8 @@ void updateHover(int x, int y) {
     g.cursorY = y;
     const Target target = xydesk::panel::targetAt(g.layout, g.page, x, y, g.sessionMismatch);
     const Target hot = targetEnabled(target) || target == Target::TitleBar ? target : Target::None;
-    // Gugus lampu menyala/padam bersama, jadi perpindahan masuk-keluar gugus
-    // perlu menggambar ulang walau Target-nya tetap TitleBar.
-    static bool wasInCluster = false;
-    const bool inCluster = g.layout.trafficLights.contains(x, y);
-    if (hot != g.hot || inCluster != wasInCluster) {
+    if (hot != g.hot) {
         g.hot = hot;
-        wasInCluster = inCluster;
         renderPanel();
     }
 }
@@ -3056,6 +3371,13 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
         return 0;
 
     case WM_COMMAND:
+        // Kotak isian gerbang memberi tahu tiap ketikan supaya tombol utama
+        // hidup/mati mengikuti isi kotak.
+        if (LOWORD(wParam) == kGateEditId && HIWORD(wParam) == EN_CHANGE) {
+            readGateEdit();
+            renderPanel();
+            return 0;
+        }
         switch (LOWORD(wParam)) {
         case kTrayOpen: openPanel(hwnd); return 0;
         case kTrayStart: startHost(); return 0;
@@ -3079,6 +3401,27 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     case kUpdateInstalledMessage:
         onUpdateInstalled(hwnd);
         return 0;
+
+    case kGateSubmitMessage:
+        submitGateForm(hwnd);
+        return 0;
+
+    case kGateBackMessage:
+        gateFormBack(hwnd);
+        return 0;
+
+    case WM_CTLCOLOREDIT:
+        // Kotak isian gerbang memakai warna kartu, bukan putih sistem, supaya
+        // menyatu dengan kulit yang digambar di belakangnya.
+        if (reinterpret_cast<HWND>(lParam) == g.gateEditBox) {
+            auto* dc = reinterpret_cast<HDC>(wParam);
+            SetTextColor(dc, kText);
+            SetBkColor(dc, kSurface2);
+            static HBRUSH field = nullptr;
+            if (!field) field = CreateSolidBrush(kSurface2);
+            return reinterpret_cast<LRESULT>(field);
+        }
+        break;
 
     case kTrayMessage: {
         // NOTIFYICON_VERSION_4 menaruh event di lParam; beberapa build Explorer

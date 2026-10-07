@@ -82,19 +82,26 @@ void testGeometry100() {
         check(insidePanel(l, icon), "ikon sidebar di dalam panel");
     }
 
-    // Caption: lampu lalu lintas macOS di kiri — tutup, perkecil, perbesar.
+    // Caption: tombol jendela di kanan, urutan Windows — perkecil, perbesar,
+    // tutup. Tiga lingkaran macOS sudah dihapus: yang ditiru gayanya (kotak
+    // membulat, latar hanya saat disentuh), bukan lambangnya.
     check(!overlaps(l.minimizeButton, l.maximizeButton) && !overlaps(l.maximizeButton, l.closeButton), "tombol caption tidak bertumpuk");
-    check(l.closeButton.x < l.minimizeButton.x && l.minimizeButton.x < l.maximizeButton.x, "urutan macOS: tutup, perkecil, perbesar");
+    check(l.minimizeButton.x < l.maximizeButton.x && l.maximizeButton.x < l.closeButton.x, "urutan Windows: perkecil, perbesar, tutup");
     check(l.minimizeButton.y == l.maximizeButton.y && l.maximizeButton.y == l.closeButton.y, "tombol caption sejajar satu baris");
-    check(!overlaps(l.title, l.maximizeButton) && !overlaps(l.subtitle, l.maximizeButton), "judul tidak bertumpuk dengan tombol caption");
-    check(l.closeButton.x >= l.panel.x, "lampu tutup tetap di dalam panel");
-    check(l.trafficLights.x >= l.panel.x + 20 - 1, "gugus lampu menghormati padding kiri");
-    check(l.trafficLights.right() <= l.toggleSidebar.x, "lampu tidak menabrak tombol sidebar");
-    check(l.maximizeButton.right() <= l.logo.x, "lampu berada sebelum logo");
-    check(l.title.x > l.trafficLights.right(), "judul bergeser ke kanan lampu");
-    // Kotak sentuh lebih besar dari lingkarannya supaya tetap mudah diklik.
-    check(l.closeButton.w >= 24 && l.closeButton.h >= 24, "kotak sentuh lampu minimal 24 px");
-    check(l.closeButton.w > 13, "kotak sentuh lebih besar dari lingkaran 13 px");
+    check(!overlaps(l.title, l.minimizeButton) && !overlaps(l.subtitle, l.minimizeButton), "judul tidak bertumpuk dengan tombol caption");
+    check(l.closeButton.right() <= l.panel.right() - 20 + 1, "tombol tutup menghormati padding kanan");
+    check(l.captionButtons.x == l.minimizeButton.x && l.captionButtons.right() == l.closeButton.right(), "kotak gabungan menutup ketiga tombol");
+    check(l.captionButtons.x > l.logo.right(), "tombol caption berada setelah logo");
+    check(l.title.x > l.toggleSidebar.right(), "judul berada di kanan tombol sidebar");
+    check(l.title.right() <= l.settings.x, "judul berhenti sebelum ikon kanan");
+    // Ikon help/profil/pengaturan pindah ke kiri tombol jendela, berurutan.
+    check(l.settings.right() <= l.profile.x + 1 && l.profile.right() <= l.help.x + 1, "ikon kanan berurutan: pengaturan, profil, bantuan");
+    check(l.help.right() <= l.minimizeButton.x, "ikon kanan tidak menabrak tombol jendela");
+    for (const Rect& r : {l.settings, l.profile, l.help}) {
+        check(insidePanel(l, r), "ikon kanan di dalam panel");
+    }
+    // Kotak sentuh tetap nyaman diklik (pedoman 32 px untuk tombol caption).
+    check(l.closeButton.w >= 32 && l.closeButton.h >= 32, "kotak sentuh tombol caption minimal 32 px");
 
     // Konten per halaman tidak saling menumpuk di halamannya.
     check(!overlaps(l.statusCard, l.captureCard), "kartu status dan capture tidak bertumpuk");

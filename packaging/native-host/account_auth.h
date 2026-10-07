@@ -41,15 +41,29 @@ inline std::optional<std::map<std::string,std::string>> callback(const std::stri
 }
 inline bool validToken(const std::string& token){return token.size()>20&&token.size()<=CRED_MAX_CREDENTIAL_BLOB_SIZE&&std::all_of(token.begin(),token.end(),[](char c){return (c>='A'&&c<='Z')||(c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='-'||c=='_'||c=='.';});}
 struct Http { HINTERNET value;explicit Http(HINTERNET h):value(h){}~Http(){if(value)WinHttpCloseHandle(value);}Http(const Http&)=delete; };
+struct Response { long status=0; nlohmann::json body; };
+// Satu jalur HTTP untuk semua panggilan akun. Mengembalikan status apa adanya
+// supaya pemanggil bisa membedakan "ditolak dengan alasan" (400/401/429 —
+// badannya berisi kode galat yang layak ditampilkan) dari "tidak nyambung"
+// (status 0). Alur OTP butuh perbedaan itu; alur Google tidak, jadi wrapper
+// `request()` di bawah tetap mengembalikan JSON kosong untuk apa pun selain
+// 200 seperti sebelumnya.
+inline Response requestFull(const wchar_t* method,const wchar_t* path,const std::string& body={},const std::string& token={}){
+ Response out{};
+ Http session(WinHttpOpen(L"XyDesk native account",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0));if(!session.value)return out;
+ WinHttpSetTimeouts(session.value,3000,5000,5000,5000);Http connection(WinHttpConnect(session.value,L"signal.xydesk.my.id",INTERNET_DEFAULT_HTTPS_PORT,0));if(!connection.value)return out;
+ Http req(WinHttpOpenRequest(connection.value,method,path,nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));if(!req.value)return out;
+ DWORD redirect=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;if(!WinHttpSetOption(req.value,WINHTTP_OPTION_REDIRECT_POLICY,&redirect,sizeof(redirect)))return out;
+ std::wstring headers=L"Content-Type: application/json\r\n";if(!token.empty()){if(!validToken(token))return out;headers+=L"Authorization: Bearer "+wide(token)+L"\r\n";}
+ if(!WinHttpSendRequest(req.value,headers.c_str(),static_cast<DWORD>(headers.size()),body.empty()?WINHTTP_NO_REQUEST_DATA:const_cast<char*>(body.data()),static_cast<DWORD>(body.size()),static_cast<DWORD>(body.size()),0)||!WinHttpReceiveResponse(req.value,nullptr))return out;
+ DWORD code=0,size=sizeof(code);if(!WinHttpQueryHeaders(req.value,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&code,&size,WINHTTP_NO_HEADER_INDEX))return out;
+ out.status=static_cast<long>(code);
+ std::string response;auto deadline=GetTickCount64()+10000;while(GetTickCount64()<deadline){char data[2048];DWORD n=0;if(!WinHttpReadData(req.value,data,sizeof(data),&n))return out;if(!n){auto parsed=nlohmann::json::parse(response,nullptr,false);SecureZeroMemory(response.data(),response.size());if(!parsed.is_discarded())out.body=parsed;return out;}if(response.size()+n>65536)return out;response.append(data,n);}
+ return out;
+}
 inline nlohmann::json request(const wchar_t* method,const wchar_t* path,const std::string& body={},const std::string& token={}){
- Http session(WinHttpOpen(L"XyDesk native account",WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,WINHTTP_NO_PROXY_NAME,WINHTTP_NO_PROXY_BYPASS,0));if(!session.value)return {};
- WinHttpSetTimeouts(session.value,3000,5000,5000,5000);Http connection(WinHttpConnect(session.value,L"signal.xydesk.my.id",INTERNET_DEFAULT_HTTPS_PORT,0));if(!connection.value)return {};
- Http req(WinHttpOpenRequest(connection.value,method,path,nullptr,WINHTTP_NO_REFERER,WINHTTP_DEFAULT_ACCEPT_TYPES,WINHTTP_FLAG_SECURE));if(!req.value)return {};
- DWORD redirect=WINHTTP_OPTION_REDIRECT_POLICY_NEVER;if(!WinHttpSetOption(req.value,WINHTTP_OPTION_REDIRECT_POLICY,&redirect,sizeof(redirect)))return {};
- std::wstring headers=L"Content-Type: application/json\r\n";if(!token.empty()){if(!validToken(token))return {};headers+=L"Authorization: Bearer "+wide(token)+L"\r\n";}
- if(!WinHttpSendRequest(req.value,headers.c_str(),static_cast<DWORD>(headers.size()),body.empty()?WINHTTP_NO_REQUEST_DATA:const_cast<char*>(body.data()),static_cast<DWORD>(body.size()),static_cast<DWORD>(body.size()),0)||!WinHttpReceiveResponse(req.value,nullptr))return {};
- DWORD code=0,size=sizeof(code);if(!WinHttpQueryHeaders(req.value,WINHTTP_QUERY_STATUS_CODE|WINHTTP_QUERY_FLAG_NUMBER,WINHTTP_HEADER_NAME_BY_INDEX,&code,&size,WINHTTP_NO_HEADER_INDEX)||code!=200)return {};
- std::string response;auto deadline=GetTickCount64()+10000;while(GetTickCount64()<deadline){char data[2048];DWORD n=0;if(!WinHttpReadData(req.value,data,sizeof(data),&n))return {};if(!n){auto parsed=nlohmann::json::parse(response,nullptr,false);SecureZeroMemory(response.data(),response.size());return parsed.is_discarded()?nlohmann::json{}:parsed;}if(response.size()+n>65536)return {};response.append(data,n);}return {};
+ auto response=requestFull(method,path,body,token);
+ return response.status==200?response.body:nlohmann::json{};
 }
 inline Result profile(const nlohmann::json& data){if(!data.is_object()||!data.contains("user")||!data["user"].is_object())return {false,{},{},L"Sesi akun belum dapat diverifikasi."};const auto& user=data["user"];if(!user.contains("email")||!user["email"].is_string())return {};auto email=user["email"].get<std::string>();auto name=user.contains("name")&&user["name"].is_string()?user["name"].get<std::string>():email;return {true,wide(name.substr(0,200)),wide(email.substr(0,254)),L"Akun terverifikasi. Identitas host Windows tetap terpisah."};}
 inline bool signOut(){return CredDeleteW(credentialName,CRED_TYPE_GENERIC,0)||GetLastError()==ERROR_NOT_FOUND;}
@@ -83,5 +97,60 @@ inline Result login(std::atomic_bool& cancelled){
   const bool saved=CredWriteW(&credential,0)!=FALSE;SecureZeroMemory(token.data(),token.size());if(!saved)return fail(L"Windows tidak dapat menyimpan sesi dengan aman. Login belum disimpan.");return user;
  }
  return fail(cancelled?L"Login dibatalkan.":L"Waktu login habis. Coba lagi dari aplikasi.");
+}
+
+// ── Simpan sesi ke Credential Manager ───────────────────────────────────────
+// Dipakai oleh login Google dan login email; satu tempat supaya aturan
+// penyimpanannya (mesin lokal, blob di-nol-kan setelah ditulis) tidak bercabang.
+inline bool storeSession(std::string& token,const std::wstring& email){
+ if(!validToken(token))return false;
+ CREDENTIALW credential{};credential.Type=CRED_TYPE_GENERIC;credential.TargetName=const_cast<wchar_t*>(credentialName);credential.Persist=CRED_PERSIST_LOCAL_MACHINE;credential.CredentialBlobSize=static_cast<DWORD>(token.size());credential.CredentialBlob=reinterpret_cast<BYTE*>(token.data());credential.UserName=const_cast<wchar_t*>(email.c_str());
+ const bool saved=CredWriteW(&credential,0)!=FALSE;SecureZeroMemory(token.data(),token.size());return saved;
+}
+
+// ── Masuk lewat email (OTP enam digit), di dalam aplikasi ───────────────────
+// Aturan formulirnya ada di email_login.h (murni, teruji di Linux); dua fungsi
+// di bawah hanya bagian yang menyentuh jaringan dan Credential Manager.
+struct OtpResult {
+ bool ok=false;          // permintaan diterima server
+ bool offline=false;     // tidak sampai ke server sama sekali
+ std::string error;      // kode galat Worker ("cooldown", "wrong-otp", …)
+ int retryIn=0;          // detik dari `resend_in` / `retry_in`
+ Result user;            // hanya terisi pada verifikasi yang berhasil
+};
+inline OtpResult readOtpError(const Response& response){
+ OtpResult out{};
+ if(response.status==0){out.offline=true;out.error="offline";return out;}
+ if(response.body.is_object()){
+  if(response.body.contains("error")&&response.body["error"].is_string())out.error=response.body["error"].get<std::string>();
+  for(const char* field:{"resend_in","retry_in"}){
+   if(response.body.contains(field)&&response.body[field].is_number_integer()){out.retryIn=std::clamp(response.body[field].get<int>(),0,3600);break;}
+  }
+ }
+ if(out.error.empty())out.error="unknown";
+ return out;
+}
+/** `POST /auth/request-otp` — minta kode sekali pakai ke alamat `email`. */
+inline OtpResult sendOtp(const std::string& email,const std::string& body){
+ const auto response=requestFull(L"POST",L"/auth/request-otp",body);
+ if(response.status==200)return OtpResult{true,false,{},0,{}};
+ (void)email;return readOtpError(response);
+}
+/**
+ * `POST /auth/verify-otp` — tukar enam digit jadi sesi.
+ *
+ * Token hasil verifikasi langsung masuk Credential Manager di sini dan tidak
+ * pernah dikembalikan ke lapisan UI; yang naik hanya nama dan alamat.
+ */
+inline OtpResult verifyOtp(const std::string& body){
+ const auto response=requestFull(L"POST",L"/auth/verify-otp",body);
+ if(response.status!=200)return readOtpError(response);
+ auto user=profile(response.body);
+ if(!user.ok||!response.body.contains("token")||!response.body["token"].is_string())
+  return OtpResult{false,false,"unknown",0,{}};
+ auto token=response.body["token"].get<std::string>();
+ if(!storeSession(token,user.email))
+  return OtpResult{false,false,"store-failed",0,{}};
+ return OtpResult{true,false,{},0,user};
 }
 }
