@@ -129,4 +129,77 @@ class ChatRulesTest {
         assertEquals(15_000L, ChatRules.retryDelayMs(4))
         assertEquals(15_000L, ChatRules.retryDelayMs(99))
     }
+
+    // ── Swipe untuk membalas ───────────────────────────────────────────────
+
+    @Test
+    fun `geser hanya ke satu arah dan melambat setelah ambang`() {
+        assertEquals(0f, ChatRules.swipeOffsetDp(0f), 0.01f)
+        assertEquals(0f, ChatRules.swipeOffsetDp(-40f), 0.01f)
+        assertEquals(30f, ChatRules.swipeOffsetDp(30f), 0.01f)
+        // Tepat di ambang: masih mengikuti jari satu banding satu.
+        assertEquals(ChatRules.SWIPE_TRIGGER_DP, ChatRules.swipeOffsetDp(ChatRules.SWIPE_TRIGGER_DP), 0.01f)
+        // Setelah ambang: sepertiga, jadi jarak tambahan 30 dp hanya 10 dp.
+        assertEquals(ChatRules.SWIPE_TRIGGER_DP + 10f, ChatRules.swipeOffsetDp(ChatRules.SWIPE_TRIGGER_DP + 30f), 0.01f)
+        // Sejauh apa pun ditarik, berhenti di batas.
+        assertEquals(ChatRules.SWIPE_LIMIT_DP, ChatRules.swipeOffsetDp(10_000f), 0.01f)
+    }
+
+    @Test
+    fun `balasan terpicu hanya setelah ambang terlewati`() {
+        assertFalse(ChatRules.swipeArmed(0f))
+        assertFalse(ChatRules.swipeArmed(ChatRules.SWIPE_TRIGGER_DP - 1f))
+        assertTrue(ChatRules.swipeArmed(ChatRules.SWIPE_TRIGGER_DP))
+        assertTrue(ChatRules.swipeArmed(200f))
+    }
+
+    @Test
+    fun `ikon balas penuh tepat saat ambang tercapai`() {
+        assertEquals(0f, ChatRules.swipeIconAlpha(0f), 0.01f)
+        assertEquals(0.5f, ChatRules.swipeIconAlpha(ChatRules.SWIPE_TRIGGER_DP / 2f), 0.01f)
+        assertEquals(1f, ChatRules.swipeIconAlpha(ChatRules.SWIPE_TRIGGER_DP), 0.01f)
+        assertEquals(1f, ChatRules.swipeIconAlpha(999f), 0.01f)
+    }
+
+    // ── Tanpa loading ──────────────────────────────────────────────────────
+
+    @Test
+    fun `ruang yang sudah berisi tidak pernah bilang sedang menyambung`() {
+        assertFalse(ChatRules.showConnecting(online = false, hasMessages = true, waitingMs = 60_000L))
+        assertFalse(ChatRules.showConnecting(online = true, hasMessages = false, waitingMs = 60_000L))
+    }
+
+    @Test
+    fun `sambungan cepat tidak sempat mengumumkan dirinya`() {
+        assertFalse(ChatRules.showConnecting(online = false, hasMessages = false, waitingMs = 0L))
+        assertFalse(ChatRules.showConnecting(online = false, hasMessages = false, waitingMs = ChatRules.QUIET_MS - 1))
+        assertTrue(ChatRules.showConnecting(online = false, hasMessages = false, waitingMs = ChatRules.QUIET_MS))
+    }
+
+    @Test
+    fun `baris status menyebut jumlah orang saat tersambung`() {
+        assertEquals("7 orang di ruang ini", ChatRules.statusLine(true, 7, true, 0L))
+        assertEquals("Tersambung", ChatRules.statusLine(true, 0, true, 0L))
+        assertEquals("Luring — pesan baru menyusul", ChatRules.statusLine(false, 3, true, 30_000L))
+        assertEquals("Ruang obrolan XyDesk", ChatRules.statusLine(false, 0, false, 0L))
+        assertEquals("Menyambung…", ChatRules.statusLine(false, 0, false, 5_000L))
+    }
+
+    // ── Balasan ────────────────────────────────────────────────────────────
+
+    @Test
+    fun `cuplikan balasan sama aturannya dengan server`() {
+        assertEquals("halo semua", ChatRules.replySnippet("halo\n\nsemua"))
+        assertEquals("rapat", ChatRules.replySnippet("   rapat  "))
+        val panjang = "a".repeat(200)
+        assertEquals(ChatRules.REPLY_SNIPPET, ChatRules.replySnippet(panjang).length)
+        assertTrue(ChatRules.replySnippet(panjang).endsWith("…"))
+    }
+
+    @Test
+    fun `membalas diri sendiri tidak menyebut nama sendiri`() {
+        assertEquals("Membalas Budi", ChatRules.replyHeader("Budi", "Sari"))
+        assertEquals("Membalas diri sendiri", ChatRules.replyHeader("Sari", "Sari"))
+        assertEquals("Membalas Budi", ChatRules.replyHeader("Budi", ""))
+    }
 }

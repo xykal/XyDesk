@@ -18,7 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Ikon garis milik XyDesk sendiri, digambar di Canvas (tanpa set ikon sistem). */
-enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH, NEWS, GRID, LIST, STAR, EDIT, LINK }
+enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH, NEWS, GRID, LIST, STAR, EDIT, LINK, REPLY, COPY }
 
 @Composable
 fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, size: Dp = 22.dp) {
@@ -127,6 +127,18 @@ fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, s
                 drawArc(tint, 90f, 180f, false, Offset(w * 0.1f, w * 0.32f), Size(w * 0.36f, w * 0.36f), style = s)
                 drawArc(tint, -90f, 180f, false, Offset(w * 0.54f, w * 0.32f), Size(w * 0.36f, w * 0.36f), style = s)
                 line(0.3f, 0.5f, 0.7f, 0.5f, tint, s)
+            }
+            // Panah membalik ke kiri: isyarat balas yang sama di mana-mana.
+            Icon.REPLY -> {
+                line(0.34f, 0.24f, 0.14f, 0.44f, tint, s)
+                line(0.14f, 0.44f, 0.34f, 0.64f, tint, s)
+                line(0.14f, 0.44f, 0.6f, 0.44f, tint, s)
+                drawArc(tint, -90f, 90f, false, Offset(w * 0.32f, w * 0.44f), Size(w * 0.56f, w * 0.56f), style = s)
+            }
+            // Dua lembar bertumpuk.
+            Icon.COPY -> {
+                rr(0.32f, 0.12f, 0.56f, 0.56f, 0.08f, tint, s)
+                rr(0.12f, 0.32f, 0.56f, 0.56f, 0.08f, tint, s)
             }
         }
     }

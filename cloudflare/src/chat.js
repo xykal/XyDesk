@@ -17,6 +17,7 @@ export const RATE_WINDOW_MS = 10_000; // jendela rem laju
 export const RATE_BURST = 5;          // pesan per jendela
 export const MIN_GAP_MS = 700;        // jarak minimum antar pesan satu orang
 export const MAX_CONNECTIONS = 400;   // batas sambungan serentak di satu ruang
+export const REPLY_SNIPPET = 90;      // panjang cuplikan pesan yang dibalas
 
 /**
  * Bersihkan teks pesan.
@@ -107,18 +108,75 @@ export function trimHistory(history, message) {
   return next.length > HISTORY_SIZE ? next.slice(next.length - HISTORY_SIZE) : next;
 }
 
+/**
+ * Foto profil yang boleh ikut ke ruang chat.
+ *
+ * Yang masuk ke sini adalah URL dari penyedia identitas (Google) atau profil
+ * XyDesk — bukan sesuatu yang diketik pengguna. Tetap disaring: hanya https,
+ * hanya host yang kita kenal, dan panjang dibatasi. Tanpa saringan ini sebuah
+ * URL foto bisa dipakai sebagai beacon — setiap orang di ruang memuatnya, dan
+ * pemilik URL mendapat daftar IP semua orang yang sedang membuka chat.
+ */
+export function safePhoto(url) {
+  if (typeof url !== 'string' || url.length > 512) return null;
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'https:') return null;
+  const host = parsed.hostname.toLowerCase();
+  const allowed = host === 'xydesk.my.id'
+    || host.endsWith('.googleusercontent.com')
+    || host.endsWith('.xydesk.my.id')
+    || host.endsWith('.gstatic.com');
+  return allowed ? parsed.toString() : null;
+}
+
+/**
+ * Cuplikan pesan yang dikutip: satu baris, pendek, berakhir dengan elipsis
+ * bila dipotong. Dipakai untuk blok balasan di atas gelembung.
+ */
+export function replySnippet(text) {
+  if (typeof text !== 'string') return '';
+  const line = text.replace(/\s+/g, ' ').trim();
+  if (line.length <= REPLY_SNIPPET) return line;
+  return `${line.slice(0, REPLY_SNIPPET - 1).trim()}…`;
+}
+
+/**
+ * Bentuk blok balasan dari riwayat server, BUKAN dari apa yang dikirim
+ * client. Client hanya menyebut id pesan yang dibalas; teks dan nama diambil
+ * dari riwayat di sini. Kalau client boleh mengirim kutipannya sendiri, siapa
+ * pun bisa membuat orang lain seolah-olah pernah menulis kalimat yang tidak
+ * pernah ia tulis — dan kutipan palsu itu akan terlihat persis seperti
+ * kutipan asli.
+ */
+export function buildReply(history, replyTo) {
+  if (typeof replyTo !== 'string' || !replyTo) return null;
+  const list = Array.isArray(history) ? history : [];
+  const found = list.find(m => m && m.id === replyTo);
+  if (!found) return null;
+  return { id: found.id, from: found.from, text: replySnippet(found.text) };
+}
+
 /** Tingkat akun yang diakui ruang chat. Apa pun selain 'vip' = biasa. */
 export function normalizeTier(tier) {
   return tier === 'vip' ? 'vip' : 'free';
 }
 
 /** Bentuk pesan yang dikirim ke semua orang. Tidak pernah memuat email penuh. */
-export function buildMessage({ id, email, name, tier, text, at }) {
+export function buildMessage({ id, email, name, tier, text, at, photo, reply }) {
   return {
     type: 'msg',
     id,
     from: pickName(name, email),
     hue: avatarHue(email),
+    // Foto profil kalau ada; klien jatuh ke avatar inisial bila null.
+    photo: safePhoto(photo),
+    // Kutipan pesan yang dibalas — selalu hasil `buildReply` dari riwayat.
+    reply: reply || null,
     // Bingkai VIP digambar klien dari tanda ini. Nilainya datang dari profil
     // akun lewat Worker, tidak pernah dari pesan yang dikirim client.
     tier: normalizeTier(tier),
@@ -145,7 +203,12 @@ export function parseIncoming(raw) {
   if (value.type !== 'msg') return { ok: false, error: 'jenis-tidak-dikenal' };
   const text = sanitizeText(value.text);
   if (!text) return { ok: false, error: 'kosong' };
-  return { ok: true, kind: 'msg', text };
+  // Client hanya boleh menyebut id pesan yang dibalas. Apa pun yang bukan id
+  // berbentuk wajar diabaikan diam-diam: balasan yang hilang lebih baik
+  // daripada pesan yang ditolak karena metadata.
+  const quoted = typeof value.replyTo === 'string' ? value.replyTo : '';
+  const replyTo = /^[A-Za-z0-9_-]{1,64}$/.test(quoted) ? quoted : '';
+  return { ok: true, kind: 'msg', text, replyTo };
 }
 
 // ── Durable Object ──────────────────────────────────────────────────────────
@@ -176,6 +239,7 @@ export class ChatRoom {
     // DO tidak pernah memercayai body untuk soal identitas.
     const email = request.headers.get('x-xydesk-email') || '';
     const name = request.headers.get('x-xydesk-name') || '';
+    const photo = safePhoto(request.headers.get('x-xydesk-photo') || '');
     const tier = normalizeTier(request.headers.get('x-xydesk-tier'));
     if (!email) return json({ error: 'unauthorized' }, 401);
 
@@ -193,13 +257,14 @@ export class ChatRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ email, name, tier, stamps: [], since: Date.now() });
+    server.serializeAttachment({ email, name, photo, tier, stamps: [], since: Date.now() });
 
     try {
       server.send(JSON.stringify({
         type: 'welcome',
         you: pickName(name, email),
         hue: avatarHue(email),
+        photo,
         tier,
         online: this.sockets().length,
         messages: await this.history(),
@@ -243,15 +308,18 @@ export class ChatRoom {
     }
     ws.serializeAttachment({ ...meta, stamps: check.state.stamps });
 
+    const history = await this.history();
     const message = buildMessage({
       id: crypto.randomUUID(),
       email,
       name: meta.name,
       tier: meta.tier,
+      photo: meta.photo,
       text: parsed.text,
       at: now,
+      reply: buildReply(history, parsed.replyTo),
     });
-    await this.ctx.storage.put('history', trimHistory(await this.history(), message));
+    await this.ctx.storage.put('history', trimHistory(history, message));
     this.broadcast(message);
   }
 
