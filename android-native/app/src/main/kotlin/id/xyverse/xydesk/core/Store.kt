@@ -74,6 +74,10 @@ class Store(context: Context) {
     var overlayMode: Int
         get() = prefs.getInt("overlayMode", 0)
         set(v) = prefs.edit().putInt("overlayMode", v).apply()
+    /** Varian gaya visual kontrol layar: 0 Transparan border neon, 1 Berbingkai game, 2 Solid pekat. */
+    var overlayStyle: Int
+        get() = prefs.getInt("overlayStyle", 0)
+        set(v) = prefs.edit().putInt("overlayStyle", v).apply()
     var overlayJson: String
         get() = prefs.getString("overlayJson", null).orEmpty()
         set(v) = prefs.edit().putString("overlayJson", v).apply()
@@ -266,6 +270,7 @@ object P {
     const val REMEMBER_DEFAULT = "rememberDefault"
     const val POINTER_CAPTURE = "pointerCapture"  // tangkap mouse fisik (gerak relatif)
     const val PAD_KBM = "padKbm"                  // pad fisik → keyboard/mouse: 0 mati, 1 selalu, 2 otomatis
+    const val OVERLAY_STYLE = "overlayStyle"      // varian gaya visual tombol layar (0, 1, 2)
     const val SHOW_ID = "showId"
     val MBPS = listOf(0, 8, 12, 20, 30)
     val HISTORY = listOf(0, 7, 30, 90)

@@ -89,15 +89,11 @@ import kotlin.math.roundToInt
 /**
  * Chat global: satu ruang untuk semua pengguna XyDesk yang sudah masuk.
  *
- * Mengutamakan rasa responsif:
- * - **Tanpa loading:** pesan dari disk cache langsung muncul pada frame pertama;
- *   tidak ada kedipan "menyambung" untuk koneksi normal.
- * - **Foto profil + inisial:** foto akun ditampilkan rapi, dengan fallback warna
- *   avatar stabil dan cincin emas untuk anggota VIP.
- * - **Swipe untuk membalas:** geser gelembung ke kanan untuk membalas; dilengkapi
- *   tahanan karet elastis dan getaran saat ambang terlewati.
- * - **Fokus & blur:** tekan tahan satu gelembung untuk mengangkatnya dengan
- *   latar gelap/frosted dan menu aksi (balas, salin) bergaya iOS.
+ * Mengutamakan rasa responsif & kenyamanan:
+ * - **Tampil instan nol-delay:** pesan dimuat dari disk cache pada frame pertama tanpa kedipan loading.
+ * - **Foto profil, nama & badge VIP:** semua pesan menampilkan identitas jelas dan bingkai emas berlapis untuk anggota VIP.
+ * - **Swipe-to-reply:** geser gelembung ke kanan untuk membalas dengan tahanan elastis dan getaran haptic.
+ * - **WhatsApp iOS-style Long-Press Focus:** tahan gelembung untuk mengangkatnya dengan latar belakang buram/frosted dan menu aksi melayang tepat di bawahnya.
  */
 @Composable
 fun ChatScreen(jwt: String) {
@@ -224,11 +220,10 @@ fun ChatScreen(jwt: String) {
                     activeReply = null
                 }
             }
-            // Ruang untuk bilah navigasi bawah yang mengambang.
             Spacer(Modifier.height(84.dp))
         }
 
-        // Lapisan fokus pesan & latar buram bergaya iOS WhatsApp saat satu gelembung ditahan.
+        // Lapisan fokus WhatsApp iPhone bergaya frosted blur saat pesan ditahan.
         focusedMessage?.let { focused ->
             FocusOverlay(
                 message = focused,
@@ -250,10 +245,7 @@ fun ChatScreen(jwt: String) {
     }
 }
 
-/**
- * Header obrolan: tidak mengumumkan "menyambung" jika riwayat sudah ada di layar,
- * sehingga bebas dari kedipan loading yang mengganggu.
- */
+/** Header obrolan bebas kedipan loading. */
 @Composable
 private fun ChatHeader(link: ChatLink, online: Int, hasMessages: Boolean, waitingSince: Long) {
     val elapsed = System.currentTimeMillis() - waitingSince
@@ -276,9 +268,7 @@ private fun ChatHeader(link: ChatLink, online: Int, hasMessages: Boolean, waitin
     }
 }
 
-/**
- * Baris gelembung dengan dukungan gesture geser (swipe-to-reply) ke kanan.
- */
+/** Baris gelembung dengan dukungan swipe-to-reply ke kanan. */
 @Composable
 private fun SwipeableBubbleRow(
     message: ChatMessage,
@@ -331,7 +321,6 @@ private fun SwipeableBubbleRow(
                 )
             },
     ) {
-        // Ikon balas di belakang gelembung yang muncul mengikuti tarikan swipe.
         if (animatedOffsetDp > 0.5f) {
             val iconAlpha = ChatRules.swipeIconAlpha(animatedOffsetDp)
             val iconScale = (0.6f + iconAlpha * 0.4f).coerceIn(0.6f, 1f)
@@ -366,9 +355,7 @@ private fun SwipeableBubbleRow(
     }
 }
 
-/**
- * Gelembung pesan tunggal: nama, avatar/foto profil, kutipan balasan, dan teks.
- */
+/** Gelembung pesan tunggal: avatar, nama, kutipan balasan, teks, dan status VIP. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Bubble(
@@ -388,24 +375,33 @@ private fun Bubble(
         horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
         verticalAlignment = Alignment.Bottom,
     ) {
-        // Kolom avatar tetap memesan tempat untuk pesan lanjutan dari orang lain.
         if (!mine) {
             Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
                 if (head) Avatar(m.from, m.hue, m.vip, m.photo)
             }
-            Spacer(Modifier.width(4.dp))
+            Spacer(Modifier.width(6.dp))
         }
 
         Column(horizontalAlignment = if (mine) Alignment.End else Alignment.Start) {
-            if (head && !mine) {
+            if (head) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 3.dp)) {
-                    XyText(m.from, Xy.label.copy(color = Xy.textMid, fontWeight = FontWeight.SemiBold), maxLines = 1)
-                    if (m.vip) {
-                        Spacer(Modifier.width(5.dp))
-                        VipBadge()
+                    if (!mine) {
+                        XyText(m.from, Xy.label.copy(color = Xy.textMid, fontWeight = FontWeight.SemiBold), maxLines = 1)
+                        if (m.vip) {
+                            Spacer(Modifier.width(5.dp))
+                            VipBadge()
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        XyText(ChatRules.clock(m.at, offsetMs), Xy.label, maxLines = 1)
+                    } else {
+                        XyText(ChatRules.clock(m.at, offsetMs), Xy.label, maxLines = 1)
+                        if (m.vip) {
+                            Spacer(Modifier.width(5.dp))
+                            VipBadge()
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        XyText("Saya", Xy.label.copy(color = Xy.accent, fontWeight = FontWeight.SemiBold), maxLines = 1)
                     }
-                    Spacer(Modifier.width(6.dp))
-                    XyText(ChatRules.clock(m.at, offsetMs), Xy.label, maxLines = 1)
                 }
             }
 
@@ -433,7 +429,6 @@ private fun Bubble(
                     .padding(horizontal = 12.dp, vertical = 9.dp),
             ) {
                 Column {
-                    // Kotak kutipan balasan bila pesan ini membalas pesan lain.
                     if (m.reply != null) {
                         ReplyQuoteCard(
                             reply = m.reply,
@@ -449,22 +444,18 @@ private fun Bubble(
                     )
                 }
             }
+        }
 
-            if (head && mine) {
-                XyText(
-                    ChatRules.clock(m.at, offsetMs),
-                    Xy.label,
-                    Modifier.padding(top = 2.dp),
-                    maxLines = 1,
-                )
+        if (mine) {
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.width(36.dp), contentAlignment = Alignment.Center) {
+                if (head) Avatar(m.from, m.hue, m.vip, m.photo)
             }
         }
     }
 }
 
-/**
- * Kotak kutipan di dalam gelembung untuk pesan balasan (gaya WhatsApp).
- */
+/** Kotak kutipan balasan di dalam bubble. */
 @Composable
 private fun ReplyQuoteCard(reply: id.xyverse.xydesk.net.ChatReply, mine: Boolean) {
     val barColor = if (mine) Color.White else Xy.accent
@@ -502,9 +493,7 @@ private fun ReplyQuoteCard(reply: id.xyverse.xydesk.net.ChatReply, mine: Boolean
     }
 }
 
-/**
- * Bar pratinjau balasan yang muncul tepat di atas kotak input teks.
- */
+/** Baris pratinjau pesan sebelum dikirim. */
 @Composable
 private fun ReplyPreviewBar(
     target: ChatMessage,
@@ -556,8 +545,8 @@ private fun ReplyPreviewBar(
 }
 
 /**
- * Overlay fokus saat gelembung ditahan: latar belakang gelap/blur bergaya iOS,
- * gelembung terangkat membesar sedikit, dan menu aksi mengambang di bawahnya.
+ * Overlay fokus saat gelembung ditahan: latar belakang gelap/blur bergaya WhatsApp iPhone,
+ * gelembung terangkat membesar sedikit dengan bayangan lembut, dan menu aksi melayang tepat di bawahnya.
  */
 @Composable
 private fun FocusOverlay(
@@ -573,7 +562,7 @@ private fun FocusOverlay(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x990A0A0E))
+            .background(Color(0xBB05050A))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onDismiss),
         contentAlignment = Alignment.Center,
     ) {
@@ -581,16 +570,16 @@ private fun FocusOverlay(
             Modifier
                 .padding(horizontal = 24.dp)
                 .widthIn(max = 340.dp)
-                .clickable(remember { MutableInteractionSource() }, null) {}, // Cegah klik tembus
+                .clickable(remember { MutableInteractionSource() }, null) {},
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            // Gelembung yang sedang difokuskan, membesar 1.04x
+            // Gelembung yang difokuskan terangkat 1.04x dengan border glowing
             Box(
                 Modifier
                     .scale(ChatRules.FOCUS_SCALE)
                     .clip(RoundedCornerShape(Xy.radiusL))
-                    .background(Xy.bg)
-                    .border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL))
+                    .background(Color(0xF012121A))
+                    .border(1.5.dp, Color(0x66A78BFA), RoundedCornerShape(Xy.radiusL))
                     .padding(16.dp),
             ) {
                 Column {
@@ -599,13 +588,13 @@ private fun FocusOverlay(
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                XyText(message.from, Xy.title.copy(fontSize = 15.sp), maxLines = 1)
+                                XyText(message.from, Xy.title.copy(fontSize = 15.sp, color = Color.White), maxLines = 1)
                                 if (message.vip) {
                                     Spacer(Modifier.width(6.dp))
                                     VipBadge()
                                 }
                             }
-                            XyText(ChatRules.clock(message.at, offsetMs), Xy.label.copy(color = Xy.textMid))
+                            XyText(ChatRules.clock(message.at, offsetMs), Xy.label.copy(color = Color(0xFFA1A1AA)))
                         }
                     }
 
@@ -614,27 +603,27 @@ private fun FocusOverlay(
                         ReplyQuoteCard(message.reply, mine = false)
                     }
 
-                    Spacer(Modifier.height(10.dp))
-                    XyText(message.text, Xy.body)
+                    Spacer(Modifier.height(12.dp))
+                    XyText(message.text, Xy.body.copy(color = Color(0xFFF4F4F5)))
                 }
             }
 
             Spacer(Modifier.height(18.dp))
 
-            // Menu aksi kontekstual bergaya iOS (Balas, Salin, Tutup)
+            // Menu aksi melayang ala WhatsApp iPhone
             Row(
                 Modifier
                     .clip(RoundedCornerShape(Xy.pill))
-                    .background(Xy.bg)
-                    .border(1.dp, Xy.line, RoundedCornerShape(Xy.pill))
+                    .background(Color(0xF21C1C26))
+                    .border(1.dp, Color(0x33A78BFA), RoundedCornerShape(Xy.pill))
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 FocusActionButton(icon = Icon.REPLY, label = "Balas", onClick = onReply)
-                Box(Modifier.width(1.dp).height(20.dp).background(Xy.line))
+                Box(Modifier.width(1.dp).height(20.dp).background(Color(0x33FFFFFF)))
                 FocusActionButton(icon = Icon.COPY, label = "Salin", onClick = onCopy)
-                Box(Modifier.width(1.dp).height(20.dp).background(Xy.line))
+                Box(Modifier.width(1.dp).height(20.dp).background(Color(0x33FFFFFF)))
                 FocusActionButton(icon = Icon.CLOSE, label = "Tutup", onClick = onDismiss)
             }
         }
@@ -652,14 +641,11 @@ private fun FocusActionButton(icon: Icon, label: String, onClick: () -> Unit) {
     ) {
         XyIcon(icon, tint = Xy.accent, size = 17.dp)
         Spacer(Modifier.width(6.dp))
-        XyText(label, Xy.label.copy(fontWeight = FontWeight.SemiBold, color = Xy.textHi))
+        XyText(label, Xy.label.copy(fontWeight = FontWeight.SemiBold, color = Color.White))
     }
 }
 
-/**
- * Avatar bulat: foto profil asli bila ada, inisial huruf bila tidak,
- * dan cincin emas berlapis untuk anggota VIP.
- */
+/** Avatar bulat: foto profil asli bila ada, inisial huruf, dan cincin emas berlapis untuk VIP. */
 @Composable
 private fun Avatar(name: String, hue: Int, vip: Boolean, photo: String = "") {
     val size = if (vip) 32.dp else 28.dp
@@ -689,7 +675,7 @@ private fun Avatar(name: String, hue: Int, vip: Boolean, photo: String = "") {
     }
 }
 
-/** Lencana kecil di sebelah nama. Sengaja teks, bukan gambar: ikut skala font. */
+/** Lencana VIP kecil. */
 @Composable
 private fun VipBadge() {
     Box(
@@ -766,11 +752,9 @@ private fun SendButton(enabled: Boolean, onClick: () -> Unit) {
     }
 }
 
-// Emas VIP. Dua titik gradasi supaya cincinnya tidak terlihat datar.
 private val kVipLight = Color(0xFFF7C948)
 private val kVipDeep = Color(0xFFB07400)
 
-/** Warna avatar dari hue yang dikirim server; saturasi dan terang dikunci. */
 private fun hueColor(hue: Int): Color {
     val h = (((hue % 360) + 360) % 360) / 60f
     val c = 0.42f

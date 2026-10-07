@@ -101,9 +101,9 @@ val LocalHostMeta = compositionLocalOf { HostMeta() }
 @Composable
 private fun PreviewBox(d: SessionRecord, ratio: Float, iconSize: Dp, caption: Boolean, content: @Composable BoxScope.() -> Unit = {}) {
     val preview by Previews.rememberPreview(d.host, d.durationSec)
-    Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color(0xFF1B1B22)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().aspectRatio(ratio).background(Color(0xFF14141A)), contentAlignment = Alignment.Center) {
         val img = preview
-        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Fit, filterQuality = FilterQuality.Low)
+        if (img != null) Image(img, null, Modifier.fillMaxWidth().aspectRatio(ratio), contentScale = ContentScale.Crop, filterQuality = FilterQuality.Medium)
         else Column(horizontalAlignment = Alignment.CenterHorizontally) {
             XyIcon(Icon.MONITOR, tint = Color.White.copy(alpha = 0.5f), size = iconSize)
             if (caption) { Spacer(Modifier.height(6.dp)); XyText("Belum ada wallpaper", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f))) }

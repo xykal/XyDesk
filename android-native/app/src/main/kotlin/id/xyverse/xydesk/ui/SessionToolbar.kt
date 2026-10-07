@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.clip
@@ -80,10 +82,6 @@ class SessionActions(
 
 /**
  * Monitor host apa adanya, sebagaimana dilaporkan pesan `meta`.
- *
- * Dipisah dari [SessionPrefs] karena ini bukan preferensi dan tidak diketahui
- * saat panel dibuat: daftarnya baru tiba setelah sesi hidup, dan bisa berubah
- * di tengah sesi saat monitor dicolok atau dicabut.
  */
 data class DisplayState(
     val displays: List<DisplayRules.HostDisplay> = emptyList(),
@@ -109,17 +107,18 @@ data class SessionPrefs(
 )
 
 enum class QuickKey(val label: String) {
-    ESC("Esc"), TAB("Tab"), WIN("Win"), ENTER("Enter"), COPY("Ctrl+C"), PASTE("Ctrl+V"), UNDO("Ctrl+Z"),
-    ALT_TAB("Alt+Tab"), ALT_F4("Alt+F4"), F11("F11"), PRTSC("PrtSc"), CAD("CAD"),
+    ESC("⎋ Esc"), TAB("⇥ Tab"), WIN("❖ Win"), ENTER("↵ Enter"),
+    COPY("⌃C"), PASTE("⌃V"), UNDO("⌃Z"), SAVE("⌃S"),
+    ALT_TAB("⌥⇥"), ALT_F4("⌥F4"), F11("F11"), PRTSC("PrtSc"), CAD("⌃⌥⌦ CAD"),
 }
 
-private enum class Panel { NONE, CONTROLS, SETTINGS }
-
-private val glass = Color(0xF2FFFFFF)
+private val kDarkGlass = Color(0xF008080E)
+private val kDarkPillBg = Color(0x33262638)
+private val kDarkBorder = Color(0x33A78BFA)
 
 /**
- * Rel vertikal tetap di tepi kanan: Keyboard, Kontrol, Atur, Putus. Panel terbuka
- * ke kiri rel; pegangan kecil di atas menyembunyikan rel jadi satu garis tipis.
+ * Rel vertikal tetap di tepi kanan: Keyboard, Mapping, Tampil, Atur, Putus.
+ * Desain hitam pekat gaming dengan neon aksen, tanpa duplikasi kontrol yang sudah ada di overlay.
  */
 @Composable
 fun SessionToolbar(
@@ -128,7 +127,7 @@ fun SessionToolbar(
     /** Monitor host; `null` untuk pratinjau dan uji yang tidak punya sesi. */
     displayState: State<DisplayState>? = null,
 ) {
-    var panel by remember { mutableStateOf(Panel.NONE) }
+    var settingsOpen by remember { mutableStateOf(false) }
     var hidden by remember { mutableStateOf(false) }
     var quality by remember { mutableStateOf(prefs.quality) }
     var fps by remember { mutableStateOf(prefs.fps) }
@@ -146,8 +145,8 @@ fun SessionToolbar(
     var padLabel by remember { mutableStateOf(prefs.padKbmLabel) }
     val qLabels = listOf("Auto", "Seimbang", "Lebih halus", "Paling halus")
     var touched by remember { mutableStateOf(0L) }
-    if (prefs.autohideMs > 0) LaunchedEffect(touched, panel, hidden) {
-        if (!hidden && panel == Panel.NONE) { kotlinx.coroutines.delay(prefs.autohideMs); hidden = true }
+    if (prefs.autohideMs > 0) LaunchedEffect(touched, settingsOpen, hidden) {
+        if (!hidden && !settingsOpen) { kotlinx.coroutines.delay(prefs.autohideMs); hidden = true }
     }
 
     Row(
@@ -155,101 +154,98 @@ fun SessionToolbar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        AnimatedVisibility(!hidden && panel != Panel.NONE, enter = slideInHorizontally { it / 2 } + fadeIn(), exit = slideOutHorizontally { it / 2 } + fadeOut()) {
+        AnimatedVisibility(!hidden && settingsOpen, enter = slideInHorizontally { it / 2 } + fadeIn(), exit = slideOutHorizontally { it / 2 } + fadeOut()) {
             Column(
-                Modifier.width(232.dp).clip(RoundedCornerShape(Xy.radiusL)).background(glass).border(1.dp, Xy.line, RoundedCornerShape(Xy.radiusL)).padding(12.dp),
+                Modifier.width(248.dp).clip(RoundedCornerShape(Xy.radiusL)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.radiusL)).padding(12.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (panel == Panel.CONTROLS) {
-                    XyText("KONTROL", Xy.label)
-                    Wrap { QuickKey.entries.forEach { k -> Pill(k.label) { actions.sendQuickKey(k) } } }
+                XyText("KUALITAS & STREAM", Xy.label.copy(color = Xy.accent))
+                Wrap { qLabels.forEachIndexed { i, l -> DarkPill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
+
+                XyText("FPS · RESOLUSI", Xy.label.copy(color = Xy.accent))
+                Wrap {
+                    prefs.fpsOptions.forEach { f -> DarkPill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
+                    DarkPill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
+                    listOf("720p", "1080p").forEachIndexed { i, l -> DarkPill(l, accent = res == i) { res = i; actions.resolution(i) } }
+                }
+
+                if (quality != 0) {
+                    XyText("BITRATE", Xy.label.copy(color = Xy.accent))
+                    Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> DarkPill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
+                }
+
+                val layar = displayState?.value ?: DisplayState()
+                XyText("LAYAR PC", Xy.label.copy(color = Xy.accent))
+                if (DisplayRules.shouldOffer(layar.displays)) {
                     Wrap {
-                        Pill("Pusatkan kursor") { actions.centerCursor() }
-                        Pill("Kirim berkas ke PC") { panel = Panel.NONE; actions.sendFile() }
-                        Pill("Mode presentasi") { panel = Panel.NONE; actions.present() }
-                    }
-                    XyText("MODE SENTUH", Xy.label)
-                    Wrap {
-                        Pill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
-                        Pill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
-                    }
-                    XyText("TRACKPAD", Xy.label)
-                    Wrap {
-                        Pill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
-                        Pill("Kecepatan %.1f".format(speed), accent = true) {}
-                        Pill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
-                        Pill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
-                    }
-                    XyText("Ketuk klik kiri · ketuk 2 jari klik kanan · geser 2 jari scroll · ketuk-ketuk-tahan seret · 3 jari geser Alt+Tab", Xy.caption)
-                } else {
-                    XyText("KUALITAS", Xy.label)
-                    Wrap { qLabels.forEachIndexed { i, l -> Pill(l, accent = quality == i) { quality = i; actions.quality(i) } } }
-                    XyText("FPS · RESOLUSI", Xy.label)
-                    Wrap {
-                        prefs.fpsOptions.forEach { f -> Pill("$f fps", accent = fps == f) { fps = f; actions.fps(f) } }
-                        Pill("Auto", accent = res < 0) { res = -1; quality = 0; actions.quality(0) }
-                        listOf("720p", "1080p").forEachIndexed { i, l -> Pill(l, accent = res == i) { res = i; actions.resolution(i) } }
-                    }
-                    if (quality != 0) {
-                        XyText("BITRATE", Xy.label)
-                        Wrap { listOf(4, 8, 12, 20, 30).forEach { m -> Pill("$m Mbps", accent = mbps == m) { mbps = m; actions.bitrate(m) } } }
-                    }
-                    val layar = displayState?.value ?: DisplayState()
-                    XyText("LAYAR PC", Xy.label)
-                    if (DisplayRules.shouldOffer(layar.displays)) {
-                        Wrap {
-                            layar.displays.forEachIndexed { i, d ->
-                                Pill(DisplayRules.label(d, i), accent = d.index == layar.active) {
-                                    // Memilih layar yang sudah aktif tidak dikirim: host akan
-                                    // membangun ulang capture dan gambar berkedip tanpa guna.
-                                    DisplayRules.request(layar.displays, layar.active, d.index)?.let(actions.display)
-                                }
+                        layar.displays.forEachIndexed { i, d ->
+                            DarkPill(DisplayRules.label(d, i), accent = d.index == layar.active) {
+                                DisplayRules.request(layar.displays, layar.active, d.index)?.let(actions.display)
                             }
                         }
-                    } else if (layar.displays.size == 1) {
-                        XyText("PC ini hanya punya satu layar.", Xy.caption)
-                    } else {
-                        XyText("Daftar layar belum diterima dari PC.", Xy.caption)
                     }
-                    XyText("SESI", Xy.label)
-                    Wrap {
-                        Pill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
-                        Pill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
-                        Pill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
-                        Pill("Stats", accent = stats) { stats = !stats; actions.stats(stats) }
-                        Pill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
-                        Pill("Pad → kibor: $padLabel", accent = padMode == 1) {
-                            padMode = PadKbm.nextMode(padMode)
-                            padLabel = PadKbm.modeLabel(padMode)
-                            actions.padKbm()
-                        }
+                } else if (layar.displays.size == 1) {
+                    XyText("PC ini hanya punya satu layar.", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f)))
+                } else {
+                    XyText("Daftar layar belum diterima dari PC.", Xy.caption.copy(color = Color.White.copy(alpha = 0.6f)))
+                }
+
+                XyText("SENTUH & TRACKPAD", Xy.label.copy(color = Xy.accent))
+                Wrap {
+                    DarkPill("Trackpad", accent = !directTouch) { directTouch = false; actions.touchMode(false) }
+                    DarkPill("Sentuh langsung", accent = directTouch) { directTouch = true; actions.touchMode(true) }
+                }
+                Wrap {
+                    DarkPill("−") { speed = (speed - 0.2f).coerceAtLeast(0.6f); actions.trackpadSpeed(speed) }
+                    DarkPill("Kecepatan %.1f".format(speed), accent = true) {}
+                    DarkPill("+") { speed = (speed + 0.2f).coerceAtMost(3f); actions.trackpadSpeed(speed) }
+                    DarkPill("Scroll alami", accent = natural) { natural = !natural; actions.naturalScroll(natural) }
+                }
+
+                XyText("FITUR SESI", Xy.label.copy(color = Xy.accent))
+                Wrap {
+                    DarkPill(if (muted) "Audio bisu" else "Audio", accent = !muted) { muted = !muted; actions.audioMute(muted) }
+                    DarkPill(if (mic) "Mic nyala" else "Mic", accent = mic) { mic = !mic; actions.mic(mic) }
+                    DarkPill("Clipboard", accent = clip) { clip = !clip; actions.clipboardSync(clip) }
+                    DarkPill("Stats HUD", accent = stats) { stats = !stats; actions.stats(stats) }
+                    DarkPill("Tangkap mouse", accent = capture) { capture = !capture; actions.pointerCapture(capture) }
+                    DarkPill("Pad → kibor: $padLabel", accent = padMode == 1) {
+                        padMode = PadKbm.nextMode(padMode)
+                        padLabel = PadKbm.modeLabel(padMode)
+                        actions.padKbm()
                     }
-                    if (quality == 0) XyText("Auto: resolusi dan bitrate mengikuti jaringan (libxyadapt).", Xy.caption) else XyText("Preset kualitas hanya mengubah bitrate/kompresi; resolusi tetap di pilihan Auto/Manual, tanpa filter tajam buatan.", Xy.caption)
+                }
+
+                XyText("ALAT SESI", Xy.label.copy(color = Xy.accent))
+                Wrap {
+                    DarkPill("Pusatkan kursor") { actions.centerCursor() }
+                    DarkPill("Kirim berkas") { settingsOpen = false; actions.sendFile() }
+                    DarkPill("Mode presentasi") { settingsOpen = false; actions.present() }
                 }
             }
         }
         if (hidden) {
             Box(
-                Modifier.size(width = 14.dp, height = 56.dp).clip(RoundedCornerShape(Xy.pill)).background(glass).border(1.dp, Xy.line, RoundedCornerShape(Xy.pill))
+                Modifier.size(width = 16.dp, height = 58.dp).clip(RoundedCornerShape(Xy.pill)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.pill))
                     .clickable(remember { MutableInteractionSource() }, null) { hidden = false },
                 contentAlignment = Alignment.Center,
             ) { Box(Modifier.size(3.dp, 22.dp).clip(CircleShape).background(Xy.accent)) }
         } else {
             Column(
-                Modifier.clip(RoundedCornerShape(Xy.pill)).background(glass).border(1.dp, Xy.line, RoundedCornerShape(Xy.pill)).padding(6.dp),
+                Modifier.clip(RoundedCornerShape(Xy.pill)).background(kDarkGlass).border(1.dp, kDarkBorder, RoundedCornerShape(Xy.pill)).padding(6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Box(
                     Modifier.size(width = 44.dp, height = 22.dp)
-                        .clickable(remember { MutableInteractionSource() }, null) { hidden = true; panel = Panel.NONE },
+                        .clickable(remember { MutableInteractionSource() }, null) { hidden = true; settingsOpen = false },
                     contentAlignment = Alignment.Center,
-                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Xy.textLow)) }
-                RailButton(Icon.KEYBOARD, "Keyboard") { actions.keyboard() }
-                RailButton(Icon.CONTROLS, "Kontrol", active = panel == Panel.CONTROLS) { panel = if (panel == Panel.CONTROLS) Panel.NONE else Panel.CONTROLS }
-                RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); panel = Panel.NONE }
-                RailButton(Icon.CONTROLS, "Tampil") { actions.overlayMode(); panel = Panel.NONE }
-                RailButton(Icon.SETTINGS, "Atur", active = panel == Panel.SETTINGS) { panel = if (panel == Panel.SETTINGS) Panel.NONE else Panel.SETTINGS }
+                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.35f))) }
+                RailButton(Icon.KEYBOARD, "Kibor") { actions.keyboard() }
+                RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); settingsOpen = false }
+                RailButton(Icon.CONTROLS, "Tampil") { actions.overlayMode(); settingsOpen = false }
+                RailButton(Icon.SETTINGS, "Atur", active = settingsOpen) { settingsOpen = !settingsOpen }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))
             }
@@ -257,18 +253,17 @@ fun SessionToolbar(
     }
 }
 
-
-
 @Composable
 private fun RailButton(icon: Icon, label: String, active: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
-    val bg = when { danger -> Xy.danger.copy(alpha = 0.1f); active -> Xy.accent; else -> Xy.overlay }
-    val fg = when { danger -> Xy.danger; active -> Color.White; else -> Xy.textHi }
+    val bg = when { danger -> Xy.danger.copy(alpha = 0.18f); active -> Xy.accent; else -> Color(0x2E1E1E2C) }
+    val fg = when { danger -> Xy.danger; active -> Color.White; else -> Color(0xFFE2E8F0) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(44.dp).background(bg, CircleShape).clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
+            Modifier.size(44.dp).background(bg, CircleShape).border(1.dp, if (active) Color.White.copy(alpha = 0.6f) else Color(0x22FFFFFF), CircleShape)
+                .clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
             contentAlignment = Alignment.Center,
-        ) { XyIcon(icon, tint = fg, size = 21.dp) }
-        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Xy.danger else Xy.textMid))
+        ) { XyIcon(icon, tint = fg, size = 20.dp) }
+        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Xy.danger else Color(0xFF94A3B8)))
     }
 }
 
@@ -279,9 +274,10 @@ private fun Wrap(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun Pill(text: String, accent: Boolean = false, onClick: () -> Unit) {
+private fun DarkPill(text: String, accent: Boolean = false, onClick: () -> Unit) {
     Box(
-        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else Xy.overlay)
-            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 12.dp, vertical = 8.dp),
-    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Xy.textHi)) }
+        Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kDarkPillBg)
+            .border(1.dp, if (accent) Color.White.copy(alpha = 0.5f) else Color(0x22FFFFFF), RoundedCornerShape(Xy.pill))
+            .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 11.dp, vertical = 7.dp),
+    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Color(0xFFE2E8F0))) }
 }

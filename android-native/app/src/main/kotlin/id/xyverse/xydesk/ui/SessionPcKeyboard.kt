@@ -29,13 +29,17 @@ import id.xyverse.xydesk.ui.kit.XyText
 
 private enum class KbLayer { ABC, NUM, FN, PAD, FULL }
 
-/** Keyboard PC di HUD (bukan IME HP): huruf, angka, F1–F12, numpad — sama konsep dengan web. */
+private val kDarkKbBg = Color(0xF208080E)
+private val kDarkKeyBg = Color(0xE0171722)
+private val kDarkBorder = Color(0x33FFFFFF)
+
+/** Keyboard PC di HUD (bukan IME HP): huruf, angka, F1–F12, numpad dengan tema hitam pekat & visual icon simbolis. */
 @Composable
 fun SessionPcKeyboard(onKey: (vk: Int) -> Unit, onIme: () -> Unit, onClose: () -> Unit) {
     var layer by remember { mutableStateOf(KbLayer.ABC) }
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-            .background(Color(0xF2FFFFFF)).border(1.dp, Xy.line, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .background(kDarkKbBg).border(1.dp, kDarkBorder, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             .padding(10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -60,16 +64,16 @@ fun SessionPcKeyboard(onKey: (vk: Int) -> Unit, onIme: () -> Unit, onClose: () -
 @Composable
 private fun Abc(onKey: (Int) -> Unit) {
     KeyRow("QWERTYUIOP".map { it.toString() to it.code }, onKey)
-    KeyRow(listOf("Caps" to 0x14) + "ASDFGHJKL".map { it.toString() to it.code }, onKey)
-    KeyRow(listOf("Shift" to 0xA0) + "ZXCVBNM".map { it.toString() to it.code } + listOf("⌫" to 0x08), onKey)
-    KeyRow(listOf("Ctrl" to 0xA2, "Win" to 0x5B, "Alt" to 0xA4, "Spasi" to 0x20, "Enter" to 0x0D), onKey)
+    KeyRow(listOf("⇪" to 0x14) + "ASDFGHJKL".map { it.toString() to it.code }, onKey)
+    KeyRow(listOf("⇧" to 0xA0) + "ZXCVBNM".map { it.toString() to it.code } + listOf("⌫" to 0x08), onKey)
+    KeyRow(listOf("⌃" to 0xA2, "❖" to 0x5B, "⌥" to 0xA4, "␣" to 0x20, "↵" to 0x0D), onKey)
 }
 
 @Composable
 private fun Num(onKey: (Int) -> Unit) {
     KeyRow((1..9).map { "$it" to (0x30 + it) } + listOf("0" to 0x30), onKey)
     KeyRow(listOf("-" to 0xBD, "=" to 0xBB, "[" to 0xDB, "]" to 0xDD, ";" to 0xBA, "'" to 0xDE, "," to 0xBC, "." to 0xBE, "/" to 0xBF, "⌫" to 0x08), onKey)
-    KeyRow(listOf("Esc" to 0x1B, "Tab" to 0x09, "Shift" to 0xA0, "←" to 0x25, "↑" to 0x26, "↓" to 0x28, "→" to 0x27), onKey)
+    KeyRow(listOf("⎋" to 0x1B, "⇥" to 0x09, "⇧" to 0xA0, "←" to 0x25, "↑" to 0x26, "↓" to 0x28, "→" to 0x27), onKey)
 }
 
 @Composable
@@ -79,16 +83,16 @@ private fun Fn(onKey: (Int) -> Unit) {
 
 @Composable
 private fun Pad(onKey: (Int) -> Unit) {
-    KeyRow(listOf("NumLk" to 0x90, "/" to 0x6F, "*" to 0x6A, "-" to 0x6D), onKey)
+    KeyRow(listOf("🔢" to 0x90, "/" to 0x6F, "*" to 0x6A, "-" to 0x6D), onKey)
     KeyRow(listOf("7" to 0x67, "8" to 0x68, "9" to 0x69, "+" to 0x6B), onKey)
-    KeyRow(listOf("4" to 0x64, "5" to 0x65, "6" to 0x66, "Enter" to 0x0D), onKey)
+    KeyRow(listOf("4" to 0x64, "5" to 0x65, "6" to 0x66, "↵" to 0x0D), onKey)
     KeyRow(listOf("1" to 0x61, "2" to 0x62, "3" to 0x63, "." to 0x6E), onKey)
     KeyRow(listOf("0" to 0x60), onKey)
 }
 
 @Composable
 private fun Full(onKey: (Int) -> Unit) {
-    KeyRow(listOf("Esc" to 0x1B) + (1..12).map { "F$it" to (0x6F + it) } + listOf("⌫" to 0x08), onKey)
+    KeyRow(listOf("⎋" to 0x1B) + (1..12).map { "F$it" to (0x6F + it) } + listOf("⌫" to 0x08), onKey)
     Num(onKey)
     Abc(onKey)
 }
@@ -97,12 +101,13 @@ private fun Full(onKey: (Int) -> Unit) {
 private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         keys.forEach { (label, vk) ->
-            val wide = label in setOf("Spasi", "Enter", "Shift", "Caps", "0")
+            val wide = label in setOf("␣", "↵", "⇧", "⇪", "0", "Spasi", "Enter", "Shift", "Caps")
             Box(
                 Modifier.weight(if (wide) 1.6f else 1f).height(42.dp).clip(RoundedCornerShape(10.dp))
-                    .background(Xy.overlay).clickable(remember { MutableInteractionSource() }, null) { onKey(vk) },
+                    .background(kDarkKeyBg).border(1.dp, Color(0x22FFFFFF), RoundedCornerShape(10.dp))
+                    .clickable(remember { MutableInteractionSource() }, null) { onKey(vk) },
                 contentAlignment = Alignment.Center,
-            ) { XyText(label, Xy.label.copy(fontSize = 11.sp, color = Xy.textHi)) }
+            ) { XyText(label, Xy.label.copy(fontSize = 12.sp, color = Color.White)) }
         }
     }
 }
@@ -111,9 +116,9 @@ private fun KeyRow(keys: List<Pair<String, Int>>, onKey: (Int) -> Unit) {
 private fun Chip(text: String, on: Boolean = false, onClick: () -> Unit) {
     Box(
         Modifier.height(36.dp).widthIn(min = 48.dp).clip(RoundedCornerShape(Xy.pill))
-            .background(if (on) Xy.accent else Xy.overlay)
+            .background(if (on) Xy.accent else Color(0x33FFFFFF))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick)
             .padding(horizontal = 10.dp),
         contentAlignment = Alignment.Center,
-    ) { XyText(text, Xy.label.copy(fontSize = 10.sp, color = if (on) Color.White else Xy.textHi)) }
+    ) { XyText(text, Xy.label.copy(fontSize = 10.sp, color = Color.White)) }
 }
