@@ -208,6 +208,11 @@ pub struct Status {
     pub file_policy: String,
     /// Jumlah perangkat yang pernah diberi "ingat perangkat ini".
     pub trusted_file_devices: usize,
+    /// Kebijakan kehadiran: `always` (bawaan), `watched`, atau `off`.
+    pub unattended_policy: String,
+    /// Sisa izin akses tanpa pendamping dalam milidetik; 0 = tidak ada izin.
+    /// Panel menghitung mundurnya sendiri dari angka ini.
+    pub unattended_grant_ms: u64,
     pub last_error: Option<String>,
 }
 
@@ -337,6 +342,8 @@ impl ControlState {
             pending_file: crate::file_consent::view(),
             file_policy: crate::file_consent::policy().as_str().to_string(),
             trusted_file_devices: crate::file_consent::trusted_count(),
+            unattended_policy: crate::unattended::policy().as_str().to_string(),
+            unattended_grant_ms: crate::unattended::grant_remaining_ms(),
             last_error: self.last_error.clone(),
         }
     }
@@ -425,6 +432,10 @@ pub struct ActionRequest {
     /// Nilai kebijakan untuk aksi `file-policy`: `ask`, `always`, `never`.
     #[serde(default, alias = "policy")]
     pub value: Option<String>,
+    /// Lama izin akses tanpa pendamping (jam) untuk aksi
+    /// `unattended-grant`. 0 mencabut izin yang sedang berlaku.
+    #[serde(default)]
+    pub hours: Option<u64>,
     /// Target bitrate (Mbps) untuk aksi `video-bitrate`. 0 = Auto.
     ///
     /// `ActionRequest` TIDAK di-`rename_all` (bidang lain snake_case apa adanya,
@@ -577,6 +588,10 @@ async fn status(
     }
     // Panel yang membaca status = panel yang masih bisa menjawab pertanyaan.
     crate::file_consent::touch_watcher();
+    // Gerbang kehadiran memakai tanda yang sama: panel yang memanggil
+    // `/status` adalah satu-satunya bukti yang dimiliki host bahwa ada yang
+    // menunggui PC ini.
+    crate::unattended::touch_watcher();
     Ok(Json(recover_lock(&s.control).snapshot()))
 }
 
@@ -750,6 +765,42 @@ async fn action(
                     "kebijakan tidak dikenal (ask, always, never)",
                 ))),
             }
+        }
+        // Kebijakan kehadiran: always (bawaan), watched, off.
+        "unattended-policy" => {
+            let Some(value) = req.value.as_deref() else {
+                return Ok(Json(ActionResponse::err("value tidak disertakan")));
+            };
+            match crate::unattended::Policy::parse(value) {
+                Some(p) => {
+                    crate::unattended::set_policy(p);
+                    Ok(Json(ActionResponse {
+                        ok: true,
+                        error: None,
+                        password: None,
+                        stopped: None,
+                    }))
+                }
+                None => Ok(Json(ActionResponse::err(
+                    "kebijakan tidak dikenal (always, watched, off)",
+                ))),
+            }
+        }
+        // Izin akses tanpa pendamping selama N jam; 0 mencabutnya.
+        "unattended-grant" => {
+            let Some(hours) = req.hours else {
+                return Ok(Json(ActionResponse::err("hours tidak disertakan")));
+            };
+            // Batas atas tidak ditolak melainkan dipotong di modul kebijakan:
+            // permintaan "selamanya" dijawab dengan izin terpanjang yang sah,
+            // bukan dengan galat yang membuat panel terlihat rusak.
+            crate::unattended::set_grant(hours);
+            Ok(Json(ActionResponse {
+                ok: true,
+                error: None,
+                password: None,
+                stopped: None,
+            }))
         }
         // Pilih monitor untuk sesi berikutnya (0 = primer). Ditolak bila
         // indeks di luar daftar display yang terdeteksi.
@@ -1054,6 +1105,68 @@ mod tests {
         // Status relay: "unknown" sebelum percobaan pertama, bukan "tidak ada".
         assert_eq!(v["relay"]["state"], "unknown");
         assert!(v["relay"].get("servers").is_some());
+        // Gerbang kehadiran: panel butuh keduanya untuk menggambar barisnya.
+        assert_eq!(v["unattendedPolicy"], "always", "bawaan = perilaku lama");
+        assert_eq!(v["unattendedGrantMs"], 0);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn aksi_kebijakan_kehadiran_hanya_menerima_kata_yang_dikenal() {
+        let (addr, token) = spawn().await;
+        let kirim = |nilai: &str| {
+            let body = format!(r#"{{"action":"unattended-policy","value":"{nilai}"}}"#);
+            http_request(
+                addr,
+                "POST",
+                "/action",
+                &[(TOKEN_HEADER, &token)],
+                Some(&body),
+            )
+        };
+        let (code, body) = kirim("besok");
+        assert_eq!(code, 200, "kata asing = respons 200 berisi error");
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false);
+        assert!(v["error"].as_str().unwrap_or("").contains("watched"));
+
+        let (_, body) = kirim("watched");
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], true);
+        let (_, body) = http_request(addr, "GET", "/status", &[(TOKEN_HEADER, &token)], None);
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["unattendedPolicy"], "watched");
+
+        // Dikembalikan ke bawaan supaya uji lain (dan PC penguji) tidak
+        // mewarisi kebijakan yang lebih ketat dari uji ini.
+        let (_, _) = kirim("always");
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn aksi_izin_kehadiran_tanpa_hours_ditolak_dan_nol_mencabut() {
+        let (addr, token) = spawn().await;
+        let (code, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(r#"{"action":"unattended-grant"}"#),
+        );
+        assert_eq!(code, 200);
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], false, "izin tanpa durasi bukan izin");
+
+        let (_, body) = http_request(
+            addr,
+            "POST",
+            "/action",
+            &[(TOKEN_HEADER, &token)],
+            Some(r#"{"action":"unattended-grant","hours":0}"#),
+        );
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["ok"], true);
+        let (_, body) = http_request(addr, "GET", "/status", &[(TOKEN_HEADER, &token)], None);
+        let v: serde_json::Value = serde_json::from_str(&body).expect("JSON valid");
+        assert_eq!(v["unattendedGrantMs"], 0, "0 jam = tidak ada izin");
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

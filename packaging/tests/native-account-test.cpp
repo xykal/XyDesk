@@ -34,6 +34,20 @@ int main(){
  assert(kebijakan.filePolicy==L"never"&&kebijakan.trustedDevices==3);
  auto lama=xydesk::session_view::parse(R"({"session":null})");
  assert(lama.filePolicy.empty()&&lama.trustedDevices==0);
+ // Gerbang kehadiran: kebijakan + sisa izin. Host lama tidak mengirim
+ // keduanya, dan panel harus memperlakukan itu sebagai "fitur tidak ada"
+ // (tombol mati), bukan sebagai "akses dimatikan".
+ auto hadir=xydesk::session_view::parse(R"({"session":null,"unattendedPolicy":"watched","unattendedGrantMs":1800000})");
+ assert(hadir.unattendedPolicy==L"watched"&&hadir.unattendedGrantMs==1800000);
+ assert(lama.unattendedPolicy.empty()&&lama.unattendedGrantMs==0);
+ // Tipe yang salah tidak boleh menjadi izin: angka sebagai string, atau
+ // sisa izin negatif yang terbaca sebagai bilangan bertanda.
+ auto rusak=xydesk::session_view::parse(R"({"session":null,"unattendedPolicy":"watched","unattendedGrantMs":"nanti"})");
+ assert(rusak.unattendedGrantMs==0);
+ auto negatif=xydesk::session_view::parse(R"({"session":null,"unattendedGrantMs":-5})");
+ assert(negatif.unattendedGrantMs==0);
+ auto mati=xydesk::session_view::parse(R"({"session":null,"unattendedPolicy":"off"})");
+ assert(mati.unattendedPolicy==L"off"&&mati.unattendedGrantMs==0);
  assert(xydesk::session_view::redmiNote12(L"23021RAAEG · Fixture"));assert(!xydesk::session_view::redmiNote12(L"Redmi Note 12 Pro"));assert(!xydesk::session_view::redmiNote12(L"Chrome di Android"));
  std::cout<<"Native account PKCE, randomness, callback parsing, profile and header safety: passed\n";
 }

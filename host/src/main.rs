@@ -773,6 +773,37 @@ async fn main() -> Result<()> {
                         })
                         .unwrap_or(false);
                     let ok = resumed || password_ok;
+                    // Gerbang kehadiran: password yang benar menjawab "siapa",
+                    // bukan "sekarang". Diperiksa SETELAH verifikasi password
+                    // supaya penolakan tidak bisa dipakai memetakan PC mana
+                    // yang kebijakannya ketat, dan hasilnya tidak pernah
+                    // dihitung sebagai tebakan gagal — pemilik yang mencoba
+                    // masuk ke PC-nya sendiri yang sedang terkunci tidak boleh
+                    // ikut terkena lockout brute force (lihat unattended.rs).
+                    //
+                    // Dan diperiksa SEBELUM token "ingat perangkat ini"
+                    // diterbitkan: token itu melewati password pada percobaan
+                    // berikutnya, jadi menerbitkannya untuk koneksi yang baru
+                    // saja ditolak sama dengan membatalkan kebijakan yang
+                    // menolaknya.
+                    let kehadiran = if ok {
+                        xydesk_host::unattended::check()
+                    } else {
+                        xydesk_host::unattended::Decision::Allow
+                    };
+                    let ok = ok && kehadiran.allowed();
+                    let password_ok = password_ok && ok;
+                    let resumed = resumed && ok;
+                    if let xydesk_host::unattended::Decision::Deny(sebab) = kehadiran {
+                        println!(
+                            "[xydesk-host] pairing dari {from} DITOLAK gerbang kehadiran: {}",
+                            sebab.as_str()
+                        );
+                        // Penundaan yang sama dengan password salah: dari luar,
+                        // keduanya harus tidak bisa dibedakan.
+                        tokio::time::sleep(pairguard::FAILURE_DELAY).await;
+                    }
+
                     let resume_token = if resumed {
                         msg.resume_token.clone()
                     } else if password_ok && msg.remember == Some(true) {
@@ -793,6 +824,14 @@ async fn main() -> Result<()> {
                     }
 
                     if ok {
+                        if let xydesk_host::unattended::Decision::AllowGranted { remaining_ms } =
+                            kehadiran
+                        {
+                            println!(
+                                "[xydesk-host] akses tanpa pendamping dipakai {from}; izin tersisa {}",
+                                xydesk_host::unattended::human_remaining(remaining_ms)
+                            );
+                        }
                         guard.record_success(&from);
                         // Izin membuka sesi diberikan DI SINI dan hanya di sini.
                         // Berumur pendek: kalau client tidak melanjutkan ke offer,
@@ -808,6 +847,14 @@ async fn main() -> Result<()> {
                             from,
                             label_suffix(label.as_ref())
                         );
+                    } else if !kehadiran.allowed() {
+                        // Sudah ditangani di atas (log + penundaan). Yang
+                        // penting di sini adalah apa yang TIDAK dilakukan:
+                        // tidak ada `record_failure`. Password yang benar di
+                        // waktu yang salah bukan tebakan, dan menghitungnya
+                        // akan mengunci pemiliknya sendiri selama lima menit
+                        // setelah tiga kali mencoba masuk ke PC yang memang
+                        // sedang ia kunci.
                     } else {
                         let baru_terkunci = guard.record_failure(&from, now);
                         if baru_terkunci {

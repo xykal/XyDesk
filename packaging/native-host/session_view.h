@@ -14,6 +14,9 @@ struct Snapshot {
  // Kebijakan berkas masuk ("ask"/"always"/"never") dan jumlah perangkat yang
  // pernah diingat. Kosong = host lama yang belum melaporkannya.
  std::wstring filePolicy;unsigned long trustedDevices=0;
+ // Gerbang kehadiran: kebijakan ("always"/"watched"/"off") dan sisa izin
+ // sementara dalam milidetik. Kosong/0 = host lama, atau tidak ada izin.
+ std::wstring unattendedPolicy;unsigned long long unattendedGrantMs=0;
 };
 inline std::wstring text(const nlohmann::json& object,const char* field){
  auto it=object.find(field);if(it==object.end()||!it->is_string())return {};
@@ -28,6 +31,8 @@ inline Snapshot parse(const std::string& raw){
  auto data=nlohmann::json::parse(raw,nullptr,false);if(!data.is_object()||!data.contains("session"))return {};
  Snapshot result;result.known=true;result.state=text(data,"state");
  result.filePolicy=text(data,"filePolicy");
+ result.unattendedPolicy=text(data,"unattendedPolicy");
+ if(data.contains("unattendedGrantMs")&&data["unattendedGrantMs"].is_number_unsigned())result.unattendedGrantMs=data["unattendedGrantMs"].get<unsigned long long>();
  if(data.contains("trustedFileDevices")&&data["trustedFileDevices"].is_number_unsigned())result.trustedDevices=data["trustedFileDevices"].get<unsigned long>();
  if(auto pending=data.find("pendingFile");pending!=data.end()&&pending->is_object()){
   const auto& offer=*pending;

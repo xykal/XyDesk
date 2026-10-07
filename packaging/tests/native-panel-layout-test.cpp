@@ -291,12 +291,44 @@ void testIncomingFileRow() {
             const int fx=xydesk::panel::centerX(l.forgetTrusted),fy=xydesk::panel::centerY(l.forgetTrusted);
             check(xydesk::panel::targetAt(l,Page::Connections,fx,fy)==Target::ForgetTrusted,"lupakan bisa diklik");
         }
+        // Baris kehadiran: satu baris penuh di bawah baris kebijakan berkas.
+        if(l.unattendedPolicy.w>0){
+            check(l.unattendedPolicy.y>=l.filePolicy.bottom(),"baris kehadiran di bawah baris kebijakan berkas");
+            check(!overlaps(l.unattendedPolicy,l.filePolicy)&&!overlaps(l.unattendedPolicy,l.forgetTrusted),"kehadiran tidak menimpa baris kebijakan");
+            check(!overlaps(l.unattendedPolicy,l.acceptFile)&&!overlaps(l.unattendedPolicy,l.trustFile)&&!overlaps(l.unattendedPolicy,l.rejectFile),"kehadiran tidak menimpa baris jawaban");
+            check(!overlaps(l.unattendedPolicy,l.stopSession)&&!overlaps(l.unattendedPolicy,l.sendFile),"kehadiran tidak menimpa baris sesi");
+            check(!overlaps(l.unattendedPolicy,l.unattendedGrant),"kebijakan akses dan izin tidak bertumpuk");
+            check(insidePanel(l,l.unattendedPolicy),"kehadiran di dalam jendela");
+            check(l.unattendedPolicy.right()<=l.workspaceShell.right(),"kehadiran tidak keluar kartu kerja");
+            check(l.unattendedPolicy.x==l.stopSession.x,"kehadiran lurus dengan kolom tombol lain");
+            check(l.unattendedPolicy.h==l.stopSession.h,"tinggi tombol kehadiran sama dengan tetangganya");
+            const int ux=xydesk::panel::centerX(l.unattendedPolicy),uy=xydesk::panel::centerY(l.unattendedPolicy);
+            check(xydesk::panel::targetAt(l,Page::Connections,ux,uy)==Target::UnattendedPolicy,"kebijakan akses bisa diklik");
+            check(xydesk::panel::targetAt(l,Page::Status,ux,uy)!=Target::UnattendedPolicy,"kebijakan akses tidak bocor ke halaman Status");
+            check(xydesk::panel::targetAt(l,Page::Pairing,ux,uy)!=Target::UnattendedPolicy,"kebijakan akses tidak bocor ke halaman Pairing");
+            check(xydesk::panel::targetAt(l,Page::Control,ux,uy)!=Target::UnattendedPolicy,"kebijakan akses tidak bocor ke halaman Kontrol");
+        }
+        if(l.unattendedGrant.w>0){
+            check(l.unattendedGrant.y==l.unattendedPolicy.y,"izin sebaris dengan kebijakan akses");
+            check(l.unattendedGrant.x>=l.unattendedPolicy.right(),"izin di kanan kebijakan akses");
+            check(l.unattendedGrant.right()<=l.workspaceShell.right(),"izin tidak keluar kartu kerja");
+            check(insidePanel(l,l.unattendedGrant),"izin di dalam jendela");
+            const int gx=xydesk::panel::centerX(l.unattendedGrant),gy=xydesk::panel::centerY(l.unattendedGrant);
+            check(xydesk::panel::targetAt(l,Page::Connections,gx,gy)==Target::UnattendedGrant,"izin bisa diklik");
+            check(xydesk::panel::targetAt(l,Page::Settings,gx,gy)!=Target::UnattendedGrant,"izin tidak bocor ke halaman Atur");
+        }
+        // Baris kehadiran tidak boleh mendorong petunjuk keluar dari konten.
+        if(l.unattendedPolicy.w>0&&l.hint.h>0){
+            check(l.unattendedPolicy.bottom()<=l.hint.bottom(),"baris kehadiran tidak melewati dasar konten");
+        }
     }
     check(std::string(xydesk::panel::targetName(Target::AcceptFile))=="AcceptFile","terima punya nama probe");
     check(std::string(xydesk::panel::targetName(Target::RejectFile))=="RejectFile","tolak punya nama probe");
     check(std::string(xydesk::panel::targetName(Target::TrustFile))=="TrustFile","terima & ingat punya nama probe");
     check(std::string(xydesk::panel::targetName(Target::FilePolicy))=="FilePolicy","kebijakan punya nama probe");
     check(std::string(xydesk::panel::targetName(Target::ForgetTrusted))=="ForgetTrusted","lupakan punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::UnattendedPolicy))=="UnattendedPolicy","kebijakan akses punya nama probe");
+    check(std::string(xydesk::panel::targetName(Target::UnattendedGrant))=="UnattendedGrant","izin punya nama probe");
 }
 
 void testTargetNames() {
