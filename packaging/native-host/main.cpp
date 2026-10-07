@@ -1073,14 +1073,14 @@ void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
                  {{cx + arm, cy + arm}, {cx + arm, cy - arm}}});
         } else {
             // Sudah dizoom: dua kotak bertumpuk = "pulihkan ukuran".
-            const int small = arm - 1;
+            const int shrunk = arm - 1;
             drawGlyphSegments(dc, glyph, thickness,
-                {{{cx - arm, cy - small}, {cx + small, cy - small}},
-                 {{cx - arm, cy - small}, {cx - arm, cy + arm}},
-                 {{cx + small, cy + arm}, {cx - arm, cy + arm}},
-                 {{cx + small, cy + arm}, {cx + small, cy - small}},
-                 {{cx - small, cy - arm}, {cx + arm, cy - arm}},
-                 {{cx + arm, cy - arm}, {cx + arm, cy + small}}});
+                {{{cx - arm, cy - shrunk}, {cx + shrunk, cy - shrunk}},
+                 {{cx - arm, cy - shrunk}, {cx - arm, cy + arm}},
+                 {{cx + shrunk, cy + arm}, {cx - arm, cy + arm}},
+                 {{cx + shrunk, cy + arm}, {cx + shrunk, cy - shrunk}},
+                 {{cx - shrunk, cy - arm}, {cx + arm, cy - arm}},
+                 {{cx + arm, cy - arm}, {cx + arm, cy + shrunk}}});
         }
     }
 }

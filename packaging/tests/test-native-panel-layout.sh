@@ -57,6 +57,22 @@ contract_binary="$out_dir/native-control-contract-test"
 # sama dan menangkap kelas kesalahan itu dalam hitungan detik. Ini BUKAN
 # pengganti build MSVC — hanya penyaring cepat, dan dilewati bila MinGW tidak
 # terpasang.
+# Nama yang dirampas makro Windows.
+#
+# MSVC menarik rpcndr.h lewat windows.h, dan di sana ada `#define small char`
+# (juga `near`, `far`, `hyper`). MinGW tidak selalu menariknya, jadi
+# `const int small = ...;` lolos pemeriksaan sintaks di sini lalu gagal di
+# runner Windows dengan "'int' followed by 'char' is illegal" — kelas galat
+# yang mahal karena baru ketahuan setelah antre di belakang build Rust.
+reserved_hits="$(grep -nE '\b(int|auto|float|double|bool)[[:space:]]+(small|near|far|hyper)[[:space:]]*[=;]' \
+    "$root/packaging/native-host"/*.cpp "$root/packaging/native-host"/*.h || true)"
+if [ -n "$reserved_hits" ]; then
+    echo "Nama variabel dirampas makro windows.h (small/near/far/hyper):" >&2
+    echo "$reserved_hits" >&2
+    exit 1
+fi
+echo "Nama variabel vs makro Windows: lulus."
+
 mingw="${MINGW_CXX:-x86_64-w64-mingw32-g++}"
 if command -v "$mingw" >/dev/null 2>&1; then
     "$mingw" -fsyntax-only -std=c++20 -DUNICODE -D_UNICODE \
