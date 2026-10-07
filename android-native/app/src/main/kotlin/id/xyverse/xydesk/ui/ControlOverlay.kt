@@ -687,7 +687,7 @@ private fun RoundControl(
         XyText(
             label,
             Xy.body.copy(
-                fontSize = if (isIconGlyph) (m.size * 0.32f).sp.coerceIn(12.sp, 24.sp) else 12.sp,
+                fontSize = if (isIconGlyph) (m.size * 0.32f).coerceIn(12f, 24f).sp else 12.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (selected || pressed) Color.White else Color(0xFFF1F5F9),
             ),
