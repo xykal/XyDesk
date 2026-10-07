@@ -387,17 +387,6 @@ jobs:
       # Tata letak panel digambar oleh kode yang sama dengan yang dipakai EXE
       # Windows; bagian angkanya murni C++ tanpa API Windows, jadi bisa
       # diperiksa di Linux lebih dulu sebelum runner Windows repot.
-      # MinGW dipasang supaya main.cpp ikut diurai di sini: kesalahan sintaks
-      # Win32 tidak perlu menunggu runner Windows yang antre di belakang
-      # build Rust. Lihat catatan di dalam skripnya.
-      - name: Pasang MinGW untuk pemeriksaan sintaks Win32
-        # Hanya compiler C++ x86-64-nya, bukan metapaket mingw-w64 yang juga
-        # menarik toolchain C, i686, dan runtime Ada/Fortran.
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends \
-            -o Acquire::Retries=3 g++-mingw-w64-x86-64
-
       - name: Uji tata letak panel native (tanpa Windows)
         run: packaging/tests/test-native-panel-layout.sh
 
