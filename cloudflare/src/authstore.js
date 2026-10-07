@@ -742,21 +742,24 @@ export class AuthStore {
     const user = await this.userFromRequest(request);
     if (!user) return json({ error: 'unauthorized' }, 401);
 
-    let name;
+    let name, picture;
     try {
-      ({ name } = await request.json());
+      const body = await request.json();
+      name = body.name;
+      picture = body.picture;
     } catch {
       return json({ error: 'bad-json' }, 400);
     }
-    name = String(name || '').trim().replace(/[\u0000-\u001f\u007f]/g, '');
-    if (name.length < 2 || name.length > 60) {
+    const cleanName = typeof name === 'string' ? name.trim().replace(/[\u0000-\u001f\u007f]/g, '') : '';
+    if (cleanName.length < 2 || cleanName.length > 60) {
       return json({ error: 'invalid-name' }, 400);
     }
 
     const current = await this.ctx.storage.transaction(async tx => {
       const fresh = await tx.get(`user:${user.email}`);
       if (!sameMember(fresh, user)) return null;
-      fresh.name = name;
+      fresh.name = cleanName;
+      if (typeof picture === 'string') fresh.picture = picture.trim();
       await tx.put(`user:${user.email}`, fresh);
       return fresh;
     });

@@ -9,18 +9,25 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -32,25 +39,26 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
- * "Ular" cahaya: segmen garis yang merayap mengikuti tepi pil (bukan berputar
- * di tengah). Kepala tebal & pekat, ekor menipis lewat beberapa sub-segmen.
+ * "Ular" cahaya: garis gradien yang merayap mengikuti tepi pil saat loading.
  */
 private fun DrawScope.drawSnake(measure: PathMeasure, t: Float) {
     val stroke = 3.dp.toPx()
@@ -72,7 +80,6 @@ private fun DrawScope.drawSnake(measure: PathMeasure, t: Float) {
     }
 }
 
-/** getSegment yang membungkus lewat titik nol path tertutup. */
 private fun segment(m: PathMeasure, len: Float, from: Float, to: Float, out: Path) {
     var a = from
     var b = to
@@ -85,14 +92,13 @@ private fun segment(m: PathMeasure, len: Float, from: Float, to: Float, out: Pat
 }
 
 /**
- * "Geser ke kanan untuk lanjut dengan Google". Knob bulat berlogo G digeser ke
- * ujung; saat mencapai ujung `onTrigger` dipanggil, lalu selama `loading`
- * garis gradien berputar mengelilingi pil.
+ * Tombol interaktif Google: dapat ditekan langsung (tap) maupun digeser (slide).
+ * Memberikan respons instan tanpa membingungkan pengguna atau terjebak loading.
  */
 @Composable
 fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Unit) {
     val density = LocalDensity.current
-    val knob = 46.dp
+    val knob = 44.dp
     val pad = 4.dp
     val offset = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
@@ -106,51 +112,90 @@ fun SlideToGoogle(loading: Boolean, enabled: Boolean = true, onTrigger: () -> Un
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
-            .height(54.dp)
+            .height(52.dp)
             .drawWithContent {
                 drawContent()
                 if (loading) drawSnake(measure, travel)
             }
-            .padding(2.dp)
             .clip(shape)
-            .background(Xy.overlay),
+            .background(Xy.bg)
+            .border(1.5.dp, Xy.line, shape)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                enabled = enabled && !loading,
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onTrigger()
+                },
+            ),
     ) {
         val maxPx = with(density) { (maxWidth - knob - pad * 2).toPx() }
         val progress = (offset.value / maxPx).coerceIn(0f, 1f)
-        Box(
-            Modifier.fillMaxSize().clip(shape).background(Xy.accent.copy(alpha = 0.14f + 0.40f * progress)),
-        )
-        Box(Modifier.fillMaxSize().padding(start = knob + 12.dp).alpha(1f - progress * 0.85f), contentAlignment = Alignment.CenterStart) {
-            XyText(if (loading) "Menghubungkan ke Google…" else "Geser untuk lanjut dengan Google", Xy.caption.copy(color = Xy.textHi))
-        }
+
+        // Indikator swipe ungu muda di belakang
         Box(
             Modifier
-                .padding(pad)
-                .offset { IntOffset(offset.value.roundToInt(), 0) }
-                .size(knob)
-                .shadow(10.dp, CircleShape, ambientColor = Xy.accent.copy(alpha = 0.35f), spotColor = Xy.accent.copy(alpha = 0.35f))
-                .clip(CircleShape)
-                .background(Color.White)
-                .pointerInput(enabled, loading, maxPx) {
-                    if (!enabled || loading) return@pointerInput
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            scope.launch {
-                                if (offset.value > maxPx * 0.85f) { haptic.performHapticFeedback(HapticFeedbackType.LongPress); offset.animateTo(maxPx, tween(120)); onTrigger() }
-                                else offset.animateTo(0f, spring(stiffness = 500f))
-                            }
-                        },
-                        onDragCancel = { scope.launch { offset.animateTo(0f) } },
-                    ) { change, dx ->
-                        change.consume()
-                        scope.launch { offset.snapTo((offset.value + dx).coerceIn(0f, maxPx)) }
-                    }
-                },
-            contentAlignment = Alignment.Center,
+                .fillMaxSize()
+                .clip(shape)
+                .background(Xy.accent.copy(alpha = 0.08f + 0.32f * progress)),
+        )
+
+        // Label teks di tengah tombol
+        Row(
+            Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
         ) {
-            GoogleMark(Modifier.size(22.dp))
+            if (loading) {
+                XyText("Menghubungkan ke Google…", Xy.body.copy(fontWeight = FontWeight.Medium, color = Xy.accent))
+            } else {
+                Spacer(Modifier.width(knob / 2))
+                XyText("Lanjutkan dengan Google", Xy.body.copy(fontWeight = FontWeight.SemiBold, color = Xy.textHi))
+            }
         }
-        androidx.compose.runtime.LaunchedEffect(loading) { if (!loading && offset.value > 0f) offset.animateTo(0f, tween(300)) }
+
+        // Knob bulat logo G yang bisa digeser atau ditekan
+        if (!loading) {
+            Box(
+                Modifier
+                    .padding(pad)
+                    .offset { IntOffset(offset.value.roundToInt(), 0) }
+                    .size(knob)
+                    .shadow(4.dp, CircleShape, ambientColor = Xy.accent.copy(alpha = 0.2f), spotColor = Xy.accent.copy(alpha = 0.3f))
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .border(1.dp, Xy.line, CircleShape)
+                    .pointerInput(enabled, loading, maxPx) {
+                        if (!enabled || loading) return@pointerInput
+                        detectHorizontalDragGestures(
+                            onDragEnd = {
+                                scope.launch {
+                                    if (offset.value > maxPx * 0.65f) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        offset.animateTo(maxPx, tween(120))
+                                        onTrigger()
+                                    } else {
+                                        offset.animateTo(0f, spring(stiffness = 500f))
+                                    }
+                                }
+                            },
+                            onDragCancel = { scope.launch { offset.animateTo(0f) } },
+                        ) { change, dx ->
+                            change.consume()
+                            scope.launch { offset.snapTo((offset.value + dx).coerceIn(0f, maxPx)) }
+                        }
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                GoogleMark(Modifier.size(22.dp))
+            }
+        }
+
+        LaunchedEffect(loading) {
+            if (!loading && offset.value > 0f) offset.animateTo(0f, tween(300))
+        }
     }
 }
-

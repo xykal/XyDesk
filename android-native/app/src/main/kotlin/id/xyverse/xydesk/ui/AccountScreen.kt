@@ -1,6 +1,11 @@
 package id.xyverse.xydesk.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,42 +34,46 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.Lifecycle
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.runtime.DisposableEffect
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.compose.rememberLauncherForActivityResult
-import android.os.Build
-import android.content.pm.PackageManager
-import android.Manifest
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import id.xyverse.xydesk.core.Images
 import id.xyverse.xydesk.core.Lang
+import id.xyverse.xydesk.core.RemoteImage
+import id.xyverse.xydesk.core.Sfx
 import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.core.StreamXy
+import id.xyverse.xydesk.net.Api
 import id.xyverse.xydesk.ui.kit.Icon
 import id.xyverse.xydesk.ui.kit.Social
 import id.xyverse.xydesk.ui.kit.SocialMark
 import id.xyverse.xydesk.ui.kit.Xy
 import id.xyverse.xydesk.ui.kit.XyButton
 import id.xyverse.xydesk.ui.kit.XyCard
+import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyIcon
+import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyRow
 import id.xyverse.xydesk.ui.kit.XyText
 import id.xyverse.xydesk.ui.kit.XyToggle
+import kotlinx.coroutines.launch
 
 /** Preferensi dan aksi yang bisa diubah dari tab Akun. */
 class Settings(
@@ -108,7 +117,7 @@ fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings
     ) { s ->
         when (s) {
             Sub.ROOT -> Root(email, onOpenUrl, settings, onLogout) { sub = it }
-            Sub.PROFILE -> SubPage("Profil", { sub = Sub.ROOT }) { ProfileBody(email, settings) }
+            Sub.PROFILE -> SubPage("Edit Profil", { sub = Sub.ROOT }) { ProfileBody(email, settings) }
             Sub.SECURITY -> SubPage("Keamanan", { sub = Sub.ROOT }) { SecurityBody(settings, onLogout) }
             Sub.PERMISSIONS -> SubPage("Izin", { sub = Sub.ROOT }) { PermissionsBody(settings) }
             Sub.ABOUT -> SubPage("Tentang", { sub = Sub.ROOT }) { AboutBody(settings.appVersion, onOpenUrl) }
@@ -120,27 +129,45 @@ fun AccountScreen(email: String, onOpenUrl: (String) -> Unit, settings: Settings
 
 @Composable
 private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings, onLogout: () -> Unit, go: (Sub) -> Unit) {
+    val store = settings.store
+    val displayName = store?.userName?.takeIf { it.isNotBlank() } ?: email.substringBefore("@").ifEmpty { "XyDesk" }
+    val photoUrl = store?.userPhoto.orEmpty()
+
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(Xy.pad)) {
         Spacer(Modifier.height(12.dp))
         XyText("Akun", Xy.display)
         Spacer(Modifier.height(20.dp))
+
+        // Kartu Profil Utama: Menampilkan nama, foto, dan email dengan tombol edit
         Row(
-            Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusL)).background(Xy.accentBrush)
-                .clickable(remember { MutableInteractionSource() }, null) { go(Sub.PROFILE) }.padding(18.dp),
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(Xy.radiusL))
+                .background(Xy.accentBrush)
+                .clickable(remember { MutableInteractionSource() }, null) { go(Sub.PROFILE) }
+                .padding(18.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Avatar(email, 52.dp)
+            AccountAvatar(name = displayName, photoUrl = photoUrl, size = 56.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
-                XyText(email.substringBefore("@").ifEmpty { "XyDesk" }, Xy.title.copy(color = Color.White))
-                XyText(email, Xy.caption.copy(color = Color.White.copy(alpha = 0.8f)))
+                XyText(displayName, Xy.title.copy(color = Color.White, fontWeight = FontWeight.Bold), maxLines = 1)
+                XyText(email, Xy.caption.copy(color = Color.White.copy(alpha = 0.85f)), maxLines = 1)
                 Spacer(Modifier.height(6.dp))
-                Box(Modifier.clip(RoundedCornerShape(Xy.pill)).background(Color.White.copy(alpha = 0.18f)).padding(horizontal = 10.dp, vertical = 3.dp)) {
-                    XyText("Akun Google", Xy.label.copy(color = Color.White))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(Xy.pill))
+                            .background(Color.White.copy(alpha = 0.22f))
+                            .padding(horizontal = 10.dp, vertical = 3.dp),
+                    ) {
+                        XyText("Edit Profil", Xy.label.copy(color = Color.White, fontWeight = FontWeight.SemiBold))
+                    }
                 }
             }
             XyIcon(Icon.CHEVRON, tint = Color.White, size = 20.dp)
         }
+
         Spacer(Modifier.height(16.dp))
         XyCard {
             XyText("UMUM", Xy.label)
@@ -217,27 +244,100 @@ private fun SubPage(title: String, onBack: () -> Unit, body: @Composable () -> U
     }
 }
 
+/**
+ * Halaman Edit Profil: Pengguna dapat mengubah nama tampilan dan foto profil,
+ * lalu menyimpannya ke server Cloudflare dan penyimpanan lokal.
+ */
 @Composable
 private fun ProfileBody(email: String, settings: Settings) {
+    val store = settings.store
+    val jwt = store?.jwt.orEmpty()
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val sfx = remember { Sfx(ctx) }
+    DisposableEffect(Unit) { onDispose { sfx.release() } }
+
+    var nameInput by remember { mutableStateOf(store?.userName?.takeIf { it.isNotBlank() } ?: email.substringBefore("@")) }
+    var photoInput by remember { mutableStateOf(store?.userPhoto.orEmpty()) }
+    var busy by remember { mutableStateOf(false) }
+    var notice by remember { mutableStateOf("") }
+    var tone by remember { mutableStateOf(Xy.textMid) }
+
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Avatar(email, 88.dp)
+        AccountAvatar(name = nameInput, photoUrl = photoInput, size = 96.dp)
         Spacer(Modifier.height(12.dp))
-        XyText(email.substringBefore("@").ifEmpty { "XyDesk" }, Xy.title)
-        XyText(email, Xy.caption)
+        XyText(nameInput.ifBlank { "Pengguna XyDesk" }, Xy.title.copy(fontSize = 18.sp, fontWeight = FontWeight.Bold))
+        XyText(email, Xy.caption.copy(color = Xy.textMid))
     }
+
     Spacer(Modifier.height(20.dp))
+
     XyCard {
-        XyText("MASUK DENGAN", Xy.label)
-        Spacer(Modifier.height(8.dp))
-        XyRow(Icon.KEY, "Google", email, chevron = false)
+        XyText("EDIT PROFIL", Xy.label)
+        Spacer(Modifier.height(12.dp))
+
+        XyField(
+            value = nameInput,
+            onValueChange = { nameInput = it; if (notice.isNotBlank()) notice = "" },
+            label = "Nama Tampilan",
+            hint = "Nama kamu di ruang obrolan",
+            enabled = !busy,
+        )
+
+        Spacer(Modifier.height(14.dp))
+
+        XyField(
+            value = photoInput,
+            onValueChange = { photoInput = it.trim(); if (notice.isNotBlank()) notice = "" },
+            label = "URL Foto Profil (Opsional)",
+            hint = "https://lh3.googleusercontent.com/...",
+            enabled = !busy,
+        )
+
+        if (notice.isNotBlank()) {
+            Spacer(Modifier.height(14.dp))
+            XyNotice(notice, tone)
+        }
+
+        Spacer(Modifier.height(18.dp))
+
+        val canSave = !busy && nameInput.trim().length >= 2 && nameInput.trim() != (store?.userName.orEmpty()) || photoInput != store?.userPhoto.orEmpty()
+
+        XyButton(
+            label = if (busy) "Menyimpan…" else "Simpan Perubahan",
+            enabled = canSave && nameInput.trim().length >= 2,
+        ) {
+            busy = true
+            notice = ""
+            scope.launch {
+                runCatching {
+                    val cleanName = nameInput.trim()
+                    val cleanPhoto = photoInput.trim()
+                    if (jwt.isNotBlank()) {
+                        Api.updateProfile(jwt, cleanName, cleanPhoto.ifBlank { null })
+                    }
+                    store?.userName = cleanName
+                    store?.userPhoto = cleanPhoto.ifBlank { null }
+                    sfx.confirm()
+                    notice = "Profil berhasil disimpan!"
+                    tone = Xy.success
+                }.onFailure {
+                    notice = it.message ?: "Gagal memperbarui profil."
+                    tone = Xy.danger
+                }
+                busy = false
+            }
+        }
     }
+
     Spacer(Modifier.height(16.dp))
     XyCard {
-        XyText("PERANGKAT INI", Xy.label)
+        XyText("INFORMASI AKUN", Xy.label)
         Spacer(Modifier.height(8.dp))
-        XyRow(Icon.PHONE, settings.deviceLabel, "Nama yang dilihat host saat pairing.", chevron = false)
-        XyRow(Icon.CLOCK, "Riwayat sesi", "${settings.historyCount} sesi tersimpan di HP ini.", chevron = false)
-        XyRow(Icon.MONITOR, "Versi aplikasi", "XyDesk ${settings.appVersion}", chevron = false)
+        XyRow(Icon.KEY, "Alamat Email", email, chevron = false)
+        XyRow(Icon.PHONE, "Perangkat Ini", settings.deviceLabel, chevron = false)
+        XyRow(Icon.CLOCK, "Riwayat Sesi", "${settings.historyCount} sesi di perangkat ini", chevron = false)
+        XyRow(Icon.MONITOR, "Versi XyDesk", "v${settings.appVersion}", chevron = false)
     }
 }
 
@@ -302,10 +402,28 @@ private fun PermissionsBody(settings: Settings) {
     XyButton("Buka pengaturan aplikasi", ghost = true, onClick = settings.onOpenAppSettings)
 }
 
+/**
+ * Avatar akun: menampilkan foto profil asli bila tersedia, atau inisial nama berlatar ungu.
+ */
 @Composable
-private fun Avatar(email: String, size: Dp) {
-    Box(Modifier.size(size).background(Color.White, CircleShape).border(2.dp, Xy.accent.copy(alpha = 0.35f), CircleShape), contentAlignment = Alignment.Center) {
-        XyText(email.take(1).ifEmpty { "X" }.uppercase(), Xy.display.copy(fontSize = (size.value * 0.42f).sp, color = Xy.accent))
+private fun AccountAvatar(name: String, photoUrl: String, size: Dp) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Xy.accent)
+            .border(2.dp, Color.White.copy(alpha = 0.85f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (photoUrl.isNotBlank() && photoUrl.startsWith("https://")) {
+            RemoteImage(url = photoUrl, modifier = Modifier.fillMaxSize())
+        } else {
+            val initial = name.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "X"
+            XyText(
+                initial,
+                Xy.display.copy(fontSize = (size.value * 0.40f).sp, color = Color.White, fontWeight = FontWeight.Bold),
+            )
+        }
     }
 }
 

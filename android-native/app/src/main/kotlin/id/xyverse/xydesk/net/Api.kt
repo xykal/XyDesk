@@ -43,12 +43,27 @@ object Api {
         post("/auth/request-otp", JSONObject().put("email", email))
     }
 
-    /** Mengembalikan JWT XyDesk. */
-    suspend fun verifyOtp(email: String, otp: String): String =
-        post("/auth/verify-otp", JSONObject().put("email", email).put("otp", otp)).getString("token")
+    /** Mengembalikan respons verify-otp: token dan objek profil user. */
+    suspend fun verifyOtp(email: String, otp: String): JSONObject =
+        post("/auth/verify-otp", JSONObject().put("email", email).put("otp", otp))
 
     suspend fun googleLogin(idToken: String): JSONObject =
         post("/auth/google", JSONObject().put("id_token", idToken))
+
+    suspend fun updateProfile(jwt: String, name: String, photo: String? = null): JSONObject =
+        post("/auth/profile", JSONObject().put("name", name).apply { if (!photo.isNullOrBlank()) put("picture", photo) }, jwt)
+
+    suspend fun me(jwt: String): JSONObject = withContext(Dispatchers.IO) {
+        val req = Request.Builder()
+            .url(BuildConfig.API_URL + "/auth/me")
+            .header("Authorization", "Bearer $jwt")
+            .build()
+        http.newCall(req).execute().use { res ->
+            val text = res.body?.string().orEmpty()
+            if (!res.isSuccessful) throw ApiException(res.code, errorMessage(text, res.code))
+            if (text.isBlank()) JSONObject() else JSONObject(text)
+        }
+    }
 
     suspend fun signalToken(jwt: String, deviceId: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder()
