@@ -113,10 +113,30 @@ class MainActivity : ComponentActivity() {
                     } else if (!loggedIn) {
                         LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
+                            lifecycleScope.launch {
+                                runCatching {
+                                    val user = id.xyverse.xydesk.net.Api.me(token).optJSONObject("user")
+                                    val name = user?.optString("name")
+                                    val pic = user?.optString("picture")
+                                    if (!name.isNullOrBlank()) store.userName = name
+                                    if (!pic.isNullOrBlank()) store.userPhoto = pic
+                                }
+                            }
                         }
                     } else {
                         var refresh by remember { mutableStateOf(0) }
                         LifecycleResumeEffect(Unit) { refresh++; onPauseOrDispose {} }
+                        LaunchedEffect(jwt) {
+                            if (!jwt.isNullOrBlank() && store.userName.isNullOrBlank()) {
+                                runCatching {
+                                    val user = id.xyverse.xydesk.net.Api.me(jwt!!).optJSONObject("user")
+                                    val name = user?.optString("name")
+                                    val pic = user?.optString("picture")
+                                    if (!name.isNullOrBlank()) store.userName = name
+                                    if (!pic.isNullOrBlank()) store.userPhoto = pic
+                                }
+                            }
+                        }
                         val history by store.observeHistory().collectAsState()
                         HomeShell(
                             email = store.email.orEmpty(),

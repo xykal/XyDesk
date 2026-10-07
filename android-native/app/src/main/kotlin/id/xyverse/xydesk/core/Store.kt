@@ -27,6 +27,14 @@ class Store(context: Context) {
         get() = prefs.getString("email", null)
         set(v) = prefs.edit().putString("email", v).apply()
 
+    var userName: String?
+        get() = prefs.getString("userName", null)
+        set(v) = prefs.edit().putString("userName", v).apply()
+
+    var userPhoto: String?
+        get() = prefs.getString("userPhoto", null)
+        set(v) = prefs.edit().putString("userPhoto", v).apply()
+
     var lastHost: String
         get() = prefs.getString("lastHost", "").orEmpty()
         set(v) = prefs.edit().putString("lastHost", v).apply()

@@ -1085,10 +1085,58 @@ void paintCaptionButtons(Surface& surface, const PanelLayout& layout, HDC dc) {
     }
 }
 
+void paintXyDeskLogoMark(Surface& surface, HDC dc, const Rect& box, bool roundedBg = true) {
+    const int size = std::min(box.w, box.h);
+    if (size < 12) return;
+    const Rect centerBox{box.x + (box.w - size) / 2, box.y + (box.h - size) / 2, size, size};
+    if (roundedBg) {
+        const int radius = std::max(4, size * 26 / 100);
+        fillRoundedOpaque(surface, centerBox, radius, kAccent);
+    }
+    const int stroke = std::max(2, size * 18 / 100);
+    HPEN penRibbon = CreatePen(PS_SOLID, stroke, RGB(255, 255, 255));
+    HPEN penBack = CreatePen(PS_SOLID, stroke, RGB(221, 214, 254)); // lavender #DDD6FE
+    HPEN oldPen = static_cast<HPEN>(SelectObject(dc, penBack));
+
+    // Lengan silang belakang (kiri-atas ke kanan-bawah)
+    const int x1 = centerBox.x + size * 22 / 100;
+    const int y1 = centerBox.y + size * 22 / 100;
+    const int x2 = centerBox.x + size * 78 / 100;
+    const int y2 = centerBox.y + size * 78 / 100;
+    MoveToEx(dc, x1, y1, nullptr);
+    LineTo(dc, x2, y2);
+
+    // Pita utama depan (kanan-atas ke kiri-bawah)
+    SelectObject(dc, penRibbon);
+    const int x3 = centerBox.x + size * 78 / 100;
+    const int y3 = centerBox.y + size * 22 / 100;
+    const int x4 = centerBox.x + size * 22 / 100;
+    const int y4 = centerBox.y + size * 78 / 100;
+    MoveToEx(dc, x3, y3, nullptr);
+    LineTo(dc, x4, y4);
+
+    // Glint bintang tengah putih
+    const int cx = centerBox.x + size / 2;
+    const int cy = centerBox.y + size / 2;
+    const int dotR = std::max(2, stroke * 35 / 100);
+    HBRUSH brushWhite = CreateSolidBrush(RGB(255, 255, 255));
+    HBRUSH oldBrush = static_cast<HBRUSH>(SelectObject(dc, brushWhite));
+    Ellipse(dc, cx - dotR, cy - dotR, cx + dotR + 1, cy + dotR + 1);
+
+    SelectObject(dc, oldPen);
+    SelectObject(dc, oldBrush);
+    DeleteObject(penRibbon);
+    DeleteObject(penBack);
+    DeleteObject(brushWhite);
+}
+
 void paintLogo(Surface& surface, const PanelLayout& layout, HDC dc) {
-    (void)surface;
-    HICON icon=static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr),MAKEINTRESOURCEW(IDI_XYDESK),IMAGE_ICON,layout.logo.w,layout.logo.h,LR_SHARED));
-    if(icon)DrawIconEx(dc,layout.logo.x,layout.logo.y,icon,layout.logo.w,layout.logo.h,0,nullptr,DI_NORMAL);
+    HICON icon = static_cast<HICON>(LoadImageW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_XYDESK), IMAGE_ICON, layout.logo.w, layout.logo.h, LR_SHARED));
+    if (icon) {
+        DrawIconEx(dc, layout.logo.x, layout.logo.y, icon, layout.logo.w, layout.logo.h, 0, nullptr, DI_NORMAL);
+    } else {
+        paintXyDeskLogoMark(surface, dc, layout.logo, true);
+    }
 }
 
 // ── Sidebar ────────────────────────────────────────────────────────────
@@ -1138,6 +1186,7 @@ void tickAnimation(HWND hwnd) {
     bool more = false;
     pollGate(hwnd);
     if (g.gateMotion.running) more = true;
+    if (g.gateLogin.valid() || g.gateOtp.valid() || g.gateRestore.valid()) more = true;
     if (g.pageT < 1.0f) {
         g.pageT = std::min(1.0f, g.pageT + 0.10f); // ±160ms
         more = g.pageT < 1.0f;
@@ -1466,6 +1515,7 @@ void probeAccount(HWND hwnd) {
     } catch (...) {
         // Tanpa thread, gerbang tetap bisa dipakai secara manual.
     }
+    startAnim(hwnd);
 }
 
 void beginSignIn(HWND hwnd) {
@@ -1480,6 +1530,7 @@ void beginSignIn(HWND hwnd) {
         g.gate.fail("Proses login tidak dapat dimulai.");
     }
     beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+    startAnim(hwnd);
 }
 
 std::string narrow(const std::wstring& text) {
@@ -1598,6 +1649,7 @@ void beginOtpRequest(HWND hwnd) {
         g.gateForm.onOffline();
     }
     beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+    startAnim(hwnd);
 }
 
 /** Tukar enam digit jadi sesi (`/auth/verify-otp`) di utas latar. */
@@ -1616,6 +1668,7 @@ void beginOtpVerify(HWND hwnd) {
         g.gateForm.onOffline();
     }
     beginGateMotion(hwnd, xydesk::onboarding::kPressMs);
+    startAnim(hwnd);
 }
 
 /** Tombol utama formulir: kirim kode atau masuk, tergantung langkah. */
@@ -1867,14 +1920,13 @@ void paintGate(Surface& surface, HDC dc) {
         return Rect{r.x, r.y + dy + mixInt(lift, 0, t), r.w, r.h};
     };
 
-    // Tanda XyDesk: lingkaran aksen yang mengembang sedikit (easeOutBack).
+    // Tanda XyDesk: logo resmi pita geometris XyDesk yang mengembang halus (easeOutBack).
     {
         const float t = easeOutBack(staggered(raw, 1, xydesk::panel::GateLayout::kSteps));
         const Rect base = shifted(l.mark, 1);
         const int size = mixInt(base.w * 7 / 10, base.w, t);
         const Rect mark{base.x + (base.w - size) / 2, base.y + (base.h - size) / 2, size, size};
-        fillCircleOpaque(surface, mark, kAccent);
-        drawTextCentered(dc, L"Xy", mark, g.fontTitle, kOnAccent);
+        paintXyDeskLogoMark(surface, dc, mark, true);
     }
 
     using xydesk::emaillogin::Step;
