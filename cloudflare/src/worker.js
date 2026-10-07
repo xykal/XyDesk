@@ -608,6 +608,10 @@ async function handleChat(request, url, env) {
   headers.set('x-xydesk-email', user.email);
   headers.set('x-xydesk-name', typeof user.name === 'string' ? user.name : '');
   headers.set('x-xydesk-tier', user.tier === 'vip' ? 'vip' : 'free');
+  // Foto profil ikut supaya gelembung chat punya wajah, bukan hanya inisial.
+  // Ruang chat menyaringnya lagi (lihat safePhoto) — Worker tidak dianggap
+  // sumber tepercaya untuk URL yang akan dimuat semua orang.
+  headers.set('x-xydesk-photo', typeof user.picture === 'string' ? user.picture : '');
   const inner = path === '/chat/history' ? 'https://chat/history' : 'https://chat/ws';
   return stub.fetch(new Request(inner, { method: request.method, headers }));
 }

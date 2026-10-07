@@ -10,6 +10,9 @@ import {
   RATE_WINDOW_MS,
   avatarHue,
   buildMessage,
+  buildReply,
+  replySnippet,
+  safePhoto,
   displayName,
   parseIncoming,
   pickName,
@@ -114,7 +117,7 @@ test('pesan siar tidak memuat email mentah', () => {
 
 test('amplop masuk hanya menerima msg dan ping', () => {
   assert.deepEqual(parseIncoming(JSON.stringify({ type: 'ping' })), { ok: true, kind: 'ping' });
-  assert.deepEqual(parseIncoming(JSON.stringify({ type: 'msg', text: ' halo ' })), { ok: true, kind: 'msg', text: 'halo' });
+  assert.deepEqual(parseIncoming(JSON.stringify({ type: 'msg', text: ' halo ' })), { ok: true, kind: 'msg', text: 'halo', replyTo: '' });
   assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: '   ' })).error, 'kosong');
   assert.equal(parseIncoming(JSON.stringify({ type: 'kick' })).error, 'jenis-tidak-dikenal');
   assert.equal(parseIncoming('bukan json').error, 'bukan-json');
@@ -221,4 +224,78 @@ test('non-websocket di /ws ditolak 426', async () => {
     headers: { 'x-xydesk-email': 'budi@xydesk.my.id' },
   }));
   assert.equal(res.status, 426);
+});
+
+// ── Foto profil ─────────────────────────────────────────────────────────────
+
+test('foto profil hanya diterima dari host yang dikenal dan lewat https', () => {
+  assert.equal(safePhoto('https://lh3.googleusercontent.com/a/abc=s96-c'), 'https://lh3.googleusercontent.com/a/abc=s96-c');
+  assert.equal(safePhoto('https://xydesk.my.id/foto/budi.jpg'), 'https://xydesk.my.id/foto/budi.jpg');
+  // Host asing dipakai sebagai beacon: pemiliknya akan melihat IP semua orang
+  // yang sedang membuka ruang chat.
+  assert.equal(safePhoto('https://pelacak.example/pixel.png'), null);
+  assert.equal(safePhoto('http://lh3.googleusercontent.com/a/abc'), null);
+  assert.equal(safePhoto('javascript:alert(1)'), null);
+  assert.equal(safePhoto(`https://lh3.googleusercontent.com/${'a'.repeat(600)}`), null);
+  assert.equal(safePhoto(null), null);
+  assert.equal(safePhoto(''), null);
+});
+
+test('pesan membawa foto yang sudah disaring, bukan apa adanya', () => {
+  const ok = buildMessage({ id: '1', email: 'b@x.id', name: 'Budi', tier: 'free', text: 'halo', at: 1, photo: 'https://lh3.googleusercontent.com/a/x' });
+  assert.equal(ok.photo, 'https://lh3.googleusercontent.com/a/x');
+  const bad = buildMessage({ id: '2', email: 'b@x.id', name: 'Budi', tier: 'free', text: 'halo', at: 1, photo: 'https://pelacak.example/p.png' });
+  assert.equal(bad.photo, null);
+  const none = buildMessage({ id: '3', email: 'b@x.id', name: 'Budi', tier: 'free', text: 'halo', at: 1 });
+  assert.equal(none.photo, null);
+});
+
+// ── Balasan ────────────────────────────────────────────────────────────────
+
+test('cuplikan balasan satu baris dan dipotong rapi', () => {
+  assert.equal(replySnippet('halo\n\nsemua'), 'halo semua');
+  assert.equal(replySnippet('  spasi   rapat '), 'spasi rapat');
+  const panjang = 'a'.repeat(200);
+  assert.equal(replySnippet(panjang).length, 90);
+  assert.ok(replySnippet(panjang).endsWith('…'));
+  assert.equal(replySnippet(null), '');
+});
+
+test('kutipan diambil dari riwayat server, bukan dari client', () => {
+  const history = [{ id: 'abc', from: 'Budi', text: 'ini kalimat asli' }];
+  assert.deepEqual(buildReply(history, 'abc'), { id: 'abc', from: 'Budi', text: 'ini kalimat asli' });
+  // Id yang tidak ada di riwayat tidak menghasilkan kutipan — client tidak
+  // bisa menaruh kalimat karangan ke mulut orang lain.
+  assert.equal(buildReply(history, 'tidak-ada'), null);
+  assert.equal(buildReply(history, ''), null);
+  assert.equal(buildReply(history, null), null);
+  assert.equal(buildReply(null, 'abc'), null);
+});
+
+test('replyTo hanya diterima bila bentuknya id yang wajar', () => {
+  assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: 'ya', replyTo: 'a1-b2_c3' })).replyTo, 'a1-b2_c3');
+  assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: 'ya', replyTo: 'spasi di dalam' })).replyTo, '');
+  assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: 'ya', replyTo: 'x'.repeat(65) })).replyTo, '');
+  assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: 'ya', replyTo: { id: 'x' } })).replyTo, '');
+  // Metadata yang aneh tidak boleh menggagalkan pesannya.
+  assert.equal(parseIncoming(JSON.stringify({ type: 'msg', text: 'ya', replyTo: 'x'.repeat(65) })).ok, true);
+});
+
+test('balasan nyata tersusun dari riwayat saat pesan masuk', async () => {
+  const room = new ChatRoom(fakeCtx([]), {});
+  const ws = fakeSocket();
+  ws.serializeAttachment({ email: 'budi@xydesk.my.id', name: 'Budi', tier: 'free', stamps: [] });
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'msg', text: 'pesan pertama' }));
+  const first = (await room.history())[0];
+
+  const other = fakeSocket();
+  other.serializeAttachment({ email: 'sari@xydesk.my.id', name: 'Sari', tier: 'free', stamps: [] });
+  await room.webSocketMessage(other, JSON.stringify({ type: 'msg', text: 'setuju', replyTo: first.id }));
+
+  const second = (await room.history())[1];
+  assert.equal(second.reply.id, first.id);
+  assert.equal(second.reply.from, 'Budi');
+  assert.equal(second.reply.text, 'pesan pertama');
+  // Pesan biasa tetap tanpa kutipan.
+  assert.equal(first.reply, null);
 });
