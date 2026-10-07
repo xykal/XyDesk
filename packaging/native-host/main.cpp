@@ -851,6 +851,15 @@ bool targetEnabled(Target target) {
     case Target::ForgetTrusted:
         // Tombol yang tidak punya apa pun untuk dilupakan adalah tombol mati.
         return controlChannel.endpoint.has_value() && sessionView.trustedDevices > 0 && !filePolicyPending.valid();
+    case Target::UnattendedPolicy:
+        // Host lama tidak melaporkan kebijakan kehadiran sama sekali; tombol
+        // yang mengubah sesuatu yang tidak ada hanya akan menipu.
+        return controlChannel.endpoint.has_value() && !sessionView.unattendedPolicy.empty() && !filePolicyPending.valid();
+    case Target::UnattendedGrant:
+        // Izin sementara hanya berarti pada kebijakan "hanya saat saya ada":
+        // pada "kapan saja" ia tidak menambah apa pun, dan pada "tolak semua"
+        // ia memang tidak boleh menambah apa pun.
+        return controlChannel.endpoint.has_value() && sessionView.unattendedPolicy == L"watched" && !filePolicyPending.valid();
     case Target::CopyId:
         return !g.deviceId.empty();
     case Target::CopyPassword:
@@ -872,6 +881,25 @@ std::wstring forgetTrustedLabel() {
     return L"Lupakan "+std::to_wstring(sessionView.trustedDevices)+L" perangkat tepercaya";
 }
 
+/// Kebijakan kehadiran dalam kalimat pemilik PC, bukan nama varian.
+std::wstring unattendedPolicyLabel() {
+    const auto& value=sessionView.unattendedPolicy;
+    if(value==L"watched")return L"Akses: hanya saat saya ada";
+    if(value==L"off")return L"Akses: tolak semua koneksi";
+    return L"Akses: kapan saja";
+}
+
+/// Sisa izin dibulatkan ke atas, seperti di sisi host: angka nol di sebelah
+/// izin yang masih berlaku akan dibaca sebagai sudah habis.
+std::wstring unattendedGrantLabel() {
+    const auto ms=sessionView.unattendedGrantMs;
+    if(ms==0)return L"Izinkan 8 jam tanpa saya";
+    const unsigned long long minutes=(ms+59999)/60000;
+    if(minutes<60)return L"Cabut izin ("+std::to_wstring(minutes)+L" menit)";
+    const unsigned long long hours=(minutes+59)/60;
+    return L"Cabut izin ("+std::to_wstring(hours)+L" jam)";
+}
+
 std::wstring targetLabel(Target target) {
     switch (target) {
     case Target::Start: return L"Mulai host";
@@ -887,6 +915,8 @@ std::wstring targetLabel(Target target) {
     case Target::RejectFile: return L"Tolak";
     case Target::FilePolicy: return filePolicyLabel();
     case Target::ForgetTrusted: return forgetTrustedLabel();
+    case Target::UnattendedPolicy: return unattendedPolicyLabel();
+    case Target::UnattendedGrant: return unattendedGrantLabel();
     case Target::CopyId:
     case Target::CopyPassword: return L"Salin";
     case Target::PagePairing:return L"Buka akses host";
@@ -1236,6 +1266,12 @@ void paintConnection(Surface& surface,const PanelLayout& layout,HDC dc,Rect card
             if(sessionView.trustedDevices>0&&layout.forgetTrusted.valid())
                 paintButton(surface,layout,dc,Target::ForgetTrusted,layout.forgetTrusted);
             below=layout.filePolicy.bottom();
+        }
+        if(!sessionView.unattendedPolicy.empty()&&layout.unattendedPolicy.valid()){
+            paintButton(surface,layout,dc,Target::UnattendedPolicy,layout.unattendedPolicy);
+            if(sessionView.unattendedPolicy==L"watched"&&layout.unattendedGrant.valid())
+                paintButton(surface,layout,dc,Target::UnattendedGrant,layout.unattendedGrant);
+            below=layout.unattendedPolicy.bottom();
         }
         workspaceText(dc,L"Remote HP dari PC  ·  Premium",{x,below+px(12),width,px(22)},g.fontSmall,kMuted);
         workspaceText(dc,L"Arah HP → PC sudah aktif. Arah PC → HP dikunci sampai langganan Premium.",{x,below+px(36),width,px(40)},g.fontSmall,kMuted);
@@ -2417,6 +2453,34 @@ void activateTarget(HWND hwnd, Target target) {
         filePolicyNote=L"Semua perangkat tepercaya dilupakan.";
         try{filePolicyPending=std::async(std::launch::async,[endpoint]{return xydesk::panel_control::action(endpoint,"{\"action\":\"file-trust-clear\"}");});}
         catch(...){setFlash(L"Gagal melupakan perangkat.",kBad);}
+        break;
+    }
+    case Target::UnattendedPolicy: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(filePolicyPending.valid())break;
+        // Putaran tiga nilai dengan aturan yang sama seperti kebijakan
+        // berkas: nilai berikutnya dihitung dari laporan host, bukan dari
+        // tebakan panel.
+        const std::wstring now=sessionView.unattendedPolicy;
+        const char* next = now==L"always" ? "watched" : (now==L"watched" ? "off" : "always");
+        const auto endpoint=*controlChannel.endpoint;
+        const auto body=std::string("{\"action\":\"unattended-policy\",\"value\":\"")+next+"\"}";
+        filePolicyNote=L"Kebijakan akses diubah.";
+        try{filePolicyPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});}
+        catch(...){setFlash(L"Gagal mengubah kebijakan akses.",kBad);}
+        break;
+    }
+    case Target::UnattendedGrant: {
+        if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
+        if(filePolicyPending.valid())break;
+        // Tombol yang sama memberi dan mencabut: saat izin sedang berjalan,
+        // satu-satunya hal yang masuk akal untuk ditekan adalah mencabutnya.
+        const bool mencabut=sessionView.unattendedGrantMs>0;
+        const auto endpoint=*controlChannel.endpoint;
+        const auto body=std::string("{\"action\":\"unattended-grant\",\"hours\":")+(mencabut?"0":"8")+"}";
+        filePolicyNote=mencabut?L"Izin akses dicabut.":L"Izin akses 8 jam diberikan.";
+        try{filePolicyPending=std::async(std::launch::async,[endpoint,body]{return xydesk::panel_control::action(endpoint,body);});}
+        catch(...){setFlash(L"Gagal mengubah izin akses.",kBad);}
         break;
     }
     case Target::AcceptFile:

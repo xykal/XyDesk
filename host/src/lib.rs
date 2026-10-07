@@ -79,6 +79,7 @@ pub mod pixfmt;
 pub mod screen;
 pub mod session;
 pub mod software_video;
+pub mod unattended;
 pub mod video;
 /// Virtual display driver — solusi hitam di VM/RDP seperti AnyDesk/RustDesk
 pub mod virtual_display;

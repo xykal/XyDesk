@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.11.13](./6.11.13.md) - 2026-10-06 — Gerbang kehadiran: PC bisa menolak koneksi saat tidak ada yang menungguinya, plus izin sementara sebelum pergi
 - [6.11.12](./6.11.12.md) - 2026-10-06 — Konfirmasi `DONE_OK` di transfer berkas: "terkirim" hanya ditulis saat berkasnya benar-benar tersimpan
 - [6.8.8](./6.8.8.md) - 2026-09-29 — Encoder hardware AMD/Intel lewat Media Foundation (NVENC > MFT > openh264), CRT statis, rilis draft
 - [6.8.7](./6.8.7.md) - 2026-09-28 — Resolusi+FPS otomatis (web & APK), APK akhirnya mengirim preset video ke host

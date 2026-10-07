@@ -110,6 +110,8 @@ enum class Target {
     RejectFile,
     FilePolicy,
     ForgetTrusted,
+    UnattendedPolicy,
+    UnattendedGrant,
 };
 
 inline const char* targetName(Target target) {
@@ -146,6 +148,8 @@ inline const char* targetName(Target target) {
     case Target::TrustFile: return "TrustFile";
     case Target::FilePolicy: return "FilePolicy";
     case Target::ForgetTrusted: return "ForgetTrusted";
+    case Target::UnattendedPolicy: return "UnattendedPolicy";
+    case Target::UnattendedGrant: return "UnattendedGrant";
     case Target::RejectFile: return "RejectFile";
     default: return "None";
     }
@@ -224,6 +228,10 @@ struct PanelLayout {
     // Baris kebijakan: putar ask/always/never dan lupakan perangkat.
     Rect filePolicy{};
     Rect forgetTrusted{};
+    // Baris kehadiran: siapa boleh menyambung saat tidak ada orang di sini,
+    // dan izin sementara untuk ditinggal pergi.
+    Rect unattendedPolicy{};
+    Rect unattendedGrant{};
 
     // Halaman Pairing.
     Rect idCard{};
@@ -431,6 +439,14 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
         l.filePolicy = Rect{l.stopSession.x, l.acceptFile.bottom() + gap, maxValue(policyW, 0), l.stopSession.h};
         const int forgetW = minValue(px(210), right - (l.filePolicy.right() + gap));
         l.forgetTrusted = Rect{l.filePolicy.right() + gap, l.filePolicy.y, maxValue(forgetW, 0), l.filePolicy.h};
+
+        // Baris keempat: gerbang kehadiran. Dipisah dari baris berkas karena
+        // menjawab pertanyaan yang lain — bukan "apa yang boleh ditulis ke
+        // disk saya", melainkan "siapa boleh masuk saat saya tidak di sini".
+        const int presenceW = minValue(px(246), right - l.stopSession.x);
+        l.unattendedPolicy = Rect{l.stopSession.x, l.filePolicy.bottom() + gap, maxValue(presenceW, 0), l.stopSession.h};
+        const int grantW = minValue(px(214), right - (l.unattendedPolicy.right() + gap));
+        l.unattendedGrant = Rect{l.unattendedPolicy.right() + gap, l.unattendedPolicy.y, maxValue(grantW, 0), l.unattendedPolicy.h};
     }
 
     // Halaman Kontrol: dua baris tombol aksi.
@@ -479,6 +495,8 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::RejectFile:
     case Target::FilePolicy:
     case Target::ForgetTrusted:
+    case Target::UnattendedPolicy:
+    case Target::UnattendedGrant:
         return page == Page::Connections;
     default:
         return true;
@@ -523,6 +541,8 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (targetOnPage(Target::RejectFile, page) && l.rejectFile.valid() && l.rejectFile.contains(x, y)) return Target::RejectFile;
     if (targetOnPage(Target::FilePolicy, page) && l.filePolicy.valid() && l.filePolicy.contains(x, y)) return Target::FilePolicy;
     if (targetOnPage(Target::ForgetTrusted, page) && l.forgetTrusted.valid() && l.forgetTrusted.contains(x, y)) return Target::ForgetTrusted;
+    if (targetOnPage(Target::UnattendedPolicy, page) && l.unattendedPolicy.valid() && l.unattendedPolicy.contains(x, y)) return Target::UnattendedPolicy;
+    if (targetOnPage(Target::UnattendedGrant, page) && l.unattendedGrant.valid() && l.unattendedGrant.contains(x, y)) return Target::UnattendedGrant;
     if (showRunHost && targetOnPage(Target::RunHost, page) && l.runHost.contains(x, y)) {
         return Target::RunHost;
     }
