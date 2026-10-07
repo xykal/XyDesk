@@ -371,7 +371,7 @@ mod windows_probe {
             let mut d: DISPLAY_DEVICEW = unsafe { std::mem::zeroed() };
             d.cb = std::mem::size_of::<DISPLAY_DEVICEW>() as u32;
             if unsafe { EnumDisplayDevicesW(None, i, &mut d, 0) }.as_bool() {
-                if (d.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) != 0 {
+                if (d.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP).0 != 0 {
                     let name = String::from_utf16_lossy(&d.DeviceString)
                         .trim_end_matches('\0')
                         .trim()
