@@ -409,8 +409,20 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          choco install nsis --no-progress -y
-          if ($LASTEXITCODE -ne 0) { throw 'NSIS gagal dipasang' }
+          $nsisOk = $false
+          foreach ($attempt in 1..3) {
+            choco install nsis --no-progress -y
+            $found = Get-Command makensis.exe -ErrorAction SilentlyContinue
+            if (-not $found) {
+              $found = Get-ChildItem 'C:\Program Files (x86)\NSIS', 'C:\Program Files\NSIS' `
+                -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue |
+                Select-Object -First 1
+            }
+            if ($found) { $nsisOk = $true; break }
+            Write-Host "NSIS belum terpasang pada percobaan $attempt; menunggu lalu mengulang."
+            Start-Sleep -Seconds (15 * $attempt)
+          }
+          if (-not $nsisOk) { throw 'NSIS gagal dipasang setelah 3 percobaan' }
           dotnet tool update --global wix --version 4.0.6
           if ($LASTEXITCODE -ne 0) {
             dotnet tool install --global wix --version 4.0.6
