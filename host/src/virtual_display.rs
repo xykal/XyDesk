@@ -466,14 +466,14 @@ fn locate_vdd_ctl() -> Option<std::path::PathBuf> {
     let dir = exe.parent()?;
     let candidates = [
         // Driver XyDeskVDD (milik sendiri) — prioritas tertinggi
-        dir.join("drivers").join("XyDeskVDD").join("xydesk-vdd-ctl.exe"),
+        dir.join("drivers")
+            .join("XyDeskVDD")
+            .join("xydesk-vdd-ctl.exe"),
         dir.join("drivers")
             .join("IddSampleDriver")
             .join("xydesk-vdd-ctl.exe"),
         dir.join("xydesk-vdd-ctl.exe"),
-        std::path::PathBuf::from(
-            r"C:\Program Files\XyDesk\drivers\XyDeskVDD\xydesk-vdd-ctl.exe",
-        ),
+        std::path::PathBuf::from(r"C:\Program Files\XyDesk\drivers\XyDeskVDD\xydesk-vdd-ctl.exe"),
         std::path::PathBuf::from(
             r"C:\Program Files\XyDesk\drivers\IddSampleDriver\xydesk-vdd-ctl.exe",
         ),
