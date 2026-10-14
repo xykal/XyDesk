@@ -1,0 +1,80 @@
+;
+; XyDeskVDD.inf — XyDesk Virtual Display Adapter
+; Driver display virtual IddCx UMDF2 milik XyDesk.
+; Fork IddSampleDriver (Copyright (c) Microsoft Corporation, MIT License).
+; Hardware ID: Root\XyDeskVDD — cocok dengan deteksi host (virtual_display.rs)
+; dan pembuatan node oleh xydesk-vdd-ctl.exe.
+;
+
+[Version]
+PnpLockdown=1
+Signature="$Windows NT$"
+ClassGUID = {4D36E968-E325-11CE-BFC1-08002BE10318}
+Class = Display
+ClassVer = 2.0
+Provider=%ManufacturerName%
+CatalogFile=XyDeskVDD.cat
+DriverVer = 10/14/2026,22.32.22.280
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+%DeviceName%=XyDeskVDD_Install, Root\XyDeskVDD
+
+[SourceDisksFiles]
+XyDeskVDD.dll=1
+
+[SourceDisksNames]
+1 = %DiskName%
+
+; =================== UMDF Device ==================================
+
+[XyDeskVDD_Install.NT]
+CopyFiles=UMDriverCopy
+
+[XyDeskVDD_Install.NT.hw]
+AddReg = XyDeskVDD_HardwareDeviceSettings
+
+[XyDeskVDD_HardwareDeviceSettings]
+HKR,, "UpperFilters",  %REG_MULTI_SZ%, "IndirectKmd"
+HKR, "WUDF", "DeviceGroupId", %REG_SZ%, "XyDeskVDDGroup"
+
+[XyDeskVDD_Install.NT.Services]
+AddService=WUDFRd,0x000001fa,WUDFRD_ServiceInstall
+
+[XyDeskVDD_Install.NT.Wdf]
+UmdfService=XyDeskVDD,XyDeskVDD_Install
+UmdfServiceOrder=XyDeskVDD
+UmdfKernelModeClientPolicy = AllowKernelModeClients
+
+[XyDeskVDD_Install]
+UmdfLibraryVersion=2.15.0
+ServiceBinary=%12%\UMDF\XyDeskVDD.dll
+UmdfExtensions = IddCx0102
+
+[WUDFRD_ServiceInstall]
+DisplayName = %WUDFRDDisplayName%
+ServiceType = 1
+StartType = 3
+ErrorControl = 1
+ServiceBinary = %12%\WUDFRd.sys
+
+[DestinationDirs]
+UMDriverCopy=12,UMDF ; copy to drivers\umdf
+
+[UMDriverCopy]
+XyDeskVDD.dll
+
+; =================== Generic ==================================
+
+[Strings]
+ManufacturerName = "XyVerse Technology Global"
+DiskName = "XyDesk Virtual Display Driver Installation Disk"
+WUDFRDDisplayName = "Windows Driver Foundation - User-mode Driver Framework Reflector"
+DeviceName = "XyDesk Virtual Display Adapter"
+
+REG_MULTI_SZ  = 0x00010000
+REG_SZ        = 0x00000000
+REG_EXPAND_SZ = 0x00020000
+REG_DWORD     = 0x00010001
