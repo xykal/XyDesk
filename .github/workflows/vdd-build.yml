@@ -1,7 +1,7 @@
 name: Build XyDeskVDD driver
 
 # Build + sign driver display virtual XyDeskVDD (IddCx UMDF2).
-# Dispatch manual saja — hemat kuota Actions (kebijakan repo XyDesk).
+# Dispatch manual saja - hemat kuota Actions (kebijakan repo XyDesk).
 # Signing: sertifikat self-signed. Saat sertifikat Microsoft/EV tersedia,
 # ganti bagian "Buat sertifikat & tanda tangan" dengan signtool + cert EV.
 
@@ -20,9 +20,9 @@ permissions:
 jobs:
   build-vdd:
     # windows-2022: WDK 22H2 + VS2022 pre-installed (sesuai dokumentasi
-    # microsoft/Windows-driver-samples) — cocok dengan toolset
+    # microsoft/Windows-driver-samples) - cocok dengan toolset
     # WindowsUserModeDriver10.0. Jangan pakai windows-latest/VS18: choco
-    # WDK tertinggal 10.0.19041, mismatch SDK → wudfwdm.h tidak ketemu
+    # WDK tertinggal 10.0.19041, mismatch SDK -> wudfwdm.h tidak ketemu
     # (pelajaran run 38644307090).
     runs-on: windows-2022
     timeout-minutes: 30
@@ -89,7 +89,7 @@ jobs:
         run: |
           # msbuild (SignMode=Off) tetap menjalankan package targets:
           # folder x64\Release\XyDeskVDD\ berisi INF ter-stamp + DLL + CAT
-          # (catalog generation complete, xydeskvdd.cat) — tidak perlu
+          # (catalog generation complete, xydeskvdd.cat) - tidak perlu
           # inf2cat manual.
           $out    = "packaging\windows\vdd-src\XyDeskVDD\x64\Release"
           $pkgdir = Join-Path $out "XyDeskVDD"
@@ -117,7 +117,7 @@ jobs:
       - name: Buat sertifikat & tanda tangan (self-signed)
         shell: powershell
         run: |
-          # SERTIFIKAT SELF-SIGNED — sementara sampai sertifikat code signing
+          # SERTIFIKAT SELF-SIGNED - sementara sampai sertifikat code signing
           # Microsoft/EV tersedia. Konsekuensi: peringatan SmartScreen/Defender
           # saat pertama kali memasang (diterima untuk tahap ini).
           $pkg = "XyDeskVDD-package"
@@ -154,7 +154,7 @@ jobs:
       - name: Ringkas paket
         shell: powershell
         run: |
-          Get-ChildItem XyDeskVDD-package | ForEach-Object { Write-Host "[XyDesk] $($_.Name) — $($_.Length) byte" }
+          Get-ChildItem XyDeskVDD-package | ForEach-Object { Write-Host "[XyDesk] $($_.Name) - $($_.Length) byte" }
           Compress-Archive -Path XyDeskVDD-package\* -DestinationPath XyDeskVDD-driver-win64.zip -Force
 
       - name: Upload artifact XyDeskVDD-driver-win64
@@ -168,4 +168,4 @@ jobs:
       - name: Ringkasan
         shell: powershell
         run: |
-          Write-Host "::notice::XyDeskVDD driver OK — sertifikat self-signed thumbprint $env:THUMBPRINT. Letakkan isi artifact ke packaging/windows/drivers/XyDeskVDD/ lalu jalankan build host untuk bundling."
+          Write-Host "::notice::XyDeskVDD driver OK - sertifikat self-signed thumbprint $env:THUMBPRINT. Letakkan isi artifact ke packaging/windows/drivers/XyDeskVDD/ lalu jalankan build host untuk bundling."
