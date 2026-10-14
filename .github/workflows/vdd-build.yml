@@ -31,17 +31,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pasang WDK 10.0.22621 (winget)
+      - name: Pasang WDK 10.0.22621 (wdksetup resmi)
         shell: powershell
         run: |
-          # WDK tidak lagi pre-installed di image runner 2026; pasang resmi via
-          # winget (10.1.22621.2428). VS2022 image windows-2022 kompatibel;
-          # integrasi MSBuild (toolset WindowsUserModeDriver10.0) dideploy
-          # installer ke VS yang terdeteksi.
-          winget install -e --id Microsoft.WindowsWDK.10.0.22621 --silent `
-            --accept-package-agreements --accept-source-agreements
-          if ($LASTEXITCODE -ne 0) { throw "Instalasi WDK 22621 via winget gagal" }
-
+          # WDK tidak pre-installed di image runner 2026 dan winget tidak
+          # tersedia di Windows Server. Pakai web-installer resmi Microsoft
+          # (fwlink 2249371 = WDK 10.0.22621, VS2022-compatible).
+          $url = "https://go.microsoft.com/fwlink/?linkid=2249371"
+          Invoke-WebRequest -Uri $url -OutFile wdksetup.exe -UserAgent "NativeHost"
+          if (-not (Test-Path wdksetup.exe) -or (Get-Item wdksetup.exe).Length -lt 500KB) {
+            throw "Download wdksetup.exe gagal"
+          }
+          Write-Host "[XyDesk] wdksetup.exe: $((Get-Item wdksetup.exe).Length) byte"
+          $p = Start-Process -FilePath ".\wdksetup.exe" -ArgumentList "/q","/l","wdk-install.log" -Wait -PassThru
+          Write-Host "[XyDesk] wdksetup exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) {
+            if (Test-Path wdk-install.log) { Get-Content wdk-install.log -Tail 40 | Write-Host }
+            throw "Instalasi WDK 22621 gagal (exit $($p.ExitCode))"
+          }
       - name: Verifikasi WDK
         shell: powershell
         run: |
