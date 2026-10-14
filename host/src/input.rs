@@ -501,6 +501,10 @@ mod windows_inject {
                 });
                 true
             }
+            // Bukan injeksi: permintaan mode Virtual Display ditangani loop
+            // dispatch sesi (butuh data channel untuk membalas status), jadi
+            // tidak akan pernah sampai ke sini — exhaustive demi keamanan.
+            InputEvent::VirtualDisplay { .. } => true,
         }
     }
 }
