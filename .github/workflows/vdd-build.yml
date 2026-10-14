@@ -84,44 +84,36 @@ jobs:
           if (-not (Test-Path $dll)) { throw "XyDeskVDD.dll tidak ditemukan di $out" }
           Write-Host "[XyDesk] Build OK: $dll ($((Get-Item $dll).Length) byte)"
 
-      - name: Rakit paket driver + inf2cat
+      - name: Rakit paket driver (cat hasil msbuild)
         shell: powershell
         run: |
-          $src   = "packaging\windows\vdd-src\XyDeskVDD\x64\Release"
-          $dist  = "packaging\windows\drivers\XyDeskVDD"
-          $pkg   = "XyDeskVDD-package"
+          # msbuild (SignMode=Off) tetap menjalankan package targets:
+          # folder x64\Release\XyDeskVDD\ berisi INF ter-stamp + DLL + CAT
+          # (catalog generation complete, xydeskvdd.cat) — tidak perlu
+          # inf2cat manual.
+          $out    = "packaging\windows\vdd-src\XyDeskVDD\x64\Release"
+          $pkgdir = Join-Path $out "XyDeskVDD"
+          $dist   = "packaging\windows\drivers\XyDeskVDD"
+          $pkg    = "XyDeskVDD-package"
           New-Item -ItemType Directory -Force -Path $pkg | Out-Null
 
-          # Biner driver + INF (INF source; DriverVer sudah statis)
-          Copy-Item (Join-Path $src "XyDeskVDD.dll") $pkg
-          Copy-Item "packaging\windows\vdd-src\XyDeskVDD\XyDeskVDD.inf" $pkg
+          $dll = Join-Path $out "XyDeskVDD.dll"
+          $inf = Join-Path $pkgdir "XyDeskVDD.inf"
+          $cat = Get-ChildItem -Path $pkgdir -Filter *.cat -ErrorAction SilentlyContinue | Select-Object -First 1
+          foreach ($f in @($dll, $inf)) {
+            if (-not (Test-Path $f)) { throw "File build hilang: $f" }
+          }
+          if (-not $cat) { throw "Catalog (.cat) tidak dihasilkan msbuild di $pkgdir" }
+
+          Copy-Item $dll $pkg
+          Copy-Item $inf $pkg
+          Copy-Item $cat.FullName (Join-Path $pkg "XyDeskVDD.cat")
 
           # Skrip dist + konfigurasi
           foreach ($f in @("install.bat","uninstall.bat","option.txt","vdd_settings.xml","README.txt")) {
             if (Test-Path (Join-Path $dist $f)) { Copy-Item (Join-Path $dist $f) $pkg }
           }
-
-          # inf2cat → XyDeskVDD.cat (10_x64). Lokasi resmi: bin\<ver>\x64
-          # (dokumentasi Inf2Cat: %WindowsSdkDir%\bin\<version>\x64).
-          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
-          $inf2cat = @(
-            "$kits\bin\10.0.22621.0\x64\inf2cat.exe",
-            "$kits\bin\x64\inf2cat.exe"
-          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $inf2cat) {
-            $inf2cat = Get-ChildItem -Path "$kits\bin" -Recurse -Filter inf2cat.exe -ErrorAction SilentlyContinue |
-                       Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
-          }
-          if (-not $inf2cat) {
-            Get-ChildItem "$kits" -Directory | Write-Host
-            Get-ChildItem "$kits\bin" -ErrorAction SilentlyContinue | Write-Host
-            throw "inf2cat.exe tidak ditemukan di $kits\bin"
-          }
-          Write-Host "[XyDesk] inf2cat: $($inf2cat.FullName)"
-          & $inf2cat.FullName /driver:(Resolve-Path $pkg) /os:10_X64
-          if ($LASTEXITCODE -ne 0) { throw "inf2cat gagal" }
-          if (-not (Test-Path (Join-Path $pkg "XyDeskVDD.cat"))) { throw "XyDeskVDD.cat tidak dihasilkan" }
-
+          Get-ChildItem $pkgdir | ForEach-Object { Write-Host "[XyDesk] build-pkg: $($_.Name)" }
       - name: Buat sertifikat & tanda tangan (self-signed)
         shell: powershell
         run: |
