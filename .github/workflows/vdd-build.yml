@@ -19,24 +19,27 @@ permissions:
 
 jobs:
   build-vdd:
-    runs-on: windows-latest
+    # windows-2022: WDK 22H2 + VS2022 pre-installed (sesuai dokumentasi
+    # microsoft/Windows-driver-samples) — cocok dengan toolset
+    # WindowsUserModeDriver10.0. Jangan pakai windows-latest/VS18: choco
+    # WDK tertinggal 10.0.19041, mismatch SDK → wudfwdm.h tidak ketemu
+    # (pelajaran run 38644307090).
+    runs-on: windows-2022
     timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Pasang Windows Driver Kit (WDK)
+      - name: Verifikasi WDK pre-installed
         shell: powershell
         run: |
-          # Coba WDK 22621 (cocok dengan toolset VS2022 / WindowsUserModeDriver10.0);
-          # jatuh ke versi terbaru bila pin tidak tersedia.
-          choco install windowsdriverkit10 --version=10.0.22621.382 -y --no-progress
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "[XyDesk] WDK 22621 gagal terpasang, mencoba versi terbaru..."
-            choco install windowsdriverkit10 -y --no-progress
-            if ($LASTEXITCODE -ne 0) { throw "Instalasi WDK gagal" }
-          }
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+          $wudf = Get-ChildItem -Path "$kits\Include" -Recurse -Filter wudfwdm.h -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $wudf) { throw "wudfwdm.h tidak ditemukan — WDK tidak terpasang di runner ini" }
+          Write-Host "[XyDesk] WDK OK: $($wudf.FullName)"
+          $kitVers = (Get-ChildItem "$kits\Include" -Directory | Select-Object -ExpandProperty Name) -join ", "
+          Write-Host "[XyDesk] Versi kit: $kitVers"
 
       - name: Cari MSBuild (vswhere)
         id: msbuild
