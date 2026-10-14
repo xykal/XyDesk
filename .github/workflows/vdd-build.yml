@@ -137,14 +137,14 @@ jobs:
             "$kits\bin\x64\signtool.exe"
           ) | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $signtool) {
-            $signtool = Get-ChildItem -Path "$kits\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-                        Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+            $signtool = (Get-ChildItem -Path "$kits\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+                        Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1).FullName
           }
           if (-not $signtool) { throw "signtool.exe tidak ditemukan di $kits\bin" }
-          Write-Host "[XyDesk] signtool: $($signtool.FullName)"
+          Write-Host "[XyDesk] signtool: $signtool"
 
           foreach ($f in @("XyDeskVDD.dll","XyDeskVDD.cat")) {
-            & $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint (Join-Path $pkg $f)
+            & $signtool sign /fd SHA256 /sha1 $cert.Thumbprint (Join-Path $pkg $f)
             if ($LASTEXITCODE -ne 0) { throw "sign $f gagal" }
           }
 
