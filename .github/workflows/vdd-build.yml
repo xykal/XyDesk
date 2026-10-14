@@ -101,11 +101,22 @@ jobs:
             if (Test-Path (Join-Path $dist $f)) { Copy-Item (Join-Path $dist $f) $pkg }
           }
 
-          # inf2cat → XyDeskVDD.cat (10_x64)
+          # inf2cat → XyDeskVDD.cat (10_x64). Lokasi resmi: bin\<ver>\x64
+          # (dokumentasi Inf2Cat: %WindowsSdkDir%\bin\<version>\x64).
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
-          $inf2cat = Get-ChildItem -Path $kits -Recurse -Filter inf2cat.exe -ErrorAction SilentlyContinue |
-                     Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
-          if (-not $inf2cat) { throw "inf2cat.exe tidak ditemukan di $kits" }
+          $inf2cat = @(
+            "$kits\bin\10.0.22621.0\x64\inf2cat.exe",
+            "$kits\bin\x64\inf2cat.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $inf2cat) {
+            $inf2cat = Get-ChildItem -Path "$kits\bin" -Recurse -Filter inf2cat.exe -ErrorAction SilentlyContinue |
+                       Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+          }
+          if (-not $inf2cat) {
+            Get-ChildItem "$kits" -Directory | Write-Host
+            Get-ChildItem "$kits\bin" -ErrorAction SilentlyContinue | Write-Host
+            throw "inf2cat.exe tidak ditemukan di $kits\bin"
+          }
           Write-Host "[XyDesk] inf2cat: $($inf2cat.FullName)"
           & $inf2cat.FullName /driver:(Resolve-Path $pkg) /os:10_X64
           if ($LASTEXITCODE -ne 0) { throw "inf2cat gagal" }
@@ -129,9 +140,15 @@ jobs:
           Export-Certificate -Cert $cert -FilePath (Join-Path $pkg "XyDeskVDD.cer") | Out-Null
 
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
-          $signtool = Get-ChildItem -Path $kits -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
-                      Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
-          if (-not $signtool) { throw "signtool.exe tidak ditemukan di $kits" }
+          $signtool = @(
+            "$kits\bin\10.0.22621.0\x64\signtool.exe",
+            "$kits\bin\x64\signtool.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $signtool) {
+            $signtool = Get-ChildItem -Path "$kits\bin" -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+                        Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+          }
+          if (-not $signtool) { throw "signtool.exe tidak ditemukan di $kits\bin" }
           Write-Host "[XyDesk] signtool: $($signtool.FullName)"
 
           foreach ($f in @("XyDeskVDD.dll","XyDeskVDD.cat")) {
