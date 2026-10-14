@@ -76,6 +76,16 @@ pub enum InputEvent {
         rx: i16,
         ry: i16,
     },
+    /// Minta host mengaktifkan/mengubah mode Virtual Display Adapter
+    /// (resolusi, refresh, jumlah monitor) untuk mesin headless — bukan
+    /// injeksi; ditangani loop dispatch sesi. TIDAK memasang driver:
+    /// pemasangan butuh elevasi UAC lokal (panel host / `xydesk-vdd-ctl`).
+    VirtualDisplay {
+        width: u16,
+        height: u16,
+        refresh_hz: u8,
+        count: u8,
+    },
 }
 
 /// Tipe pesan (byte pertama).
@@ -92,6 +102,7 @@ mod tag {
     pub const VIDEO_QUALITY: u8 = 0x0A;
     pub const VIDEO_BITRATE: u8 = 0x0B;
     pub const GAMEPAD: u8 = 0x0E;
+    pub const VIRTUAL_DISPLAY: u8 = 0x10;
 }
 
 /// Dekode satu pesan biner. `None` bila tidak valid (pesan dibuang diam-diam
@@ -140,6 +151,12 @@ pub fn decode(data: &[u8]) -> Option<InputEvent> {
             ly: le16(data, 7) as i16,
             rx: le16(data, 9) as i16,
             ry: le16(data, 11) as i16,
+        }),
+        (&tag::VIRTUAL_DISPLAY, n) if n >= 7 => Some(InputEvent::VirtualDisplay {
+            width: le16(data, 1),
+            height: le16(data, 3),
+            refresh_hz: data[5],
+            count: data[6],
         }),
         _ => None,
     }
@@ -484,6 +501,10 @@ mod windows_inject {
                 });
                 true
             }
+            // Bukan injeksi: permintaan mode Virtual Display ditangani loop
+            // dispatch sesi (butuh data channel untuk membalas status), jadi
+            // tidak akan pernah sampai ke sini — exhaustive demi keamanan.
+            InputEvent::VirtualDisplay { .. } => true,
         }
     }
 }
@@ -546,6 +567,22 @@ mod tests {
                 ry: 0,
             })
         );
+    }
+
+    #[test]
+    fn virtual_display_decode_tepat_7_byte() {
+        let m = vec![tag::VIRTUAL_DISPLAY, 0x80, 0x07, 0x38, 0x04, 120, 2];
+        assert_eq!(
+            decode(&m),
+            Some(InputEvent::VirtualDisplay {
+                width: 1920,
+                height: 1080,
+                refresh_hz: 120,
+                count: 2
+            })
+        );
+        // Opcode tanpa payload lengkap dibuang diam-diam seperti event lain.
+        assert_eq!(decode(&[tag::VIRTUAL_DISPLAY, 0x80, 0x07]), None);
     }
 
     #[test]

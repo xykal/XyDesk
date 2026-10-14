@@ -411,6 +411,68 @@ async fn dispatch(dc: Arc<RTCDataChannel>, pointer_dc: Option<Arc<RTCDataChannel
                     }
                     continue;
                 }
+                InputEvent::VirtualDisplay {
+                    width,
+                    height,
+                    refresh_hz,
+                    count,
+                } => {
+                    // Aktifkan/ubah mode Virtual Display Adapter dari sesi
+                    // remote — mesin headless (cloud PC / VPS) mendapat
+                    // "monitor" lewat permintaan ini. Bukan injeksi.
+                    //
+                    // Kebijakan keamanan (issue #181): TIDAK memasang driver
+                    // dari sesi remote — pemasangan butuh elevasi UAC lokal
+                    // (panel host / xydesk-vdd-ctl / install.bat). Di sini
+                    // hanya mengubah mode bila adapter sudah terpasang.
+                    let w = u32::from(width);
+                    let h = u32::from(height);
+                    let hz = if refresh_hz == 0 {
+                        60
+                    } else {
+                        u32::from(refresh_hz)
+                    };
+                    let c = if count == 0 { 1 } else { u32::from(count) };
+                    let (status, detail) = tokio::task::spawn_blocking(move || {
+                        if crate::virtual_display::find_virtual_display().is_none()
+                            && !crate::virtual_display::is_driver_installed()
+                        {
+                            return (
+                                "notInstalled",
+                                "Virtual Display Adapter belum terpasang. Pasang sekali lewat panel host / xydesk-vdd-ctl (butuh admin lokal)."
+                                    .to_string(),
+                            );
+                        }
+                        match crate::virtual_display::set_virtual_display_mode(w, h, hz, c) {
+                            Ok(msg) => ("applied", msg),
+                            Err(e) => ("error", e),
+                        }
+                    })
+                    .await
+                    .unwrap_or_else(|e| ("error", format!("task VDD gagal: {e}")));
+                    println!(
+                        "[xydesk-host] virtual display dari client {w}x{h}@{hz}x{c}: {status} - {detail}"
+                    );
+                    let _ = dc
+                        .send_text(
+                            serde_json::json!({
+                                "type": "virtualDisplay",
+                                "status": status,
+                                "width": w,
+                                "height": h,
+                                "hz": hz,
+                                "count": c,
+                                "detail": detail,
+                            })
+                            .to_string(),
+                        )
+                        .await;
+                    if status == "applied" {
+                        screen::request_keyframe();
+                        let _ = dc.send_text(meta_json().to_string()).await;
+                    }
+                    continue;
+                }
                 _ => {}
             }
             if !input_queue::send(&inj_tx, &mut closed_rx, ev).await {
