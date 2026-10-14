@@ -161,3 +161,30 @@ monitor yang baru saja dicabut — pilihan jatuh ke monitor utama.
 
 Dukungan client: web (`rtc.ts: selectDisplay`) dan Android (`DisplayRules` +
 panel sesi). Keduanya membangun daftar dari meta, bukan dari angka tetap.
+
+## Virtual Display Adapter (client → host)
+
+Paket kanal input `0x10 VIRTUAL_DISPLAY w:u16le h:u16le hz:u8 count:u8`
+(tepat 7 byte) meminta host mengaktifkan/mengubah mode Virtual Display
+Adapter — resolusi 640×480..7680×4320, refresh 24..240 Hz, jumlah monitor
+1..4. Nilai `hz 0` dibaca sebagai 60 dan `count 0` sebagai 1. Untuk mesin
+headless (cloud PC / VPS tanpa monitor fisik) ini pengganti monitor: klien
+meminta misalnya 1080p60, host menerapkan mode pada adapter virtual, lalu
+menangkapnya seperti monitor biasa.
+
+Kebijakan keamanan: host **tidak memasang driver** dari sesi remote —
+pemasangan butuh elevasi UAC lokal (panel host / `xydesk-vdd-ctl` /
+`install.bat`, sekali per mesin). Bila adapter belum terpasang, permintaan
+ditolak dengan status `notInstalled`.
+
+Balasan host berupa pesan teks JSON di kanal input (sekali per permintaan):
+
+```json
+{"type":"virtualDisplay","status":"applied","width":1920,"height":1080,
+ "hz":60,"count":1,"detail":"XyDesk Virtual Display aktif pada 1920x1080 @ 60Hz"}
+```
+
+`status`: `applied` (mode aktif; host menyusul meta baru + keyframe) atau
+`notInstalled` / `error` (lihat `detail`). Client tidak boleh menganggap
+permintaannya pasti berhasil — tunggu meta untuk daftar monitor terbaru
+sebelum memindahkan capture (`0x07 DISPLAY_SELECT`).
