@@ -67,6 +67,7 @@ constexpr wchar_t kMonitorFriendlyName[] = L"XyDesk Virtual Display";
 constexpr wchar_t kManufacturerName[] = L"XyVerse Technology Global";
 constexpr wchar_t kVddDir[] = L"C:\\VirtualDisplayDriver";
 constexpr wchar_t kIddDir[] = L"C:\\IddSampleDriver";
+constexpr wchar_t kXyVddDir[] = L"C:\\XyDeskVDD"; // konfigurasi driver XyDeskVDD (milik sendiri)
 constexpr wchar_t kMttPipeName[] = L"\\\\.\\pipe\\MTTVirtualDisplayPipe";
 constexpr wchar_t kDisplayClassKey[] =
     L"SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}";
@@ -234,10 +235,12 @@ bool writeDriverConfigs(int preferredW, int preferredH, int preferredHz, int mon
     CreateDirectoryW(kVddDir, nullptr);
     CreateDirectoryW(L"C:\\VirtualDisplayDriver\\Logs", nullptr);
     CreateDirectoryW(kIddDir, nullptr);
+    CreateDirectoryW(kXyVddDir, nullptr);
 
     // Berikan izin baca/tulis pada LOCAL SERVICE (WUDFHost.exe) dan Users.
     runCommandSilent(L"icacls.exe \"C:\\VirtualDisplayDriver\" /grant \"*S-1-5-19:(OI)(CI)F\" \"*S-1-5-32-545:(OI)(CI)M\" /T /C /Q");
     runCommandSilent(L"icacls.exe \"C:\\IddSampleDriver\" /grant \"*S-1-5-19:(OI)(CI)F\" \"*S-1-5-32-545:(OI)(CI)M\" /T /C /Q");
+    runCommandSilent(L"icacls.exe \"C:\\XyDeskVDD\" /grant \"*S-1-5-19:(OI)(CI)F\" \"*S-1-5-32-545:(OI)(CI)M\" /T /C /Q");
 
     writeCustomXyDeskEdid(std::wstring(kVddDir) + L"\\user_edid.bin");
 
@@ -312,7 +315,7 @@ bool writeDriverConfigs(int preferredW, int preferredH, int preferredHz, int mon
             }
         }
         const auto content = opt.str();
-        for (const wchar_t* dir : {kVddDir, kIddDir}) {
+        for (const wchar_t* dir : {kXyVddDir, kVddDir, kIddDir}) {
             std::ofstream ofs(std::wstring(dir) + L"\\option.txt", std::ios::binary | std::ios::trunc);
             if (ofs) {
                 ofs.write(content.data(), static_cast<std::streamsize>(content.size()));
@@ -721,19 +724,24 @@ bool applyVirtualDisplayMode(int width, int height, int hz) {
 
 std::wstring locateDriverDir(const std::wstring& explicitDir) {
     if (!explicitDir.empty() &&
-        (fileExists(explicitDir + L"\\MttVDD.inf") || fileExists(explicitDir + L"\\iddsampledriver.inf") ||
+        (fileExists(explicitDir + L"\\XyDeskVDD.inf") || fileExists(explicitDir + L"\\MttVDD.inf") ||
+         fileExists(explicitDir + L"\\iddsampledriver.inf") ||
          fileExists(explicitDir + L"\\IddSampleDriver.inf"))) {
         return explicitDir;
     }
     std::wstring base = exeDir();
     const std::wstring candidates[] = {
         base,
+        base + L"\\drivers\\XyDeskVDD",
         base + L"\\drivers\\IddSampleDriver",
+        base + L"\\..\\drivers\\XyDeskVDD",
         base + L"\\..\\drivers\\IddSampleDriver",
+        L"C:\\Program Files\\XyDesk\\drivers\\XyDeskVDD",
         L"C:\\Program Files\\XyDesk\\drivers\\IddSampleDriver",
     };
     for (const auto& c : candidates) {
-        if (fileExists(c + L"\\MttVDD.inf") || fileExists(c + L"\\iddsampledriver.inf") ||
+        if (fileExists(c + L"\\XyDeskVDD.inf") || fileExists(c + L"\\MttVDD.inf") ||
+            fileExists(c + L"\\iddsampledriver.inf") ||
             fileExists(c + L"\\IddSampleDriver.inf")) {
             return c;
         }
@@ -1067,12 +1075,17 @@ int cmdInstall(const std::wstring& drvDirArg, int width, int height, int hz, int
     writeDriverConfigs(width, height, hz, count);
     installAllCertificates(drvDir);
 
+    std::wstring xyInf = drvDir + L"\\XyDeskVDD.inf";
     std::wstring mttInf = drvDir + L"\\MttVDD.inf";
     std::wstring iddInf = drvDir + L"\\iddsampledriver.inf";
     if (!fileExists(iddInf)) iddInf = drvDir + L"\\IddSampleDriver.inf";
 
     bool ok = false;
-    if (fileExists(mttInf)) {
+    if (fileExists(xyInf)) {
+        std::printf("[XyDesk VDD] Memasang XyDesk Virtual Display Adapter (XyDeskVDD IddCx)...\\n");
+        ok = installInfAndBindDevice(xyInf, L"Root\\XyDeskVDD");
+    }
+    if (!ok && fileExists(mttInf)) {
         std::printf("[XyDesk VDD] Memasang XyDesk Virtual Display Adapter (MttVDD HDR IddCx)...\n");
         ok = installInfAndBindDevice(mttInf, L"Root\\MttVDD");
     }

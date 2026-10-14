@@ -71,6 +71,10 @@ pub async fn serve(session: Arc<Session>) {
             screen::request_keyframe();
             let _ = dc.send_text(meta_json().to_string()).await;
             spawn_feedback(dc.clone(), meta_json());
+            // Auto-ensure virtual display headless: best-effort di background,
+            // SEKALI di awal sesi. Tidak pernah memasang driver / minta UAC
+            // dari sesi remote — hanya mengaktifkan node bila driver sudah ada.
+            let _ = tokio::task::spawn_blocking(crate::virtual_display::ensure_display);
             dispatch(dc, pointer_dc).await;
         }
         Err(e) => eprintln!("[xydesk-host] input channel gagal: {e:#}"),

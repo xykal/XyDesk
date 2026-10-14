@@ -465,10 +465,15 @@ fn locate_vdd_ctl() -> Option<std::path::PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
     let candidates = [
+        // Driver XyDeskVDD (milik sendiri) — prioritas tertinggi
+        dir.join("drivers").join("XyDeskVDD").join("xydesk-vdd-ctl.exe"),
         dir.join("drivers")
             .join("IddSampleDriver")
             .join("xydesk-vdd-ctl.exe"),
         dir.join("xydesk-vdd-ctl.exe"),
+        std::path::PathBuf::from(
+            r"C:\Program Files\XyDesk\drivers\XyDeskVDD\xydesk-vdd-ctl.exe",
+        ),
         std::path::PathBuf::from(
             r"C:\Program Files\XyDesk\drivers\IddSampleDriver\xydesk-vdd-ctl.exe",
         ),
@@ -481,10 +486,13 @@ fn locate_install_bat() -> Option<std::path::PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
     let candidates = [
+        // Driver XyDeskVDD (milik sendiri) — prioritas tertinggi
+        dir.join("drivers").join("XyDeskVDD").join("install.bat"),
         dir.join("drivers")
             .join("IddSampleDriver")
             .join("install.bat"),
         dir.join("drivers").join("install-all-drivers.bat"),
+        std::path::PathBuf::from(r"C:\Program Files\XyDesk\drivers\XyDeskVDD\install.bat"),
         std::path::PathBuf::from(r"C:\Program Files\XyDesk\drivers\IddSampleDriver\install.bat"),
     ];
     candidates.into_iter().find(|p| p.is_file())
@@ -494,14 +502,17 @@ fn locate_install_bat() -> Option<std::path::PathBuf> {
 fn sync_host_driver_configs(width: u32, height: u32, hz: u32, count: u32) {
     let vdd_dir = std::path::Path::new(r"C:\VirtualDisplayDriver");
     let idd_dir = std::path::Path::new(r"C:\IddSampleDriver");
+    let xy_dir = std::path::Path::new(r"C:\XyDeskVDD"); // driver XyDeskVDD (milik sendiri)
     let _ = std::fs::create_dir_all(vdd_dir);
     let _ = std::fs::create_dir_all(idd_dir);
+    let _ = std::fs::create_dir_all(xy_dir);
     let _ = std::fs::write(vdd_dir.join("user_edid.bin"), build_xydesk_edid());
     let _ = std::fs::write(
         vdd_dir.join("vdd_settings.xml"),
         build_vdd_settings_xml(width, height, hz, count),
     );
     let opt = build_option_txt(width, height, hz, count);
+    let _ = std::fs::write(xy_dir.join("option.txt"), &opt);
     let _ = std::fs::write(vdd_dir.join("option.txt"), &opt);
     let _ = std::fs::write(idd_dir.join("option.txt"), &opt);
 }
@@ -581,7 +592,7 @@ pub fn try_install_driver() -> Result<String, String> {
             }
         }
     }
-    Err("Jalankan drivers\\IddSampleDriver\\install.bat atau Setup-VirtualDisplay.ps1 -Install secara eksplisit sebagai Administrator.".into())
+    Err("Jalankan drivers\\XyDeskVDD\\install.bat (atau drivers\\IddSampleDriver\\install.bat / Setup-VirtualDisplay.ps1 -Install) secara eksplisit sebagai Administrator.".into())
 }
 
 pub fn ensure_virtual_display_created() -> bool {

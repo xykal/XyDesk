@@ -1,0 +1,141 @@
+name: Build XyDeskVDD driver
+
+# Build + sign driver display virtual XyDeskVDD (IddCx UMDF2).
+# Dispatch manual saja — hemat kuota Actions (kebijakan repo XyDesk).
+# Signing: sertifikat self-signed. Saat sertifikat Microsoft/EV tersedia,
+# ganti bagian "Buat sertifikat & tanda tangan" dengan signtool + cert EV.
+
+on:
+  workflow_dispatch:
+    inputs:
+      driver_version:
+        description: 'DriverVer version (x.y.z.w)'
+        required: false
+        default: '1.0.0.0'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-vdd:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pasang Windows Driver Kit (WDK)
+        shell: powershell
+        run: |
+          # Coba WDK 22621 (cocok dengan toolset VS2022 / WindowsUserModeDriver10.0);
+          # jatuh ke versi terbaru bila pin tidak tersedia.
+          choco install windowsdriverkit10 --version=10.0.22621.382 -y --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "[XyDesk] WDK 22621 gagal terpasang, mencoba versi terbaru..."
+            choco install windowsdriverkit10 -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "Instalasi WDK gagal" }
+          }
+
+      - name: Cari MSBuild (vswhere)
+        id: msbuild
+        shell: powershell
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild `
+            -find MSBuild\**\Bin\MSBuild.exe | Select-Object -First 1
+          if (-not $msbuild) { throw "MSBuild tidak ditemukan" }
+          "path=$msbuild" >> $env:GITHUB_OUTPUT
+          Write-Host "[XyDesk] MSBuild: $msbuild"
+
+      - name: Build XyDeskVDD.dll (msbuild, WDK, WPP)
+        shell: cmd
+        run: '"%MSBUILD_PATH%" packaging\windows\vdd-src\XyDeskVDD\XyDeskVDD.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SignMode=Off /m /v:m /nologo'
+        env:
+          MSBUILD_PATH: ${{ steps.msbuild.outputs.path }}
+
+      - name: Verifikasi hasil build
+        shell: powershell
+        run: |
+          $out = "packaging\windows\vdd-src\XyDeskVDD\x64\Release"
+          $dll = Join-Path $out "XyDeskVDD.dll"
+          if (-not (Test-Path $dll)) { throw "XyDeskVDD.dll tidak ditemukan di $out" }
+          Write-Host "[XyDesk] Build OK: $dll ($((Get-Item $dll).Length) byte)"
+
+      - name: Rakit paket driver + inf2cat
+        shell: powershell
+        run: |
+          $src   = "packaging\windows\vdd-src\XyDeskVDD\x64\Release"
+          $dist  = "packaging\windows\drivers\XyDeskVDD"
+          $pkg   = "XyDeskVDD-package"
+          New-Item -ItemType Directory -Force -Path $pkg | Out-Null
+
+          # Biner driver + INF (INF source; DriverVer sudah statis)
+          Copy-Item (Join-Path $src "XyDeskVDD.dll") $pkg
+          Copy-Item "packaging\windows\vdd-src\XyDeskVDD\XyDeskVDD.inf" $pkg
+
+          # Skrip dist + konfigurasi
+          foreach ($f in @("install.bat","uninstall.bat","option.txt","vdd_settings.xml","README.txt")) {
+            if (Test-Path (Join-Path $dist $f)) { Copy-Item (Join-Path $dist $f) $pkg }
+          }
+
+          # inf2cat → XyDeskVDD.cat (10_x64)
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+          $inf2cat = Get-ChildItem -Path $kits -Recurse -Filter inf2cat.exe -ErrorAction SilentlyContinue |
+                     Where-Object { $_.FullName -match 'x64' } | Select-Object -First 1
+          if (-not $inf2cat) { throw "inf2cat.exe tidak ditemukan di $kits" }
+          Write-Host "[XyDesk] inf2cat: $($inf2cat.FullName)"
+          & $inf2cat.FullName /driver:(Resolve-Path $pkg) /os:10_X64
+          if ($LASTEXITCODE -ne 0) { throw "inf2cat gagal" }
+          if (-not (Test-Path (Join-Path $pkg "XyDeskVDD.cat"))) { throw "XyDeskVDD.cat tidak dihasilkan" }
+
+      - name: Buat sertifikat & tanda tangan (self-signed)
+        shell: powershell
+        run: |
+          # SERTIFIKAT SELF-SIGNED — sementara sampai sertifikat code signing
+          # Microsoft/EV tersedia. Konsekuensi: peringatan SmartScreen/Defender
+          # saat pertama kali memasang (diterima untuk tahap ini).
+          $pkg = "XyDeskVDD-package"
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert `
+            -Subject "CN=XyDeskVDD Code Signing, O=XyVerse Technology Global" `
+            -KeyUsage DigitalSignature -KeyExportPolicy Exportable `
+            -KeyLength 3072 -KeyAlgorithm RSA -HashAlgorithm SHA256 `
+            -NotAfter (Get-Date).AddYears(5) -CertStoreLocation "Cert:\CurrentUser\My"
+          if (-not $cert) { throw "Gagal membuat sertifikat self-signed" }
+
+          # Export .cer (DER) untuk Root & TrustedPublisher
+          Export-Certificate -Cert $cert -FilePath (Join-Path $pkg "XyDeskVDD.cer") | Out-Null
+
+          $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
+          $signtool = Get-ChildItem -Path $kits -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+                      Where-Object { $_.FullName -match '\\x64\\' } | Select-Object -First 1
+          if (-not $signtool) { throw "signtool.exe tidak ditemukan di $kits" }
+          Write-Host "[XyDesk] signtool: $($signtool.FullName)"
+
+          foreach ($f in @("XyDeskVDD.dll","XyDeskVDD.cat")) {
+            & $signtool.FullName sign /fd SHA256 /sha1 $cert.Thumbprint (Join-Path $pkg $f)
+            if ($LASTEXITCODE -ne 0) { throw "sign $f gagal" }
+          }
+
+          # Simpan thumbprint untuk catatan build
+          "THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+
+      - name: Ringkas paket
+        shell: powershell
+        run: |
+          Get-ChildItem XyDeskVDD-package | ForEach-Object { Write-Host "[XyDesk] $($_.Name) — $($_.Length) byte" }
+          Compress-Archive -Path XyDeskVDD-package\* -DestinationPath XyDeskVDD-driver-win64.zip -Force
+
+      - name: Upload artifact XyDeskVDD-driver-win64
+        uses: actions/upload-artifact@v4
+        with:
+          name: XyDeskVDD-driver-win64
+          path: XyDeskVDD-driver-win64.zip
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Ringkasan
+        shell: powershell
+        run: |
+          Write-Host "::notice::XyDeskVDD driver OK — sertifikat self-signed thumbprint $env:THUMBPRINT. Letakkan isi artifact ke packaging/windows/drivers/XyDeskVDD/ lalu jalankan build host untuk bundling."
