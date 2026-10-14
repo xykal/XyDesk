@@ -55,8 +55,9 @@ jobs:
           $kits = "${env:ProgramFiles(x86)}\Windows Kits\10"
           $kitVers = (Get-ChildItem "$kits\Include" -Directory | Select-Object -ExpandProperty Name) -join ", "
           Write-Host "[XyDesk] Versi kit: $kitVers"
-          $wudf = Get-ChildItem -Path "$kits\Include\10.0.22621.0" -Recurse -Filter wudfwdm.h -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $wudf) { throw "wudfwdm.h tidak ditemukan di kit 10.0.22621.0 - WDK bermasalah" }
+          # WDK 22H2+ menaruh header UMDF di Include\wdf (bukan Include\<versi>)
+          $wudf = Get-ChildItem -Path "$kits\Include" -Recurse -Filter wudfwdm.h -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $wudf) { throw "wudfwdm.h tidak ditemukan di $kits\Include - WDK bermasalah" }
           Write-Host "[XyDesk] WDK OK: $($wudf.FullName)"
       - name: Cari MSBuild (vswhere)
         id: msbuild
