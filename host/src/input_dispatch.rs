@@ -74,7 +74,8 @@ pub async fn serve(session: Arc<Session>) {
             // Auto-ensure virtual display headless: best-effort di background,
             // SEKALI di awal sesi. Tidak pernah memasang driver / minta UAC
             // dari sesi remote — hanya mengaktifkan node bila driver sudah ada.
-            let _ = tokio::task::spawn_blocking(crate::virtual_display::ensure_display);
+            // JoinHandle dibuang — pola sama dengan spawn_feedback di atas.
+            tokio::task::spawn_blocking(crate::virtual_display::ensure_display);
             dispatch(dc, pointer_dc).await;
         }
         Err(e) => eprintln!("[xydesk-host] input channel gagal: {e:#}"),
