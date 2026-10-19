@@ -296,7 +296,7 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '17'
@@ -331,7 +331,7 @@ jobs:
             cp "$f" "../dist/$out"
             echo "$out: $(du -h "../dist/$out" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
           done
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: XyDesk-Android-APK
           path: dist/*.apk
@@ -496,7 +496,7 @@ jobs:
           if (-not (Test-Path 'native-windows-x64/XyDesk.exe')) { throw 'XyDesk.exe native tidak ada' }
           if (-not (Test-Path 'native-windows-x64/xydesk-host.exe')) { throw 'engine Rust tidak dibundel' }
           Get-ChildItem 'native-windows-x64' -Recurse | ForEach-Object { Write-Host "OUT: $($_.FullName)" }
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: XyDesk-Windows-x64
           path: native-windows-x64/*
@@ -518,7 +518,7 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: npm
@@ -542,7 +542,7 @@ jobs:
           # OAuth client WEB (beda dari client Android; bukan secret).
           VITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_WEB_CLIENT_ID }}
         run: npm run build
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: XyDesk-Web
           path: web/dist/*
@@ -567,7 +567,7 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
       - name: Pasang dependensi
