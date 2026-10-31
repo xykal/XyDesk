@@ -84,6 +84,14 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   `tool/check_turn_live.js` + `tool/check_turn_auth.py --role host` lalu catat
   hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
   hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
+- [ ] **Kuota Workers Cloudflare gratisan sering habis** — worker
+  `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) memakai 373.505 request
+  dalam 2 hari karena klien lama mengirim heartbeat tiap ±8 detik; begitu
+  kuota harian 100 ribu request habis, SEMUA worker satu akun ikut mati
+  (Error 1027), termasuk `xydesk-signaling`. Fix di luar repo ini: naikkan
+  interval heartbeat klien/host XyDesk-Remote (lease sudah 90 detik, cukup
+  kirim tiap 60 detik) atau upgrade Workers Paid ($5/bulan). Sumber:
+  `cloudflare/worker.mjs` XyDesk-Remote, metrik `workersInvocationsAdaptive`.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
 
@@ -136,9 +144,5 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   gestur (`session_guidance.ts` isinya pesan kegagalan relay, bukan
   tutorial), dan `float_wifi` butuh indikator status signaling yang berdiri
   sendiri. Ketiganya tetap relevan untuk **APK**, yang belum tersentuh.
-- [ ] **Dekorasi melayang** (`float_cloud`/`float_sparkle`/`float_globe`) di
-  splash APK — animasi lembut, delay berbeda per elemen. Hero web selesai
-  2026-10-06 (tiga dekorasi + `web/test/hero-deco-contract.test.mjs`); sisa
-  yang terbuka hanya splash Android.
 - [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang
   saja; `hero_login.webp` tidak diganti.

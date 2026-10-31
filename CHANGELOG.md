@@ -24,6 +24,12 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+### Berubah
+- Splash screen APK memakai dekorasi bermerek yang melayang (awan, kilau, bola dunia) dengan animasi lembut dan delay berbeda per elemen; suara intro dan ketuk-untuk-melewati tetap sama.
+
+### Dihapus
+- Chat global dihapus dari APK dan worker Cloudflare: tab Obrolan, layar ChatScreen, klien chat, rute `/chat/ws` & `/chat/history`, serta Durable Object ChatRoom tidak ada lagi. Fitur dicabut, jadi rilis berikutnya wajib minimal MAJOR (7.0.0).
+
 ## [6.12.0] — 2026-10-31
 
 - **Mode Tanpa P2P (selalu lewat relay) menjadi bawaan APK Android, pemulihan ICE dua tahap, dan sebab kegagalan `/turn-ice` kini terbaca pengguna.** Koneksi APK ke host di jaringan yang memblokir UDP (VM cloud gaming, WiFi kantor, CGNAT) selalu berakhir "gagal ICE" tanpa penjelasan: jalur langsung tidak bisa ditembus, kredensial relay yang tidak tersedia jatuh diam-diam ke STUN-doang, dan sesi menyerah pada kegagalan pertama. Kini (1) `Api.turnIce` membawa pulang alasan server (`no-servers`, `providers-failed`, `turn-not-configured`, dst.) alih-alih daftar kosong, (2) sesi mencoba ICE restart lalu memaksa jalur relay sebelum menyerah dengan pesan yang menyebut sebab relay, dan (3) semua media bawaan lewat relay server tanpa konfigurasi apa pun. Dampak: sesi ke host ber-UDP-ketat bisa tersambung; latensi sedikit naik dan kuota relay terpakai; saklar "Mode Tanpa P2P" di Pengaturan > Koneksi bisa dimatikan untuk mencoba jalur langsung lagi.
