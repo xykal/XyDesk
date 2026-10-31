@@ -85,13 +85,20 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
   hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
 - [ ] **Kuota Workers Cloudflare gratisan sering habis** — worker
-  `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) memakai 373.505 request
-  dalam 2 hari karena klien lama mengirim heartbeat tiap ±8 detik; begitu
-  kuota harian 100 ribu request habis, SEMUA worker satu akun ikut mati
-  (Error 1027), termasuk `xydesk-signaling`. Fix di luar repo ini: naikkan
-  interval heartbeat klien/host XyDesk-Remote (lease sudah 90 detik, cukup
-  kirim tiap 60 detik) atau upgrade Workers Paid ($5/bulan). Sumber:
-  `cloudflare/worker.mjs` XyDesk-Remote, metrik `workersInvocationsAdaptive`.
+  `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) rata ±125 ribu request/hari
+  vs batas 100 ribu/hari → Error 1027 menimpa SEMUA worker satu akun, termasuk
+  `xydesk-signaling`. Biang utama (data PR #24): polling signaling PC-stream
+  `GET /api/pc/rooms/:id/signal` tiap 1 detik (86.400/hari per sesi) + klien
+  chat lama yang masih menembak jalur yang sudah 410 (chat pindah Firebase
+  2026-10-24). Sudah dikerjakan 2026-10-31: PR #24 XyDesk-Remote di-merge
+  (interval polling 1s→3s untuk app baru, counter unduhan KV→D1) + aturan
+  rate-limit edge zone xydeskremote.biz.id (jalur chat 410 + POST
+  /api/active-sessions diblokir >1 req/10 dtk per IP). Sisa terbuka:
+  (a) klien app lama tetap polling 1 detik sampai update (perlu rilis app
+  1.1.30 dengan interval baru); (b) ANOMALI: main menghapus kelas/binding
+  `PcSignalRoom` (commit 201dcc4, "unused") tapi `PcSignalClient.kt` masih
+  memanggil `/api/pc/rooms` — konfirmasi ke kall: sengaja atau perlu pulih;
+  (c) kalau masih tembus, opsi Workers Paid $5/bulan atau long-poll server.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
 
