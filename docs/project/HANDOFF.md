@@ -33,6 +33,12 @@ Gradle, belum bukti HP).
   Uji juga re-offer pemulihan saat sisi host masih `Connected`: host hanya
   mengambil alih sesi `Disconnected/Failed/Closed`, jadi kasus itu bisa
   berakhir `host-sibuk` dan butuh jalur cadangan bila terbukti.
+  Kontras lapangan 2026-10-31: ThinkMay lolos, Limore Cloud
+  (limorecloud.com) gagal di ICE dengan build yang sama — kemungkinan besar
+  blok UDP provider. Mode Tanpa P2P (relay) adalah jalurnya; untuk host yang
+  UDP keluarnya diblokir total, daftar TURN juga perlu varian transport
+  TCP/TLS (`turn:...?transport=tcp` / `turns:`) di `TURN_DIRECT_URLS` /
+  `TURN_STATIC_URLS`, bukan hanya URL UDP.
 
 Tertutup 2026-10-01: error pra-welcome. `RtcSession` rotasi ID; `Presence`
 rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
