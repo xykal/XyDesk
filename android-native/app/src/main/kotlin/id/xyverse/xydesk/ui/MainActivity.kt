@@ -172,7 +172,7 @@ class MainActivity : ComponentActivity() {
                                     startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                                 },
                             ),
-                            onLogout = { id.xyverse.xydesk.net.ChatClient.forget(applicationContext); store.clear(); jwt = null },
+                            onLogout = { store.clear(); jwt = null },
                         )
                     }
                 }

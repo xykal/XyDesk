@@ -1,28 +1,25 @@
 package id.xyverse.xydesk.ui
 
 import android.media.MediaPlayer
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.foundation.Canvas
 import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,10 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -77,7 +71,11 @@ private class IntroVoice(ctx: android.content.Context) {
     }
 }
 
-/** Splash sederhana: logo + wordmark berdampingan, masuk halus, keluar halus. Ketuk untuk lewati. */
+/**
+ * Splash: logo + wordmark berdampingan, masuk halus, keluar halus. Dekorasi
+ * bermerek (awan, kilau, bola dunia) melayang di sudut dengan animasi lembut
+ * dan delay berbeda per elemen. Ketuk untuk lewati.
+ */
 @Composable
 fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit) {
     val ctx = LocalContext.current
@@ -85,10 +83,20 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
     val exit = remember { Animatable(0f) }
     val voice = remember { if (playVoice) IntroVoice(ctx) else null }
     DisposableEffect(Unit) { onDispose { voice?.release() } }
+
+    // Tiga dekorasi muncul bergiliran: awan dulu, kilau 220 ms kemudian,
+    // bola dunia 460 ms kemudian — masing-masing punya fase melayang sendiri.
+    val cloudIn = remember { Animatable(0f) }
+    val sparkIn = remember { Animatable(0f) }
+    val globeIn = remember { Animatable(0f) }
+
     LaunchedEffect(playVoice) {
         delay(60)
         if (playVoice) voice?.start()
         launch { enter.animateTo(1f, tween(if (short) 520 else 760, easing = ease)) }
+        launch { cloudIn.animateTo(1f, tween(if (short) 320 else 520, easing = ease)) }
+        launch { delay(220); sparkIn.animateTo(1f, tween(if (short) 320 else 520, easing = ease)) }
+        launch { delay(460); globeIn.animateTo(1f, tween(if (short) 320 else 520, easing = ease)) }
         delay(if (short) 900L else 2100L)
         voice?.release()
         exit.animateTo(1f, tween(320, easing = ease))
@@ -100,21 +108,52 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
         contentAlignment = Alignment.Center,
     ) {
         val float = rememberInfiniteTransition(label = "aura")
-        val oy by float.animateFloat(0f, 1f, infiniteRepeatable(tween(3800, easing = LinearEasing), RepeatMode.Reverse), label = "oy")
-        val spin by float.animateFloat(0f, 360f, infiniteRepeatable(tween(5200, easing = LinearEasing)), label = "spin")
-        Canvas(
-            Modifier.size(210.dp).graphicsLayer { rotationZ = spin; alpha = 0.92f },
-        ) {
-            drawCircle(
-                brush = Brush.sweepGradient(listOf(Color(0xFF16081F), Xy.accent, Color(0xFF00E0FF), Color(0xFF16081F))),
-                style = Stroke(width = 10.dp.toPx()),
-            )
-            drawCircle(
-                brush = Brush.radialGradient(listOf(Color(0x44200030), Color.Transparent)),
-            )
-        }
-        Box(Modifier.size(22.dp).align(Alignment.TopEnd).padding(48.dp).graphicsLayer { translationY = (oy - 0.5f) * 18f }.clip(CircleShape).background(Xy.accent.copy(alpha = 0.35f)))
-        Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(56.dp).graphicsLayer { translationY = (0.5f - oy) * 14f }.clip(CircleShape).background(Color.White.copy(alpha = 0.55f)))
+        val bobCloud by float.animateFloat(0f, 1f, infiniteRepeatable(tween(3800, easing = LinearEasing), RepeatMode.Reverse), label = "bobCloud")
+        val bobSpark by float.animateFloat(0f, 1f, infiniteRepeatable(tween(2600, easing = LinearEasing), RepeatMode.Reverse), label = "bobSpark")
+        val bobGlobe by float.animateFloat(0f, 1f, infiniteRepeatable(tween(4600, easing = LinearEasing), RepeatMode.Reverse), label = "bobGlobe")
+
+        // Awan — kiri atas, terapung paling lambat di antara ketiganya.
+        Image(
+            painterResource(R.drawable.float_cloud),
+            null,
+            Modifier
+                .align(Alignment.TopStart)
+                .offset(x = 18.dp, y = 72.dp)
+                .graphicsLayer {
+                    alpha = cloudIn.value
+                    translationY = (bobCloud - 0.5f) * 18f
+                }
+                .size(112.dp),
+        )
+
+        // Kilau — kanan atas, berkilau sambil naik-turun paling cepat.
+        Image(
+            painterResource(R.drawable.float_sparkle),
+            null,
+            Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-22).dp, y = 88.dp)
+                .graphicsLayer {
+                    alpha = sparkIn.value * (0.62f + 0.38f * bobSpark)
+                    translationY = (0.5f - bobSpark) * 14f
+                }
+                .size(72.dp),
+        )
+
+        // Bola dunia — kiri bawah, bergoyang paling pelan.
+        Image(
+            painterResource(R.drawable.float_globe),
+            null,
+            Modifier
+                .align(Alignment.BottomStart)
+                .offset(x = 26.dp, y = (-96).dp)
+                .graphicsLayer {
+                    alpha = globeIn.value
+                    translationY = (0.5f - bobGlobe) * 20f
+                }
+                .size(118.dp),
+        )
+
         Row(
             Modifier.graphicsLayer {
                 alpha = enter.value
@@ -135,6 +174,5 @@ fun SplashScreen(playVoice: Boolean, short: Boolean = false, onDone: () -> Unit)
             "Remote gaming, masuk ke bayangan.", Xy.caption,
             Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp).graphicsLayer { alpha = enter.value },
         )
-        Spacer(Modifier.height(0.dp))
     }
 }
