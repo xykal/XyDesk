@@ -87,7 +87,7 @@ fun GeneralMorePrefs(store: Store, onTextSize: (Int) -> Unit) {
         XyText("KONEKSI", Xy.label)
         Switch(store, P.REMEMBER_DEFAULT, "Ingat perangkat secara bawaan", "Saklar di halaman Sambungkan menyala otomatis.", true)
         Switch(store, P.AUTO_LAST, "Sambung otomatis ke PC terakhir", "Saat aplikasi dibuka, langsung tersambung bila password tersimpan.")
-        Switch(store, P.FORCE_RELAY, "Selalu lewat relay", "Menyembunyikan IP HP dari host; latensi sedikit naik.")
+        Switch(store, P.FORCE_RELAY, "Mode Tanpa P2P (selalu lewat relay)", "Semua media lewat server relay — tidak ada koneksi langsung P2P, jadi selalu tembus NAT ketat/CGNAT. IP HP tersembunyi dari host; latensi & kuota relay naik.", true)
     }
     Spacer(Modifier.height(16.dp))
     XyCard {

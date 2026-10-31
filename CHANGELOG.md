@@ -22,6 +22,10 @@ Kebijakan rilis:
 - **Banner artikel wajib 3D glossy morphing + floating motion blur** —
   lihat `docs/NEWS_STYLE.md` §11.
 
+## [Belum terbit]
+
+- **APK Android: Mode Tanpa P2P (selalu lewat relay) menjadi bawaan, pemulihan ICE dua tahap, dan sebab kegagalan `/turn-ice` kini terbaca pengguna.** `Api.turnIce` tidak lagi menelan kegagalan (kini `TurnIceResult` berisi `reason`/`hint`, cermin `web/src/api.ts`); `RtcSession` mencoba ICE restart lalu memaksa jalur relay sebelum menyerah dengan pesan yang menyebut sebab relay (cermin `recoverConnection` web); toggle "Mode Tanpa P2P" bawaan aktif di Pengaturan > Koneksi, dan saat mode aktif tanpa relay yang siap, sesi gagal cepat dengan sebab dari server — bukan "gagal ICE" tanpa jejak.
+
 ## [6.11.21] — 2026-10-08
 
 - **Perbaikan koneksi stabil tanpa reset resolusi tidak diminta (menghilangkan loop "loading percobaan" pada Cloud GPU VM).** Menghilangkan pemanggilan otomatis `ChangeDisplaySettingsExW` saat inisialisasi koneksi di host Windows, sehingga sesi capture DXGI dan driver tampilan tidak ter-reset/rusak di tengah jalan, mencegah putus mendadak dan loop auto-reconnect pada klien.

@@ -161,7 +161,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             onNativeDecode = { ms -> metrics.onNativeDecode(ms) },
             onNativeSize = { w, h -> runOnUiThread { fitSurface(w, h) } },
             onDecodeMode = { ll -> runOnUiThread { applyDecodeMode(ll) } },
-            forceRelay = store.bool(P.FORCE_RELAY, false),
+            forceRelay = store.bool(P.FORCE_RELAY, true),
         )
         metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
         metrics.targetFps = sessionFps()
