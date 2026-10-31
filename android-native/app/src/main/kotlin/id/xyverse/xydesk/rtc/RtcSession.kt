@@ -107,6 +107,12 @@ class RtcSession(
     @Volatile private var audioMuted = false
     @Volatile private var welcomed = false
     @Volatile private var retriedPreWelcome = false
+    /** Sebab `/turn-ice` bila relay tidak tersedia (mis. `providers-failed` + hint). */
+    @Volatile private var turnStatus: String? = null
+    /** Jumlah pemulihan ICE yang sudah dicoba (maks 2, cermin web/src/rtc.ts). */
+    @Volatile private var recoveryAttempt = 0
+    /** Konfigurasi terakhir — dipakai saat menaikkan jalur ke relay. */
+    private var rtcConfig: PeerConnection.RTCConfiguration? = null
     private var signalToken = ""
     private var renderer: SurfaceViewRenderer? = null
     @Volatile private var stopped = false
@@ -228,7 +234,18 @@ class RtcSession(
 
     private suspend fun negotiate() {
         val servers = mutableListOf(PeerConnection.IceServer.builder("stun:stun.cloudflare.com:3478").createIceServer())
-        Api.turnIce(deviceId, signalToken).forEach { s ->
+        val turn = Api.turnIce(deviceId, signalToken)
+        turnStatus = if (turn.ok) null else "${turn.reason}${turn.hint?.let { " — $it" } ?: ""}"
+        if (!turn.ok) Log.w(TAG, "relay TURN tidak tersedia: ${turn.reason} ${turn.hint ?: ""}")
+        if (forceRelay && !turn.ok) {
+            // Mode Tanpa P2P tanpa relay = mustahil. Gagal cepat dengan sebab yang
+            // jelas, bukan menunggu watchdog 20 detik lalu "gagal ICE" tanpa jejak.
+            return fail(
+                "Mode Tanpa P2P aktif, tetapi server relay tidak tersedia (${turn.reason}). " +
+                    (turn.hint ?: "Isi secret TURN di server, atau matikan Mode Tanpa P2P."),
+            )
+        }
+        turn.servers.forEach { s ->
             val urls = s.optJSONArray("urls")?.let { a -> List(a.length()) { a.getString(it) } }
                 ?: listOfNotNull(s.optString("urls").ifBlank { null })
             if (urls.isNotEmpty()) {
@@ -242,6 +259,7 @@ class RtcSession(
             sdpSemantics = PeerConnection.SdpSemantics.UNIFIED_PLAN
             if (forceRelay) iceTransportsType = PeerConnection.IceTransportsType.RELAY
         }
+        rtcConfig = config
         val conn = factory.createPeerConnection(config, PcObserver()) ?: return fail("PeerConnection gagal dibuat.")
         pc = conn
         conn.addTransceiver(
@@ -298,7 +316,58 @@ class RtcSession(
                 conn.setLocalDescription(NoopSdp, desc)
                 signaling.offer(Signaling.normalizeId(hostId), desc.description)
             }
-        }, MediaConstraints())
+        }, offerConstraints())
+    }
+
+    /** `IceRestart` memaksa pengumpulan kandidat baru di PC yang sama. */
+    private fun offerConstraints(iceRestart: Boolean = false) = MediaConstraints().apply {
+        if (iceRestart) mandatory.add(MediaConstraints.KeyValuePair("IceRestart", "true"))
+    }
+
+    /**
+     * Kirim ulang offer dengan ICE restart — cermin `web/src/rtc.ts` recoverConnection.
+     * Host memproses offer ulang dengan mengambil alih sesi yang sudah Failed.
+     */
+    private fun reoffer(iceRestart: Boolean) {
+        val conn = pc ?: return fail(iceFailMessage())
+        conn.createOffer(object : NoopSdpObserver() {
+            override fun onCreateSuccess(desc: SessionDescription) {
+                conn.setLocalDescription(NoopSdp, desc)
+                signaling.offer(Signaling.normalizeId(hostId), desc.description)
+            }
+            override fun onCreateFailure(p0: String) {
+                Log.w(TAG, "re-offer gagal: $p0")
+                fail(iceFailMessage())
+            }
+        }, offerConstraints(iceRestart))
+    }
+
+    /** Pesan gagal ICE — sertakan sebab relay bila diketahui (dulu hilang tanpa jejak). */
+    private fun iceFailMessage(): String {
+        val relay = turnStatus
+            ?: return "Koneksi peer gagal (ICE) meski sudah lewat relay. Coba jaringan lain."
+        return "Koneksi peer gagal (ICE). Jalur langsung (P2P) tidak ditembus dan relay tidak tersedia: $relay"
+    }
+
+    /**
+     * ICE gagal — jangan langsung mati. Percobaan 1: ICE restart (kandidat baru).
+     * Percobaan 2: maksa jalur relay (tanpa P2P) walau sesi tidak dibuka dalam mode
+     * itu. Baru setelah itu gagal dengan pesan yang menyebut sebab relay.
+     */
+    private fun onIceFailed() {
+        if (stopped) return
+        if (recoveryAttempt >= 2) return fail(iceFailMessage())
+        recoveryAttempt += 1
+        Log.w(TAG, "ICE gagal — pemulihan $recoveryAttempt/2")
+        if (recoveryAttempt == 2) {
+            val conn = pc
+            val cfg = rtcConfig
+            if (conn != null && cfg != null) {
+                cfg.iceTransportsType = PeerConnection.IceTransportsType.RELAY
+                conn.setConfiguration(cfg)
+            }
+        }
+        reoffer(iceRestart = true)
     }
 
     private var specsSent = false
@@ -473,8 +542,11 @@ class RtcSession(
 
         override fun onConnectionChange(state: PeerConnection.PeerConnectionState) {
             when (state) {
-                PeerConnection.PeerConnectionState.CONNECTED -> listener.onPhase(Phase.CONNECTED, null)
-                PeerConnection.PeerConnectionState.FAILED -> fail("Koneksi peer gagal (ICE).")
+                PeerConnection.PeerConnectionState.CONNECTED -> {
+                    recoveryAttempt = 0
+                    listener.onPhase(Phase.CONNECTED, null)
+                }
+                PeerConnection.PeerConnectionState.FAILED -> onIceFailed()
                 PeerConnection.PeerConnectionState.CLOSED -> if (!stopped) fail("Koneksi peer ditutup.")
                 else -> Unit
             }

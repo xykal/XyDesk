@@ -28,6 +28,17 @@ Gradle, belum bukti HP).
   `web/public/news/shots/<versi>-android-sesi-*.jpg`.
 - [ ] **Bukti lapangan** — pairing, IME 0x06 TEXT, clipboard opt-in, mic ke
   host, presence online/offline. CI tidak menggantikan HP.
+- [ ] **Bukti lapangan Mode Tanpa P2P** — sesi HP ke host cloud VM berfirewall
+  UDP ketat, dengan dan tanpa toggle; alasan `/turn-ice` harus terbaca di UI.
+  Uji juga re-offer pemulihan saat sisi host masih `Connected`: host hanya
+  mengambil alih sesi `Disconnected/Failed/Closed`, jadi kasus itu bisa
+  berakhir `host-sibuk` dan butuh jalur cadangan bila terbukti.
+  Kontras lapangan 2026-10-31: ThinkMay lolos, Limore Cloud
+  (limorecloud.com) gagal di ICE dengan build yang sama — kemungkinan besar
+  blok UDP provider. Mode Tanpa P2P (relay) adalah jalurnya; untuk host yang
+  UDP keluarnya diblokir total, daftar TURN juga perlu varian transport
+  TCP/TLS (`turn:...?transport=tcp` / `turns:`) di `TURN_DIRECT_URLS` /
+  `TURN_STATIC_URLS`, bukan hanya URL UDP.
 
 Tertutup 2026-10-01: error pra-welcome. `RtcSession` rotasi ID; `Presence`
 rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
@@ -66,6 +77,13 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   Cadangan Open Relay / REST **opsional**, bukan blocker. Satu penyedia
   tetap risiko kuota/outage — jangan deploy-signaling hanya untuk “isi
   cadangan” tanpa kunci baru.
+- [ ] **Bukti allocate TURN berkala + jejak rotasi kredensial** — allocate
+  sungguhan (`tool/check_turn_auth.py`) belum dijalankan ulang sejak verifikasi
+  2026-10-02, dan rotasi `TURN_DIRECT_*` pasca-kebocoran riwayat git (lihat
+  `docs/qa/relay-turn-native-2026-09-23.md`) belum punya jejak bukti. Jalankan
+  `tool/check_turn_live.js` + `tool/check_turn_auth.py --role host` lalu catat
+  hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
+  hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
 

@@ -76,19 +76,53 @@ object Api {
         }
     }
 
-    /** Daftar ICE server dari /turn-ice; kosong bila relay belum dikonfigurasi. */
-    suspend fun turnIce(deviceId: String, signalToken: String): List<JSONObject> = withContext(Dispatchers.IO) {
+    /** Hasil `/turn-ice` beserta sebab bila relay tidak tersedia (cermin `web/src/api.ts`). */
+    data class TurnIceResult(
+        val servers: List<JSONObject>,
+        val ok: Boolean,
+        val reason: String,
+        val hint: String? = null,
+    )
+
+    /**
+     * Daftar ICE server dari `/turn-ice` — beserta sebabnya bila tidak ada relay.
+     *
+     * Dulu fungsi ini mengembalikan `List` polos dan setiap kegagalan (403,
+     * 503, jaringan mati) menyusut jadi daftar kosong yang sama. Akibatnya sesi
+     * jalan STUN-doang tanpa pesan, lalu mati "gagal ICE" tanpa jejak. Sekarang
+     * sebabnya ikut dikembalikan supaya bisa ditampilkan apa adanya.
+     */
+    suspend fun turnIce(deviceId: String, signalToken: String): TurnIceResult = withContext(Dispatchers.IO) {
         val req = Request.Builder()
             .url("${BuildConfig.API_URL}/turn-ice?id=$deviceId&token=$signalToken")
             .build()
-        runCatching {
+        try {
             http.newCall(req).execute().use { res ->
-                if (!res.isSuccessful) return@use emptyList()
-                val arr = JSONObject(res.body?.string().orEmpty()).optJSONArray("iceServers")
-                    ?: return@use emptyList()
-                List(arr.length()) { arr.getJSONObject(it) }
+                val obj = runCatching { JSONObject(res.body?.string().orEmpty()) }.getOrDefault(JSONObject())
+                val hint = obj.optString("hint").takeIf { it.isNotBlank() }
+                val arr = obj.optJSONArray("iceServers")
+                val servers = if (arr != null) List(arr.length()) { arr.getJSONObject(it) } else emptyList()
+                if (!res.isSuccessful) {
+                    return@use TurnIceResult(
+                        emptyList(), false,
+                        obj.optString("reason").takeIf { it.isNotBlank() }
+                            ?: obj.optString("error").takeIf { it.isNotBlank() }
+                            ?: "http-${res.code}",
+                        hint,
+                    )
+                }
+                if (servers.isEmpty()) {
+                    return@use TurnIceResult(
+                        emptyList(), false,
+                        if (obj.optBoolean("degraded")) "providers-failed" else "no-servers",
+                        hint,
+                    )
+                }
+                TurnIceResult(servers, true, "ok", hint)
             }
-        }.getOrDefault(emptyList())
+        } catch (e: Exception) {
+            TurnIceResult(emptyList(), false, "network", e.message)
+        }
     }
 
     /**
