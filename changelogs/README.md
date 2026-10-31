@@ -4,6 +4,7 @@ Setiap versi punya file sendiri biar ga numpuk (kebijakan Founder 2026-09-07). F
 
 ## Daftar versi (baru ke lama)
 
+- [6.12.0](./6.12.0.md) - 2026-10-31 — Mode Tanpa P2P bawaan di APK Android, pemulihan ICE dua tahap, dan sebab kegagalan /turn-ice kini terbaca pengguna
 - [6.11.21](./6.11.21.md) - 2026-10-08 — Perbaikan koneksi stabil tanpa reset resolusi tidak diminta (menghilangkan loop "loading percobaan" pada Cloud GPU VM)
 - [6.11.20](./6.11.20.md) - 2026-10-08 — Pemasangan aset logo asli resmi XyDesk, pengembalian tema putih bersih & elegan signature XyDesk, dan kustomisasi kontrol overlay penuh
 - [6.11.19](./6.11.19.md) - 2026-10-08 — Perbaikan hardware encoder H.264 (NVENC/MFT 60 FPS), deteksi GPU aktif akurat, pembukaan keyboard virtual Android, dan penyegaran UI kontrol overlay
