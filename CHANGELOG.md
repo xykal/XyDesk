@@ -24,7 +24,9 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
-- **APK Android: Mode Tanpa P2P (selalu lewat relay) menjadi bawaan, pemulihan ICE dua tahap, dan sebab kegagalan `/turn-ice` kini terbaca pengguna.** `Api.turnIce` tidak lagi menelan kegagalan (kini `TurnIceResult` berisi `reason`/`hint`, cermin `web/src/api.ts`); `RtcSession` mencoba ICE restart lalu memaksa jalur relay sebelum menyerah dengan pesan yang menyebut sebab relay (cermin `recoverConnection` web); toggle "Mode Tanpa P2P" bawaan aktif di Pengaturan > Koneksi, dan saat mode aktif tanpa relay yang siap, sesi gagal cepat dengan sebab dari server — bukan "gagal ICE" tanpa jejak.
+## [6.12.0] — 2026-10-31
+
+- **Mode Tanpa P2P (selalu lewat relay) menjadi bawaan APK Android, pemulihan ICE dua tahap, dan sebab kegagalan `/turn-ice` kini terbaca pengguna.** Koneksi APK ke host di jaringan yang memblokir UDP (VM cloud gaming, WiFi kantor, CGNAT) selalu berakhir "gagal ICE" tanpa penjelasan: jalur langsung tidak bisa ditembus, kredensial relay yang tidak tersedia jatuh diam-diam ke STUN-doang, dan sesi menyerah pada kegagalan pertama. Kini (1) `Api.turnIce` membawa pulang alasan server (`no-servers`, `providers-failed`, `turn-not-configured`, dst.) alih-alih daftar kosong, (2) sesi mencoba ICE restart lalu memaksa jalur relay sebelum menyerah dengan pesan yang menyebut sebab relay, dan (3) semua media bawaan lewat relay server tanpa konfigurasi apa pun. Dampak: sesi ke host ber-UDP-ketat bisa tersambung; latensi sedikit naik dan kuota relay terpakai; saklar "Mode Tanpa P2P" di Pengaturan > Koneksi bisa dimatikan untuk mencoba jalur langsung lagi.
 
 ## [6.11.21] — 2026-10-08
 
