@@ -38,7 +38,7 @@ openh264 = "0.9.8"
 # Control API lokal untuk shell desktop (HTTP 127.0.0.1, lihat src/control.rs)
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
 # HTTP kecil untuk daftar TURN native + tukar token host; rustls tanpa OpenSSL.
-ureq = { version = "2", features = ["json"] }
+ureq = { version = "3", features = ["json"] }
 
 # ── Capture layar (Windows-only) — DXGI Desktop Duplication ──
 # Audio: WASAPI loopback → Opus lewat libopus VENDOR (vendor/opus + build.rs
