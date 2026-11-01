@@ -344,21 +344,23 @@ test('tipe yang benar-benar tidak dikenal tetap dijawab error', async () => {
 
 // ── Pendaftaran (hello) dan id duplikat ─────────────────────────────────
 //
-// Penolakan id duplikat adalah anti-pembajakan sesi dan HARUS tetap ada;
-// yang wajib menyesuaikan adalah sisi client: host yang menyambung ulang
-// cepat (soket lamanya belum ditutup server) menerima `id sudah online`
-// SEBELUM welcome dan harus memutus lalu mencoba lagi — perbaikan sisi host
-// ada di `host/src/main.rs` (break sebelum welcome). Uji ini mengunci
-// kontrak hub-nya supaya salah satu sisi tidak "diperbaiki" dengan
-// menghapus perilaku yang disengaja.
+// Koneksi terbaru MENANG untuk id yang sama. Identitas id diverifikasi dari
+// token sebelum hello, jadi pendatang adalah perangkat yang sama — biasanya
+// host yang menyambung ulang setelah putus jaringan sementara soket lamanya
+// masih tercatat (zombie). Perilaku lama (menolak koneksi baru sampai zombie
+// dibuang server) mengunci perangkat keluar dari hub berpuluh detik: akar
+// "host hidup-mati". Uji ini mengunci kontrak penggantian: pendatang
+// terdaftar + welcome, yang lama menerima `id digantikan` lalu ditutup.
 
-test('hello dengan id yang sudah terdaftar ditolak tanpa mengganggu pemegangnya', () => {
+test('hello dengan id yang sudah terdaftar menggantikan soket lama (koneksi terbaru menang)', () => {
   const storage = fakeStorage();
   const hostOut = [];
   const existing = fakeSocket(
     { id: '111222333', role: 'host', name: 'PC', registered: true, since: 1, ip: '9.9.9.9' },
     hostOut,
   );
+  let oldClosed = false;
+  existing.close = () => { oldClosed = true; };
   const newcomerOut = [];
   const newcomer = fakeSocket(
     { id: '111222333', role: 'host', name: 'PC-baru', registered: false, ip: '8.8.8.8' },
@@ -368,13 +370,16 @@ test('hello dengan id yang sudah terdaftar ditolak tanpa mengganggu pemegangnya'
 
   hub.handleHello(newcomer, { to: '111222333', from: 'PC-baru' });
 
+  // Pendatang sah (id-nya terverifikasi token) menerima welcome.
   assert.equal(newcomerOut.length, 1);
-  assert.equal(newcomerOut[0].type, 'error');
-  assert.equal(newcomerOut[0].error, 'id sudah online');
-  assert.equal(newcomer.deserializeAttachment().registered, false);
-  // Pemegang id yang sah tidak menerima apa pun dan tetap terdaftar.
-  assert.equal(hostOut.length, 0);
-  assert.equal(existing.deserializeAttachment().registered, true);
+  assert.equal(newcomerOut[0].type, 'welcome');
+  assert.equal(newcomer.deserializeAttachment().registered, true);
+  // Soket lama diberi tahu lalu ditutup — pembebasan id tidak menunggu
+  // timeout zombie.
+  assert.equal(hostOut.length, 1);
+  assert.equal(hostOut[0].type, 'error');
+  assert.equal(hostOut[0].error, 'id digantikan');
+  assert.equal(oldClosed, true);
 });
 
 test('hello pertama pada id itu diterima dan ditandai terdaftar', () => {

@@ -245,12 +245,20 @@ export class Hub {
       return this.send(ws, { type: 'error', error: 'id tidak cocok dengan token' });
     }
 
-    // Tolak id duplikat (mencegah pencurian sesi).
+    // Id yang sama = perangkat yang sama: identitas sudah diverifikasi
+    // Worker dari token sebelum hello, bukan dari payload. Koneksi terbaru
+    // MENANG — pemegang lama biasanya soket zombie (jaringan putus / proses
+    // di-kill) yang tidak sempat ditutup. Perilaku lama (menolak koneksi baru
+    // sampai zombie dibuang server) justru mengunci perangkat keluar dari hub
+    // selama berpuluh detik: akar "host hidup-mati" setelah putus singkat.
     const dup = this.sockets().find((w) => {
       const a = w.deserializeAttachment();
       return a && a.registered && a.id === id && w !== ws;
     });
-    if (dup) return this.send(ws, { type: 'error', error: 'id sudah online' });
+    if (dup) {
+      this.send(dup, { type: 'error', error: 'id digantikan', reason: 'koneksi baru' });
+      try { dup.close(1000, 'digantikan koneksi baru'); } catch {}
+    }
 
     meta.id = id;
     meta.registered = true;

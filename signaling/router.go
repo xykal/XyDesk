@@ -73,8 +73,9 @@ func relayAllowed(typ string, from, to Role) bool {
 	return false
 }
 
-// handleHello mendaftarkan perangkat. Id bersifat case-sensitive dan harus
-// unik; bila duplikat, koneksi baru ditolak agar tak ada pencurian sesi.
+// handleHello mendaftarkan perangkat. Id bersifat case-sensitive; bila
+// duplikat, koneksi TERBARU menggantikan yang lama (lihat
+// Hub.registerReplacing — soket lama biasanya zombie).
 // Identitas TIDAK diambil dari pesan: id diambil dari ?id= yang sudah diveri-
 // fikasi middleware, dan role dari ?role= — bukan dari kolom `reason` yang
 // bisa dipalsukan. Sejak 3 Sep 2026 pesan hello dengan `to` yang tidak cocok
@@ -106,9 +107,9 @@ func handleHello(c *Client, m Message) {
 		Since:    m.At.Unix(),
 	}
 
-	if !c.hub.register(c.id, c) {
-		c.send(Message{Type: TMsgError, Error: "id sudah online"})
-		return
+	if old := c.hub.registerReplacing(c.id, c); old != nil {
+		old.send(Message{Type: TMsgError, Error: "id digantikan", Reason: "koneksi baru"})
+		old.close()
 	}
 
 	c.hub.log.Printf("[join] %s (%s) role=%s", c.id, c.info.Name, c.info.Role)

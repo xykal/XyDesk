@@ -46,6 +46,10 @@ func NewClient(h *Hub, ws *websocket.Conn, log *log.Logger) *Client {
 	}
 }
 
+// close menutup koneksi dari sisi server (dipakai saat id digantikan
+// koneksi baru). readPump/writePump keluar sendiri setelah ini.
+func (c *Client) close() { _ = c.ws.Close() }
+
 // send menyusun + menulis satu pesan JSON. Aman-goroutine.
 func (c *Client) send(m Message) { c.sendRaw(mustJSON(m)) }
 
