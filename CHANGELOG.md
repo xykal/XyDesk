@@ -24,11 +24,10 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
-### Berubah
-- Splash screen APK memakai dekorasi bermerek yang melayang (awan, kilau, bola dunia) dengan animasi lembut dan delay berbeda per elemen; suara intro dan ketuk-untuk-melewati tetap sama.
+## [7.0.0] — 2026-11-01
 
-### Dihapus
-- Chat global dihapus dari APK dan worker Cloudflare: tab Obrolan, layar ChatScreen, klien chat, rute `/chat/ws` & `/chat/history`, serta Durable Object ChatRoom tidak ada lagi. Fitur dicabut, jadi rilis berikutnya wajib minimal MAJOR (7.0.0).
+- **Chat global dihapus total, splash screen dekorasi melayang, dan koneksi tidak lagi "hidup-mati" setelah jaringan goyang.** (1) **Tanpa chat global:** tab Obrolan, layar ChatScreen, klien chat, rute `/chat/ws` & `/chat/history`, serta Durable Object ChatRoom sudah tidak ada di APK maupun worker Cloudflare — aplikasi kini murni remote desktop. (2) **Splash dekorasi melayang:** awan, kilau, dan bola dunia bermerek beranimasi lembut dengan delay berbeda per elemen; suara intro dan ketuk-untuk-melewati tetap sama. (3) **Hub signaling: koneksi terbaru menang.** Pendaftaran id yang sama kini menggantikan soket lama (yang lama diberi tahu `id digantikan` lalu ditutup), menggantikan perilaku lama yang menolak pendatang sampai server membuang soket zombie — akar gejala "host tersambung lalu langsung mati" setelah putus jaringan singkat. (4) **Sesi bertahan saat signaling goyang:** aplikasi menyambung ulang signaling hingga 3 kali dengan id yang sama tanpa memutus sesi berjalan, dan melanjutkan pemulihan ICE otomatis bila media sempat gagal.
+
 
 ## [6.12.0] — 2026-10-31
 

@@ -107,6 +107,7 @@ class RtcSession(
     @Volatile private var audioMuted = false
     @Volatile private var welcomed = false
     @Volatile private var retriedPreWelcome = false
+    @Volatile private var signalingRetry = 0
     /** Sebab `/turn-ice` bila relay tidak tersedia (mis. `providers-failed` + hint). */
     @Volatile private var turnStatus: String? = null
     /** Jumlah pemulihan ICE yang sudah dicoba (maks 2, cermin web/src/rtc.ts). */
@@ -176,7 +177,14 @@ class RtcSession(
     override fun onMessage(m: SignalMessage) {
         Log.d(TAG, "terima ${m.type} ${m.error ?: ""}")
         when (m.type) {
-            "welcome" -> welcomed = true
+            "welcome" -> {
+                welcomed = true
+                signalingRetry = 0
+                // Sesi yang sudah berjalan bisa kehilangan jalur recovery saat
+                // signaling sempat putus; lanjutkan pemulihan bila media sudah
+                // lebih dulu Failed.
+                if (pc?.connectionState() == PeerConnection.PeerConnectionState.FAILED) onIceFailed()
+            }
             "pair-response" -> {
                 welcomed = true
                 if (m.accepted) {
@@ -225,6 +233,20 @@ class RtcSession(
             signaling = Signaling(deviceId, this)
             scope.launch {
                 delay(600)
+                if (!stopped) connectSignaling()
+            }
+            return
+        }
+        // Sesi yang sudah berjalan TIDAK boleh mati hanya karena signaling
+        // goyang — media (WebRTC) berdiri sendiri. Sambung ulang dengan id yang
+        // sama: hub sekarang menggantikan soket lama, tidak ada lagi jebakan
+        // "id sudah online". Media yang benar-benar putus dipulihkan lewat
+        // re-offer begitu signaling kembali.
+        if (welcomed && !stopped && signalingRetry < 3) {
+            signalingRetry += 1
+            Log.w(TAG, "signaling terputus ($reason) — sambung ulang $signalingRetry/3, sesi tetap hidup")
+            scope.launch {
+                delay(2_000L * signalingRetry)
                 if (!stopped) connectSignaling()
             }
             return

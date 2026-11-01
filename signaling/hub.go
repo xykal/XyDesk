@@ -21,16 +21,21 @@ func NewHub(log *log.Logger) *Hub {
 	return &Hub{clients: make(map[string]*Client), log: log}
 }
 
-// register menautkan client ke id-nya. Mengembalikan false bila id sudah
-// dipakai (duplikat online) — panggil di luar kunci.
-func (h *Hub) register(id string, c *Client) bool {
+// registerReplacing menautkan client ke id-nya dan menggantikan pendaftar
+// lama bila ada. Koneksi terbaru menang: pemegang lama biasanya soket zombie
+// (jaringan putus tanpa sempat close). Identitas id sudah diverifikasi dari
+// token sebelum hello, jadi penggantian ini bukan celah pencurian sesi —
+// justru menolak pendatang (perilaku lama) mengunci perangkat keluar dari
+// hub sampai server membuang zombienya. Kembalikan client lama yang
+// tergantikan; pemanggil menutupnya DI LUAR kunci.
+func (h *Hub) registerReplacing(id string, c *Client) (old *Client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if _, exists := h.clients[id]; exists {
-		return false
+	if prev, exists := h.clients[id]; exists && prev != c {
+		old = prev
 	}
 	h.clients[id] = c
-	return true
+	return old
 }
 
 // unregister melepas client bila masih menunjuk ke koneksi yang sama.
