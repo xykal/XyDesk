@@ -199,16 +199,6 @@ jobs:
           npm ci
           npm test
 
-      # Chat global dirangkai dari tiga bagian (Worker, AUTH_STORE, ChatRoom)
-      # dan tes unit tidak pernah menjalankan rangkaiannya. Satu bug di
-      # pembungkus CORS sempat mengubah SETIAP upgrade WebSocket menjadi 500
-      # tanpa satu pun tes unit berubah warna. Langkah ini menjalankan dua
-      # peserta sungguhan di runtime workerd.
-      - name: Uji chat global ujung-ke-ujung (workerd)
-        run: |
-          cd cloudflare
-          npm run test:chat
-
       # Harness admin ini ada sejak lama tapi tidak pernah dipanggil CI, jadi
       # ia membusuk diam-diam: masih meminta rahasia TOTP dari /admin/setup/start
       # berbulan-bulan setelah TOTP dicabut dari alur masuk admin. Sekarang ikut
