@@ -35,6 +35,10 @@ npx wrangler secret put TURN_STATIC_SECRET # shared secret dari penyedia
 npx wrangler secret put TURN_DIRECT_URLS      # turn:free.expressturn.com:3478
 npx wrangler secret put TURN_DIRECT_USERNAME  # <username-ExpressTurn; nilai ada di secret Worker>
 npx wrangler secret put TURN_DIRECT_CREDENTIAL # <credential-ExpressTurn; nilai ada di secret Worker, dirotasi 2026-09-23>
+# Cukup tulis URL UDP polos: turn.js OTOMATIS menurunkan varian
+# `?transport=tcp` dan `turns:host:5349` (port 3478) supaya tembus
+# jaringan pemblokir UDP. Butuh varian lain (port TLS beda, dsb.)?
+# Tulis eksplisit, dipisah koma: turn:h:3478,turns:h:443
 # Penyedia lain (tambahan, bukan pengganti):
 # npx wrangler secret put TURN_KEY_ID      # Cloudflare Realtime
 # npx wrangler secret put TURN_KEY_TOKEN

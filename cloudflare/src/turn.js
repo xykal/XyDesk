@@ -67,6 +67,46 @@ export function resetTurnCache() {
   cache.clear();
 }
 
+/// Tambahkan varian transport untuk daftar URL TURN mentah.
+///
+/// Beberapa jaringan (VM cloud gaming, WiFi kantor, hotspot tertentu)
+/// memblokir UDP TOTAL — kandidat relay `turn:` UDP tidak akan pernah
+/// sampai, dan sesi gagal ICE tanpa sebab yang terlihat. Padahal server
+/// coturn/ExpressTurn yang sama hampir selalu juga membuka TURN di atas
+/// TCP (`turn:...?transport=tcp`) dan TURNS/TLS (`turns:`, port bawaan
+/// RFC 7065 = 5349). Dua varian itulah yang menembus firewall yang hanya
+/// meloloskan TCP 443/80.
+///
+/// Aturan turunannya (dibuktikan 2026-11-02 terhadap free.expressturn.com:
+/// TCP 3478 terbuka, TLS 5349 jabat tangan sertifikat valid):
+/// - `turn:host:3478` (UDP polos) → juga sajikan `turn:host:3478?transport=tcp`
+///   dan `turns:host:5349`.
+/// - `turn:host:PORT` selain 3478 → hanya varian TCP; port TLS tidak
+///   ditebak untuk server non-coturn — URL `turns:` eksplisit lebih jujur
+///   daripada kandidat mati yang dibuat-buat.
+/// - URL yang sudah membawa `transport=` atau ber-skema `turns:` dibiarkan
+///   apa adanya (operator sudah memilih), dan duplikat dibuang.
+export function withTransportVariants(urls) {
+  const hasil = [];
+  const seen = new Set();
+  const tambah = (u) => {
+    if (u && !seen.has(u)) {
+      seen.add(u);
+      hasil.push(u);
+    }
+  };
+  for (const url of urls) {
+    tambah(url);
+    if (!/^turn:/i.test(url) || /transport=/i.test(url)) continue;
+    const tanpaQuery = url.split('?')[0];
+    const port = Number(tanpaQuery.split(':')[2] || '3478');
+    const host = tanpaQuery.split(':')[1];
+    tambah(`${tanpaQuery}?transport=tcp`);
+    if (port === 3478 && host) tambah(`turns:${host}:5349`);
+  }
+  return hasil;
+}
+
 function base64(bytes) {
   let s = '';
   for (const b of bytes) s += String.fromCharCode(b);
@@ -167,10 +207,12 @@ async function fetchProvider(provider, env, ttl, now, fetchImpl, timeoutMs) {
 
   let value;
   if (provider.kind === 'static') {
-    const urls = String(env[provider.urlsVar])
-      .split(',')
-      .map((u) => u.trim())
-      .filter(Boolean);
+    const urls = withTransportVariants(
+      String(env[provider.urlsVar])
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean),
+    );
     const cred = await staticCredentials({
       secret: String(env[provider.secretVar]),
       user: String(env[provider.userVar] || 'xydesk'),
@@ -181,10 +223,12 @@ async function fetchProvider(provider, env, ttl, now, fetchImpl, timeoutMs) {
       iceServers: [{ urls, username: cred.username, credential: cred.credential }],
     };
   } else if (provider.kind === 'direct') {
-    const urls = String(env[provider.urlsVar])
-      .split(',')
-      .map((u) => u.trim())
-      .filter(Boolean);
+    const urls = withTransportVariants(
+      String(env[provider.urlsVar])
+        .split(',')
+        .map((u) => u.trim())
+        .filter(Boolean),
+    );
     const username = String(env[provider.userVar]).trim();
     const credential = String(env[provider.credVar]).trim();
     value = {
