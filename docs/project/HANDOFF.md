@@ -39,6 +39,13 @@ Gradle, belum bukti HP).
   UDP keluarnya diblokir total, daftar TURN juga perlu varian transport
   TCP/TLS (`turn:...?transport=tcp` / `turns:`) di `TURN_DIRECT_URLS` /
   `TURN_STATIC_URLS`, bukan hanya URL UDP.
+  Progres 2026-11-02: varian `?transport=tcp` + `turns:host:5349` (khusus
+  port 3478) kini diturunkan OTOMATIS oleh `withTransportVariants` di
+  `cloudflare/src/turn.js` untuk provider `statis`/`direct` — URL UDP polos
+  apa pun ikut menerbitkan kandidat TCP/TLS tanpa menyentuh secret. Bukti
+  ketersediaan: free.expressturn.com membuka TCP 3478 dan TLS 5349 (jabat
+  tangan sertifikat valid). Sisa: bukti lapangan sesi ke host ber-UDP-ketat
+  (Limore-type) masih menunggu uji perangkat.
 
 Tertutup 2026-10-01: error pra-welcome. `RtcSession` rotasi ID; `Presence`
 rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
@@ -84,6 +91,10 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   `tool/check_turn_live.js` + `tool/check_turn_auth.py --role host` lalu catat
   hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
   hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
+  Progres 2026-11-02: varian TCP/TLS otomatis digabung (lihat item Mode
+  Tanpa P2P). Bukti allocate sungguhan menyusul dari gerbang relay
+  workflow Deploy Signaling (`tool/check_turn_auth.py --signal ...`) pada
+  deploy kode ini — hasil run akan dicatat di sini.
 - [ ] **Kuota Workers Cloudflare gratisan sering habis** — worker
   `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) rata ±125 ribu request/hari
   vs batas 100 ribu/hari → Error 1027 menimpa SEMUA worker satu akun, termasuk
@@ -98,6 +109,13 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   1.1.30 dengan interval baru); (b) ANOMALI: main menghapus kelas/binding
   `PcSignalRoom` (commit 201dcc4, "unused") tapi `PcSignalClient.kt` masih
   memanggil `/api/pc/rooms` — konfirmasi ke kall: sengaja atau perlu pulih;
+  Diperiksa 2026-11-02: `PcSignalClient.kt` sudah TIDAK ADA di repo (ikut
+  terhapus saat purge PC Stream, keputusan RDP-only). Pemanggil tersisa
+  tinggal fosil `api/index.mjs` (repo XyDesk-Remote) yang mengimpor
+  `PcSignalRoom` — bukan jalur deploy (wrangler memakai
+  `cloudflare/worker.mjs` langsung) — plus klien app 1.1.x lawas yang masih
+  polling. Menunggu putusan kall: hapus fosil + biarkan lama 410, atau
+  pulihkan rute untuk klien lawas.
   (c) kalau masih tembus, opsi Workers Paid $5/bulan atau long-poll server.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
