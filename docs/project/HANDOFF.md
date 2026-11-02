@@ -89,21 +89,6 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   Cadangan Open Relay / REST **opsional**, bukan blocker. Satu penyedia
   tetap risiko kuota/outage — jangan deploy-signaling hanya untuk “isi
   cadangan” tanpa kunci baru.
-- [ ] **Bukti allocate TURN berkala + jejak rotasi kredensial** — allocate
-  sungguhan (`tool/check_turn_auth.py`) belum dijalankan ulang sejak verifikasi
-  2026-10-02, dan rotasi `TURN_DIRECT_*` pasca-kebocoran riwayat git (lihat
-  `docs/qa/relay-turn-native-2026-09-23.md`) belum punya jejak bukti. Jalankan
-  `tool/check_turn_live.js` + `tool/check_turn_auth.py --role host` lalu catat
-  hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
-  hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
-  Progres 2026-11-02: varian TCP otomatis digabung (lihat item Mode
-  Tanpa P2P). Bukti allocate sungguhan menyusul dari gerbang relay
-  workflow Deploy Signaling (`tool/check_turn_auth.py --signal ...`) pada
-  deploy kode ini — hasil run akan dicatat di sini.
-  Catatan gerbang 2026-11-02 (run 41457235952): UDP allocate OK
-  (relay 48.217.251.128:54272, realm 'localhost'), `turns:` GAGAL
-  (tanpa balasan STUN → koneksi di-reset) — dasar pencabutan turunan
-  `turns:` dan perluasan gerbang ke TURN-over-TCP.
 - [ ] **Kuota Workers Cloudflare gratisan sering habis** — worker
   `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) rata ±125 ribu request/hari
   vs batas 100 ribu/hari → Error 1027 menimpa SEMUA worker satu akun, termasuk
