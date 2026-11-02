@@ -68,6 +68,12 @@ Tertutup sebagai usang: shell Electron/`desktop/` (dihapus 2026-09-23).
 - [ ] **Keystore Android dirotasi** — APK lama tidak update-in-place; artikel
   rilis berikutnya harus jujur: uninstall dulu. Verifikasi
   `apksigner verify --print-certs` pada APK pertama keystore baru.
+  *Progres 2026-11-02: bahan artikel siap di
+  `docs/articles/BAHAN_ARTIKEL_KEYSTORE-UNINSTALL.md` — menunggu digabung ke
+  artikel rilis berikutnya; masih perlu satu kalimat alasan rotasi dari
+  pemilik (slot sudah disediakan di bahan). Verifikasi sertifikat APK pertama
+  kunci baru terpenuhi lewat forensik: sidik `8429f689e7…` sama di semua rilis
+  publik v2.0.0+.*
 - [x] Native Tentang → Cek pembaruan membaca
   `github.com/xykal/XyDesk/releases/latest/download/update.json` (bukan
   domain app). Draft = 404, ditampilkan jujur. Belum unduh/pasang APK
