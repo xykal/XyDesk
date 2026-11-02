@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Bahan artikel "uninstall dulu" untuk kunci penandatanganan yang baru sudah disiapkan untuk artikel rilis berikutnya.** Semua rilis publik sejak versi 2.0.0 memakai kunci penandatanganan yang sama (terverifikasi dari sidik sertifikat APK); aplikasi rilisan lama tidak bisa diperbarui langsung karena tanda tangannya berbeda, dan perlu di-uninstall dulu sebelum memasang yang baru. Materinya di `docs/articles/BAHAN_ARTIKEL_KEYSTORE-UNINSTALL.md`, tinggal digabung saat rilis berikutnya.
+
 - **Sesi hemat: preview wallpaper host tidak lagi dirender untuk layar yang tidak dilihat siapa pun.** Selama sesi berjalan, aplikasi meminta preview wallpaper tiap 30 detik — berguna saat layar HP aktif, tapi tetap berjalan walau aplikasi masuk latar: host terus merender dan mengirim gambar untuk tampilan yang tidak terlihat, menguras baterai dan CPU host. Kini permintaan preview hanya berjalan saat layar dilihat (berhenti di `onPause`, lanjut plus satu permintaan segar di `onResume`), dan permintaan awal saat terhubung dilewati bila sesi terbentuk ketika aplikasi sedang di latar. Kualitas adaptif dan statistik sesi tetap berjalan seperti semula. Build juga dipercepat: paralelisasi Gradle + configuration cache.
 
 - **Bukti allocate TURN dicatat dari gerbang deploy 2026-11-02 (run 41458695094): UDP dan TCP sama-sama menghasilkan relay sungguhan (172.184.211.120:52224, realm 'localhost') — item HANDOFF "Bukti allocate TURN berkala" ditutup.**
