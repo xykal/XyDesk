@@ -104,6 +104,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
     private var connectState by mutableStateOf(ConnectState(Phase.PAIRING, null, ""))
     private val ui = Handler(Looper.getMainLooper())
+    private var resumed = false
     private val statsTick = object : Runnable {
         override fun run() { metrics.tick(); ui.postDelayed(this, 1000) }
     }
@@ -681,12 +682,15 @@ class SessionActivity : ComponentActivity(), RtcListener {
             b.toolbar.bringToFront()
             startService(Intent(this, SessionKeep::class.java))
             ui.postDelayed(statsTick, 1000)
-            if (store.bool(P.SAVE_PREVIEW, true)) {
+            // Permintaan preview wallpaper hanya dijalankan saat layar dilihat:
+            // tiap permintaan membuat host merender + mengirim gambar wallpaper,
+            // percuma bila aplikasi sedang di latar.
+            if (resumed && store.bool(P.SAVE_PREVIEW, true)) {
                 listOf(1200L, 5000L, 12_000L).forEach { delay ->
                     ui.postDelayed({ session.requestWallpaperPreview() }, delay)
                 }
+                ui.postDelayed(previewTick, 30_000)
             }
-            ui.postDelayed(previewTick, 30_000)
             session.send(StreamXy.fps(metrics.targetFps))
             if (store.quality == 0) metrics.auto = true else session.send(StreamXy.quality(store.quality))
             applyStartPrefs()
@@ -730,6 +734,15 @@ class SessionActivity : ComponentActivity(), RtcListener {
     override fun onResume() {
         super.onResume()
         hidMonitor?.start()
+        resumed = true
+        if (connected) {
+            // Lanjutkan lagi ticker preview yang dijeda onPause, plus satu
+            // permintaan segar supaya tampilan host tidak basi.
+            if (store.bool(P.SAVE_PREVIEW, true)) {
+                session.requestWallpaperPreview()
+                ui.postDelayed(previewTick, 30_000)
+            }
+        }
     }
 
     override fun onStop() {
@@ -743,6 +756,10 @@ class SessionActivity : ComponentActivity(), RtcListener {
         if (overlayEdit) saveOverlayLayout()
         capturedMouse?.release()
         hidMonitor?.stop()
+        // Jeda permintaan preview wallpaper selama aplikasi di latar: host
+        // berhenti merender untuk layar yang tidak dilihat siapa pun.
+        ui.removeCallbacks(previewTick)
+        resumed = false
         super.onPause()
     }
 
