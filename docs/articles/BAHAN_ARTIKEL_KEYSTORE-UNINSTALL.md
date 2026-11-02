@@ -63,11 +63,10 @@ Tidak. Akun kamu tetap ada. Yang hilang hanya sesi masuk dan setelan di HP,
 dan kamu tinggal mengaturnya sekali lagi setelah memasang versi baru.
 
 **Kenapa kuncinya diganti?**
-
-> 🟡 **[Slot xykal — hapus slot ini setelah diisi, satu kalimat jujur.]**
-> Alasan kunci penandatanganan diganti: (kehilangan kunci lama yang tidak
-> tersimpan / penggantian yang disengaja saat era baru v2.0.0 / alasan lain).
-> Pilih yang benar sesuai sejarahnya — jangan dikarang.
+Penggantian ini disengaja. Saat kami membangun ulang XyDesk-Remote dengan
+pondasi baru di versi 2.0.0, kami sekaligus mengganti kunci penandatanganan
+aplikasinya. Konsekuensinya memang satu: pengguna rilisan lama harus memasang
+ulang dari nol sekali ini saja.
 
 **Saya melihat "paket tidak valid" — apa karena tanda tangan juga?**
 Bukan. "Paket tidak valid" biasanya soal lain: berkas APK yang terunduh rusak
