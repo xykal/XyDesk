@@ -110,6 +110,12 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   `cloudflare/worker.mjs` langsung) — plus klien app 1.1.x lawas yang masih
   polling. Menunggu putusan kall: hapus fosil + biarkan lama 410, atau
   pulihkan rute untuk klien lawas.
+  DIPUTUSKAN kall 2026-11-02 ("bebas"): bersihkan. Fosil Vercel
+  (`api/index.mjs` + `vercel.json`, impor rusak + pola rewrite boros
+  tercatat di docs/CLOUDFLARE-1027.md) dihapus di XyDesk-Remote PR #38.
+  Klien 1.1.x lawas dibiarkan menerima 404 murah dari worker — bila
+  polling lawas masih menyedot kuota, solusinya rilis app 1.1.30 (item
+  (a)), bukan memulihkan rute. Anomali ini TERTUTUP.
   (c) kalau masih tembus, opsi Workers Paid $5/bulan atau long-poll server.
 - [ ] Billing sewa PC otomatis: butuh keputusan gateway + provisioning;
   bukan kerja sesi ini.
