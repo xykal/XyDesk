@@ -73,19 +73,21 @@ export function resetTurnCache() {
 /// memblokir UDP TOTAL — kandidat relay `turn:` UDP tidak akan pernah
 /// sampai, dan sesi gagal ICE tanpa sebab yang terlihat. Padahal server
 /// coturn/ExpressTurn yang sama hampir selalu juga membuka TURN di atas
-/// TCP (`turn:...?transport=tcp`) dan TURNS/TLS (`turns:`, port bawaan
-/// RFC 7065 = 5349). Dua varian itulah yang menembus firewall yang hanya
-/// meloloskan TCP 443/80.
+/// TCP (`turn:...?transport=tcp`). Varian itulah yang menembus firewall
+/// yang hanya meloloskan TCP.
 ///
-/// Aturan turunannya (dibuktikan 2026-11-02 terhadap free.expressturn.com:
-/// TCP 3478 terbuka, TLS 5349 jabat tangan sertifikat valid):
-/// - `turn:host:3478` (UDP polos) → juga sajikan `turn:host:3478?transport=tcp`
-///   dan `turns:host:5349`.
-/// - `turn:host:PORT` selain 3478 → hanya varian TCP; port TLS tidak
-///   ditebak untuk server non-coturn — URL `turns:` eksplisit lebih jujur
-///   daripada kandidat mati yang dibuat-buat.
-/// - URL yang sudah membawa `transport=` atau ber-skema `turns:` dibiarkan
-///   apa adanya (operator sudah memilih), dan duplikat dibuang.
+/// Aturan turunannya — bukan tebakan, tapi hasil uji langsung terhadap
+/// free.expressturn.com pada 2026-11-02 (probe STUN Allocate sungguhan):
+/// - TCP 3478 MENJAWAB pesan STUN Allocate (0x0113) → varian
+///   `?transport=tcp` diturunkan dan berhak ikut daftar.
+/// - TLS 5349 TIDAK melayani TURN (jabat tangan sukses tapi tanpa balasan
+///   STUN, koneksi di-reset) → `turns:` TIDAK diturunkan otomatis. Server
+///   yang memang punya TURNS harus menuliskannya eksplisit di secret
+///   (mis. `turns:turn.ku:5349`) — kandidat mati yang dibuat-buat hanya
+///   membingungkan diagnosis.
+///
+/// URL yang sudah membawa `transport=` atau ber-skema `turns:` dibiarkan
+/// apa adanya (operator sudah memilih), dan duplikat dibuang.
 export function withTransportVariants(urls) {
   const hasil = [];
   const seen = new Set();
@@ -99,10 +101,7 @@ export function withTransportVariants(urls) {
     tambah(url);
     if (!/^turn:/i.test(url) || /transport=/i.test(url)) continue;
     const tanpaQuery = url.split('?')[0];
-    const port = Number(tanpaQuery.split(':')[2] || '3478');
-    const host = tanpaQuery.split(':')[1];
     tambah(`${tanpaQuery}?transport=tcp`);
-    if (port === 3478 && host) tambah(`turns:${host}:5349`);
   }
   return hasil;
 }

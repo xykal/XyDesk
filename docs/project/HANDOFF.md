@@ -39,13 +39,18 @@ Gradle, belum bukti HP).
   UDP keluarnya diblokir total, daftar TURN juga perlu varian transport
   TCP/TLS (`turn:...?transport=tcp` / `turns:`) di `TURN_DIRECT_URLS` /
   `TURN_STATIC_URLS`, bukan hanya URL UDP.
-  Progres 2026-11-02: varian `?transport=tcp` + `turns:host:5349` (khusus
-  port 3478) kini diturunkan OTOMATIS oleh `withTransportVariants` di
-  `cloudflare/src/turn.js` untuk provider `statis`/`direct` — URL UDP polos
-  apa pun ikut menerbitkan kandidat TCP/TLS tanpa menyentuh secret. Bukti
-  ketersediaan: free.expressturn.com membuka TCP 3478 dan TLS 5349 (jabat
-  tangan sertifikat valid). Sisa: bukti lapangan sesi ke host ber-UDP-ketat
-  (Limore-type) masih menunggu uji perangkat.
+  Progres 2026-11-02: varian `?transport=tcp` kini diturunkan OTOMATIS oleh
+  `withTransportVariants` di `cloudflare/src/turn.js` untuk provider
+  `statis`/`direct` — URL UDP polos apa pun ikut menerbitkan kandidat TCP
+  tanpa menyentuh secret. Bukti jalur TCP: probe STUN Allocate sungguhan ke
+  free.expressturn.com:3478 dijawab server (0x0113). Varian `turns:` sempat
+  diturunkan lalu DICABUT setelah terbukti TLS 5349 ExpressTurn tidak
+  melayani TURN (jabat tangan sukses, tanpa balasan STUN, koneksi di-reset) —
+  server ber-TURNS harus menulis `turns:` eksplisit di secret. Gerbang
+  `check_turn_auth.py` kini menguji `?transport=tcp` sebagai TURN-over-TCP
+  sungguhan (framing raw/RFC 4571), bukan salah potong jadi UDP. Sisa:
+  bukti lapangan sesi ke host ber-UDP-ketat (Limore-type) masih menunggu
+  uji perangkat.
 
 Tertutup 2026-10-01: error pra-welcome. `RtcSession` rotasi ID; `Presence`
 rotasi ID (#40). Clipboard tarik `0x09` sudah ada (opt-in).
@@ -91,10 +96,14 @@ Usang: resep verifikasi Flutter Linux; permintaan dispatch Galih 3 Sep 2026.
   `tool/check_turn_live.js` + `tool/check_turn_auth.py --role host` lalu catat
   hasilnya di sini. Isi cadangan provider (Open Relay/REST/Cloudflare Realtime)
   hanya saat kunci baru tersedia — jangan deploy hanya untuk itu.
-  Progres 2026-11-02: varian TCP/TLS otomatis digabung (lihat item Mode
+  Progres 2026-11-02: varian TCP otomatis digabung (lihat item Mode
   Tanpa P2P). Bukti allocate sungguhan menyusul dari gerbang relay
   workflow Deploy Signaling (`tool/check_turn_auth.py --signal ...`) pada
   deploy kode ini — hasil run akan dicatat di sini.
+  Catatan gerbang 2026-11-02 (run 41457235952): UDP allocate OK
+  (relay 48.217.251.128:54272, realm 'localhost'), `turns:` GAGAL
+  (tanpa balasan STUN → koneksi di-reset) — dasar pencabutan turunan
+  `turns:` dan perluasan gerbang ke TURN-over-TCP.
 - [ ] **Kuota Workers Cloudflare gratisan sering habis** — worker
   `xydesk-remote-web` (repo `xykal/XyDesk-Remote`) rata ±125 ribu request/hari
   vs batas 100 ribu/hari → Error 1027 menimpa SEMUA worker satu akun, termasuk

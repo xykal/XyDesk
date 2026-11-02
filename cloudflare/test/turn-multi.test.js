@@ -42,18 +42,13 @@ test('bentuk balasan penyedia dinormalisasi: array polos maupun objek', () => {
   assert.deepEqual(normalize({ aneh: true }).iceServers, []);
 });
 
-test('varian transport diturunkan: UDP polos dapat TCP + TURNS', () => {
-  // Jaringan yang memblokir UDP total butuh kandidat TCP/TLS. Port 3478
-  // (bawaan coturn) diturunkan jadi turns:5349 sesuai RFC 7065.
+test('varian transport diturunkan: UDP polos dapat varian TCP, tanpa turns palsu', () => {
+  // Jaringan yang memblokir UDP total butuh kandidat TCP. turns: TIDAK
+  // diturunkan otomatis: uji langsung 2026-11-02 membuktikan TLS 5349 di
+  // ExpressTurn tidak melayani TURN — kandidat mati hanya membingungkan.
   assert.deepEqual(withTransportVariants(['turn:free.expressturn.com:3478']), [
     'turn:free.expressturn.com:3478',
     'turn:free.expressturn.com:3478?transport=tcp',
-    'turns:free.expressturn.com:5349',
-  ]);
-  // Port selain 3478: hanya varian TCP — port TLS tidak ditebak.
-  assert.deepEqual(withTransportVariants(['turn:x:8888']), [
-    'turn:x:8888',
-    'turn:x:8888?transport=tcp',
   ]);
   // URL eksplisit (transport= atau turns:) dibiarkan, tanpa duplikat.
   const eksplisit = ['turn:a:3478', 'turn:a:3478?transport=tcp', 'turns:a:5349'];
@@ -62,11 +57,10 @@ test('varian transport diturunkan: UDP polos dapat TCP + TURNS', () => {
   assert.deepEqual(withTransportVariants(['turn:a:3478', 'turn:a:3478']), [
     'turn:a:3478',
     'turn:a:3478?transport=tcp',
-    'turns:a:5349',
   ]);
 });
 
-test('provider direct menyertakan varian TCP/TLS dalam satu iceServers', async () => {
+test('provider direct menyertakan varian TCP dalam satu iceServers', async () => {
   const env = {
     TURN_DIRECT_URLS: 'turn:free.expressturn.com:3478',
     TURN_DIRECT_USERNAME: 'u',
@@ -82,7 +76,8 @@ test('provider direct menyertakan varian TCP/TLS dalam satu iceServers', async (
       const urls = r.iceServers[0].urls;
       assert.ok(urls.includes('turn:free.expressturn.com:3478'));
       assert.ok(urls.includes('turn:free.expressturn.com:3478?transport=tcp'));
-      assert.ok(urls.includes('turns:free.expressturn.com:5349'));
+      // turns: tidak boleh muncul bila tidak diminta eksplisit.
+      assert.ok(!urls.some((u) => String(u).startsWith('turns:')));
     },
   );
 });
