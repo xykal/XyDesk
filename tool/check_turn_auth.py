@@ -214,6 +214,55 @@ def probe_udp(host: str, port: int, username: str, credential: str) -> dict:
         sock.close()
 
 
+def probe_tcp(host: str, port: int, username: str, credential: str) -> dict:
+    """Allocate sungguhan ke server TURN over TCP (`?transport=tcp`).
+
+    Framing dicoba dua cara karena dunia nyata tidak rapi: probe 2026-11-02
+    ke free.expressturn.com dijawab TANPA awalan panjang (raw — panjang dari
+    header STUN), sementara RFC 6062/4571 menghendaki awalan 2 byte. Yang
+    penting bagi gerbang ini: server BENAR-BENAR melayani TURN di jalur TCP.
+    Jawaban penolakan pun berarti framing-nya benar — hasil langsung
+    dikembalikan, tidak ditutupi percobaan framing lain.
+    """
+    result: dict = {"server": f"{host}:{port} (TCP)"}
+    try:
+        server = (socket.gethostbyname(host), port)
+    except OSError as exc:
+        return {**result, "ok": False, "why": f"DNS gagal: {exc}"}
+
+    galat = []
+    for prefix in (False, True):
+        sock = None
+        try:
+            sock = socket.create_connection(server, timeout=TIMEOUT)
+            sock.settimeout(TIMEOUT)
+
+            def send(attrs, key=None, _s=sock, _p=prefix):
+                data = build_allocate(attrs, key)
+                if _p:
+                    data = struct.pack("!H", len(data)) + data
+                _s.sendall(data)
+                head = _recv_exact(_s, 20)
+                length = struct.unpack("!H", head[2:4])[0]
+                kind, parsed, _ = parse(head + _recv_exact(_s, length))
+                return kind, parsed
+
+            hasil = _allocate_flow(result, send, username, credential)
+            hasil["framing"] = "rfc4571" if prefix else "raw"
+            return hasil
+        except socket.timeout:
+            galat.append("tanpa balasan (rfc4571)" if prefix else "tanpa balasan (raw)")
+        except Exception as exc:  # noqa: BLE001 — apa pun, laporkan apa adanya
+            galat.append(f"{type(exc).__name__}: {exc}")
+        finally:
+            if sock is not None:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+    return {**result, "ok": False, "why": "TCP gagal — " + "; ".join(galat)}
+
+
 def probe_tls(
     host: str,
     port: int,
@@ -325,13 +374,21 @@ def run(
                 skipped += 1
                 continue
             scheme, host, port = parsed
-            label = "TLS" if scheme == "turns" else "UDP"
+            via_tcp = "transport=tcp" in str(url).lower()
+            if scheme == "turns":
+                label = "TLS"
+            elif via_tcp:
+                label = "TCP"
+            else:
+                label = "UDP"
             print(
                 f"  → allocate {where} sebagai {username[:6]}… "
                 f"({label}, kredensial {mask(credential)})"
             )
             if scheme == "turns":
                 hasil = probe_tls(host, port, username, credential, cafile=tls_ca, insecure=tls_insecure)
+            elif via_tcp:
+                hasil = probe_tcp(host, port, username, credential)
             else:
                 hasil = probe_udp(host, port, username, credential)
             checked += 1
