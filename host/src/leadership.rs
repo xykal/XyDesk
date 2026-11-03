@@ -108,7 +108,10 @@ pub async fn until_session_changes() {
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         crate::screen::evaluate_sessions_now();
-        if watch.observe(crate::screen::proc_session(), crate::screen::active_session()) {
+        if watch.observe(
+            crate::screen::proc_session(),
+            crate::screen::active_session(),
+        ) {
             return;
         }
     }
