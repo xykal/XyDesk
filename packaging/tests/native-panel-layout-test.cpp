@@ -61,7 +61,7 @@ void testGeometry100() {
 
     const Rect interactive[] = {l.minimizeButton, l.maximizeButton, l.closeButton,
         l.sideStatus, l.sidePairing, l.sideControl,
-        l.idCopy, l.passwordCopy, l.start, l.stop, l.restart, l.web, l.openLog};
+        l.idCopy, l.passwordCopy, l.passwordEye, l.passwordCustomize, l.start, l.stop, l.restart, l.web, l.openLog};
     for (const Rect& rect : interactive) {
         check(rect.valid(), "setiap kontrol punya ukuran positif");
         check(insidePanel(l, rect), "setiap kontrol berada di dalam panel");
@@ -107,6 +107,9 @@ void testGeometry100() {
     check(!overlaps(l.statusCard, l.captureCard), "kartu status dan capture tidak bertumpuk");
     check(l.captureCard.y > l.statusCard.bottom(), "kartu capture di bawah kartu status");
     check(!overlaps(l.idCard, l.passwordCard), "kartu pairing tidak bertumpuk");
+    check(!overlaps(l.passwordEye, l.passwordCustomize), "aksi password tidak bertumpuk");
+    check(l.passwordEye.y >= l.passwordValue.bottom(), "tombol mata di bawah nilai");
+    check(l.passwordCustomize.y >= l.passwordValue.bottom(), "customize password di bawah nilai");
     check(l.passwordCard.y > l.idCard.bottom(), "kartu pairing di bawah kartu ID");
     check(!overlaps(l.start, l.stop) && !overlaps(l.stop, l.restart), "tombol baris pertama tidak bertumpuk");
     check(!overlaps(l.web, l.openLog), "tombol baris kedua tidak bertumpuk");

@@ -28,6 +28,15 @@ Gradle, belum bukti HP).
   `web/public/news/shots/<versi>-android-sesi-*.jpg`.
 - [ ] **Bukti lapangan** — pairing, IME 0x06 TEXT, clipboard opt-in, mic ke
   host, presence online/offline. CI tidak menggantikan HP.
+- [ ] **Poles UI host lanjutan (Tugas 26 fase 2)** — permintaan pemilik
+  2026-11-03: (a) isian gerbang login masih EDIT bawaan → ganti isian custom;
+  (b) dialog QR/profil/panduan masih dialog embedded → pindah ke modal custom;
+  (c) pemilih berkas masih GetOpenFileName → ganti; (d) poles APK halaman
+  sesi + kustomisasi kontrol overlay yang lengkap; (e) anti-lag geser keyboard
+  (jalur INPUT boleh dioptimasi; jalur video/stream TIDAK BOLEH disentuh —
+  tanpa filter/sharpen, kehalusan layar dari host langsung). Fase 1 (splash,
+  modal custom, blok password Akses host, hapus password dari Pengaturan,
+  hardening DLL) sudah digabung.
 - [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
   2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
   menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik

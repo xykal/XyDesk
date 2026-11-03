@@ -13,12 +13,8 @@ BEGIN
     COMBOBOX IDC_BITRATE, 24, 50, 202, 94, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     PUSHBUTTON "Terapkan", IDC_APPLY_BITRATE, 238, 50, 86, 19
     LTEXT "Password pairing", -1, 14, 89, 322, 16
-    LTEXT "Minimal 6 karakter. Mengganti password mencabut izin browser yang tersimpan.", -1, 24, 103, 298, 22
-    EDITTEXT IDC_PASSWORD, 24, 129, 202, 19, ES_PASSWORD | ES_AUTOHSCROLL | WS_TABSTOP
-    PUSHBUTTON "Simpan", IDC_APPLY_PASSWORD, 238, 129, 86, 19
-    AUTOCHECKBOX "Lihat password", IDC_PASSWORD_SHOW, 24, 154, 112, 16
-    PUSHBUTTON "Buat password acak", IDC_NEW_PASSWORD, 184, 153, 140, 19
-    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 18, 186, 314, 20
+    LTEXT "Diubah langsung dari halaman Akses host lewat tombol Customize password.", -1, 24, 103, 298, 22
+    LTEXT "Menunggu kanal privat engine...", IDC_SETTING_STATUS, 18, 132, 314, 20
     DEFPUSHBUTTON "Tutup", IDCANCEL, 248, 212, 86, 19
 END
 
