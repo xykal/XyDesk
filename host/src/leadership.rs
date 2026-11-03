@@ -60,12 +60,55 @@ pub fn try_acquire(sessiku: u32, sesi_aktif: u32) -> Option<LeaderGuard> {
     })
 }
 
+/// Pengawas kedip deteksi "sesi pemegang layar aktif" untuk keputusan besar
+/// (mengakhiri sesi, melepas leader, membatalkan connect).
+///
+/// Kenapa tidak boleh memakai `me != act` polosan:
+/// - `u32::MAX` berarti deteksi TIDAK PASTI (query WTS gagal, tidak ada sesi
+///   yang cocok, konteks aneh di VPS/cloud PC) — bukan berarti "beda".
+///   Perlakuan ini konsisten dengan `screen::capture_health::evaluate_sessions`
+///   yang tidak pernah menyatakan mismatch saat salah satu nilai tidak pasti.
+/// - Deteksi bisa berkedip singkat (RDP disconnect/reconnect, ganti sesi,
+///   blur desktop) — satu kedipan tidak boleh membunuh sesi yang sehat.
+///
+/// Keputusan hanya diambil setelah mismatch TERKONFIRMASI
+/// [`MismatchWatch::CONFIRMED_TICKS`] kali berturut-turut, semangat yang sama
+/// dengan `DISCONNECT_GRACE` untuk koneksi jaringan.
+#[derive(Default)]
+pub struct MismatchWatch {
+    streak: u32,
+}
+
+impl MismatchWatch {
+    /// Berapa sampel "beda" berturut-turut sebelum keputusan diambil
+    /// (± 6 detik pada tick 2 detik).
+    pub const CONFIRMED_TICKS: u32 = 3;
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Catat satu sampel pasangan (sesi proses, sesi layar aktif).
+    /// `true` = mismatch terkonfirmasi — pemanggil boleh mengambil tindakan.
+    pub fn observe(&mut self, sessiku: u32, sesi_aktif: u32) -> bool {
+        let terkonfirmasi = sessiku != u32::MAX && sesi_aktif != u32::MAX && sessiku != sesi_aktif;
+        self.streak = if terkonfirmasi {
+            self.streak.saturating_add(1)
+        } else {
+            0
+        };
+        self.streak >= Self::CONFIRMED_TICKS
+    }
+}
+
 /// Membatalkan auth/connect yang macet ketika sesi akun yang aktif berubah.
+/// Kedipan deteksi tidak membatalkan apa pun — lihat [`MismatchWatch`].
 pub async fn until_session_changes() {
+    let mut watch = MismatchWatch::new();
     loop {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
         crate::screen::evaluate_sessions_now();
-        if crate::screen::proc_session() != crate::screen::active_session() {
+        if watch.observe(crate::screen::proc_session(), crate::screen::active_session()) {
             return;
         }
     }
@@ -116,6 +159,48 @@ mod tests {
         assert!(!langsung_leader(1, 2));
         // Di luar Windows keduanya u32::MAX — tetap leader (tidak ada sesi).
         assert!(langsung_leader(u32::MAX, u32::MAX));
+    }
+
+    #[test]
+    fn deteksi_tidak_pasti_bukan_mismatch() {
+        let mut w = MismatchWatch::new();
+        // u32::MAX = deteksi tidak pasti — tidak boleh pernah jadi alasan besar.
+        for _ in 0..20 {
+            assert!(!w.observe(1, u32::MAX));
+            assert!(!w.observe(u32::MAX, 1));
+            assert!(!w.observe(u32::MAX, u32::MAX));
+        }
+    }
+
+    #[test]
+    fn kedipan_singkat_tidak_menghukum_sesi() {
+        let mut w = MismatchWatch::new();
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, 2));
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, u32::MAX));
+        assert!(!w.observe(2, 2));
+    }
+
+    #[test]
+    fn mismatch_baru_diambil_setelah_tiga_sampel_berturut() {
+        let mut w = MismatchWatch::new();
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, 4));
+        assert!(w.observe(2, 4));
+        // Masih terkonfirmasi selama mismatch bertahan.
+        assert!(w.observe(2, 4));
+    }
+
+    #[test]
+    fn pulih_satu_sampel_mengulang_hitungan() {
+        let mut w = MismatchWatch::new();
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, 2));
+        assert!(!w.observe(2, 4));
+        assert!(!w.observe(2, 4));
+        assert!(w.observe(2, 4));
     }
 
     #[test]

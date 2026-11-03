@@ -28,6 +28,13 @@ Gradle, belum bukti HP).
   `web/public/news/shots/<versi>-android-sesi-*.jpg`.
 - [ ] **Bukti lapangan** — pairing, IME 0x06 TEXT, clipboard opt-in, mic ke
   host, presence online/offline. CI tidak menggantikan HP.
+- [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
+  2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
+  menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik
+  mengakhiri sesi saat `me != act` polosan (deteksi `u32::MAX`/kedip RDP
+  dianggap "beda"). Diperbaiki dengan `leadership::MismatchWatch` (unknown ≠
+  mismatch; 3x berturut sebelum melepas leader). Menunggu uji di cloud PC
+  pemilik dengan host hasil build sesudahnya.
 - [ ] **Bukti lapangan Mode Tanpa P2P** — sesi HP ke host cloud VM berfirewall
   UDP ketat, dengan dan tanpa toggle; alasan `/turn-ice` harus terbaca di UI.
   Uji juga re-offer pemulihan saat sisi host masih `Connected`: host hanya

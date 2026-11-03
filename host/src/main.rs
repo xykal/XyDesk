@@ -513,11 +513,17 @@ async fn main() -> Result<()> {
     // supervisor me-restart — siklus "hidup-mati-hidup-mati" yang terlihat
     // oleh pemakai.
     let mut attempt: u32 = 0;
+    // Satu pengawas untuk semua keputusan "sesi layar aktif berubah" di proses
+    // ini — lihat `leadership::MismatchWatch`: kedipan deteksi tidak menghukum.
+    let mut layar_watch = xydesk_host::leadership::MismatchWatch::new();
     loop {
         xydesk_host::screen::evaluate_sessions_now();
         let me = xydesk_host::screen::proc_session();
         let active_session = xydesk_host::screen::active_session();
-        if me != active_session {
+        if layar_watch.observe(me, active_session) {
+            eprintln!(
+                "[xydesk-host] sesi pemegang layar aktif berpindah (proses={me}, layar={active_session}) — melepas leader"
+            );
             pemimpin = None;
         }
         if pemimpin.is_none() {
@@ -676,8 +682,10 @@ async fn main() -> Result<()> {
                     xydesk_host::screen::evaluate_sessions_now();
                     let me = xydesk_host::screen::proc_session();
                     let act = xydesk_host::screen::active_session();
-                    if me != act {
-                        eprintln!("[xydesk-host] sesi aktif akun berubah; media ditutup sebelum melepas leader");
+                    if layar_watch.observe(me, act) {
+                        eprintln!(
+                            "[xydesk-host] sesi aktif akun berubah (proses={me}, layar={act}); media ditutup sebelum melepas leader"
+                        );
                         break;
                     }
                     continue;
