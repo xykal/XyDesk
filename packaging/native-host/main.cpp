@@ -3167,28 +3167,162 @@ void hidePanel(HWND hwnd) {
     ShowWindow(hwnd, SW_HIDE);
 }
 
-void showTrayMenu(HWND hwnd) {
-    HMENU menu = CreatePopupMenu();
-    if (!menu) return;
-    AppendMenuW(menu, MF_STRING, kTrayOpen, L"Buka Control Panel");
-    AppendMenuW(menu, g.running ? MF_GRAYED : MF_STRING, kTrayStart, L"Mulai host");
-    AppendMenuW(menu, g.running ? MF_STRING : MF_GRAYED, kTrayStop, L"Hentikan host");
-    AppendMenuW(menu, MF_STRING, kTrayRestart, L"Restart host");
-    AppendMenuW(menu, MF_STRING, kTrayWeb, L"Buka XyDesk Web");
-    AppendMenuW(menu, updateState.busy.load() ? MF_GRAYED : MF_STRING, kTrayUpdate,
-                updateState.busy.load() ? L"Memeriksa pembaruan\u2026" : L"Cek pembaruan");
-    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
-    AppendMenuW(menu, MF_STRING, kTrayQuit, L"Keluar XyDesk");
-    SetMenuDefaultItem(menu, kTrayOpen, FALSE);
-    POINT point{};
-    if (!GetCursorPos(&point)) {
-        point.x = 0;
-        point.y = 0;
+// ── Menu tray custom ─────────────────────────────────────────────────────────
+// Menggantikan TrackPopupMenu bawaan Windows: daftar aksi digambar sendiri
+// dengan gaya panel (kartu membulat, sorot baris), hilang saat kehilangan fokus.
+namespace traymenu {
+struct Row { UINT id; const wchar_t* label; bool enabled = true; bool strong = false; };
+struct State {
+    HWND owner = nullptr;
+    std::vector<Row> rows;
+    int hover = -1;
+    Rect itemRect(int i, const Rect& box) const {
+        return Rect{box.x, box.y + 8 + i * 34, box.w, 34};
     }
+};
+State g_state;
+
+void paint(HWND hwnd) {
+    State& s = g_state;
+    PAINTSTRUCT ps{};
+    HDC dc = BeginPaint(hwnd, &ps);
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    const Rect box{0, 0, rc.right, rc.bottom};
+    fillRoundedHdc(dc, box, xydesk::panel::scaled(14, g.layout.scalePct), kSurface);
+    strokeRoundedHdc(dc, box, xydesk::panel::scaled(14, g.layout.scalePct), kEdge, 1);
+    for (int i = 0; i < static_cast<int>(s.rows.size()); ++i) {
+        const Row& row = s.rows[static_cast<size_t>(i)];
+        if (row.id == 0) {
+            const Rect line{box.x + 12, s.itemRect(i, box).y + 17, box.w - 24, 1};
+            fillRoundedHdc(dc, line, 1, kEdge);
+            continue;
+        }
+        const Rect r = s.itemRect(i, box).inset(4);
+        if (i == s.hover && row.enabled) {
+            fillRoundedHdc(dc, r, xydesk::panel::scaled(8, g.layout.scalePct), kSurface2);
+        }
+        drawTextLine(dc, row.label, r.inset(10), row.strong ? g.fontSemi : g.fontBody,
+            row.enabled ? (row.strong ? kAccent : kText) : kDisabled,
+            DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    }
+    EndPaint(hwnd, &ps);
+}
+
+int hitRow(HWND hwnd, LPARAM lParam) {
+    State& s = g_state;
+    POINT pt{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    const Rect box{0, 0, rc.right, rc.bottom};
+    for (int i = 0; i < static_cast<int>(s.rows.size()); ++i) {
+        if (s.rows[static_cast<size_t>(i)].id == 0) continue;
+        const Rect r = s.itemRect(i, box);
+        if (pt.y >= r.y && pt.y < r.bottom()) return i;
+    }
+    return -1;
+}
+
+LRESULT CALLBACK menuProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    State& s = g_state;
+    switch (message) {
+    case WM_PAINT: paint(hwnd); return 0;
+    case WM_ERASEBKGND: return 1;
+    case WM_MOUSEMOVE: {
+        const int hit = hitRow(hwnd, lParam);
+        if (hit != s.hover) {
+            s.hover = hit;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        return 0;
+    }
+    case WM_LBUTTONDOWN: {
+        const int hit = hitRow(hwnd, lParam);
+        if (hit >= 0 && s.rows[static_cast<size_t>(hit)].enabled) {
+            const UINT id = s.rows[static_cast<size_t>(hit)].id;
+            DestroyWindow(hwnd);
+            if (s.owner) PostMessageW(s.owner, WM_COMMAND, id, 0);
+        } else {
+            DestroyWindow(hwnd);
+        }
+        return 0;
+    }
+    case WM_KEYDOWN:
+        if (wParam == VK_ESCAPE) { DestroyWindow(hwnd); return 0; }
+        if (wParam == VK_RETURN) {
+            if (s.hover >= 0 && s.rows[static_cast<size_t>(s.hover)].enabled) {
+                const UINT id = s.rows[static_cast<size_t>(s.hover)].id;
+                DestroyWindow(hwnd);
+                if (s.owner) PostMessageW(s.owner, WM_COMMAND, id, 0);
+            }
+            return 0;
+        }
+        if (wParam == VK_UP || wParam == VK_DOWN) {
+            const int delta = wParam == VK_DOWN ? 1 : -1;
+            int next = s.hover;
+            for (int step = 0; step < 8; ++step) {
+                next += delta;
+                if (next < 0 || next >= static_cast<int>(s.rows.size())) break;
+                if (s.rows[static_cast<size_t>(next)].id != 0) { s.hover = next; break; }
+            }
+            InvalidateRect(hwnd, nullptr, FALSE);
+            return 0;
+        }
+        break;
+    case WM_ACTIVATE:
+        if (LOWORD(wParam) == WA_INACTIVE) DestroyWindow(hwnd);
+        return 0;
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+} // namespace traymenu
+
+void showTrayMenu(HWND hwnd) {
+    using namespace traymenu;
+    State& s = g_state;
+    s = State{};
+    s.owner = hwnd;
+    s.rows = {
+        {kTrayOpen, L"Buka Control Panel", true, true},
+        {kTrayStart, L"Mulai host", !g.running},
+        {kTrayStop, L"Hentikan host", g.running},
+        {kTrayRestart, L"Restart host"},
+        {kTrayWeb, L"Buka XyDesk Web"},
+        {kTrayUpdate, updateState.busy.load() ? L"Memeriksa pembaruan\u2026" : L"Cek pembaruan",
+            !updateState.busy.load()},
+        {0, nullptr},
+        {kTrayQuit, L"Keluar XyDesk"},
+    };
+
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = menuProc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.lpszClassName = L"XyDeskTrayMenu";
+    RegisterClassExW(&wc); // boleh gagal bila kelas sudah terdaftar
+
+    const int rowH = 34;
+    const int w = xydesk::panel::scaled(250, g.layout.scalePct);
+    const int h = 16 + rowH * static_cast<int>(s.rows.size());
+    POINT point{};
+    if (!GetCursorPos(&point)) point = POINT{0, 0};
+    HWND popup = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_TOPMOST, L"XyDeskTrayMenu", L"",
+        WS_POPUP, point.x, point.y, w, h, nullptr, nullptr,
+        GetModuleHandleW(nullptr), nullptr);
+    if (!popup) return;
+    SetWindowRgn(popup, CreateRoundRectRgn(0, 0, w + 1, h + 1,
+        xydesk::panel::scaled(14, g.layout.scalePct),
+        xydesk::panel::scaled(14, g.layout.scalePct)), TRUE);
     SetForegroundWindow(hwnd);
-    TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_BOTTOMALIGN | TPM_LEFTALIGN | TPM_NOANIMATION,
-        point.x, point.y, 0, hwnd, nullptr);
-    DestroyMenu(menu);
+    ShowWindow(popup, SW_SHOWNOACTIVATE);
+    UpdateWindow(popup);
+    MSG msg;
+    while (IsWindow(popup) && GetMessageW(&msg, nullptr, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+    }
     PostMessageW(hwnd, WM_NULL, 0, 0);
 }
 
