@@ -87,8 +87,8 @@ fun LegalOverlay() {
             Spacer(Modifier.width(12.dp))
             XyText(Legal.title(kind), Xy.display)
         }
-        XyText(if (kind == Legal.TERMS || kind == Legal.PRIVACY || kind == Legal.COOKIE) "XyVerse Technology Global" else "XyVerse Technology Global", Xy.label)
-        Spacer(Modifier.height(20.dp))
+        XyText("XyVerse Technology Global", Xy.label)
+        Spacer(Modifier.height(24.dp))
         XyMarkdown(text)
         Spacer(Modifier.height(48.dp))
     }

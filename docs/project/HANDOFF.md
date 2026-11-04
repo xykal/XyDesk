@@ -44,6 +44,13 @@ Gradle, belum bukti HP).
   Windows sebagai dasar gambar (tampilan sudah owner-draw). (Koreksi dua catatan
   keliru sebelumnya: "pemilih huruf (ChooseFont)" dan "tooltip bawaan" tidak
   pernah ada di host — tidak perlu dikerjakan.)
+- [ ] **Konfirmasi tampilan baru APK (Tugas 27 lanjutan)** — pemilik minta
+  2026-11-04: geser = gerak mouse/pointer (sudah dianti-lag lewat antrean +
+  gabung gerakan), rapikan layout Home/detail PC/profil/settings/S&K/tentang,
+  perbaiki input ID, riwayat perangkat/partner, login berilustrasi + gradasi.
+  Semua sudah digabung; verifikasi visual di HP asli (Redmi A2 Go 32-bit)
+  menyusul dari pemilik. Sisa polesan halus bila ada laporan: kartu detail
+  sesi, sheet atur-host, onboarding.
 - [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
   2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
   menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik

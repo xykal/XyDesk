@@ -46,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import id.xyverse.xydesk.core.LocalLang
 import id.xyverse.xydesk.core.tr
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 
 /** Teks diterjemahkan otomatis menurut LocalLang. */
 @Composable
@@ -106,6 +108,70 @@ fun XyField(
                 cursorBrush = SolidColor(Xy.lavender),
                 keyboardOptions = KeyboardOptions(keyboardType = keyboard),
                 visualTransformation = transformation,
+                modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
+            )
+        }
+    }
+}
+
+/**
+ * Isian ID perangkat dengan format "000 000 000" yang ramah kursor: spasi hanya
+ * hiasan tampilan, backspace dan sunting di tengah tidak melompat, tempelan
+ * otomatis dirapikan. [value] = digit mentah (tanpa spasi), maksimal 9 digit.
+ */
+@Composable
+fun XyIdField(
+    value: String,
+    onChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    hint: String = "000 000 000",
+) {
+    fun group(digits: String): String = digits.chunked(3).joinToString(" ")
+    var field by remember { mutableStateOf(TextFieldValue(group(value), TextRange(group(value).length))) }
+    var lastExternal by remember { mutableStateOf(value) }
+    if (value != lastExternal) {
+        lastExternal = value
+        field = TextFieldValue(group(value), TextRange(group(value).length))
+    }
+    val shape = RoundedCornerShape(Xy.pill)
+    Column(modifier.fillMaxWidth()) {
+        XyText(label.uppercase(), Xy.label)
+        Spacer(Modifier.height(6.dp))
+        var focused by remember { mutableStateOf(false) }
+        val ring by animateColorAsState(if (focused) Xy.accent else Xy.line, label = "ring")
+        Box(
+            Modifier.fillMaxWidth().clip(shape).background(Xy.input).border(1.5.dp, ring, shape)
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+        ) {
+            if (field.text.isEmpty()) XyText(hint, Xy.mono, color = Xy.textLow)
+            BasicTextField(
+                value = field,
+                onValueChange = { new ->
+                    val oldText = field.text
+                    val oldPos = field.selection.start.coerceIn(0, oldText.length)
+                    val digitsBefore = oldText.take(oldPos).count { it.isDigit() }
+                    val digits = new.text.filter { it.isDigit() }.take(9)
+                    if (digits != value) onChange(digits) else lastExternal = digits
+                    val text = group(digits)
+                    var seen = 0
+                    var pos = text.length
+                    if (digitsBefore == 0) {
+                        pos = 0
+                    } else {
+                        for ((i, ch) in text.withIndex()) {
+                            if (ch.isDigit()) {
+                                seen++
+                                if (seen >= digitsBefore) { pos = i + 1; break }
+                            }
+                        }
+                    }
+                    field = TextFieldValue(text, TextRange(pos.coerceIn(0, text.length)))
+                },
+                singleLine = true,
+                textStyle = Xy.mono,
+                cursorBrush = SolidColor(Xy.lavender),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
             )
         }

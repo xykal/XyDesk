@@ -60,6 +60,7 @@ import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
 import id.xyverse.xydesk.ui.kit.XyCheck
 import id.xyverse.xydesk.ui.kit.t
+import id.xyverse.xydesk.ui.kit.XyIdField
 
 @Composable
 fun ConnectScreen(
@@ -87,7 +88,7 @@ fun ConnectScreen(
         Spacer(Modifier.height(24.dp))
         if (newsTitle != null) { NewsBanner(newsTitle, onNews); Spacer(Modifier.height(16.dp)) }
         XyCard {
-            XyField(digits.chunked(3).joinToString(" "), { host = it }, "ID perangkat", keyboard = KeyboardType.Number, mono = true, hint = "000 000 000")
+            XyIdField(digits, { host = it }, "ID perangkat", hint = "000 000 000")
             Spacer(Modifier.height(Xy.gap))
             XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = t("sesuai di aplikasi host"), transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
@@ -105,29 +106,34 @@ fun ConnectScreen(
         }
         Spacer(Modifier.height(24.dp))
         if (devices.isEmpty()) XyEmpty(Icon.PLUG, "Host pertama kamu", "Pasang XyDesk Host di PC, salin ID 9 digit dan password host, lalu masukkan di atas.", image = R.drawable.float_pc_sleep)
-        else QuickConnect(devices.take(4), onQuick)
+        else QuickConnect(devices.take(6), onQuick)
         Spacer(Modifier.height(96.dp))
     }
 }
 
-/** Pil host terakhir/favorit: satu ketuk langsung menyambung (password tersimpan) atau minta password. */
+/** Riwayat perangkat & partner: daftar ringkas, sekali ketuk langsung menyambung. */
 @Composable
 private fun QuickConnect(devices: List<SessionRecord>, onQuick: (String) -> Unit) {
     val meta = LocalHostMeta.current
-    XyText("SAMBUNG CEPAT", Xy.label)
+    XyText("RIWAYAT PERANGKAT & PARTNER", Xy.label)
     Spacer(Modifier.height(8.dp))
-    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         devices.forEach { d ->
             Row(
-                Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay)
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(Xy.radiusM)).background(Xy.overlay)
                     .clickable(remember { MutableInteractionSource() }, null) { onQuick(d.host) }
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                XyIcon(if (meta.favorite(d.host)) Icon.STAR else Icon.MONITOR, tint = Xy.accent, size = 16.dp)
-                Spacer(Modifier.width(8.dp))
-                meta.online(d.host)?.let { on -> Box(Modifier.size(7.dp).clip(CircleShape).background(if (on) Xy.success else Xy.textLow)); Spacer(Modifier.width(6.dp)) }
-                XyText(hostTitle(d), Xy.label.copy(color = Xy.textHi), maxLines = 1)
+                XyIcon(if (meta.favorite(d.host)) Icon.STAR else Icon.MONITOR, tint = Xy.accent, size = 18.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    XyText(hostTitle(d), Xy.body.copy(color = Xy.textHi), maxLines = 1)
+                    XyText("${pretty(d.host)} · ${relative(d.startedAt)}", Xy.caption.copy(color = Xy.textLow), maxLines = 1)
+                }
+                meta.online(d.host)?.let { on ->
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(if (on) Xy.success else Xy.textLow))
+                }
             }
         }
     }
