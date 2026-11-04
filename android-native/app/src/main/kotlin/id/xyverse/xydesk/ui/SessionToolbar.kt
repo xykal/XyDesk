@@ -113,9 +113,12 @@ enum class QuickKey(val label: String) {
     ALT_TAB("⌥⇥"), ALT_F4("⌥F4"), F11("F11"), PRTSC("PrtSc"), CAD("⌃⌥⌦ CAD"),
 }
 
-private val kPanelBg = Color(0xF8FFFFFF)
-private val kPillInactiveBg = Color(0xFFF1F1F6)
-private val kPanelBorder = Color(0xFFE4E4EC)
+// Kaca gelap — kontrol menempel di atas video, bukan di halaman terang.
+private val kPanelBg = Color(0xE6151226)
+private val kPillInactiveBg = Color(0x22FFFFFF)
+private val kPanelBorder = Color(0x33FFFFFF)
+private val kOnDark = Color(0xFFEAE6FF)
+private val kOnDarkMid = Color(0x99FFFFFF)
 
 /**
  * Rel vertikal tepi kanan: Kibor, Kontrol, Mapping, Atur, Putus.
@@ -192,9 +195,9 @@ fun SessionToolbar(
                         }
                     }
                 } else if (layar.displays.size == 1) {
-                    XyText("PC ini hanya punya satu layar.", Xy.caption)
+                    XyText("PC ini hanya punya satu layar.", Xy.caption.copy(color = kOnDarkMid))
                 } else {
-                    XyText("Daftar layar belum diterima dari PC.", Xy.caption)
+                    XyText("Daftar layar belum diterima dari PC.", Xy.caption.copy(color = kOnDarkMid))
                 }
 
                 XyText("SENTUH & TRACKPAD", Xy.label.copy(color = Xy.accent))
@@ -256,7 +259,7 @@ fun SessionToolbar(
                     Modifier.size(width = 44.dp, height = 22.dp)
                         .clickable(remember { MutableInteractionSource() }, null) { hidden = true; settingsOpen = false },
                     contentAlignment = Alignment.Center,
-                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color(0xFFCBD5E1))) }
+                ) { Box(Modifier.size(20.dp, 4.dp).clip(CircleShape).background(Color(0x66FFFFFF))) }
                 RailButton(Icon.KEYBOARD, "Kibor") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol") { actions.overlayMode(); settingsOpen = false }
                 RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); settingsOpen = false }
@@ -270,15 +273,15 @@ fun SessionToolbar(
 
 @Composable
 private fun RailButton(icon: Icon, label: String, active: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
-    val bg = when { danger -> Color(0x1AF43F5E); active -> Xy.accent; else -> Color(0xFFF1F1F6) }
-    val fg = when { danger -> Color(0xFFE11D48); active -> Color.White; else -> Xy.textHi }
+    val bg = when { danger -> Color(0x33F43F5E); active -> Xy.accent; else -> Color(0x22FFFFFF) }
+    val fg = when { danger -> Color(0xFFFB7185); active -> Color.White; else -> kOnDark }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            Modifier.size(44.dp).background(bg, CircleShape).border(1.dp, if (active) Xy.accent else Color(0xFFE4E4EC), CircleShape)
+            Modifier.size(44.dp).background(bg, CircleShape).border(1.dp, if (active) Xy.accent else Color(0x33FFFFFF), CircleShape)
                 .clickable(remember { MutableInteractionSource() }, null, onClick = onClick),
             contentAlignment = Alignment.Center,
         ) { XyIcon(icon, tint = fg, size = 20.dp) }
-        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Color(0xFFE11D48) else if (active) Xy.accent else Xy.textMid))
+        XyText(label, Xy.label.copy(fontSize = 9.5.sp, letterSpacing = 0.sp, color = if (danger) Color(0xFFFB7185) else if (active) Xy.accent else kOnDarkMid))
     }
 }
 
@@ -294,5 +297,5 @@ private fun WhitePill(text: String, accent: Boolean = false, onClick: () -> Unit
         Modifier.clip(RoundedCornerShape(Xy.pill)).background(if (accent) Xy.accent else kPillInactiveBg)
             .border(1.dp, if (accent) Xy.accent else kPanelBorder, RoundedCornerShape(Xy.pill))
             .clickable(remember { MutableInteractionSource() }, null, onClick = onClick).padding(horizontal = 11.dp, vertical = 7.dp),
-    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else Xy.textHi)) }
+    ) { XyText(text, Xy.caption.copy(color = if (accent) Color.White else kOnDark)) }
 }

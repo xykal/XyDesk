@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -49,6 +50,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -106,6 +110,8 @@ data class OverlayItem(
     val radius: Float,
     val name: String = "",
     val display: String = "",
+    /** Opasitas tombol 0.2..1.0 — atur lewat editor Customize. */
+    val alpha: Float = 1f,
 )
 
 /** Katalog aksi Windows VK — dengan simbol ikon visual dan nama. */
@@ -292,7 +298,8 @@ object OverlayLayouts {
                     .put("id", m.id).put("kind", m.kind.name).put("code", m.code)
                     .put("keys", JSONArray(m.keys)).put("x", m.x.toDouble()).put("y", m.y.toDouble())
                     .put("size", m.size.toDouble()).put("radius", m.radius.toDouble())
-                    .put("name", m.name).put("display", m.display),
+                    .put("name", m.name).put("display", m.display)
+                    .put("alpha", m.alpha.toDouble()),
             )
         }
         return a.toString()
@@ -317,6 +324,7 @@ object OverlayLayouts {
                     radius = o.optDouble("radius", 28.0).toFloat().coerceIn(0f, 90f),
                     name = o.optString("name"),
                     display = o.optString("display"),
+                    alpha = o.optDouble("alpha", 1.0).toFloat().coerceIn(0.2f, 1f),
                 )
             }.take(MAX_OVERLAY_ITEMS)
         }.getOrElse { fps() }
@@ -456,6 +464,7 @@ fun ControlOverlay(
     }
     var selected by remember { mutableStateOf<String?>(null) }
     var library by remember { mutableStateOf(false) }
+    var snap by remember { mutableStateOf(true) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = constraints.maxWidth.toFloat().coerceAtLeast(1f)
@@ -464,25 +473,34 @@ fun ControlOverlay(
             OverlayRules.visible(it.kind.name, mode, hidKeyboard, hidMouse, hidGamepad, edit)
         }
         terlihat.forEach { m ->
-            OverlayButton(
-                m = m,
-                edit = edit,
-                selected = selected == m.id,
-                style = style,
-                parentW = w,
-                parentH = h,
-                holds = holds,
-                send = send,
-                onToggleTouch = onToggleTouch,
-                onSelect = { selected = m.id; library = false },
-                onMove = { x, y -> onItems(items.map { if (it.id == m.id) it.copy(x = x, y = y) else it }) },
-            )
+            Box(Modifier.graphicsLayer { alpha = m.alpha }) {
+                OverlayButton(
+                    m = m,
+                    edit = edit,
+                    selected = selected == m.id,
+                    style = style,
+                    parentW = w,
+                    parentH = h,
+                    holds = holds,
+                    send = send,
+                    onToggleTouch = onToggleTouch,
+                    onSelect = { selected = m.id; library = false },
+                    onMove = { x, y ->
+                        // Snap grid 2% saat menyusun — presisi rapi tanpa mikro-atur.
+                        val sx = if (edit && snap) (x / 2f).roundToInt() * 2f else x
+                        val sy = if (edit && snap) (y / 2f).roundToInt() * 2f else y
+                        onItems(items.map {
+                            if (it.id == m.id) it.copy(x = sx.coerceIn(0f, 100f), y = sy.coerceIn(0f, 100f)) else it
+                        })
+                    },
+                )
+            }
         }
         if (edit) {
             Column(
                 Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-                    .shadow(16.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x1A000000), spotColor = Color(0x227C3AED))
-                    .clip(RoundedCornerShape(16.dp)).background(Color(0xF8FFFFFF)).border(1.dp, Color(0xFFE4E4EC), RoundedCornerShape(16.dp))
+                    .shadow(16.dp, RoundedCornerShape(16.dp), ambientColor = Color(0x33000000), spotColor = Color(0x337C3AED))
+                    .clip(RoundedCornerShape(16.dp)).background(Color(0xE6151226)).border(1.dp, Color(0xFF3A3458), RoundedCornerShape(16.dp))
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -498,6 +516,8 @@ fun ControlOverlay(
                     DarkChip("Transparan", on = style == ControlStyle.TRANSPARENT_BORDER) { onStyle(ControlStyle.TRANSPARENT_BORDER) }
                     DarkChip("Bingkai Game", on = style == ControlStyle.GAMING_FRAME) { onStyle(ControlStyle.GAMING_FRAME) }
                     DarkChip("Solid Gelap", on = style == ControlStyle.SOLID_DARK) { onStyle(ControlStyle.SOLID_DARK) }
+                    Box(Modifier.width(1.dp).height(20.dp).background(Color(0x33FFFFFF)))
+                    DarkChip("Snap grid", on = snap) { snap = !snap }
                 }
                 if (library) LibraryPanel(items.size, onPreset = { onItems(it); library = false }) { add ->
                     if (items.size >= MAX_OVERLAY_ITEMS) return@LibraryPanel
@@ -508,11 +528,39 @@ fun ControlOverlay(
                 val cur = items.find { it.id == selected }
                 if (cur != null && !library) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        XyText("${cur.label()} · ${cur.size.roundToInt()}dp · geser untuk posisikan", Xy.caption.copy(color = Xy.accent))
+                        XyText(
+                            "${cur.label()} · ${cur.size.roundToInt()}dp · ${(cur.alpha * 100).roundToInt()}% · geser untuk posisikan",
+                            Xy.caption.copy(color = Xy.accent),
+                        )
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            DarkChip("−") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size - 8f).coerceAtLeast(34f), radius = ((it.size - 8f) / 2).coerceAtLeast(0f)) else it }) }
-                            DarkChip("+") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size + 8f).coerceAtMost(180f), radius = ((it.size + 8f) / 2).coerceAtMost(90f)) else it }) }
+                            DarkChip("Ukuran −") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size - 8f).coerceAtLeast(34f), radius = ((it.size - 8f) / 2).coerceAtLeast(0f)) else it }) }
+                            DarkChip("Ukuran +") { onItems(items.map { if (it.id == cur.id) it.copy(size = (it.size + 8f).coerceAtMost(180f), radius = ((it.size + 8f) / 2).coerceAtMost(90f)) else it }) }
+                            DarkChip("Redup −") { onItems(items.map { if (it.id == cur.id) it.copy(alpha = (it.alpha - 0.1f).coerceAtLeast(0.2f)) else it }) }
+                            DarkChip("Redup +") { onItems(items.map { if (it.id == cur.id) it.copy(alpha = (it.alpha + 0.1f).coerceAtMost(1f)) else it }) }
+                            DarkChip("Duplikat") {
+                                val salin = cur.copy(
+                                    id = "n${System.nanoTime()}",
+                                    x = (cur.x + 4f).coerceAtMost(96f),
+                                    y = (cur.y + 4f).coerceAtMost(96f),
+                                )
+                                if (items.size < MAX_OVERLAY_ITEMS) { onItems(items + salin); selected = salin.id }
+                            }
                         }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        XyText("Nama", Xy.caption.copy(color = Xy.textHi))
+                        BasicTextField(
+                            value = cur.display,
+                            onValueChange = { v -> onItems(items.map { if (it.id == cur.id) it.copy(display = v.take(12)) else it }) },
+                            singleLine = true,
+                            textStyle = TextStyle(color = Color.White, fontSize = 12.sp),
+                            cursorBrush = SolidColor(Xy.accent),
+                            modifier = Modifier
+                                .width(150.dp).height(30.dp)
+                                .background(Color(0x22FFFFFF), RoundedCornerShape(Xy.pill))
+                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(Xy.pill))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                        )
                     }
                 }
             }
@@ -1139,19 +1187,19 @@ private fun item(kind: OverlayKind, code: Int, display: String = "") =
 @Composable
 private fun DarkChip(text: String, on: Boolean = false, danger: Boolean = false, onClick: () -> Unit) {
     val bg = when {
-        danger -> Color(0x1AF43F5E)
+        danger -> Color(0x33F43F5E)
         on -> Xy.accent
-        else -> Color(0xFFF1F1F6)
+        else -> Color(0x22FFFFFF)
     }
     val border = when {
         danger -> Color(0x66F43F5E)
         on -> Xy.accent
-        else -> Color(0xFFE4E4EC)
+        else -> Color(0x33FFFFFF)
     }
     val fg = when {
-        danger -> Color(0xFFE11D48)
+        danger -> Color(0xFFFB7185)
         on -> Color.White
-        else -> Xy.textHi
+        else -> Color(0xFFEAE6FF)
     }
     Box(
         Modifier

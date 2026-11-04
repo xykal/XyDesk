@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import org.webrtc.AudioTrack
 import id.xyverse.xyadapt.FileMsg
 import id.xyverse.xyadapt.FileWire
+import kotlin.concurrent.thread
 import org.webrtc.DataChannel
 import org.webrtc.DefaultVideoDecoderFactory
 import org.webrtc.DefaultVideoEncoderFactory
@@ -96,6 +97,29 @@ class RtcSession(
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
     private var file: DataChannel? = null
+
+    // ── Anti-lag jalur input ────────────────────────────────────────────────
+    // Kirim input tidak pernah memblokir thread UI: paket masuk antrean kecil
+    // lalu dikirim thread sendiri. Gerakan mouse beruntun (geser keyboard /
+    // drag) digabung di ekor antrean — rel dijumlah, absolut salip-menyalip —
+    // sehingga saat kanal sedang padat tetap lancar. Jalur video tidak disentuh.
+    private val inputLock = Object()
+    private val inputQueue = ArrayDeque<ByteArray>()
+    @Volatile private var inputClosed = false
+    private val inputSender = thread(name = "xydesk-input", isDaemon = true) {
+        try {
+            while (!inputClosed) {
+                val bytes = synchronized(inputLock) {
+                    while (inputQueue.isEmpty() && !inputClosed) inputLock.wait()
+                    if (inputClosed) null else inputQueue.removeFirst()
+                } ?: break
+                val ch = input ?: continue
+                if (ch.state() != DataChannel.State.OPEN) continue
+                runCatching { ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true)) }
+            }
+        } catch (_: InterruptedException) {
+        }
+    }
     private val wallpaper = WallpaperTransfer().also { it.onJpeg = { jpeg -> listener.onHostWallpaper(jpeg) } }
     private var remoteAudioTrack: AudioTrack? = null
     private var micTrack: AudioTrack? = null
@@ -514,10 +538,51 @@ class RtcSession(
     }
 
     fun send(bytes: ByteArray) {
-        if (bytes.isEmpty()) return
+        if (bytes.isEmpty() || inputClosed) return
         val ch = input ?: return
-        if (ch.state() == DataChannel.State.OPEN) ch.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true))
+        if (ch.state() != DataChannel.State.OPEN) return
+        synchronized(inputLock) {
+            if (inputQueue.size >= INPUT_QUEUE_CAP) {
+                // Antrean darurat: buang gerakan paling lama (host pun membuang
+                // abs basi). Tanpa gerakan yang bisa dibuang, paket gerakan baru
+                // dilepas — tombol/teks tidak boleh hilang.
+                val idx = inputQueue.indexOfFirst {
+                    it.isNotEmpty() && (it[0] == MOVE_REL || it[0] == MOVE_ABS)
+                }
+                if (idx >= 0) inputQueue.removeAt(idx)
+                else if (bytes[0] == MOVE_REL || bytes[0] == MOVE_ABS) return
+            }
+            val tail = inputQueue.lastOrNull()
+            val merged = tail?.let { mergeMoves(it, bytes) }
+            if (merged != null) {
+                inputQueue.removeLast()
+                inputQueue.addLast(merged)
+            } else {
+                inputQueue.addLast(bytes)
+            }
+            inputLock.notify()
+        }
     }
+
+    /** Gabung paket gerakan beruntun: rel dijumlah, absolut salip terakhir menang. */
+    private fun mergeMoves(tail: ByteArray, bytes: ByteArray): ByteArray? {
+        if (tail.size < 5 || bytes.size < 5) return null
+        return when {
+            tail[0] == MOVE_REL && bytes[0] == MOVE_REL -> {
+                val dx = (i16(tail, 1) + i16(bytes, 1)).coerceIn(-32768, 32767)
+                val dy = (i16(tail, 3) + i16(bytes, 3)).coerceIn(-32768, 32767)
+                tail.copyOf().also {
+                    it[1] = (dx and 0xFF).toByte(); it[2] = ((dx shr 8) and 0xFF).toByte()
+                    it[3] = (dy and 0xFF).toByte(); it[4] = ((dy shr 8) and 0xFF).toByte()
+                }
+            }
+            tail[0] == MOVE_ABS && bytes[0] == MOVE_ABS -> bytes
+            else -> null
+        }
+    }
+
+    private fun i16(b: ByteArray, i: Int): Int =
+        ((b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)).toShort().toInt()
 
     /** Mengirim satu pesan protokol berkas; false = channel belum siap. */
     fun sendFile(bytes: ByteArray): Boolean {
@@ -536,6 +601,12 @@ class RtcSession(
     fun stop(phase: Phase = Phase.ENDED, message: String? = null) {
         if (stopped) return
         stopped = true
+        inputClosed = true
+        synchronized(inputLock) {
+            inputQueue.clear()
+            inputLock.notifyAll()
+        }
+        inputSender.interrupt()
         runCatching { signaling.bye(Signaling.normalizeId(hostId)) }
         signaling.close()
         input?.unregisterObserver()
@@ -556,6 +627,12 @@ class RtcSession(
         factory.dispose()
         adm.release()
         egl.release()
+    }
+
+    private companion object {
+        const val INPUT_QUEUE_CAP = 512
+        const val MOVE_REL: Byte = 0x01
+        const val MOVE_ABS: Byte = 0x02
     }
 
     private inner class PcObserver : PeerConnection.Observer {
