@@ -50,6 +50,7 @@ fun Switch(store: Store, key: String, title: String, caption: String, def: Boole
 fun SessionMorePrefs(store: Store) {
     XyCard {
         XyText("TAMPILAN SESI", Xy.label)
+        Spacer(Modifier.height(8.dp))
         XyText("Sesi dikunci lanskap. Menu lain bebas potret.", Xy.caption)
         Choice(store, P.RAIL_AUTOHIDE, "Rel otomatis sembunyi", "Rel kanan menyusut jadi garis bila tidak disentuh.", listOf("Mati", "5 d", "10 d", "20 d"))
         Choice(store, P.START_RES, "Resolusi awal", "Dikirim ke host saat tersambung; Auto mengikuti jaringan.", listOf("Auto", "720p", "1080p"))
@@ -59,6 +60,7 @@ fun SessionMorePrefs(store: Store) {
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("SAAT MULAI SESI", Xy.label)
+        Spacer(Modifier.height(8.dp))
         Switch(store, P.START_MUTED, "Audio PC bisu", "Suara PC tidak diputar sampai dinyalakan di panel Kontrol.")
         Switch(store, P.START_MIC, "Mic langsung nyala", "Butuh izin mikrofon dan host dengan XyDesk Virtual Microphone.")
         Switch(store, P.START_CLIP, "Clipboard dua arah", "Teks yang disalin di HP ikut ke PC dan sebaliknya.")
@@ -66,6 +68,7 @@ fun SessionMorePrefs(store: Store) {
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("KURSOR LANJUTAN", Xy.label)
+        Spacer(Modifier.height(8.dp))
         Choice(store, P.ACCEL, "Percepatan kursor", "Gerak cepat melompat lebih jauh; Mati = linear.", listOf("Mati", "Sedang", "Kuat"), 1)
         Choice(store, P.SCROLL_SPEED, "Kecepatan scroll", "", listOf("Lambat", "Normal", "Cepat"), 1)
         Switch(store, P.TWO_FINGER_RIGHT, "Ketuk dua jari = klik kanan", "Matikan bila sering tidak sengaja.", true)
@@ -74,6 +77,7 @@ fun SessionMorePrefs(store: Store) {
     Spacer(Modifier.height(16.dp))
     XyCard {
         XyText("HUD", Xy.label)
+        Spacer(Modifier.height(8.dp))
         Choice(store, P.HUD_SIZE, "Ukuran HUD", "", listOf("S", "M", "L"), 1)
         Switch(store, P.HUD_RIGHT, "HUD di kanan atas", "Bawaan kiri atas, menjauh dari rel dan mapping kontrol.")
     }
@@ -85,6 +89,7 @@ fun GeneralMorePrefs(store: Store, onTextSize: (Int) -> Unit) {
     val ctx = LocalContext.current
     XyCard {
         XyText("KONEKSI", Xy.label)
+        Spacer(Modifier.height(8.dp))
         Switch(store, P.REMEMBER_DEFAULT, "Ingat perangkat secara bawaan", "Saklar di halaman Sambungkan menyala otomatis.", true)
         Switch(store, P.AUTO_LAST, "Sambung otomatis ke PC terakhir", "Saat aplikasi dibuka, langsung tersambung bila password tersimpan.")
         Switch(store, P.FORCE_RELAY, "Mode Tanpa P2P (selalu lewat relay)", "Semua media lewat server relay — tidak ada koneksi langsung P2P, jadi selalu tembus NAT ketat/CGNAT. IP HP tersembunyi dari host; latensi & kuota relay naik.", true)

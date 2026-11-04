@@ -54,12 +54,19 @@ import id.xyverse.xydesk.ui.kit.XyField
 import id.xyverse.xydesk.ui.kit.XyNotice
 import id.xyverse.xydesk.ui.kit.XyText
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
+import id.xyverse.xydesk.core.SessionRecord
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LoginScreen(
     onGoogle: suspend () -> String?,
     onOpenUrl: (String) -> Unit = {},
+    /** Perangkat/partner yang pernah tersambung — ditampilkan sebagai riwayat cepat. */
+    recent: List<SessionRecord> = emptyList(),
+    /** true = sesi langsung dibuka (password tersimpan); false = perlu masuk dulu. */
+    onQuickDevice: (String) -> Boolean = { false },
     onLoggedIn: (jwt: String, email: String) -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
@@ -89,6 +96,9 @@ fun LoginScreen(
     }
 
     Box(Modifier.fillMaxSize().background(Xy.bg)) {
+        // Latar ilustrasi hero + gradasi ke warna dasar — kartu login tumbuh
+        // dari gambar, sesuai arah visual yang diminta pemilik.
+        LoginHero(height = 420.dp)
         Column(
             Modifier
                 .fillMaxSize()
@@ -225,6 +235,33 @@ fun LoginScreen(
                             tone = Xy.danger
                         }
                         googleBusy = false
+                    }
+                }
+            }
+
+            if (recent.isNotEmpty()) {
+                Spacer(Modifier.height(24.dp))
+                XyText("RIWAYAT PERANGKAT & PARTNER", Xy.label)
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    recent.take(5).forEach { d ->
+                        val title = hostTitle(d)
+                        Row(
+                            Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay)
+                                .clickable(remember { MutableInteractionSource() }, null) {
+                                    if (!onQuickDevice(d.host)) {
+                                        notice = "Masuk dulu untuk menyambung lagi ke $title."
+                                        tone = Xy.textMid
+                                    }
+                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            XyText(title, Xy.label.copy(color = Xy.textHi), maxLines = 1)
+                        }
                     }
                 }
             }

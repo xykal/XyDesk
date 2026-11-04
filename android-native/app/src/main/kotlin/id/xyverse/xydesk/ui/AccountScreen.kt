@@ -136,7 +136,8 @@ private fun Root(email: String, onOpenUrl: (String) -> Unit, settings: Settings,
     Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(Xy.pad)) {
         Spacer(Modifier.height(12.dp))
         XyText("Akun", Xy.display)
-        Spacer(Modifier.height(20.dp))
+        XyText("Profil, preferensi perangkat, dan informasi akun.", Xy.caption)
+        Spacer(Modifier.height(24.dp))
 
         // Kartu Profil Utama: Menampilkan nama, foto, dan email dengan tombol edit
         Row(

@@ -118,7 +118,21 @@ class MainActivity : ComponentActivity() {
                         OnboardingScreen { store.onboarded = true; stage = Stage.AUTH }
                     } else if (!loggedIn) {
                         val scope = rememberCoroutineScope()
-                        LoginScreen(onGoogle = ::googleIdToken, onOpenUrl = { BrowserActivity.open(this@MainActivity, it) }) { token, email ->
+                        val recentHistory by store.observeHistory().collectAsState()
+                        LoginScreen(
+                            onGoogle = ::googleIdToken,
+                            onOpenUrl = { BrowserActivity.open(this@MainActivity, it) },
+                            recent = recentHistory.distinctBy { it.host },
+                            onQuickDevice = { host ->
+                                val saved = store.hostPin(host)
+                                if (saved != null) {
+                                    openSession(host, saved)
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
+                        ) { token, email ->
                             store.jwt = token; store.email = email; jwt = token
                             scope.launch(Dispatchers.IO) {
                                 runCatching {
