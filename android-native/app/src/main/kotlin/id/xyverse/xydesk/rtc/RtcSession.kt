@@ -629,12 +629,6 @@ class RtcSession(
         egl.release()
     }
 
-    private companion object {
-        const val INPUT_QUEUE_CAP = 512
-        const val MOVE_REL: Byte = 0x01
-        const val MOVE_ABS: Byte = 0x02
-    }
-
     private inner class PcObserver : PeerConnection.Observer {
         override fun onIceCandidate(c: IceCandidate) =
             signaling.ice(Signaling.normalizeId(hostId), c.sdp, c.sdpMid, c.sdpMLineIndex)
@@ -684,6 +678,9 @@ class RtcSession(
 
     companion object {
         private const val TAG = "XyDeskRtc"
+        private const val INPUT_QUEUE_CAP = 512
+        private const val MOVE_REL: Byte = 0x01
+        private const val MOVE_ABS: Byte = 0x02
         private fun newClientId(): String =
             "app-${System.currentTimeMillis() % 1_000_000}-${Random.nextInt(100, 999)}"
     }
