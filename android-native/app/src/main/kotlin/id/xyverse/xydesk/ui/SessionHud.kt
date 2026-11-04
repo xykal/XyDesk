@@ -19,7 +19,7 @@ object SessionHud {
             val a = sb.length
             sb.append(label)
             sb.setSpan(RelativeSizeSpan(0.62f), a, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.setSpan(ForegroundColorSpan(0xB3FFFFFF.toInt()), a, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(ForegroundColorSpan(0xD9FFFFFF.toInt()), a, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.append("\n")
             val v = sb.length
             sb.append(value)

@@ -31,12 +31,13 @@ Gradle, belum bukti HP).
 - [ ] **Poles UI host lanjutan (Tugas 26 fase 2)** — permintaan pemilik
   2026-11-03: (a) isian gerbang login masih EDIT bawaan → ganti isian custom;
   (b) dialog QR/profil/panduan masih dialog embedded → pindah ke modal custom;
-  (c) pemilih berkas masih GetOpenFileName → ganti; (d) poles APK halaman
-  sesi + kustomisasi kontrol overlay yang lengkap; (e) anti-lag geser keyboard
-  (jalur INPUT boleh dioptimasi; jalur video/stream TIDAK BOLEH disentuh —
-  tanpa filter/sharpen, kehalusan layar dari host langsung). Fase 1 (splash,
-  modal custom, blok password Akses host, hapus password dari Pengaturan,
-  hardening DLL) sudah digabung.
+  (c) pemilih berkas masih GetOpenFileName → ganti; (d) pemilih huruf
+  (ChooseFont) masih dialog Windows → ganti. Sisi APK selesai digabung:
+  anti-lag jalur input (antrean async + gabung gerakan; video TIDAK disentuh),
+  toolbar sesi kaca gelap, Customize overlay lengkap (opasitas, snap grid,
+  duplikat, rename, editor gelap). Fase 1 host (splash, modal custom, blok
+  password Akses host, hapus password dari Pengaturan, hardening DLL) juga
+  sudah digabung.
 - [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
   2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
   menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik
