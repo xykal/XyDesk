@@ -37,6 +37,7 @@
 #include <winsock2.h>
 #include <windows.h>
 #include <cmath>
+#include <algorithm>
 #include <functional>
 #include <vector>
 #include <shellapi.h>
@@ -2009,6 +2010,14 @@ void beginGateMotion(HWND hwnd, std::uint32_t duration);
 
 LRESULT CALLBACK gateEditProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
+    case WM_CTLCOLOREDIT: {
+        // Isian gerbang: teks mengambang di atas kulit membulat yang digambar
+        // paintGate — tanpa latar kotak putih bawaan EDIT.
+        HDC editDc = reinterpret_cast<HDC>(wParam);
+        SetTextColor(editDc, kText);
+        SetBkMode(editDc, TRANSPARENT);
+        return reinterpret_cast<LRESULT>(GetStockObject(NULL_BRUSH));
+    }
     case WM_CHAR:
         // Enter dan Esc di EDIT satu baris berbunyi "beep" kalau diteruskan;
         // keduanya sudah ditangani di WM_KEYDOWN.
@@ -2183,21 +2192,269 @@ std::wstring fileNameOf(const std::wstring& path) {
     return cut == std::wstring::npos ? path : path.substr(cut + 1);
 }
 
-/** Dialog "Buka" bawaan Windows. Kosong = pengguna membatalkan. */
+// ── Pemilih berkas custom ───────────────────────────────────────────────────
+// Menggantikan dialog "Buka" bawaan Windows: daftar folder/berkas digambar
+// sendiri dengan gaya panel (kartu membulat, pil tombol), jendela tanpa
+// caption Windows dan bisa digeser dari bar judulnya.
+namespace filepicker {
+
+struct Entry { std::wstring name; bool dir = false; };
+
+struct State {
+    std::wstring folder;
+    std::vector<Entry> rows;
+    int selected = -1;
+    int scroll = 0;
+    std::wstring result;
+    Rect listRect{}, upRect{}, cancelRect{}, okRect{}, titleRect{};
+};
+State g_state;
+
+std::wstring join(const std::wstring& folder, const std::wstring& name) {
+    if (folder.empty()) return name;
+    return folder + (folder.back() == L'\\' ? L"" : L"\\") + name;
+}
+
+void load(State& s) {
+    s.rows.clear();
+    s.selected = -1;
+    s.scroll = 0;
+    WIN32_FIND_DATAW fd{};
+    const std::wstring pattern = join(s.folder, L"*");
+    HANDLE h = FindFirstFileW(pattern.c_str(), &fd);
+    if (h != INVALID_HANDLE_VALUE) {
+        do {
+            if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0) continue;
+            if ((fd.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0) continue;
+            s.rows.push_back({fd.cFileName, (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0});
+        } while (FindNextFileW(h, &fd));
+        FindClose(h);
+    }
+    std::sort(s.rows.begin(), s.rows.end(), [](const Entry& a, const Entry& b) {
+        if (a.dir != b.dir) return a.dir;
+        return _wcsicmp(a.name.c_str(), b.name.c_str()) < 0;
+    });
+}
+
+void up(State& s) {
+    const auto cut = s.folder.find_last_of(L"\\/");
+    if (cut == std::wstring::npos || cut < 2) return;
+    s.folder = s.folder.substr(0, cut);
+    load(s);
+}
+
+constexpr int kRowH = 32;
+
+int rowAt(const State& s, int y) {
+    if (y < s.listRect.y || y >= s.listRect.bottom()) return -1;
+    return s.scroll + (y - s.listRect.y) / kRowH;
+}
+
+void paint(HWND hwnd) {
+    State& s = g_state;
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    PAINTSTRUCT ps{};
+    HDC windowDc = BeginPaint(hwnd, &ps);
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    HDC dc = CreateCompatibleDC(windowDc);
+    HBITMAP bitmap = CreateCompatibleBitmap(windowDc, rc.right, rc.bottom);
+    HGDIOBJ oldBitmap = SelectObject(dc, bitmap);
+    fillRoundedHdc(dc, Rect{0, 0, rc.right, rc.bottom}, px(18), kBackground);
+    drawTextLine(dc, L"Pilih berkas untuk dikirim ke perangkat", s.titleRect,
+        g.fontSemi, kText, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    drawTextLine(dc, s.folder, Rect{s.listRect.x, s.titleRect.bottom() + px(4), s.listRect.w, px(22)},
+        g.fontSmall, kMuted, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS);
+    fillRoundedHdc(dc, s.listRect, px(12), kSurface);
+    strokeRoundedHdc(dc, s.listRect, px(12), kEdge, 1);
+    const int visible = s.listRect.h / kRowH;
+    for (int i = 0; i < visible; ++i) {
+        const int index = s.scroll + i;
+        if (index >= static_cast<int>(s.rows.size())) break;
+        const Rect row{s.listRect.x + px(4), s.listRect.y + i * kRowH,
+            s.listRect.w - px(8), kRowH};
+        const bool sel = index == s.selected;
+        if (sel) fillRoundedHdc(dc, row, px(8), kSurface2);
+        // Ikon mini: folder = persegi bertab, berkas = persegi bersudut lipat.
+        const Rect icon{row.x + px(10), row.y + (row.h - px(16)) / 2, px(18), px(16)};
+        if (s.rows[static_cast<size_t>(index)].dir) {
+            fillRoundedHdc(dc, icon, px(3), sel ? kAccent : kMuted);
+            fillRoundedHdc(dc, Rect{icon.x, icon.y, px(9), px(5)}, px(2), sel ? kAccent : kMuted);
+        } else {
+            fillRoundedHdc(dc, icon, px(2), kSurface2);
+            strokeRoundedHdc(dc, icon, px(2), sel ? kAccent : kMuted, 1);
+        }
+        drawTextLine(dc, s.rows[static_cast<size_t>(index)].name,
+            Rect{row.x + px(38), row.y, row.w - px(46), row.h},
+            s.rows[static_cast<size_t>(index)].dir ? g.fontSemi : g.fontBody,
+            sel ? kText : kText, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_PATH_ELLIPSIS);
+    }
+    if (s.rows.empty()) {
+        drawTextCentered(dc, L"Folder ini kosong.", s.listRect, g.fontBody, kDisabled);
+    }
+    const auto pill = [&](const Rect& r, const wchar_t* label, bool accent) {
+        fillRoundedHdc(dc, r, r.h / 2, accent ? kAccent : kSurface);
+        strokeRoundedHdc(dc, r, r.h / 2, accent ? kAccent : kEdge, 1);
+        drawTextCentered(dc, label, r, g.fontSemi, accent ? kOnAccent : kText);
+    };
+    pill(s.upRect, L"Naik", false);
+    pill(s.cancelRect, L"Batal", false);
+    pill(s.okRect, L"Pilih", true);
+    BitBlt(windowDc, 0, 0, rc.right, rc.bottom, dc, 0, 0, SRCCOPY);
+    SelectObject(dc, oldBitmap);
+    DeleteObject(bitmap);
+    DeleteDC(dc);
+    EndPaint(hwnd, &ps);
+}
+
+void layout(State& s, HWND hwnd) {
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    s.titleRect = Rect{px(20), px(8), rc.right - px(40), px(34)};
+    s.listRect = Rect{px(16), px(72), rc.right - px(32), rc.bottom - px(72) - px(68)};
+    s.upRect = Rect{px(16), rc.bottom - px(52), px(96), px(36)};
+    s.okRect = Rect{rc.right - px(16) - px(120), rc.bottom - px(52), px(120), px(36)};
+    s.cancelRect = Rect{s.okRect.x - px(10) - px(96), rc.bottom - px(52), px(96), px(36)};
+}
+
+int hitButton(const State& s, int x, int y) {
+    const Rect p{x, y, 1, 1};
+    if (p.x >= s.upRect.x && p.x < s.upRect.right() && p.y >= s.upRect.y && p.y < s.upRect.bottom()) return 1;
+    if (p.x >= s.cancelRect.x && p.x < s.cancelRect.right() && p.y >= s.cancelRect.y && p.y < s.cancelRect.bottom()) return 2;
+    if (p.x >= s.okRect.x && p.x < s.okRect.right() && p.y >= s.okRect.y && p.y < s.okRect.bottom()) return 3;
+    return 0;
+}
+
+void openSelection(HWND hwnd) {
+    State& s = g_state;
+    if (s.selected < 0 || s.selected >= static_cast<int>(s.rows.size())) return;
+    const auto& e = s.rows[static_cast<size_t>(s.selected)];
+    if (e.dir) {
+        s.folder = join(s.folder, e.name);
+        load(s);
+        InvalidateRect(hwnd, nullptr, FALSE);
+    } else {
+        s.result = join(s.folder, e.name);
+        DestroyWindow(hwnd);
+    }
+}
+
+LRESULT CALLBACK pickerProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    State& s = g_state;
+    switch (message) {
+    case WM_PAINT: paint(hwnd); return 0;
+    case WM_ERASEBKGND: return 1;
+    case WM_NCHITTEST: {
+        POINT pt{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+        ScreenToClient(hwnd, &pt);
+        if (pt.y >= 0 && pt.y < s.titleRect.y + s.titleRect.h
+            && hitButton(s, pt.x, pt.y) == 0 && rowAt(s, pt.y) < 0) {
+            return HTCAPTION;
+        }
+        break;
+    }
+    case WM_MOUSEWHEEL: {
+        const int delta = -GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA;
+        const int visible = s.listRect.h / kRowH;
+        const int maxScroll = (std::max)(0, static_cast<int>(s.rows.size()) - visible);
+        s.scroll = (std::min)(maxScroll, (std::max)(0, s.scroll + delta * 3));
+        InvalidateRect(hwnd, nullptr, FALSE);
+        return 0;
+    }
+    case WM_LBUTTONDOWN: {
+        const int x = static_cast<short>(LOWORD(lParam)), y = static_cast<short>(HIWORD(lParam));
+        const int button = hitButton(s, x, y);
+        if (button == 1) { up(s); InvalidateRect(hwnd, nullptr, FALSE); return 0; }
+        if (button == 2) { DestroyWindow(hwnd); return 0; }
+        if (button == 3) { openSelection(hwnd); return 0; }
+        const int row = rowAt(s, y);
+        if (row >= 0 && row < static_cast<int>(s.rows.size())) {
+            s.selected = row;
+            InvalidateRect(hwnd, nullptr, FALSE);
+        }
+        return 0;
+    }
+    case WM_LBUTTONDBLCLK: {
+        const int x = static_cast<short>(LOWORD(lParam)), y = static_cast<short>(HIWORD(lParam));
+        const int row = rowAt(s, y);
+        if (row >= 0 && row < static_cast<int>(s.rows.size())) {
+            s.selected = row;
+            openSelection(hwnd);
+        }
+        return 0;
+    }
+    case WM_KEYDOWN: {
+        const int visible = s.listRect.h / kRowH;
+        if (wParam == VK_ESCAPE) { DestroyWindow(hwnd); return 0; }
+        if (wParam == VK_RETURN) { openSelection(hwnd); return 0; }
+        if (wParam == VK_UP || wParam == VK_DOWN) {
+            const int delta = wParam == VK_DOWN ? 1 : -1;
+            const int count = static_cast<int>(s.rows.size());
+            if (count > 0) {
+                s.selected = s.selected < 0 ? 0
+                    : (std::min)(count - 1, (std::max)(0, s.selected + delta));
+                if (s.selected < s.scroll) s.scroll = s.selected;
+                if (s.selected >= s.scroll + visible) s.scroll = s.selected - visible + 1;
+                InvalidateRect(hwnd, nullptr, FALSE);
+            }
+            return 0;
+        }
+        if (wParam == VK_BACK) { up(s); InvalidateRect(hwnd, nullptr, FALSE); return 0; }
+        break;
+    }
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, message, wParam, lParam);
+}
+
+} // namespace filepicker
+
+/** Pemilih berkas custom panel. Kosong = pengguna membatalkan. */
 std::wstring pickFileToSend(HWND owner) {
-    wchar_t buffer[MAX_PATH * 2];
-    buffer[0] = L'\0';
-    OPENFILENAMEW ofn{};
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = owner;
-    ofn.lpstrFile = buffer;
-    ofn.nMaxFile = static_cast<DWORD>(std::size(buffer));
-    ofn.lpstrTitle = L"Pilih berkas untuk dikirim ke perangkat";
-    ofn.lpstrFilter = L"Semua berkas\0*.*\0";
-    // NOCHANGEDIR: dialog tidak boleh menggeser direktori kerja proses host.
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR | OFN_EXPLORER;
-    if (!GetOpenFileNameW(&ofn)) return {};
-    return std::wstring(buffer);
+    using namespace filepicker;
+    State& s = g_state;
+    s = State{};
+    wchar_t home[MAX_PATH]{};
+    GetEnvironmentVariableW(L"USERPROFILE", home, static_cast<DWORD>(std::size(home)));
+    s.folder = join(home, L"Documents");
+    if (GetFileAttributesW(s.folder.c_str()) == INVALID_FILE_ATTRIBUTES) s.folder = home;
+    load(s);
+
+    WNDCLASSEXW wc{};
+    wc.cbSize = sizeof(wc);
+    wc.lpfnWndProc = pickerProc;
+    wc.hInstance = GetModuleHandleW(nullptr);
+    wc.style = CS_DBLCLKS;
+    wc.hCursor = LoadCursorW(nullptr, IDC_ARROW);
+    wc.lpszClassName = L"XyDeskPanelFilePicker";
+    RegisterClassExW(&wc); // boleh gagal bila kelas sudah terdaftar
+
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    const int w = px(600), h = px(480);
+    RECT workArea{};
+    if (!SystemParametersInfoW(SPI_GETWORKAREA, 0, &workArea, 0)) {
+        workArea = RECT{0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)};
+    }
+    const int x = workArea.left + ((workArea.right - workArea.left) - w) / 2;
+    const int y = workArea.top + ((workArea.bottom - workArea.top) - h) / 2;
+    HWND hwnd = CreateWindowExW(WS_EX_TOOLWINDOW, L"XyDeskPanelFilePicker",
+        L"Pilih berkas", WS_POPUP, x, y, w, h, owner, nullptr,
+        GetModuleHandleW(nullptr), nullptr);
+    if (!hwnd) return {};
+    layout(s, hwnd);
+    SetWindowRgn(hwnd, CreateRoundRectRgn(0, 0, w + 1, h + 1, px(18), px(18)), TRUE);
+    EnableWindow(owner, FALSE);
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    MSG msg;
+    while (IsWindow(hwnd) && GetMessageW(&msg, nullptr, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+    }
+    EnableWindow(owner, TRUE);
+    SetForegroundWindow(owner);
+    return s.result;
 }
 
 /** Dipanggil tiap tick animasi: panen hasil restore/login yang sudah siap. */
@@ -2373,12 +2630,18 @@ void paintGate(Surface& surface, HDC dc) {
         return Rect{r.x, r.y + dy + mixInt(lift, 0, t), r.w, r.h};
     };
 
-    // Tanda XyDesk: logo resmi pita geometris XyDesk yang mengembang halus (easeOutBack).
+    // Tanda XyDesk: logo resmi pita geometris di atas piringan gradien lembut,
+    // mengembang halus (easeOutBack). Piringan memberi bobot visual — hero
+    // gerbang tidak lagi terasa "tempelan kecil".
     {
         const float t = easeOutBack(staggered(raw, 1, xydesk::panel::GateLayout::kSteps));
+        const auto px = [&](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
         const Rect base = shifted(l.mark, 1);
         const int size = mixInt(base.w * 7 / 10, base.w, t);
         const Rect mark{base.x + (base.w - size) / 2, base.y + (base.h - size) / 2, size, size};
+        const Rect plate = mark.inset(-px(10));
+        fillRoundedOpaque(surface, plate, plate.w / 2, kSurface2, t);
+        strokeRounded(surface, plate, plate.w / 2, kEdge, 1);
         paintXyDeskLogoMark(surface, dc, mark, true);
     }
 
@@ -2956,17 +3219,111 @@ bool paintEmbeddedButton(LPARAM parameter){
     SelectObject(dc,oldFont);return true;
 }
 
+// ── Chrome dialog tanpa bingkai Windows ──────────────────────────────────────
+// Dialog resource dipakai TANPA caption bawaan: bar judul + tombol tutup
+// digambar sendiri, sudut membulat, area judul bisa digeser. Isi dialog tetap
+// dari resource (tombol sudah owner-drawn) — hanya kerangka Windows-nya yang
+// dihapus. Dialog yang dipasang sebagai halaman panel (WS_CHILD) tidak diubah.
+namespace dialogchrome {
+constexpr int kTitle = 34;
+
+RECT closeRect(HWND hwnd) {
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    return RECT{rc.right - px(46), px(4), rc.right - px(10), px(4) + px(26)};
+}
+
+bool chromeOn(HWND hwnd) {
+    return GetPropW(hwnd, L"XyDeskDialogChrome") != nullptr
+        && (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_CHILD) == 0;
+}
+
+void apply(HWND hwnd, const wchar_t* title) {
+    if (GetWindowLongPtrW(hwnd, GWL_STYLE) & WS_CHILD) return;
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    RECT rc{}; GetWindowRect(hwnd, &rc);
+    const int strip = px(kTitle);
+    SetWindowPos(hwnd, nullptr, 0, 0, rc.right - rc.left, rc.bottom - rc.top + strip,
+        SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    for (HWND child = GetWindow(hwnd, GW_CHILD); child; child = GetWindow(child, GW_HWNDNEXT)) {
+        RECT cr{}; GetWindowRect(child, &cr);
+        MapWindowPoints(nullptr, hwnd, reinterpret_cast<POINT*>(&cr), 2);
+        SetWindowPos(child, nullptr, cr.left, cr.top + strip, 0, 0,
+            SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+    RECT rc2{}; GetClientRect(hwnd, &rc2);
+    SetWindowRgn(hwnd, CreateRoundRectRgn(0, 0, rc2.right + 1, rc2.bottom + 1, px(18), px(18)), TRUE);
+    SetPropW(hwnd, L"XyDeskDialogChrome", reinterpret_cast<HANDLE>(const_cast<wchar_t*>(title)));
+    RedrawWindow(hwnd, nullptr, nullptr, RDW_INVALIDATE);
+}
+
+bool paintTitle(HWND hwnd) {
+    if (!chromeOn(hwnd)) return false;
+    const auto px = [](int n) { return xydesk::panel::scaled(n, g.layout.scalePct); };
+    PAINTSTRUCT ps{};
+    HDC dc = BeginPaint(hwnd, &ps);
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    const wchar_t* title = static_cast<const wchar_t*>(GetPropW(hwnd, L"XyDeskDialogChrome"));
+    drawTextLine(dc, title ? title : L"", Rect{px(18), 0, rc.right - px(80), px(kTitle)},
+        g.fontSemi, kText, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+    const RECT cr = closeRect(hwnd);
+    const Rect pill{cr.left, cr.top, cr.right - cr.left, cr.bottom - cr.top};
+    fillRoundedHdc(dc, pill, pill.h / 2, kSurface2);
+    strokeRoundedHdc(dc, pill, pill.h / 2, kEdge, 1);
+    drawTextCentered(dc, L"\uE711", pill, g.fontIcons, kMuted);
+    EndPaint(hwnd, &ps);
+    return true;
+}
+
+bool hitClose(HWND hwnd, LPARAM lParam) {
+    if (!chromeOn(hwnd)) return false;
+    POINT pt{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+    ScreenToClient(hwnd, &pt);
+    const RECT cr = closeRect(hwnd);
+    return PtInRect(&cr, pt) == TRUE;
+}
+
+bool hitTitleBar(HWND hwnd, LPARAM lParam) {
+    if (!chromeOn(hwnd)) return false;
+    POINT pt{static_cast<short>(LOWORD(lParam)), static_cast<short>(HIWORD(lParam))};
+    ScreenToClient(hwnd, &pt);
+    RECT rc{}; GetClientRect(hwnd, &rc);
+    return pt.y >= 0 && pt.y < xydesk::panel::scaled(kTitle, g.layout.scalePct) && !hitClose(hwnd, lParam);
+}
+} // namespace dialogchrome
+
 INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_PAINT&&dialogchrome::paintTitle(hwnd))return TRUE;
+    if(message==WM_NCHITTEST){
+        if(dialogchrome::hitTitleBar(hwnd,lParam)){SetWindowLongPtrW(hwnd,DWLP_MSGRESULT,HTCAPTION);return TRUE;}
+        return FALSE;
+    }
+    if(message==WM_LBUTTONDOWN&&dialogchrome::hitClose(hwnd,lParam)){EndDialog(hwnd,0);return TRUE;}
+    if(message==WM_DRAWITEM){
+        auto di=reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+        if(di->CtlID>=IDC_RATE_0&&di->CtlID<=IDC_RATE_7){
+            // Pil bitrate: dipilih menonjol aksen, sisanya tenang. Klik langsung
+            // menerapkan — tanpa kotak turun bawaan Windows.
+            constexpr int rateVals[]={0,1,2,4,8,15,25,50};
+            const bool disabled=(di->itemState&ODS_DISABLED)!=0;
+            const bool sel=!disabled&&g.panelBitrate==rateVals[di->CtlID-IDC_RATE_0];
+            const Rect r{di->rcItem.left,di->rcItem.top,
+                di->rcItem.right-di->rcItem.left,di->rcItem.bottom-di->rcItem.top};
+            fillRoundedHdc(di->hDC,r,r.h/2,sel?kAccent:(disabled?kDisabled:kSurface2));
+            strokeRoundedHdc(di->hDC,r,r.h/2,sel?kAccent:kEdge,1);
+            wchar_t label[16]{};GetWindowTextW(di->hwndItem,label,16);
+            drawTextCentered(di->hDC,label,r,g.fontSemi,sel?kOnAccent:(disabled?kDisabled:kText));
+            return TRUE;
+        }
+    }
     if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
 
     auto state=reinterpret_cast<SettingsState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
-    constexpr int rates[]={0,1,2,4,8,15,25,50};
     if(message==WM_INITDIALOG){
         state=reinterpret_cast<SettingsState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);
-        for(int rate:rates){const auto label=rate?std::to_wstring(rate)+L" Mbps":L"Default engine (8 Mbps, bukan adaptif)";SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_ADDSTRING,0,reinterpret_cast<LPARAM>(label.c_str()));}
-        for(int i=0;i<8;++i)if(g.panelBitrate==rates[i])SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_SETCURSEL,i,0);
+        dialogchrome::apply(hwnd,L"Pengaturan host");
         SetTimer(hwnd,1,100,nullptr);return TRUE;
     }
     if(!state)return FALSE;
@@ -2989,9 +3346,9 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
         }
         const bool ready=controlChannel.endpoint.has_value()&&g.running;
         const bool busy=state->pending.valid();
-        for(int id:{IDC_APPLY_BITRATE,IDC_BITRATE})EnableWindow(GetDlgItem(hwnd,id),ready&&!busy);
+        for(int id=IDC_RATE_0;id<=IDC_RATE_7;++id)EnableWindow(GetDlgItem(hwnd,id),ready&&!busy);
         if(!ready&&!busy){state->readyShown=false;SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kontrol privat belum tersedia. Mulai/restart engine dari panel ini.");}
-        else if(ready&&!busy&&!state->readyShown){state->readyShown=true;SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kanal privat siap. Pilih bitrate atau isi password baru.");}
+        else if(ready&&!busy&&!state->readyShown){state->readyShown=true;SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Kanal privat siap. Pilih target bitrate yang diinginkan.");}
         return TRUE;
     }
     if(message==WM_CLOSE||(message==WM_COMMAND&&LOWORD(wParam)==IDCANCEL)){
@@ -3002,10 +3359,11 @@ INT_PTR CALLBACK settingsDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPar
     if(message!=WM_COMMAND||state->pending.valid()||!controlChannel.endpoint)return FALSE;
     const int id=LOWORD(wParam);std::string body;
     state->requestedBitrate=-1;
-    if(id==IDC_APPLY_BITRATE){
-        const auto index=SendDlgItemMessageW(hwnd,IDC_BITRATE,CB_GETCURSEL,0,0);
-        if(index<0||index>=8){SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Pilih target bitrate terlebih dahulu.");return TRUE;}
-        state->requestedBitrate=rates[index];body="{\"action\":\"video-bitrate\",\"bitrate_mbps\":"+std::to_string(state->requestedBitrate)+"}";
+    if(id>=IDC_RATE_0&&id<=IDC_RATE_7){
+        constexpr int rateVals[]={0,1,2,4,8,15,25,50};
+        state->requestedBitrate=rateVals[id-IDC_RATE_0];
+        body="{\"action\":\"video-bitrate\",\"bitrate_mbps\":"+std::to_string(state->requestedBitrate)+"}";
+        InvalidateRect(hwnd,nullptr,TRUE);
     }else return FALSE;
     const auto endpoint=*controlChannel.endpoint;state->pid=endpoint.pid;state->readyShown=true;
     try{state->pending=std::async(std::launch::async,[endpoint,body=std::move(body)]()mutable{return xydesk::panel_control::action(endpoint,std::move(body));});SetDlgItemTextW(hwnd,IDC_SETTING_STATUS,L"Menerapkan melalui kanal privat...");}
@@ -3020,6 +3378,12 @@ struct AccountDialogState {
     bool closing=false;
 };
 INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_PAINT&&dialogchrome::paintTitle(hwnd))return TRUE;
+    if(message==WM_NCHITTEST){
+        if(dialogchrome::hitTitleBar(hwnd,lParam)){SetWindowLongPtrW(hwnd,DWLP_MSGRESULT,HTCAPTION);return TRUE;}
+        return FALSE;
+    }
+    if(message==WM_LBUTTONDOWN&&dialogchrome::hitClose(hwnd,lParam)){EndDialog(hwnd,0);return TRUE;}
     if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
@@ -3027,6 +3391,7 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
     auto state=reinterpret_cast<AccountDialogState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
     if(message==WM_INITDIALOG){
         state=reinterpret_cast<AccountDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);
+        dialogchrome::apply(hwnd,L"Profil dan akun");
         SendDlgItemMessageW(hwnd,IDC_ACCOUNT_NAME,WM_SETFONT,reinterpret_cast<WPARAM>(g.fontTitle),TRUE);
         wchar_t user[256]{};DWORD size=256;GetUserNameW(user,&size);
         const auto local=L"Windows: "+std::wstring(user)+L"\nDevice ID: "+g.deviceId;
@@ -3070,6 +3435,13 @@ INT_PTR CALLBACK accountDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lPara
     return FALSE;
 }
 INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
+    if(message==WM_PAINT&&dialogchrome::paintTitle(hwnd))return TRUE;
+    if(message==WM_NCHITTEST){
+        if(dialogchrome::hitTitleBar(hwnd,lParam)){SetWindowLongPtrW(hwnd,DWLP_MSGRESULT,HTCAPTION);return TRUE;}
+        return FALSE;
+    }
+    if(message==WM_LBUTTONDOWN&&dialogchrome::hitClose(hwnd,lParam)){EndDialog(hwnd,0);return TRUE;}
+    if(message==WM_INITDIALOG){dialogchrome::apply(hwnd,L"Panduan XyDesk");return TRUE;}
     if(message==WM_DRAWITEM&&paintEmbeddedButton(lParam))return TRUE;
     if(message==WM_CTLCOLORDLG)return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));
     if(message==WM_CTLCOLORSTATIC){SetBkColor(reinterpret_cast<HDC>(wParam),RGB(255,255,255));SetTextColor(reinterpret_cast<HDC>(wParam),RGB(32,35,40));return reinterpret_cast<INT_PTR>(GetStockObject(WHITE_BRUSH));}
@@ -3079,7 +3451,13 @@ INT_PTR CALLBACK guideDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam)
 struct QrDialogState {qrcodegen::QrCode code;std::wstring link;};
 INT_PTR CALLBACK qrDialog(HWND hwnd,UINT message,WPARAM wParam,LPARAM lParam){
     auto state=reinterpret_cast<QrDialogState*>(GetWindowLongPtrW(hwnd,DWLP_USER));
-    if(message==WM_INITDIALOG){state=reinterpret_cast<QrDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);SetDlgItemTextW(hwnd,IDC_CONNECTION_LINK,state->link.c_str());return TRUE;}
+    if(message==WM_PAINT&&dialogchrome::paintTitle(hwnd))return TRUE;
+    if(message==WM_NCHITTEST){
+        if(dialogchrome::hitTitleBar(hwnd,lParam)){SetWindowLongPtrW(hwnd,DWLP_MSGRESULT,HTCAPTION);return TRUE;}
+        return FALSE;
+    }
+    if(message==WM_LBUTTONDOWN&&dialogchrome::hitClose(hwnd,lParam)){EndDialog(hwnd,0);return TRUE;}
+    if(message==WM_INITDIALOG){state=reinterpret_cast<QrDialogState*>(lParam);SetWindowLongPtrW(hwnd,DWLP_USER,lParam);dialogchrome::apply(hwnd,L"QR koneksi");SetDlgItemTextW(hwnd,IDC_CONNECTION_LINK,state->link.c_str());return TRUE;}
     if(message==WM_DRAWITEM&&wParam==IDC_CONNECTION_QR&&state){
         auto draw=reinterpret_cast<DRAWITEMSTRUCT*>(lParam);FillRect(draw->hDC,&draw->rcItem,static_cast<HBRUSH>(GetStockObject(WHITE_BRUSH)));
         const int modules=state->code.getSize(),size=modules+8;

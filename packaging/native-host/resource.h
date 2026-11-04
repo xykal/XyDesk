@@ -4,6 +4,14 @@
 #define IDD_HOST_SETTINGS 201
 #define IDC_BITRATE 202
 #define IDC_APPLY_BITRATE 203
+#define IDC_RATE_0 210
+#define IDC_RATE_1 211
+#define IDC_RATE_2 212
+#define IDC_RATE_3 213
+#define IDC_RATE_4 214
+#define IDC_RATE_5 215
+#define IDC_RATE_6 216
+#define IDC_RATE_7 217
 #define IDC_PASSWORD 204
 #define IDC_APPLY_PASSWORD 205
 #define IDC_NEW_PASSWORD 206
