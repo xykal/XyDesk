@@ -408,8 +408,8 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     // Kartu password lebih tinggi: di bawah nilai terdapat baris aksi
     // (semat/sembunyikan + Customize password) sesuai permintaan pemilik —
     // semua langsung di Akses host, bukan di Pengaturan.
-    const int actionH = px(38);
-    l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, identityW, cardH + px(6) + actionH};
+    const int pwActionH = px(38);
+    l.passwordCard = Rect{contentX, l.idCard.bottom() + gap, identityW, cardH + px(6) + pwActionH};
     l.passwordLabel = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(10), identityW - px(140), px(16)};
     l.passwordValue = Rect{l.passwordCard.x + px(20), l.passwordCard.y + px(30), identityW - px(126), px(28)};
     l.passwordCopy = Rect{
@@ -419,14 +419,14 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
         copyH};
     l.passwordEye = Rect{
         l.passwordCard.x + px(20),
-        l.passwordCard.bottom() - px(12) - actionH,
-        actionH,
-        actionH};
+        l.passwordCard.bottom() - px(12) - pwActionH,
+        pwActionH,
+        pwActionH};
     l.passwordCustomize = Rect{
         l.passwordEye.right() + px(10),
         l.passwordEye.y,
         identityW - px(20) - (l.passwordEye.right() + px(10) - l.passwordCard.x),
-        actionH};
+        pwActionH};
 
     l.deviceLink = Rect{contentX, l.passwordCard.bottom() + gap, identityW - px(96), px(52)};
     l.copyLink = Rect{l.deviceLink.right() + px(12), l.deviceLink.y + px(8), px(76), px(34)};
