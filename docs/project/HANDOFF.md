@@ -39,11 +39,11 @@ Gradle, belum bukti HP).
   gelap, Customize overlay lengkap (opasitas, snap grid, duplikat, rename,
   editor gelap). Fase 1 host (splash, modal custom, blok password Akses host,
   hapus password dari Pengaturan, hardening DLL) sudah digabung.
-  Sisa kecil yang belum: menu tray (TrackPopupMenu) dan tooltip bawaan masih
-  standar Windows; halaman Koneksi/Profil/Panduan versi embedded masih memakai
-  resource dialog + statis Windows sebagai dasar gambar (tampilan sudah owner-
-  draw). (Koreksi: dulu tertulis "pemilih huruf (ChooseFont)" — fitur itu tidak
-  pernah ada di host, tidak perlu dikerjakan.)
+  Menu tray juga sudah diganti popup custom. Sisa kecil yang belum: halaman
+  Koneksi/Profil/Panduan versi embedded masih memakai resource dialog + statis
+  Windows sebagai dasar gambar (tampilan sudah owner-draw). (Koreksi dua catatan
+  keliru sebelumnya: "pemilih huruf (ChooseFont)" dan "tooltip bawaan" tidak
+  pernah ada di host — tidak perlu dikerjakan.)
 - [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
   2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
   menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik
