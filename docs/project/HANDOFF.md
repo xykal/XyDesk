@@ -29,15 +29,21 @@ Gradle, belum bukti HP).
 - [ ] **Bukti lapangan** — pairing, IME 0x06 TEXT, clipboard opt-in, mic ke
   host, presence online/offline. CI tidak menggantikan HP.
 - [ ] **Poles UI host lanjutan (Tugas 26 fase 2)** — permintaan pemilik
-  2026-11-03: (a) isian gerbang login masih EDIT bawaan → ganti isian custom;
-  (b) dialog QR/profil/panduan masih dialog embedded → pindah ke modal custom;
-  (c) pemilih berkas masih GetOpenFileName → ganti; (d) pemilih huruf
-  (ChooseFont) masih dialog Windows → ganti. Sisi APK selesai digabung:
-  anti-lag jalur input (antrean async + gabung gerakan; video TIDAK disentuh),
-  toolbar sesi kaca gelap, Customize overlay lengkap (opasitas, snap grid,
-  duplikat, rename, editor gelap). Fase 1 host (splash, modal custom, blok
-  password Akses host, hapus password dari Pengaturan, hardening DLL) juga
-  sudah digabung.
+  2026-11-03. SELESAI digabung: (a) isian gerbang → kulit custom transparan
+  (teks mengambang, cincin fokus, placeholder) + logo piringan gradien;
+  (b) chrome dialog custom untuk Pengaturan/Profil/Panduan/QR (tanpa caption
+  Windows, bar judul + tutup sendiri, sudut membulat, bisa digeser);
+  (c) pemilih berkas custom menggantikan GetOpenFileName; (d) pil bitrate
+  menggantikan COMBOBOX bawaan. Sisi APK juga selesai: anti-lag jalur input
+  (antrean async + gabung gerakan; video TIDAK disentuh), toolbar sesi kaca
+  gelap, Customize overlay lengkap (opasitas, snap grid, duplikat, rename,
+  editor gelap). Fase 1 host (splash, modal custom, blok password Akses host,
+  hapus password dari Pengaturan, hardening DLL) sudah digabung.
+  Sisa kecil yang belum: menu tray (TrackPopupMenu) dan tooltip bawaan masih
+  standar Windows; halaman Koneksi/Profil/Panduan versi embedded masih memakai
+  resource dialog + statis Windows sebagai dasar gambar (tampilan sudah owner-
+  draw). (Koreksi: dulu tertulis "pemilih huruf (ChooseFont)" — fitur itu tidak
+  pernah ada di host, tidak perlu dikerjakan.)
 - [ ] **Konfirmasi lapangan: sesi cloud PC tidak lagi mati mendadak** — bug
   2026-11-02 (HP → host cloud PC via RDP): "masuk sesi, hitam sebentar,
   menyambung ulang, host seperti offline" berulang. Akar: penjaga 2 detik
