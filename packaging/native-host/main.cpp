@@ -1239,7 +1239,7 @@ void paintPanelModal(HWND hwnd, PanelModalState* state) {
             HGDIOBJ oldFont = SelectObject(mem, g.fontSemi);
             GetTextExtentPoint32W(mem, shown.c_str(), static_cast<int>(shown.size()), &size);
             SelectObject(mem, oldFont);
-            const int cx = (std::min)(field.x + px(14) + size.cx + px(2), field.right() - px(52));
+            const int cx = (std::min)(static_cast<int>(field.x + px(14) + size.cx + px(2)), field.right() - px(52));
             HPEN pen = CreatePen(PS_SOLID, px(2), kAccent);
             HGDIOBJ oldPen = SelectObject(mem, pen);
             MoveToEx(mem, cx, field.y + px(12), nullptr); LineTo(mem, cx, field.bottom() - px(12));
@@ -1395,7 +1395,7 @@ int showPanelModal(HWND owner, PanelModalRequest request) {
             HGDIOBJ oldFont = SelectObject(screen, g.fontBody);
             RECT measure{0, 0, width - px(48), 0};
             DrawTextW(screen, state.request.text.c_str(), -1, &measure, DT_WORDBREAK | DT_CALCRECT);
-            textH = (std::max)(px(64), measure.bottom + px(12));
+            textH = (std::max)(px(64), static_cast<int>(measure.bottom + px(12)));
             SelectObject(screen, oldFont);
             ReleaseDC(nullptr, screen);
         }
