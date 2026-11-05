@@ -12,6 +12,19 @@ import android.text.style.StyleSpan
  * di baris berikutnya. Tanpa latar, cukup bayangan teks dari layout.
  */
 object SessionHud {
+    /** Latar pill gelap membulat (gaya pusat kendali desktop) + padding rapat. */
+    fun pill(view: android.widget.TextView) {
+        val d = android.graphics.drawable.GradientDrawable()
+        d.shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+        d.cornerRadius = view.resources.displayMetrics.density * 14f
+        d.setColor(0x61000000) // hitam ~38% — terbaca di video terang & gelap
+        view.background = d
+        view.setShadowLayer(0f, 0f, 0f, 0) // bayangan teks tidak perlu lagi
+        val h = (view.resources.displayMetrics.density * 11).toInt()
+        val v = (view.resources.displayMetrics.density * 8).toInt()
+        view.setPadding(h, v, h, v)
+    }
+
     fun render(items: List<Pair<String, String>>): CharSequence {
         val sb = SpannableStringBuilder()
         items.forEachIndexed { i, (label, value) ->

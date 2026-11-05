@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **HUD sesi gaya pusat kendali.** Statistik sesi kini tampil dalam pill gelap membulat translusen (latar membulat + padding rapat, bayangan teks dilepas) supaya terbaca jelas di atas video terang maupun gelap — meniru HUD melayang StarDesk.
+
 - **XyDesk untuk macOS (Swift native).** Paket `macos/` berisi host menu-bar (ScreenCaptureKit + injeksi CGEvent) dan klien SwiftUI (kendali PC lain dari Mac) dengan protokol yang sama persis dengan Android/Web/Windows: signaling hello/pair/offer/answer/ice, kanal data input/pointer, dan paket biner StreamXy 0x01–0x10. Lihat `macos/README.md` untuk build dan izin layar.
 
 - **Mode Klien di aplikasi Windows.** Halaman baru "Klien" pada Control Panel: sambung ke PC lain lewat kode perangkat 9 digit (sesi terbuka di XyDesk Web dengan akun yang sama), tombol sambung cepat ke kode terakhir, dan pintasan XyDesk Web — satu aplikasi untuk mengendalikan dan diendalikan.

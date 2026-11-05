@@ -541,6 +541,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     /** Orientasi, posisi HUD, dan ukuran HUD dari Pengaturan. */
     private fun applyLayoutPrefs() {
         requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        SessionHud.pill(b.status)
         b.status.textSize = listOf(10f, 12f, 14.5f)[store.int(P.HUD_SIZE, 1)]
         (b.status.layoutParams as? android.widget.FrameLayout.LayoutParams)?.let { lp ->
             val right = store.bool(P.HUD_RIGHT, false)
