@@ -68,7 +68,8 @@ ios/Runner/GoogleService-Info.plist
 # source asli (bukan hasil generate flutter create).
 /windows/
 /linux/
-/macos/
+# /macos/ dihapus: kini sumber Swift resmi (macos/XyDeskMac) — artefak
+# build Swift ditutup pola .build/ dan .swiftpm/ di atas.
 /ios/
 /web_deploy/site/
 .flutter-plugins
