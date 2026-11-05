@@ -19,6 +19,7 @@ enum Tag : uint8_t {
   kResolution = 0x0C,
   kFps = 0x0F,
   kGamepad = 0x0E,
+  kVirtualDisplay = 0x10,
 };
 
 inline void put16(uint8_t* p, uint16_t v) {
@@ -30,6 +31,15 @@ inline void put16(uint8_t* p, uint16_t v) {
 extern "C" {
 
 const char* sx_version() { return "streamxy 0.2.0"; }
+
+size_t sx_input_virtual_display(uint8_t* out, uint16_t w, uint16_t h, uint8_t refresh, uint8_t count) {
+  out[0] = kVirtualDisplay;
+  put16(out + 1, w);
+  put16(out + 3, h);
+  out[5] = refresh;
+  out[6] = count;
+  return 7;
+}
 
 size_t sx_input_move_rel(uint8_t* out, int16_t dx, int16_t dy) {
   out[0] = kMoveRel;

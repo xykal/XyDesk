@@ -21,6 +21,7 @@ size_t sx_input_clipboard_set(uint8_t* out, size_t cap, const char* utf8, size_t
 size_t sx_input_clipboard_req(uint8_t* out);
 size_t sx_input_quality(uint8_t* out, uint8_t preset);
 size_t sx_input_bitrate(uint8_t* out, uint16_t mbps);
+size_t sx_input_virtual_display(uint8_t* out, uint16_t w, uint16_t h, uint8_t refresh, uint8_t count);
 size_t sx_input_resolution(uint8_t* out, uint8_t mode);
 size_t sx_input_fps(uint8_t* out, uint8_t fps);
 size_t sx_input_gamepad(uint8_t* out, uint16_t buttons, uint8_t lt, uint8_t rt, int16_t lx,

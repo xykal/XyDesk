@@ -21,6 +21,7 @@ import id.xyverse.xydesk.core.NewsWatch
 import id.xyverse.xydesk.core.P
 import id.xyverse.xydesk.core.Store
 import id.xyverse.xydesk.ui.kit.Xy
+import id.xyverse.xydesk.ui.kit.XyButton
 import id.xyverse.xydesk.ui.kit.XyCard
 import id.xyverse.xydesk.ui.kit.XyText
 import id.xyverse.xydesk.ui.kit.XyToggle
@@ -48,6 +49,30 @@ fun Switch(store: Store, key: String, title: String, caption: String, def: Boole
 /** Pengaturan tambahan di halaman Sesi: tampilan, audio awal, kursor lanjutan, HUD, dan mapping kontrol. */
 @Composable
 fun SessionMorePrefs(store: Store) {
+    XyCard {
+        XyText("LAYAR VIRTUAL (SUPER SCREEN)", Xy.label)
+        Spacer(Modifier.height(8.dp))
+        XyText(
+            "Mode layar ekstra untuk PC headless: resolusi, refresh, dan jumlah monitor. " +
+                "Terapkan saat sesi berjalan; pemasangan driver dilakukan sekali dari panel host.",
+            Xy.caption,
+        )
+        Spacer(Modifier.height(8.dp))
+        Choice(store, "vd_mode", "Resolusi", "", listOf("1080p", "1440p", "4K", "21:9"), 0)
+        Choice(store, "vd_refresh", "Refresh", "", listOf("60 Hz", "120 Hz"), 0)
+        Choice(store, "vd_count", "Monitor", "", listOf("1", "2"), 0)
+        Spacer(Modifier.height(8.dp))
+        XyButton("Terapkan ke host") {
+            val send = SessionBridge.send ?: return@XyButton
+            val mode = store.int("vd_mode", 0).coerceIn(0, 3)
+            val w = intArrayOf(1920, 2560, 3840, 3440)[mode]
+            val h = intArrayOf(1080, 1440, 2160, 1440)[mode]
+            val hz = intArrayOf(60, 120)[store.int("vd_refresh", 0).coerceIn(0, 1)]
+            val count = intArrayOf(1, 2)[store.int("vd_count", 0).coerceIn(0, 1)]
+            send(id.xyverse.xydesk.core.StreamXy.virtualDisplay(w, h, hz, count))
+        }
+    }
+    Spacer(Modifier.height(12.dp))
     XyCard {
         XyText("TAMPILAN SESI", Xy.label)
         Spacer(Modifier.height(8.dp))

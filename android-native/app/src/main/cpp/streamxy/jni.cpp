@@ -76,6 +76,16 @@ JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_fps(JNIEnv* en
   return wrap(env, b, sx_input_fps(b, static_cast<uint8_t>(target_fps)));
 }
 
+JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_virtualDisplay(
+    JNIEnv* env, jclass, jint width, jint height, jint refresh_hz, jint count) {
+  uint8_t b[8];
+  return wrap(env, b, sx_input_virtual_display(
+      b, static_cast<uint16_t>(std::clamp<jint>(width, 0, 65535)),
+      static_cast<uint16_t>(std::clamp<jint>(height, 0, 65535)),
+      static_cast<uint8_t>(std::clamp<jint>(refresh_hz, 24, 240)),
+      static_cast<uint8_t>(std::clamp<jint>(count, 1, 4))));
+}
+
 JNIEXPORT jbyteArray JNICALL Java_id_xyverse_xydesk_core_StreamXy_gamepad(
     JNIEnv* env, jclass, jint buttons, jint lt, jint rt, jint lx, jint ly, jint rx, jint ry) {
   uint8_t b[16];
