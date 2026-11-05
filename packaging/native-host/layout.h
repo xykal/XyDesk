@@ -76,7 +76,7 @@ enum class Page {
     Status,
     Pairing,
     Control,
-    Connections, Settings, Account, Help,
+    Connections, Settings, Account, Help, Client,
 };
 
 // Sasaran klik. Satu daftar untuk tata letak, hit-test mouse, dan urutan Tab
@@ -97,7 +97,7 @@ enum class Target {
     PageStatus,
     PagePairing,
     PageControl,
-    PageConnections, PageSettings, PageAccount, PageHelp,
+    PageConnections, PageSettings, PageAccount, PageHelp, PageClient,
     CopyId,
     CopyPassword,
     TogglePairingVisibility,
@@ -117,6 +117,8 @@ enum class Target {
     ForgetTrusted,
     UnattendedPolicy,
     UnattendedGrant,
+    ClientConnect,
+    ClientLast,
 };
 
 inline const char* targetName(Target target) {
@@ -125,6 +127,9 @@ inline const char* targetName(Target target) {
     case Target::PageSettings: return "PageSettings";
     case Target::PageAccount: return "PageAccount";
     case Target::PageHelp: return "PageHelp";
+    case Target::PageClient: return "PageClient";
+    case Target::ClientConnect: return "ClientConnect";
+    case Target::ClientLast: return "ClientLast";
     case Target::ToggleSidebar: return "ToggleSidebar";
     case Target::Settings: return "Settings";
     case Target::Profile: return "Profile";
@@ -210,6 +215,14 @@ struct PanelLayout {
     Rect sideControl{};
     Rect sideControlIcon{};
     Rect sideControlLabel{};
+    Rect sideClient{};
+    Rect sideClientIcon{};
+    Rect sideClientLabel{};
+
+    // Halaman Klien.
+    Rect clientConnect{};
+    Rect clientLast{};
+    Rect clientWeb{};
 
     // Halaman Status.
     Rect statusCard{};
@@ -361,6 +374,7 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     sidebarItem(l.sideConnections, l.sideConnectionsIcon, l.sideConnectionsLabel);
     sidebarItem(l.sidePairing, l.sidePairingIcon, l.sidePairingLabel);
     sidebarItem(l.sideControl, l.sideControlIcon, l.sideControlLabel);
+    sidebarItem(l.sideClient, l.sideClientIcon, l.sideClientLabel);
 
 
     // ── Area konten di kanan sidebar ──
@@ -481,6 +495,10 @@ inline PanelLayout computeLayout(int dpi, int widthUnits = kPanelWidth, int heig
     const int halfW = (contentW - px(40) - gap) / 2;
     l.web = Rect{actionX, row2, halfW, actionH};
     l.openLog = Rect{l.web.right() + gap, row2, contentW - px(40) - halfW - gap, actionH};
+    // Halaman Klien: sambung ke perangkat lain dari aplikasi yang sama.
+    l.clientConnect = Rect{actionX, actionY, px(320), actionH};
+    l.clientLast = Rect{l.clientConnect.right() + gap, actionY, contentX + contentW - px(20) - (l.clientConnect.right() + gap), actionH};
+    l.clientWeb = Rect{actionX, row2, halfW, actionH};
 
     // Petunjuk di dasar konten, milik semua halaman.
     l.hint = Rect{contentX, hintTop, contentW, px(28)};
@@ -505,9 +523,13 @@ inline bool targetOnPage(Target target, Page page) {
     case Target::Start:
     case Target::Stop:
     case Target::Restart:
-    case Target::Web:
     case Target::OpenLog:
         return page == Page::Control;
+    case Target::Web:
+        return page == Page::Control || page == Page::Client;
+    case Target::ClientConnect:
+    case Target::ClientLast:
+        return page == Page::Client;
     case Target::RunHost:
         return page == Page::Status;
     case Target::StopSession:
@@ -547,6 +569,7 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
     if (l.sideStatus.contains(x, y)) return Target::PageStatus;
     if (l.sidePairing.contains(x, y)) return Target::PagePairing;
     if (l.sideControl.contains(x, y)) return Target::PageControl;
+    if (l.sideClient.contains(x, y)) return Target::PageClient;
     if (targetOnPage(Target::CopyId, page) && l.idCopy.contains(x, y)) return Target::CopyId;
     if (targetOnPage(Target::CopyPassword, page) && l.passwordCopy.contains(x, y)) return Target::CopyPassword;
     if (targetOnPage(Target::Start, page)) {
@@ -555,6 +578,11 @@ inline Target targetAt(const PanelLayout& l, Page page, int x, int y, bool showR
         if (l.restart.contains(x, y)) return Target::Restart;
         if (l.web.contains(x, y)) return Target::Web;
         if (l.openLog.contains(x, y)) return Target::OpenLog;
+    }
+    if (targetOnPage(Target::ClientConnect, page)) {
+        if (l.clientConnect.contains(x, y)) return Target::ClientConnect;
+        if (l.clientLast.contains(x, y)) return Target::ClientLast;
+        if (l.clientWeb.contains(x, y)) return Target::Web;
     }
     if (targetOnPage(Target::StopSession, page) && l.stopSession.contains(x, y)) return Target::StopSession;
     if (targetOnPage(Target::SendFile, page) && l.sendFile.valid() && l.sendFile.contains(x, y)) return Target::SendFile;
