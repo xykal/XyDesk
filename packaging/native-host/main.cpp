@@ -63,6 +63,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <fstream>
 #include <future>
 #include <chrono>
 
@@ -945,6 +946,9 @@ std::wstring targetLabel(Target target) {
     case Target::Stop: return L"Hentikan";
     case Target::Restart: return L"Restart";
     case Target::Web: return L"Buka XyDesk Web";
+    case Target::PageClient: return L"Buka mode klien";
+    case Target::ClientConnect: return L"Sambung ke perangkat lain";
+    case Target::ClientLast: return L"Sambung ke kode terakhir";
     case Target::OpenLog: return L"Buka log host";
     case Target::RunHost: return L"Ambil alih sesi ini";
     case Target::StopSession: return L"Putus sesi";
@@ -1109,6 +1113,7 @@ struct PanelModalRequest {
     std::vector<std::pair<std::wstring, int>> buttons; // label -> kode hasil
     bool input = false;
     std::wstring inputLabel;
+    std::wstring inputInitial;
     bool inputMasked = true;
     std::wstring status;
     // Dipanggil saat tombol aksi (kode > 0) ditekan, sinkron ke engine lokal.
@@ -1368,6 +1373,35 @@ LRESULT CALLBACK panelModalProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     return DefWindowProcW(hwnd, message, wParam, lParam);
 }
 
+// === Mode Klien: sambung ke perangkat lain dari aplikasi yang sama ===
+std::wstring clientDevicePath() {
+    wchar_t localAppData[MAX_PATH]{};
+    const DWORD n = GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, ARRAYSIZE(localAppData));
+    const std::wstring base = n && n < ARRAYSIZE(localAppData) ? std::wstring(localAppData, n) : moduleDirectory();
+    const auto directory = base + L"\\" + L"XyDesk";
+    CreateDirectoryW(directory.c_str(), nullptr);
+    return directory + L"\\" + L"client-device.txt";
+}
+
+std::wstring readLastClientDevice() {
+    std::wifstream in(clientDevicePath());
+    std::wstring line;
+    if (in) std::getline(in, line);
+    std::wstring digits;
+    for (const wchar_t c : line) if (c >= L'0' && c <= L'9') digits.push_back(c);
+    return digits.size() == 9 ? digits : L"";
+}
+
+void saveLastClientDevice(const std::wstring& digits) {
+    std::wofstream out(clientDevicePath(), std::ios::trunc);
+    out << digits;
+}
+
+void openClientSession(HWND hwnd, const std::wstring& digits) {
+    const auto url = xydesk::panel_control::deviceLink(digits);
+    if (!url.empty()) ShellExecuteW(hwnd, L"open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+}
+
 int showPanelModal(HWND owner, PanelModalRequest request) {
     static bool registered = false;
     if (!registered) {
@@ -1382,6 +1416,7 @@ int showPanelModal(HWND owner, PanelModalRequest request) {
     }
     PanelModalState state;
     state.request = std::move(request);
+    state.input = state.request.inputInitial;
     state.owner = owner;
     g_modal = &state;
 
@@ -1601,7 +1636,7 @@ void paintSidebarIcon(HDC dc, Page page, const Rect& icon, COLORREF color) {
     const wchar_t* glyph=L"\uE80F";
     switch(page){case Page::Status:glyph=L"\uE80F";break;case Page::Connections:glyph=L"\uE968";break;
     case Page::Pairing:glyph=L"\uE72E";break;case Page::Control:glyph=L"\uE7F4";break;
-    case Page::Settings:glyph=L"\uE713";break;case Page::Account:glyph=L"\uE77B";break;case Page::Help:glyph=L"\uE897";break;}
+    case Page::Settings:glyph=L"\uE713";break;case Page::Account:glyph=L"\uE77B";break;case Page::Help:glyph=L"\uE897";break;case Page::Client:glyph=L"\uE71B";break;}
     drawTextCentered(dc,glyph,icon,g.fontIcons,color);
 }
 
@@ -1613,6 +1648,7 @@ float sidebarItemY(const PanelLayout& layout, Page page) {
     case Page::Help: return -1.0f;
     case Page::Pairing: return static_cast<float>(layout.sidePairing.y);
     case Page::Control: return static_cast<float>(layout.sideControl.y);
+    case Page::Client: return static_cast<float>(layout.sideClient.y);
     case Page::Status:
     default: return static_cast<float>(layout.sideStatus.y);
     }
@@ -1689,6 +1725,7 @@ void paintSidebar(Surface& surface, const PanelLayout& layout, HDC dc) {
         {Page::Pairing, Target::PagePairing, layout.sidePairing, layout.sidePairingIcon, layout.sidePairingLabel, L"Akses host"},
         {Page::Control, Target::PageControl, layout.sideControl, layout.sideControlIcon, layout.sideControlLabel, L"Kontrol host"},
         {Page::Connections, Target::PageConnections, layout.sideConnections, layout.sideConnectionsIcon, layout.sideConnectionsLabel, L"Koneksi"},
+        {Page::Client, Target::PageClient, layout.sideClient, layout.sideClientIcon, layout.sideClientLabel, L"Klien"},
     };
 
     // Pill aktif meluncur (morphing) antar item; tingginya sama dengan item.
@@ -1862,6 +1899,7 @@ void paintPageHeading(HDC dc, const PanelLayout& layout, Page page){
     case Page::Settings:title=L"Pengaturan host";detail=L"Password, bitrate, dan keamanan akses — satu halaman, tanpa pengaturan tersembunyi.";break;
     case Page::Account:title=L"Profil & akun";detail=L"Akun XyDesk terpisah dari login Windows. Keluar tidak menghapus cookie Google.";break;
     case Page::Help:title=L"Bantuan";detail=L"Langkah singkat untuk mulai terhubung dengan aman.";break;
+    case Page::Client:title=L"Mode Klien";detail=L"Kendali PC lain dari aplikasi yang sama — satu aplikasi untuk mengendalikan dan diendalikan.";break;
     default:break;
     }
     drawTextLine(dc,title,layout.pageHeading,g.fontHeading,kText,DT_LEFT|DT_SINGLELINE|DT_END_ELLIPSIS);
@@ -1904,6 +1942,18 @@ void paintPage(Surface& surface, const PanelLayout& layout, HDC dc, Page page) {
         paintButton(surface, layout, dc, Target::Web, layout.web);
         paintButton(surface, layout, dc, Target::OpenLog, layout.openLog);
         workspaceText(dc,L"Kontrol proses host\n\nHentikan memutus layanan host. Restart menyalakan ulang proses host. Tombol X hanya menyembunyikan aplikasi ke tray.\n\nPengaturan video ada di halaman Pengaturan; password pairing diubah langsung dari halaman Akses host. Akun aplikasi terpisah dari identitas host Windows.", {note.x+px(24),note.y+px(24),note.w-px(48),note.h-px(48)},g.fontBody,kMuted);
+        break;
+    }
+    case Page::Client: {
+        const auto px=[&](int n){return xydesk::panel::scaled(n,layout.scalePct);};
+        Rect actions{layout.statusCard.x,layout.statusCard.y,layout.statusCard.w,layout.clientWeb.bottom()-layout.statusCard.y+px(20)};
+        paintCard(surface,actions,layout.radiusCard);
+        Rect note{actions.x,actions.bottom()+px(16),actions.w,std::min(px(228),layout.hint.y-actions.bottom()-px(32))};
+        paintCard(surface,note,layout.radiusCard);
+        paintButton(surface, layout, dc, Target::ClientConnect, layout.clientConnect);
+        paintButton(surface, layout, dc, Target::ClientLast, layout.clientLast);
+        paintButton(surface, layout, dc, Target::Web, layout.clientWeb);
+        workspaceText(dc,L"Kendali dari PC ini\n\nMasukkan kode perangkat untuk mengendalikan PC lain dari aplikasi yang sama. Sesi terbuka di XyDesk Web dengan akun yang sama — satu aplikasi untuk dua arah.\n\nKode terakhir tersimpan otomatis untuk sambung cepat.", {note.x+px(24),note.y+px(24),note.w-px(48),note.h-px(48)},g.fontBody,kMuted);
         break;
     }
     }
@@ -3802,6 +3852,34 @@ void activateTarget(HWND hwnd, Target target) {
         if (result > 0) setFlash(L"Password pairing diperbarui.", kAccent);
         break;
     }
+    case Target::ClientConnect: {
+        PanelModalRequest req;
+        req.title = L"Sambung ke perangkat lain";
+        req.text = L"Masukkan kode perangkat 9 digit dari layar host tujuan.";
+        req.input = true;
+        req.inputLabel = L"Kode perangkat";
+        req.inputMasked = false;
+        req.inputInitial = readLastClientDevice();
+        req.buttons = {{L"Batal", 0}, {L"Sambung", 1}};
+        req.onAction = [&](int, const std::wstring& typed, std::wstring& status) {
+            std::wstring digits;
+            for (const wchar_t c : typed) if (c >= L'0' && c <= L'9') digits.push_back(c);
+            if (digits.size() != 9) { status = L"Kode harus 9 digit angka."; return false; }
+            saveLastClientDevice(digits);
+            openClientSession(hwnd, digits);
+            status = L"Menyambungkan lewat XyDesk Web…";
+            return true;
+        };
+        showPanelModal(hwnd, std::move(req));
+        break;
+    }
+    case Target::ClientLast: {
+        const auto digits = readLastClientDevice();
+        if (digits.empty()) { setFlash(L"Belum ada kode perangkat tersimpan.", kWarn); break; }
+        openClientSession(hwnd, digits);
+        setFlash(L"Membuka sesi ke perangkat terakhir…", kAccent);
+        break;
+    }
     case Target::StopSession: {
         if(!controlChannel.endpoint){setFlash(L"Kanal kontrol host belum siap.",kWarn);break;}
         if(sessionActionPending.valid()){setFlash(L"Permintaan putus sesi masih diproses.",kWarn);break;}
@@ -3908,6 +3986,7 @@ void activateTarget(HWND hwnd, Target target) {
         }
         break;
     }
+    case Target::PageClient:goPage(hwnd,Page::Client);break;
     case Target::PageConnections:goPage(hwnd,Page::Connections);break;
     case Target::PageSettings:goPage(hwnd,Page::Settings);break;
     case Target::PageAccount:goPage(hwnd,Page::Account);break;
