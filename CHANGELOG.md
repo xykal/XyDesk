@@ -42,6 +42,12 @@ Kebijakan rilis:
 
 - **Kredensial TURN kini otomatis membawa varian TCP, sehingga sesi di jaringan yang memblokir UDP total tetap punya kandidat relay yang bisa ditembus — dan gerbang deploy ikut menguji TURN-over-TCP sungguhan.** Daftar `TURN_DIRECT_URLS` / `TURN_STATIC_URLS` selama ini hanya berisi URL UDP (`turn:host:3478`); di jaringan pemblokir UDP (VM cloud gaming, WiFi kantor) kandidat relay tidak pernah sampai dan sesi gagal ICE tanpa sebab yang terbaca. `cloudflare/src/turn.js` kini menurunkan `turn:...?transport=tcp` untuk setiap URL `turn:` UDP polos. Varian `turns:` sengaja TIDAK diturunkan otomatis: uji STUN Allocate langsung pada 2026-11-02 membuktikan TLS 5349 di free.expressturn.com tidak melayani TURN (jabat tangan sukses, tanpa balasan STUN) — kandidat mati hanya membingungkan diagnosis; server ber-TURNS menuliskannya eksplisit di secret. `tool/check_turn_auth.py` kini menguji URL `?transport=tcp` dengan allocate TURN-over-TCP sungguhan (framing raw maupun RFC 4571) alih-alih salah potong jadi UDP. Bukti jalur TCP: server menjawab pesan STUN Allocate (0x0113) pada port 3478. Uji: 28 test turn (2 baru) hijau.
 
+## [1.0.0] — 2026-11-05
+
+Versi 1.0.0 adalah garis rilis prarilis yang ditetapkan pemilik: dipakai
+sampai produk benar-benar optimal, layak pakai, dan lengkap. Catatan rilis
+final akan digabung dari bagian "Belum terbit" saat versi ini terbit.
+
 ## [7.0.0] — 2026-11-01
 
 - **Chat global dihapus total, splash screen dekorasi melayang, dan koneksi tidak lagi "hidup-mati" setelah jaringan goyang.** (1) **Tanpa chat global:** tab Obrolan, layar ChatScreen, klien chat, rute `/chat/ws` & `/chat/history`, serta Durable Object ChatRoom sudah tidak ada di APK maupun worker Cloudflare — aplikasi kini murni remote desktop. (2) **Splash dekorasi melayang:** awan, kilau, dan bola dunia bermerek beranimasi lembut dengan delay berbeda per elemen; suara intro dan ketuk-untuk-melewati tetap sama. (3) **Hub signaling: koneksi terbaru menang.** Pendaftaran id yang sama kini menggantikan soket lama (yang lama diberi tahu `id digantikan` lalu ditutup), menggantikan perilaku lama yang menolak pendatang sampai server membuang soket zombie — akar gejala "host tersambung lalu langsung mati" setelah putus jaringan singkat. (4) **Sesi bertahan saat signaling goyang:** aplikasi menyambung ulang signaling hingga 3 kali dengan id yang sama tanpa memutus sesi berjalan, dan melanjutkan pemulihan ICE otomatis bila media sempat gagal.
