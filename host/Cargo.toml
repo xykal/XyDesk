@@ -30,7 +30,7 @@ clap = { version = "4", features = ["derive"] }
 webrtc = "0.11"
 bytes = "1"
 # ID perangkat + PIN pairing (generasi acak)
-rand = "0.8"
+rand = "0.10"
 # Hash untuk perbandingan password konstan-waktu (lihat identity::verify_password)
 sha2 = "0.10"
 # Encoder H264 software (lintas platform — pola visual di Linux, capture di Windows)
