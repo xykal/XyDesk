@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "notes": "Aturan kecocokan perangkat XyDesk (device quirks). Semua keputusan encoder/decoder berbasis data supaya bisa diperbarui tanpa rilis ulang: ganti berkas ini di %USERPROFILE%/.xydesk/device-quirks.json (host) — pola dicocokkan sebagai substring tanpa memperhatikan huruf besar/kecil.",
+  "prefer_software_encode": [
+    {
+      "enable": true,
+      "gpu_contains": [
+        "GTX 7",
+        "GT 7",
+        "GTX 9",
+        "GT 9"
+      ],
+      "reason": "GPU lama: NVENC tidak stabil untuk H264 CBR"
+    }
+  ],
+  "disable_hevc": [
+    {
+      "enable": true,
+      "gpu_contains": [
+        "GTX 7",
+        "GT 7"
+      ],
+      "reason": "Kelas ini tanpa encoder HEVC"
+    }
+  ],
+  "android_decoder_caps": [
+    {
+      "enable": true,
+      "brands": [
+        "Lenovo"
+      ],
+      "models": [
+        "TB371FC"
+      ],
+      "max_width": 1920,
+      "reason": "Decoder dibatasi pabrikan; batasi resolusi sesi"
+    }
+  ]
+}
