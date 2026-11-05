@@ -18,7 +18,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Ikon garis milik XyDesk sendiri, digambar di Canvas (tanpa set ikon sistem). */
-enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH, NEWS, GRID, LIST, STAR, EDIT, LINK, REPLY, COPY }
+enum class Icon { KEYBOARD, CONTROLS, SETTINGS, POWER, MONITOR, PHONE, SHIELD, KEY, PLUG, CLOCK, CHEVRON, CLOSE, TRASH, SEARCH, NEWS, GRID, LIST, STAR, EDIT, LINK, REPLY, COPY, QR }
 
 @Composable
 fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, size: Dp = 22.dp) {
@@ -26,6 +26,16 @@ fun XyIcon(icon: Icon, modifier: Modifier = Modifier, tint: Color = Xy.textHi, s
         val w = this.size.width
         val s = Stroke(w * 0.085f, cap = StrokeCap.Round)
         when (icon) {
+            Icon.QR -> {
+                // Kode QR: tiga kotak penjuru + serakan modul.
+                for ((cx, cy) in listOf(0.27f to 0.27f, 0.73f to 0.27f, 0.27f to 0.73f)) {
+                    rr(cx - 0.17f, cy - 0.17f, cx + 0.17f, cy + 0.17f, 0.05f, tint, s)
+                    dot(cx, cy, 0.055f, tint)
+                }
+                for ((x, y) in listOf(0.62f to 0.62f, 0.78f to 0.62f, 0.62f to 0.78f, 0.78f to 0.78f, 0.70f to 0.70f)) {
+                    dot(x, y, 0.04f, tint)
+                }
+            }
             Icon.KEYBOARD -> {
                 rr(0.08f, 0.26f, 0.84f, 0.48f, 0.08f, tint, s)
                 for (r in 0..1) for (c in 0..4) dot(0.2f + c * 0.15f, 0.4f + r * 0.14f, 0.025f, tint)
