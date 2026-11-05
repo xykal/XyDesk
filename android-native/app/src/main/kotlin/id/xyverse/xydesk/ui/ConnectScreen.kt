@@ -77,6 +77,10 @@ fun ConnectScreen(
     var notice by remember { mutableStateOf("") }
     val ctx = LocalContext.current
     var keep by remember { mutableStateOf(Store(ctx).bool(P.REMEMBER_DEFAULT, true)) }
+    val scanQr = rememberQrScanner { scanned ->
+        host = scanned
+        notice = ""
+    }
     val digits = host.filter(Char::isDigit)
 
     Column(
@@ -90,6 +94,19 @@ fun ConnectScreen(
         if (newsTitle != null) { NewsBanner(newsTitle, onNews); Spacer(Modifier.height(16.dp)) }
         XyCard {
             XyIdField(digits, { host = it }, "ID perangkat", hint = "000 000 000")
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(
+                    Modifier.clip(RoundedCornerShape(Xy.pill)).background(Xy.overlay)
+                        .clickable(remember { MutableInteractionSource() }, null) { scanQr() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    XyIcon(Icon.QR, tint = Xy.accent, size = 16.dp)
+                    Spacer(Modifier.width(8.dp))
+                    XyText("Pindai QR dari layar host", Xy.label.copy(color = Xy.accent))
+                }
+            }
             Spacer(Modifier.height(Xy.gap))
             XyField(pin, { pin = it.take(32) }, "Password host", keyboard = KeyboardType.Password, hint = t("sesuai di aplikasi host"), transformation = PasswordVisualTransformation())
             Spacer(Modifier.height(Xy.gap))
