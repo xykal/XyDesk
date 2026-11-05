@@ -56,6 +56,10 @@ import id.xyverse.xydesk.ui.kit.XyTheme
 private enum class Stage { SPLASH, ONBOARDING, AUTH }
 
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase)
+        newBase?.let { id.xyverse.xydesk.core.Capabilities.load(it) }
+    }
     private val store by lazy { Store(applicationContext) }
     private var lastBack = 0L
     private var openNews = false

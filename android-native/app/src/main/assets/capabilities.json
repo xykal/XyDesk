@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "notes": "Matriks kemampuan per versi host: klien menyembunyikan fitur yang belum didukung host. Sumber kebenaran: config/capabilities.json; salinan di android assets dipakai aplikasi.",
+  "features": {
+    "file_transfer": {
+      "min_host": "6.0.0"
+    },
+    "clipboard": {
+      "min_host": "6.0.0"
+    },
+    "virtual_display": {
+      "min_host": "7.0.0"
+    },
+    "gamepad": {
+      "min_host": "7.0.0"
+    },
+    "super_screen": {
+      "min_host": "1.0.0"
+    },
+    "qr_pairing": {
+      "min_host": "1.0.0"
+    }
+  }
+}

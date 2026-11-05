@@ -44,6 +44,12 @@ Gradle, belum bukti HP).
   Windows sebagai dasar gambar (tampilan sudah owner-draw). (Koreksi dua catatan
   keliru sebelumnya: "pemilih huruf (ChooseFont)" dan "tooltip bawaan" tidak
   pernah ada di host — tidak perlu dikerjakan.)
+- [ ] **Paket UI/UX ala StarDesk (kerjaan berjalan, TANPA build sampai semua
+  selesai — permintaan pemilik 2026-11-05).** Cakupan: UI bersih (Android,
+  panel host, web), HUD statistik sesi, QR pairing (sisi scan ✓ PR #224,
+  sisi host sudah ada), JSON quirks + capability matrix ✓, super screen UX,
+  exe bersatu host+client + splash screen, macOS host+client native,
+  iOS cukup web. Build sekali di akhir setelah izin pemilik.
 - [ ] **Konfirmasi tampilan baru APK (Tugas 27 lanjutan)** — pemilik minta
   2026-11-04: geser = gerak mouse/pointer (sudah dianti-lag lewat antrean +
   gabung gerakan), rapikan layout Home/detail PC/profil/settings/S&K/tentang,

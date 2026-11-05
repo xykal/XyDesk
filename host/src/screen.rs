@@ -1324,6 +1324,16 @@ mod windows {
     /// fallback dan label `HW_ENCODER` tidak bisa berbeda antar jalur.
     fn pick_hardware_encoder(source: &str, width: usize, height: usize) -> Option<EncoderKind> {
         super::HW_ENCODER.store(super::HW_NONE, std::sync::atomic::Ordering::Relaxed);
+        // Aturan device-quirks: GPU yang bermasalah langsung diarahkan ke
+        // encoder software tanpa mencoba NVENC/MFT (bisa diperbarui tanpa rilis).
+        let gpu = crate::hwinfo::probe().gpu.unwrap_or_default();
+        if crate::quirks::prefer_software_encode(&gpu) {
+            eprintln!(
+                "[xydesk-host] {source}: aturan quirks mengarahkan '{gpu}' ke encode software ({})",
+                crate::quirks::quirks().note(&gpu).unwrap_or_default()
+            );
+            return None;
+        }
         if !width.is_multiple_of(2) || !height.is_multiple_of(2) {
             eprintln!("[xydesk-host] {source}: resolusi ganjil {width}x{height}, pakai openh264");
             return None;
