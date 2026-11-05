@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Super screen dari aplikasi.** Kartu "Layar Virtual (Super Screen)" di Pengaturan → Sesi mengirim mode layar ekstra (1080p/1440p/4K/21:9, 60/120 Hz, 1–2 monitor) ke host untuk PC headless — memakai jalur paket 0x10 yang sudah didukung engine.
+
 - **Sambung cepat dengan pindai QR.** Layar "Sambungkan" kini punya tombol "Pindai QR dari layar host": kamera membaca QR di panel host (tautan `remote.xydesk.my.id/connect?device=…`) dan ID perangkat terisi otomatis — menutup kerepotan mengetik ID.
 - **Aturan perangkat & matriks kemampuan berbasis data.** Keputusan encoder (mis. GPU lama diarahkan ke encode software) kini berasal dari `config/device-quirks.json` yang bisa diperbarui tanpa rilis ulang; matriks `capabilities.json` menyembunyikan fitur yang belum didukung host. Lihat `docs/DEVICE_QUIRKS.md`.
 

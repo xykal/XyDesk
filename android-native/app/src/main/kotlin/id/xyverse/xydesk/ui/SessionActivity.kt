@@ -165,6 +165,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             forceRelay = store.bool(P.FORCE_RELAY, true),
         )
         metrics = SessionMetrics(this, session, ::showHud, ::applyVideoCmd)
+        SessionBridge.attach(session::send)
         metrics.targetFps = sessionFps()
         metrics.auto = store.quality == 0
         val tunedTrackpadSpeed = store.trackpadSpeed.coerceAtLeast(1.8f)
@@ -764,6 +765,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onDestroy() {
+        SessionBridge.detach()
         files?.stop()
         if (overlayEdit) saveOverlayLayout()
         capturedMouse?.release()
