@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **XyDesk untuk macOS (Swift native).** Paket `macos/` berisi host menu-bar (ScreenCaptureKit + injeksi CGEvent) dan klien SwiftUI (kendali PC lain dari Mac) dengan protokol yang sama persis dengan Android/Web/Windows: signaling hello/pair/offer/answer/ice, kanal data input/pointer, dan paket biner StreamXy 0x01–0x10. Lihat `macos/README.md` untuk build dan izin layar.
+
 - **Mode Klien di aplikasi Windows.** Halaman baru "Klien" pada Control Panel: sambung ke PC lain lewat kode perangkat 9 digit (sesi terbuka di XyDesk Web dengan akun yang sama), tombol sambung cepat ke kode terakhir, dan pintasan XyDesk Web — satu aplikasi untuk mengendalikan dan diendalikan.
 
 - **Super screen dari aplikasi.** Kartu "Layar Virtual (Super Screen)" di Pengaturan → Sesi mengirim mode layar ekstra (1080p/1440p/4K/21:9, 60/120 Hz, 1–2 monitor) ke host untuk PC headless — memakai jalur paket 0x10 yang sudah didukung engine.
