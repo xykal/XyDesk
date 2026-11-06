@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Ikon & logo web diperjernih.** Seluruh ikon turunan (favicon 16/32/48, apple-touch-icon, ikon PWA 192/512, logo-192/512, logo-white) dirender ulang dari master kaca 1024 dengan resampling Lanczos + unsharp: pelat kontras gelap menggantikan latar abu-abu burik, siluet putih dibuat tegas. Tampil jernih di tab, layar utama, dan berbagi tautan.
+
 - **HUD sesi gaya pusat kendali.** Statistik sesi kini tampil dalam pill gelap membulat translusen (latar membulat + padding rapat, bayangan teks dilepas) supaya terbaca jelas di atas video terang maupun gelap — meniru HUD melayang StarDesk.
 
 - **XyDesk untuk macOS (Swift native).** Paket `macos/` berisi host menu-bar (ScreenCaptureKit + injeksi CGEvent) dan klien SwiftUI (kendali PC lain dari Mac) dengan protokol yang sama persis dengan Android/Web/Windows: signaling hello/pair/offer/answer/ice, kanal data input/pointer, dan paket biner StreamXy 0x01–0x10. Lihat `macos/README.md` untuk build dan izin layar.
