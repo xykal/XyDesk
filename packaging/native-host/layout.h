@@ -176,6 +176,7 @@ inline const char* pageName(Page page) {
     case Page::Settings: return "Settings";
     case Page::Account: return "Account";
     case Page::Help: return "Help";
+    case Page::Client: return "Client";
     }
     return "Status";
 }
