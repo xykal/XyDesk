@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Ikon launcher Android diperjernih + lengkap per density.** Pelat abu-abu burik diganti blok kontras gelap dengan X kaca tajam; kini tersedia mdpi–xxxhdpi (sebelumnya hanya xxxhdpi, sehingga HP seperti Redmi A2 Go harus menskalakan sendiri).
+
 - **Ikon & logo web diperjernih.** Seluruh ikon turunan (favicon 16/32/48, apple-touch-icon, ikon PWA 192/512, logo-192/512, logo-white) dirender ulang dari master kaca 1024 dengan resampling Lanczos + unsharp: pelat kontras gelap menggantikan latar abu-abu burik, siluet putih dibuat tegas. Tampil jernih di tab, layar utama, dan berbagi tautan.
 
 - **HUD sesi gaya pusat kendali.** Statistik sesi kini tampil dalam pill gelap membulat translusen (latar membulat + padding rapat, bayangan teks dilepas) supaya terbaca jelas di atas video terang maupun gelap — meniru HUD melayang StarDesk.
