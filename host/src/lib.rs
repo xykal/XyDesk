@@ -130,8 +130,8 @@ pub mod host_auth;
 pub mod leadership;
 /// Mesin DSP mikrofon virtual XyDesk (Noise Suppression, Gate, Gain, High-Pass, AGC).
 pub mod mic_dsp;
-pub mod relay;
 pub mod quirks;
+pub mod relay;
 pub mod remembered;
 /// libxyadapt sisi host: penghalus bitrate dari client.
 pub mod xyadapt;
