@@ -556,3 +556,19 @@ background:transparent!important }
 .video-surface>.srail-keyboard { left:max(12px,env(safe-area-inset-left)); right:auto; bottom:max(12px,env(safe-area-inset-bottom)) } }
 
 .footer-powered  { opacity: 0.7; font-size: 12px; }
+
+/* ---- Panel Koneksi RDP (tab RDP) ------------------------------------- */
+.rdp-panel { display:grid; gap:12px; padding:4px 0 }
+.rdp-panel .spanel-field { display:grid; gap:6px; text-align:left; font-size:12px; font-weight:600; color:var(--session-text,#303c48) }
+.rdp-panel .spanel-field input { box-sizing:border-box; width:100%; min-height:44px; border:1px solid var(--session-edge,#d2d9e0); border-radius:10px; background:var(--session-card,#fff); color:inherit; font-size:14px; padding:10px 12px }
+.rdp-panel .spanel-field input:focus { outline:2px solid #66788f; outline-offset:1px }
+.rdp-pass-row { display:flex; gap:8px; align-items:center }
+.rdp-pass-row input { flex:1 }
+.rdp-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+.rdp-actions .spanel-primary { min-height:44px; padding:0 18px; border-radius:10px; border:1px solid #303741; background:#303741; color:#fff; font-weight:650 }
+.rdp-actions .spanel-primary:disabled { opacity:.55 }
+.rdp-actions .spanel-mini { min-height:44px; padding:0 12px; border-radius:10px; border:1px solid var(--session-edge,#d2d9e0); background:var(--session-card,#fff); color:inherit }
+.rdp-panel .spanel-error { color:#b3261e; font-size:12px; margin:0 }
+.rdp-panel .spanel-ok { color:#1c7c3c; font-size:12px; margin:0 }
+.rdp-panel .spanel-note { margin:0 0 4px }
+@media (max-width:420px) { .rdp-actions { flex-direction:column; align-items:stretch } .rdp-actions button { width:100% } }

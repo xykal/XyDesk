@@ -220,7 +220,9 @@ export function ConnectScreen({
   const [padOpen, setPadOpen] = useState(true);
   const [trackpad, setTrackpad] = useState(() => window.matchMedia?.('(pointer: coarse)').matches ?? false);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [panelTab,setPanelTab]=useState<'gambar'|'kontrol'|'suara'|'statistik'|'sesi'>('gambar');
+  const [rdpStatus, setRdpStatus] = useState<import('./rdp_panel').RdpStatus | null>(null);
+  const [rdpBusy, setRdpBusy] = useState(false);
+  const [panelTab,setPanelTab]=useState<'gambar'|'kontrol'|'suara'|'statistik'|'rdp'|'sesi'>('gambar');
   // Password pairing bisa diperlihatkan — sengaja huruf besar semua di sisi
   // host (tanpa I/O/0/1 yang mudah tertukar), jadi lihat-langsung adalah
   // cara tercepat memastikan ketikan sama dengan layar PC.
@@ -508,6 +510,11 @@ export function ConnectScreen({
         else setHudToast('Sesi aktif, tetapi browser tidak dapat menyimpan izin reconnect.');
       };
       session.onRememberedRejected=()=>{forgetHostAccess(hostId.replace(/[\s-]/g,''),accessScope);updateAccess(x=>x+1);};
+      session.onRdpStatus=st=>{
+        if(sessionRef.current!==session)return;
+        setRdpBusy(false);
+        setRdpStatus(st);
+      };
       hostCursorRef.current=null;
       session.onCursor=cursor=>{
         if(sessionRef.current!==session)return;
@@ -1073,6 +1080,13 @@ export function ConnectScreen({
             prefs={prefs}
             onChange={setPrefs}
             onFps={fps=>sessionRef.current?.setFps(fps)}
+            onRdpOpen={req=>{
+              setRdpStatus(null);
+              const sent=sessionRef.current?.openRdp(req)??false;
+              if(sent){setRdpBusy(true);}else{setRdpStatus({ok:false,reason:'sesi belum siap'});}
+            }}
+            rdpStatus={rdpStatus}
+            rdpBusy={rdpBusy}
             fpsLimit={hostMeta?.video?.fpsLimit}
             encoder={hostMeta?.encoder}
             videoApplied={hostMeta?.video?.applied}

@@ -222,12 +222,21 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   halaman bot per rute + JSON-LD "XyDesk Remote". `remote.xydesk.my.id` tetap
   noindex. Sisa: pemilik mendaftarkan sitemap di Google Search Console supaya
   hasil pencarian "XyDesk Remote" benar-benar muncul.
-- [ ] **Popup "cracked" pada unduhan resmi** — TIDAK ditemukan teks/deteksi
-  "crack" apa pun di kode XyDesk (Android/web/host/worker sudah digrep
-  menyeluruh). Menunggu info pemilik: tangkapan layar popup, teks persisnya,
-  muncul di HP/PC/situs, dan sumber unduhan yang dipakai (web/APKPure/GitHub).
-  Dugaan sementara: peringatan luar (Play Protect/MIUI/AV) atau versi
-  repack pihak ketiga — jangan tambah deteksi sebelum penyebabnya jelas.
+- [ ] **Popup "cracked" pada unduhan resmi** — pemilik mengonfirmasi popup
+  muncul **di dalam aplikasi** dan di **semua kanal unduhan** (2026-11-06).
+  TIDAK ditemukan teks/deteksi "crack"/"bajakan"/"tidak resmi" apa pun di
+  SELURUH kode (Android Kotlin, res, assets, native C++, host Rust, web,
+  worker) — jadi popup bukan dari kode XyDesk yang di-build ini. Menunggu
+  tangkapan layar + teks persis popup untuk mengidentifikasi sumbernya
+  (kemungkinan: versi repack pihak ketiga yang beredar, peringatan sistem
+  Android, atau konten server). Jangan tambah deteksi anti-crack sebab
+  justru memicu false positive lagi.
+- [ ] **Koneksi RDP — sisa: APK & gateway langsung.** Versi web sudah
+  digabung (tab "RDP" di panel sesi; host membuka mstsc via kanal data
+  "rdp" end-to-end). CATATAN: APK TIDAK punya FreeRDP — dukungan RDP di
+  APK menyusul dengan cara yang sama (kanal "rdp"), lebih ringan daripada
+  menanam FreeRDP native. Untuk koneksi RDP langsung dari browser tanpa PC
+  perantara, butuh gateway (guacd) di server — menunggu keputusan pemilik.
 - [ ] **UI aplikasi belum responsif di semua layar** — pemilik melaporkan
   2026-11-06. Audit menemukan ~70 pemakaian dimensi dp tetap di Compose
   (8 di antaranya lebar ≥300dp rawan layar sempit). Perlu pass responsif
@@ -235,5 +244,4 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
 - [ ] **Percantik web** — permintaan pemilik 2026-11-06; menyusul setelah
   pass responsif (butuh preview + mata).
 - [ ] **RDP via web & APK dengan IP aman** — permintaan pemilik 2026-11-06
-  ("penting"). Menunggu keputusan arsitektur (gateway server vs klien
-  RDP native di APK vs jalur WebRTC yang ada) sebelum diimplementasikan.
+  ("penting"). Lihat item "Koneksi RDP" di atas untuk progresnya.

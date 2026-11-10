@@ -340,6 +340,7 @@ export class RtcSession {
   /// clipboard, and video controls remain on the reliable `input` channel so
   /// one stale mouse move can never block a control action.
   private pointerInput?: RTCDataChannel;
+  private rdp?: RTCDataChannel;
   private pendingAbsoluteMove?:Uint8Array;
   private coalescedMoves=0;
   private deviceId = '';
@@ -383,6 +384,15 @@ export class RtcSession {
   onMeta: (meta: HostMeta) => void = () => {};
   /// Isi papan klip PC — balasan dari `requestClipboard()`.
   onClipboard: (text: string) => void = () => {};
+  /** Balasan status permintaan RDP dari host (kanal 'rdp'). */
+  /** Kirim permintaan "buka RDP dari PC" ke host Windows lewat kanal 'rdp'
+   *  (WebRTC data channel, end-to-end). true bila terkirim. */
+  openRdp(req: import('./rdp_panel').RdpRequest): boolean {
+    if (!this.rdp || this.rdp.readyState !== 'open') return false;
+    this.rdp.send(JSON.stringify(req));
+    return true;
+  }
+  onRdpStatus: (st: { ok: boolean; reason?: string }) => void = () => {};
 
   meta: HostMeta | null = null;
   micEnabled = false;
@@ -677,6 +687,18 @@ export class RtcSession {
     // Mouse movement and scroll are disposable by nature: if the network is
     // busy, the newest position is more valuable than retransmitting stale
     // positions. Reliable keyboard/buttons/HUD stay on `input`.
+    // Kanal RDP: permintaan "buka mstsc dari host" — JSON end-to-end,
+    // TIDAK melewati server signaling (kredensial aman).
+    this.rdp = pc.createDataChannel('rdp');
+    this.rdp.binaryType = 'arraybuffer';
+    this.rdp.onmessage = (ev) => {
+      if (typeof ev.data !== 'string') return;
+      try {
+        const st = JSON.parse(ev.data) as { type?: string; ok?: boolean; reason?: string };
+        if (st && typeof st.ok === 'boolean') this.onRdpStatus?.({ ok: st.ok, reason: st.reason });
+      } catch { /* status tidak valid — abaikan */ }
+    };
+
     this.pointerInput = pc.createDataChannel('pointer', {
       ordered: false,
       maxRetransmits: 0,

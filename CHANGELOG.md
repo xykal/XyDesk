@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Koneksi RDP dari web (buka `mstsc` lewat PC yang dipasangkan).** Tab baru "RDP" di panel sesi web: isi alamat host/port/user/sandi, lalu PC yang sedang tersambung membuka jendela Remote Desktop ke target tersebut — tampil langsung lewat stream sesi. Keamanan: permintaan lewat data channel WebRTC "rdp" (end-to-end, tidak melewati server signaling), IP target tidak pernah terekspos ke internet, validasi isian ketat tanpa shell (argv murni), kata sandi tidak pernah ditulis ke berkas (hanya `cmdkey` sesaat yang otomatis dibersihkan 45 detik kemudian). Ada fallback unduh berkas `.rdp` (tanpa sandi). Sisi host: `host/src/rdp.rs` + kanal data baru di `session.rs`.
+
 - **SEO web dibuka: situs www layak diindeks Google.** `robots.txt` sebelumnya `Disallow: /` untuk seluruh situs dan `index.html` memakai `noindex, nofollow`, sehingga Google hanya menyimpan stub "XyDesk". Kini www.xydesk.my.id mengizinkan crawl (sitemap dirujuk), judul/JSON-LD `SoftwareApplication` menegaskan "XyDesk Remote", dan halaman yang disajikan ke bot berisi konten nyata per rute (beranda/download/berita/legal). Aplikasi `remote.xydesk.my.id` tetap noindex seperti semestinya.
 
 - **Ikon launcher Android diperjernih + lengkap per density.** Pelat abu-abu burik diganti blok kontras gelap dengan X kaca tajam; kini tersedia mdpi–xxxhdpi (sebelumnya hanya xxxhdpi, sehingga HP seperti Redmi A2 Go harus menskalakan sendiri).

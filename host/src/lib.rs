@@ -131,6 +131,8 @@ pub mod leadership;
 /// Mesin DSP mikrofon virtual XyDesk (Noise Suppression, Gate, Gain, High-Pass, AGC).
 pub mod mic_dsp;
 pub mod quirks;
+/// Koneksi RDP dari client — host membuka `mstsc` ke target (kanal data "rdp").
+pub mod rdp;
 pub mod relay;
 pub mod remembered;
 /// libxyadapt sisi host: penghalus bitrate dari client.
