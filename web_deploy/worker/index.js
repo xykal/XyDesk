@@ -38,12 +38,43 @@ const BOT_PATTERNS = [
 ];
 
 const DEFAULT_OG = {
-  title: 'XyDesk — Remote Desktop Android, Windows & Web',
+  title: 'XyDesk Remote — Remote Desktop Android, Windows & Web',
   description:
     'Akses layar PC dari HP atau browser dengan target glass-to-glass di bawah 40 ms di LAN. Untuk kerja, untuk game — media sesi peer-to-peer.',
   image: `${SITE}/og-image.jpg`,
   type: 'website',
 };
+
+// Meta per rute supaya hasil pencarian Google tidak cuma satu stub "XyDesk".
+function pageMeta(pathname) {
+  const p = pathname.replace(/\/+$/, '') || '/';
+  if (p === '/') return DEFAULT_OG;
+  if (p === '/download')
+    return {
+      title: 'Download XyDesk Remote — APK Android & Installer Windows',
+      description:
+        'Unduh XyDesk Remote gratis: APK Android (armeabi-v7a & arm64), installer Windows, dan akses web. Remote desktop ringan untuk kerja dan gaming.',
+      image: DEFAULT_OG.image,
+      type: 'website',
+    };
+  if (p === '/news')
+    return {
+      title: 'Berita XyDesk Remote — Rilis, Panduan & Pengumuman',
+      description:
+        'Kabar terbaru XyDesk Remote: catatan rilis, panduan remote desktop, dan pengumuman produk.',
+      image: DEFAULT_OG.image,
+      type: 'website',
+    };
+  if (p === '/legal')
+    return {
+      title: 'Legal — Syarat, Privasi & Lisensi XyDesk Remote',
+      description:
+        'Syarat & ketentuan, kebijakan privasi, kebijakan cookie, dan lisensi pihak ketiga XyDesk Remote.',
+      image: DEFAULT_OG.image,
+      type: 'website',
+    };
+  return DEFAULT_OG;
+}
 
 function isBot(ua) {
   return BOT_PATTERNS.some((re) => re.test(ua));
@@ -80,10 +111,34 @@ function ogPage({ title, description, image, type, url }) {
 <meta name="twitter:description" content="${esc(description)}">
 <meta name="twitter:image" content="${esc(img)}">
 <link rel="canonical" href="${esc(url)}">
+<meta name=\"robots\" content=\"index, follow\">
+<script type="application/ld+json">${JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: 'XyDesk Remote',
+    alternateName: ['XyDesk', 'XyDesk-Remote'],
+    applicationCategory: 'RemoteDesktopApplication',
+    operatingSystem: 'Android, Windows, Web',
+    url: `${SITE}/`,
+    downloadUrl: `${SITE}/download`,
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'IDR' },
+    description: DEFAULT_OG.description,
+  })}</script>
 </head>
 <body style="font-family:sans-serif;background:#0a0a0a;color:#fff;margin:0;padding:40px">
 <h1 style="margin:0 0 8px">${esc(title)}</h1>
 <p style="margin:0 0 16px;color:#a1a1aa">${esc(description)}</p>
+<main style="max-width:720px;line-height:1.6;color:#d4d4d8">
+<h2 style="font-size:18px">XyDesk Remote — remote desktop untuk Android, Windows &amp; web</h2>
+<p>Kendalikan layar PC dari HP Android, iPhone/iPad lewat browser, atau dari PC lain. Media sesi peer-to-peer WebRTC dengan target glass-to-glass di bawah 40 ms di LAN — cukup untuk kerja maupun gaming. Satu aplikasi untuk host (Windows, macOS) dan klien (Android, web).</p>
+<ul>
+<li><b>Remote desktop Android &amp; Windows</b> — APK ringan dan installer desktop dengan sesi terenkripsi.</li>
+<li><b>Remote PC dari browser</b> — tanpa instalasi, cocok untuk iPhone, iPad, dan PC pinjaman.</li>
+<li><b>Pairing sederhana</b> — ID 9 digit + password; didukung TURN untuk jaringan yang sulit.</li>
+<li><b>Transfer file &amp; input game</b> — drag-and-drop, keyboard, mouse, dan gamepad.</li>
+</ul>
+<p><a href="${esc(SITE)}/download" style="color:#8b5cf6">Download XyDesk Remote (APK Android &amp; Windows) →</a></p>
+</main>
 <a href="${esc(url)}" style="color:#8b5cf6">Buka di XyDesk Web →</a>
 </body>
 </html>`;
@@ -155,7 +210,7 @@ export default {
           });
         }
       }
-      return new Response(ogPage({ ...DEFAULT_OG, url: SITE + url.pathname }), {
+      return new Response(ogPage({ ...pageMeta(url.pathname), url: SITE + url.pathname }), {
         headers: {
           'content-type': 'text/html; charset=utf-8',
           'cache-control': 'public, max-age=600',

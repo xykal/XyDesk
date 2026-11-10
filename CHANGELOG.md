@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **SEO web dibuka: situs www layak diindeks Google.** `robots.txt` sebelumnya `Disallow: /` untuk seluruh situs dan `index.html` memakai `noindex, nofollow`, sehingga Google hanya menyimpan stub "XyDesk". Kini www.xydesk.my.id mengizinkan crawl (sitemap dirujuk), judul/JSON-LD `SoftwareApplication` menegaskan "XyDesk Remote", dan halaman yang disajikan ke bot berisi konten nyata per rute (beranda/download/berita/legal). Aplikasi `remote.xydesk.my.id` tetap noindex seperti semestinya.
+
 - **Ikon launcher Android diperjernih + lengkap per density.** Pelat abu-abu burik diganti blok kontras gelap dengan X kaca tajam; kini tersedia mdpi–xxxhdpi (sebelumnya hanya xxxhdpi, sehingga HP seperti Redmi A2 Go harus menskalakan sendiri).
 
 - **Ikon & logo web diperjernih.** Seluruh ikon turunan (favicon 16/32/48, apple-touch-icon, ikon PWA 192/512, logo-192/512, logo-white) dirender ulang dari master kaca 1024 dengan resampling Lanczos + unsharp: pelat kontras gelap menggantikan latar abu-abu burik, siluet putih dibuat tegas. Tampil jernih di tab, layar utama, dan berbagi tautan.
