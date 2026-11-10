@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 
-    <title>XyDesk — Remote Desktop Android, Windows & Web</title>
-    <meta name="robots" content="noindex, nofollow" />
+    <title>XyDesk Remote — Remote Desktop Android, Windows & Web</title>
+    <meta name="robots" content="index, follow" />
     <meta name="description" content="XyDesk adalah remote desktop ringan untuk kerja dan bermain. Download Android atau Windows, atau kendalikan PC langsung dari browser di iPhone dan iPad." />
     <meta name="keywords" content="remote desktop, remote pc, kendalikan pc, remote gaming, xydesk, remote desktop browser, remote desktop iphone" />
     <meta name="author" content="xykal — XyVerse Technology Global" />
@@ -55,7 +55,24 @@
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR" }
     }
     </script>
-  </head>
+  
+    <!-- Data terstruktur: membantu Google menampilkan XyDesk Remote di pencarian -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "XyDesk Remote",
+      "alternateName": ["XyDesk", "XyDesk-Remote"],
+      "applicationCategory": "RemoteDesktopApplication",
+      "operatingSystem": "Android, Windows, Web",
+      "url": "https://www.xydesk.my.id/",
+      "downloadUrl": "https://www.xydesk.my.id/download",
+      "softwareVersion": "1.0.0",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "IDR" },
+      "description": "XyDesk Remote adalah aplikasi remote desktop ringan untuk Android, Windows, dan browser: kendalikan PC dari HP atau web dengan latensi rendah untuk kerja dan gaming."
+    }
+    </script>
+</head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

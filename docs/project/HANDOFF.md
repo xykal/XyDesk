@@ -215,3 +215,25 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   sendiri. Ketiganya tetap relevan untuk **APK**, yang belum tersentuh.
 - [ ] Verifikasi ulang `tool/audit_assets.py` setelah integrasi; tema terang
   saja; `hero_login.webp` tidak diganti.
+
+## Antrean 2026-11-06 (analisis ulang + web/APK)
+
+- [x] **SEO www dibuka** — `robots.txt` `Disallow: /` + `meta noindex` dihapus;
+  halaman bot per rute + JSON-LD "XyDesk Remote". `remote.xydesk.my.id` tetap
+  noindex. Sisa: pemilik mendaftarkan sitemap di Google Search Console supaya
+  hasil pencarian "XyDesk Remote" benar-benar muncul.
+- [ ] **Popup "cracked" pada unduhan resmi** — TIDAK ditemukan teks/deteksi
+  "crack" apa pun di kode XyDesk (Android/web/host/worker sudah digrep
+  menyeluruh). Menunggu info pemilik: tangkapan layar popup, teks persisnya,
+  muncul di HP/PC/situs, dan sumber unduhan yang dipakai (web/APKPure/GitHub).
+  Dugaan sementara: peringatan luar (Play Protect/MIUI/AV) atau versi
+  repack pihak ketiga — jangan tambah deteksi sebelum penyebabnya jelas.
+- [ ] **UI aplikasi belum responsif di semua layar** — pemilik melaporkan
+  2026-11-06. Audit menemukan ~70 pemakaian dimensi dp tetap di Compose
+  (8 di antaranya lebar ≥300dp rawan layar sempit). Perlu pass responsif
+  (fillMaxWidth + batas maksimum, bukan lebar mati) di Android + web.
+- [ ] **Percantik web** — permintaan pemilik 2026-11-06; menyusul setelah
+  pass responsif (butuh preview + mata).
+- [ ] **RDP via web & APK dengan IP aman** — permintaan pemilik 2026-11-06
+  ("penting"). Menunggu keputusan arsitektur (gateway server vs klien
+  RDP native di APK vs jalur WebRTC yang ada) sebelum diimplementasikan.
