@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef } from 'react';
 import type { CSSProperties } from 'react';
 import { InputCodec } from './rtc';
+import { RdpPanel } from './rdp_panel';
 import { relayReasonText } from './session_guidance';
 import { buildLatencyReport, supportsLatencyProbe } from './latency_probe';
 import { APP_VERSION } from './version';
@@ -558,13 +559,14 @@ export function StatisticsPanel({stats,onClose}:{stats:SessionStats|null;onClose
  </aside>;
 }
 
-export type PanelTab = 'gambar' | 'suara' | 'kontrol' | 'statistik' | 'sesi';
+export type PanelTab = 'gambar' | 'suara' | 'kontrol' | 'statistik' | 'rdp' | 'sesi';
 
 const PANEL_TABS: [PanelTab, string, React.ReactNode][] = [
   ['gambar', 'Video', <Svg key="g"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" /></Svg>],
   ['kontrol', 'Kontrol', <IcGamepad key="k" />],
   ['suara', 'Audio', <IcVolume key="v" />],
   ['statistik', 'Statistik', <Svg key="stats"><path d="M5 20V10M12 20V4M19 20v-7"/></Svg>],
+  ['rdp', 'RDP', <Svg key="rdp"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></Svg>],
   ['sesi', 'Sesi', <Svg key="s"><circle cx="12" cy="12" r="9" /><path d="M12 8h.01M11 12h1v4h1" /></Svg>],
 ];
 
@@ -612,6 +614,9 @@ export function SessionPanel({
   encoder,
   autoDecision,
   onPreset,
+  onRdpOpen,
+  rdpStatus,
+  rdpBusy,
 }: {
   controlsVisible?:boolean;
   onControlsVisibilityChange?:(on:boolean)=>void;
@@ -644,6 +649,10 @@ export function SessionPanel({
   onQuality?: (q: StreamQuality) => void;
   onResolution?: (resolution: SessionPrefs['resolution']) => void;
   onBitrate?: (mbps: BitrateMbps) => void;
+  /** Kirim permintaan RDP ke host (kanal 'rdp', end-to-end). */
+  onRdpOpen?: (req: import('./rdp_panel').RdpRequest) => void;
+  rdpStatus?: import('./rdp_panel').RdpStatus | null;
+  rdpBusy?: boolean;
 }) {
   const [localTab, setLocalTab] = useState<PanelTab>('gambar');
   const tab=activeTab??localTab;
@@ -694,6 +703,7 @@ export function SessionPanel({
 
       <div key={tab} id="session-settings-body" className="spanel-body" role="tabpanel" aria-labelledby={`session-tab-${tab}`} tabIndex={0}>
       {tab === 'statistik' && <StatisticsPanel stats={stats}/>}
+      {tab === 'rdp' && onRdpOpen && <RdpPanel onOpen={onRdpOpen} status={rdpStatus ?? null} busy={!!rdpBusy} />}
       {tab === 'gambar' && (
         <>
           <p className="spanel-section">Kualitas gambar</p>

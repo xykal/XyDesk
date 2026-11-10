@@ -207,6 +207,13 @@ impl Session {
                     file_signal.notify_waiters();
                     return;
                 }
+                if dc.label() == crate::rdp::RDP_CHANNEL {
+                    // Permintaan "buka RDP dari PC" — diproses di sini lalu
+                    // dibalas lewat kanal yang sama (status JSON).
+                    let dc2 = Arc::clone(&dc);
+                    tokio::spawn(async move { crate::rdp::serve_channel(dc2).await });
+                    return;
+                }
                 let _ = tx.send(dc);
             })
         }));
