@@ -2843,7 +2843,6 @@ input::placeholder, textarea::placeholder { color: var(--text-low); }
   .quality-chips, .bitrate-chips {
     gap: 8px;
   }
-  .hero-art { min-height: 380px; }
 }
 
 
@@ -3130,3 +3129,28 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
 .coming-soon h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
 .coming-soon p { color: var(--text-mid); max-width: 320px; }
 .coming-soon small { margin-top: 18px; color: var(--text-low); font-size: 12px; }
+
+/* ── Poles responsif landing (2026-11-06): layar sempit tanpa
+      ruang mati, ikon tidak menimpa judul, footer lega ──────── */
+@media (max-width: 640px) {
+  .hero { gap: 24px; padding-top: 40px; }
+  .hero-art { min-height: 0; }
+  .hero h1 { font-size: clamp(30px, 9vw, 42px); }
+  .hero-copy > p { font-size: 15.5px; }
+  .stats-strip { margin-top: -20px; gap: 8px; padding: 0 16px; }
+  .stats-strip .stat { padding: 14px 16px; }
+  .stat strong { font-size: 21px; }
+  .features { padding: 44px 16px 36px; }
+  .features h2, .home-news h2, .download-cta h2 { font-size: 23px; margin-bottom: 18px; padding-left: 12px; border-left-width: 4px; }
+  .feature-card { padding: 18px 16px; }
+  .feature-art { width: 56px; top: 10px; right: 8px; opacity: 0.15; }
+  .feature-card h3 { padding-right: 52px; }
+  .home-news, .download-cta { padding: 0 16px 48px; }
+  .site-footer { margin-top: 24px; }
+  .site-footer .footer-inner { padding: 40px 20px 24px; }
+  .site-footer .footer-columns { grid-template-columns: 1fr; gap: 22px; }
+}
+@media (max-width: 380px) {
+  .stats-strip .stat { padding: 12px 14px; }
+}
+.section-head .text-link { white-space: nowrap; }
