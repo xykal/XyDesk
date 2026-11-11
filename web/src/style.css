@@ -3154,3 +3154,119 @@ img{-webkit-touch-callout:none;user-select:none;-webkit-user-select:none}
   .stats-strip .stat { padding: 12px 14px; }
 }
 .section-head .text-link { white-space: nowrap; }
+
+/* ==========================================================================
+   Poles visual landing — cahaya, kedalaman, gerak halus (tanpa ubah warna
+   merek). Semua animasi hormat prefers-reduced-motion.
+   ========================================================================== */
+
+/* Pilihan teks & fokus keyboard selaras merek. */
+::selection { background: rgba(124, 58, 237, 0.18); color: var(--ink); }
+a:focus-visible, button:focus-visible, .btn:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Hero: lapis cahaya tambahan yang bergeser sangat perlahan + butiran halus. */
+.hero { position: relative; isolation: isolate; overflow: hidden; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: -12% -6%;
+  z-index: -1;
+  background:
+    radial-gradient(520px 340px at 68% 22%, rgba(124, 58, 237, 0.10) 0%, rgba(124, 58, 237, 0) 65%),
+    radial-gradient(420px 300px at 22% 70%, rgba(167, 139, 250, 0.10) 0%, rgba(167, 139, 250, 0) 65%);
+  animation: aurora 16s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes aurora {
+  from { transform: translate3d(-1.5%, -1%, 0) scale(1); }
+  to   { transform: translate3d(1.5%, 1.5%, 0) scale(1.05); }
+}
+
+/* Ilustrasi hero melayang perlahan. */
+.hero-art { animation: floaty 7s ease-in-out infinite; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* Tombol utama: cahaya ungu + angkat halus, tekan memipih. */
+.btn.primary {
+  position: relative;
+  box-shadow: 0 10px 24px -10px rgba(124, 58, 237, 0.55), 0 2px 6px rgba(24, 24, 27, 0.12);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 32px -12px rgba(124, 58, 237, 0.6), 0 4px 10px rgba(24, 24, 27, 0.14);
+}
+.btn.primary:active { transform: translateY(0) scale(0.985); }
+
+/* Kartu fitur: rambut gradien ungu saat hover + bayangan lebih dalam. */
+.feature-card {
+  border: 1px solid var(--line);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 18px 40px -18px rgba(124, 58, 237, 0.35), 0 6px 14px rgba(24, 24, 27, 0.08);
+}
+
+/* Kartu berita: sampul membesar perlahan, judul menghangat ke ungu. */
+.news-card { overflow: hidden; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+.news-card:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -18px rgba(24, 24, 27, 0.22); }
+.news-card-cover img { transition: transform 0.35s ease; }
+.news-card:hover .news-card-cover img { transform: scale(1.045); }
+.news-card:hover .news-card-body h3 { color: var(--accent-deep); }
+.news-card-body h3 { transition: color 0.18s ease; }
+
+/* Strip statistik: bilah kaca lembut. */
+.stats-strip {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(167, 139, 250, 0.10));
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+/* Judul seksi: aksen rambut gradien di atas teks. */
+.features h2, .home-news h2, .download-cta h2 { position: relative; }
+.features h2::before, .home-news h2::before, .download-cta h2::before {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+}
+
+/* Pita unduh: gradien lebih kaya + butiran cahaya. */
+.download-cta {
+  background:
+    radial-gradient(480px 280px at 88% 12%, rgba(167, 139, 250, 0.28) 0%, rgba(167, 139, 250, 0) 62%),
+    linear-gradient(135deg, var(--accent-deep), var(--accent) 62%, #8b5cf6);
+}
+
+/* Footer: garis gradien di puncak. */
+.site-footer { position: relative; }
+.site-footer::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent-2) 70%, transparent);
+  opacity: 0.6;
+}
+
+/* Hormati preferensi kurangi gerak. */
+@media (prefers-reduced-motion: reduce) {
+  .hero::before, .hero-art, .hero-eyebrow .dot { animation: none !important; }
+  .btn.primary, .feature-card, .news-card, .news-card-cover img { transition: none !important; }
+  .btn.primary:hover, .feature-card:hover, .news-card:hover { transform: none !important; }
+}
+
+/* Di pita ungu, aksen judul jadi putih supaya tetap terbaca. */
+.download-cta h2::before { background: linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.45)); }
