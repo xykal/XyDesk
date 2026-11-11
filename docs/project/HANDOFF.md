@@ -231,12 +231,14 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   (kemungkinan: versi repack pihak ketiga yang beredar, peringatan sistem
   Android, atau konten server). Jangan tambah deteksi anti-crack sebab
   justru memicu false positive lagi.
-- [ ] **Koneksi RDP — sisa: APK & gateway langsung.** Versi web sudah
+- [ ] **Koneksi RDP — sisa: gateway langsung saja.** Versi web sudah
   digabung (tab "RDP" di panel sesi; host membuka mstsc via kanal data
-  "rdp" end-to-end). CATATAN: APK TIDAK punya FreeRDP — dukungan RDP di
-  APK menyusul dengan cara yang sama (kanal "rdp"), lebih ringan daripada
-  menanam FreeRDP native. Untuk koneksi RDP langsung dari browser tanpa PC
-  perantara, butuh gateway (guacd) di server — menunggu keputusan pemilik.
+  "rdp" end-to-end). Sisi APK juga sudah digabung (tombol RDP di rail +
+  `RdpSheet.kt` + kanal `rdp` di `RtcSession.kt`) — **belum di-build**;
+  sesi build Android berikutnya WAJIB memverifikasi ini. FreeRDP tidak ada
+  di APK (0 hit) — kanal "rdp" memang jalurnya. Untuk koneksi RDP langsung
+  dari browser tanpa PC perantara, butuh gateway (guacd) di server —
+  menunggu keputusan pemilik.
 - [ ] **UI aplikasi belum responsif di semua layar** — pemilik melaporkan
   2026-11-06. Web landing SUDAH dibereskan (lihat changelog: gap hero-art,
   ikon fitur menimpa judul, footer sempit — diverifikasi via screenshot

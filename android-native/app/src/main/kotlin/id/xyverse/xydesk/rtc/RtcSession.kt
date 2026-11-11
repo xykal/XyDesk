@@ -68,6 +68,9 @@ interface RtcListener {
 
     /** Satu pesan mentah dari data channel `"file"`. */
     fun onFileMessage(bytes: ByteArray) {}
+
+    /** Status permintaan "buka RDP dari PC" lewat kanal `rdp` (end-to-end). */
+    fun onRdpStatus(ok: Boolean, reason: String?) {}
 }
 
 /**
@@ -97,6 +100,7 @@ class RtcSession(
     private var pc: PeerConnection? = null
     private var input: DataChannel? = null
     private var file: DataChannel? = null
+    private var rdp: DataChannel? = null
 
     // ── Anti-lag jalur input ────────────────────────────────────────────────
     // Kirim input tidak pernah memblokir thread UI: paket masuk antrean kecil
@@ -357,6 +361,23 @@ class RtcSession(
             }
         })
         file = fch
+        // Kanal RDP: permintaan "buka mstsc dari PC" (JSON end-to-end) —
+        // kredensial tidak pernah melewati server signaling.
+        val rch = conn.createDataChannel("rdp", DataChannel.Init())
+        rch?.registerObserver(object : DataChannel.Observer {
+            override fun onBufferedAmountChange(previousAmount: Long) = Unit
+            override fun onStateChange() = Unit
+            override fun onMessage(buffer: DataChannel.Buffer) {
+                val data = ByteArray(buffer.data.remaining())
+                buffer.data.get(data)
+                if (buffer.binary) return
+                runCatching {
+                    val o = org.json.JSONObject(String(data, Charsets.UTF_8))
+                    listener.onRdpStatus(o.optBoolean("ok"), o.optString("reason").ifBlank { null })
+                }
+            }
+        })
+        rdp = rch
         conn.createOffer(object : NoopSdpObserver() {
             override fun onCreateSuccess(desc: SessionDescription) {
                 conn.setLocalDescription(NoopSdp, desc)
@@ -585,6 +606,19 @@ class RtcSession(
         ((b[i].toInt() and 0xFF) or ((b[i + 1].toInt() and 0xFF) shl 8)).toShort().toInt()
 
     /** Mengirim satu pesan protokol berkas; false = channel belum siap. */
+    /** Kirim permintaan "buka RDP dari PC" lewat kanal `rdp`. true bila terkirim. */
+    fun openRdp(host: String, port: Int, user: String, pass: String): Boolean {
+        val ch = rdp ?: return false
+        if (ch.state() != DataChannel.State.OPEN) return false
+        val json = org.json.JSONObject().apply {
+            put("host", host.trim()); put("port", port); put("user", user.trim()); put("pass", pass)
+            put("width", 1920); put("height", 1080)
+        }.toString()
+        return runCatching {
+            ch.send(DataChannel.Buffer(ByteBuffer.wrap(json.toByteArray(Charsets.UTF_8)), false))
+        }.isSuccess
+    }
+
     fun sendFile(bytes: ByteArray): Boolean {
         val ch = file ?: return false
         if (ch.state() != DataChannel.State.OPEN) return false

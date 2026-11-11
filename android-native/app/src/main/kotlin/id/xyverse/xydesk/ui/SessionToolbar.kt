@@ -78,6 +78,8 @@ class SessionActions(
     val padKbm: () -> Unit = {},
     /** Buka pemilih berkas dan kirim ke PC. */
     val sendFile: () -> Unit = {},
+    /** Buka lembar Koneksi RDP (host membuka mstsc ke target). */
+    val rdp: () -> Unit = {},
     val disconnect: () -> Unit,
 )
 
@@ -263,6 +265,7 @@ fun SessionToolbar(
                 RailButton(Icon.KEYBOARD, "Kibor") { actions.keyboard() }
                 RailButton(Icon.CONTROLS, "Kontrol") { actions.overlayMode(); settingsOpen = false }
                 RailButton(Icon.GRID, "Mapping") { actions.overlayEdit(); settingsOpen = false }
+                RailButton(Icon.MONITOR, "RDP") { actions.rdp(); settingsOpen = false }
                 RailButton(Icon.SETTINGS, "Atur", active = settingsOpen) { settingsOpen = !settingsOpen }
                 RailButton(Icon.POWER, "Putus", danger = true) { actions.disconnect() }
                 Spacer(Modifier.height(2.dp))

@@ -453,6 +453,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
             store.int(P.PAD_KBM, PadKbm.MODE_AUTO), PadKbm.modeLabel(store.int(P.PAD_KBM, PadKbm.MODE_AUTO)),
             FpsOptions.forDisplay(panelRefreshHz()))
         b.toolbar.setContent {
+            val rdpOpen = remember { mutableStateOf(false) }
             CompositionLocalProvider(LocalLang provides store.lang) {
                 SessionToolbar(
                     actions = SessionActions(
@@ -492,6 +493,7 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         overlayMode = { cycleOverlayMode() },
                         pointerCapture = { on -> store.set(P.POINTER_CAPTURE, on); applyPointerCapture() },
                         sendFile = {
+                        rdp = { rdpOpen.value = true },
                             if (!connected) Toast.makeText(this, "Sesi belum tersambung.".tr(store.lang), Toast.LENGTH_SHORT).show()
                             else runCatching { pickFile.launch(arrayOf("*/*")) }
                                 .onFailure { Toast.makeText(this, "Tidak ada pemilih berkas di HP ini.".tr(store.lang), Toast.LENGTH_LONG).show() }
@@ -505,6 +507,20 @@ class SessionActivity : ComponentActivity(), RtcListener {
                     ),
                     prefs,
                     displayState,
+                )
+                RdpSheet(
+                    visible = rdpOpen.value,
+                    busy = rdpBusy.value,
+                    status = rdpStatus.value,
+                    onDismiss = { rdpOpen.value = false },
+                    onOpen = { h, p, u, pw ->
+                        rdpStatus.value = null
+                        rdpBusy.value = true
+                        if (!session.openRdp(h, p, u, pw)) {
+                            rdpBusy.value = false
+                            rdpStatus.value = false to "sesi belum siap"
+                        }
+                    },
                 )
             }
         }
@@ -650,6 +666,15 @@ class SessionActivity : ComponentActivity(), RtcListener {
     }
 
     override fun onFileMessage(bytes: ByteArray) = runOnUiThread { files?.onMessage(bytes) }
+
+    /** Status permintaan Koneksi RDP (kanal `rdp`) untuk RdpSheet. */
+    private val rdpStatus = mutableStateOf<Pair<Boolean, String>?>(null)
+    private val rdpBusy = mutableStateOf(false)
+
+    override fun onRdpStatus(ok: Boolean, reason: String?) = runOnUiThread {
+        rdpBusy.value = false
+        rdpStatus.value = ok to (reason ?: "")
+    }
 
     override fun onHostName(name: String) = runOnUiThread { hostName = name; record() }
 
