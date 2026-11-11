@@ -234,8 +234,10 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
 - [ ] **Koneksi RDP — sisa: gateway langsung saja.** Versi web sudah
   digabung (tab "RDP" di panel sesi; host membuka mstsc via kanal data
   "rdp" end-to-end). Sisi APK juga sudah digabung (tombol RDP di rail +
-  `RdpSheet.kt` + kanal `rdp` di `RtcSession.kt`) — **belum di-build**;
-  sesi build Android berikutnya WAJIB memverifikasi ini. FreeRDP tidak ada
+  `RdpSheet.kt` + kanal `rdp` di `RtcSession.kt`) — **terverifikasi
+  Build #207** (11/11 job hijau; artefak `XyDesk-Android-APK` per-ABI;
+  error compile awal diperbaiki PR #241). Uji jalan nyata di HP menyusul
+  bila pemilik memasang artefak Build #207. FreeRDP tidak ada
   di APK (0 hit) — kanal "rdp" memang jalurnya. Untuk koneksi RDP langsung
   dari browser tanpa PC perantara, butuh gateway (guacd) di server —
   menunggu keputusan pemilik.
