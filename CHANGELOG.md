@@ -34,9 +34,9 @@ Kebijakan rilis:
   membuka lembar isian (host/port/username/sandi); permintaan dikirim
   end-to-end lewat kanal data `rdp` dan PC yang tersambung membuka `mstsc`
   ke target dari dalam jaringannya. Kata sandi hanya hidup selama permintaan,
-  tidak pernah ke berkas. Padanan EN lengkap (I18n). *Belum di-build* —
-  verifikasi kode: `packaging/tests/test-native-panel-layout.sh` lulus;
-  build Android menyusul di sesi build berikutnya.
+  tidak pernah ke berkas. Padanan EN lengkap (I18n). Terverifikasi Build #207
+  (11/11 job hijau; artefak `XyDesk-Android-APK` per-ABI terbit) +
+  `packaging/tests/test-native-panel-layout.sh` lulus.
 
 - **SEO web dibuka: situs www layak diindeks Google.** `robots.txt` sebelumnya `Disallow: /` untuk seluruh situs dan `index.html` memakai `noindex, nofollow`, sehingga Google hanya menyimpan stub "XyDesk". Kini www.xydesk.my.id mengizinkan crawl (sitemap dirujuk), judul/JSON-LD `SoftwareApplication` menegaskan "XyDesk Remote", dan halaman yang disajikan ke bot berisi konten nyata per rute (beranda/download/berita/legal). Aplikasi `remote.xydesk.my.id` tetap noindex seperti semestinya.
 
