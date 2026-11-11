@@ -246,8 +246,9 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   dimensi menemukan tidak ada lebar/tinggi mati yang membahayakan (semua
   ≤256dp untuk tombol/ikon; shell sudah punya scroll) — menunggu contoh
   layar spesifik yang berantakan dari pemilik bila masih ada.
-- [ ] **Percantik web** — permintaan pemilik 2026-11-06. Poles responsif
-  sudah masuk (hero rapat, ikon fitur rapi, footer lega). Sisa: penyegaran
-  visual lebih dalam (palet/hero/animasi) bila pemilik mau lebih segar lagi.
+- [x] **Percantik web — merged 2026-11-11.** Poles responsif (PR #238) +
+  penyegaran visual (aurora hero, tombol berpendar, kartu terangkat,
+  animasi halus + `prefers-reduced-motion`, `overflow_check.mjs` 9/9).
+  Pesan "belum bisa diunduh" sengaja TIDAK diubah (gate pemilik).
 - [ ] **RDP via web & APK dengan IP aman** — permintaan pemilik 2026-11-06
   ("penting"). Lihat item "Koneksi RDP" di atas untuk progresnya.
