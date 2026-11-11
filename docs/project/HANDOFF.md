@@ -238,10 +238,14 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   menanam FreeRDP native. Untuk koneksi RDP langsung dari browser tanpa PC
   perantara, butuh gateway (guacd) di server — menunggu keputusan pemilik.
 - [ ] **UI aplikasi belum responsif di semua layar** — pemilik melaporkan
-  2026-11-06. Audit menemukan ~70 pemakaian dimensi dp tetap di Compose
-  (8 di antaranya lebar ≥300dp rawan layar sempit). Perlu pass responsif
-  (fillMaxWidth + batas maksimum, bukan lebar mati) di Android + web.
-- [ ] **Percantik web** — permintaan pemilik 2026-11-06; menyusul setelah
-  pass responsif (butuh preview + mata).
+  2026-11-06. Web landing SUDAH dibereskan (lihat changelog: gap hero-art,
+  ikon fitur menimpa judul, footer sempit — diverifikasi via screenshot
+  360/768/1440 dengan `web/e2e/layout_audit.mjs`). Sisi Android: audit
+  dimensi menemukan tidak ada lebar/tinggi mati yang membahayakan (semua
+  ≤256dp untuk tombol/ikon; shell sudah punya scroll) — menunggu contoh
+  layar spesifik yang berantakan dari pemilik bila masih ada.
+- [ ] **Percantik web** — permintaan pemilik 2026-11-06. Poles responsif
+  sudah masuk (hero rapat, ikon fitur rapi, footer lega). Sisa: penyegaran
+  visual lebih dalam (palet/hero/animasi) bila pemilik mau lebih segar lagi.
 - [ ] **RDP via web & APK dengan IP aman** — permintaan pemilik 2026-11-06
   ("penting"). Lihat item "Koneksi RDP" di atas untuk progresnya.
