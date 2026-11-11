@@ -26,6 +26,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import id.xyverse.xyadapt.FpsOptions
 import id.xyverse.xyadapt.CaptureRules
@@ -493,11 +494,11 @@ class SessionActivity : ComponentActivity(), RtcListener {
                         overlayMode = { cycleOverlayMode() },
                         pointerCapture = { on -> store.set(P.POINTER_CAPTURE, on); applyPointerCapture() },
                         sendFile = {
-                        rdp = { rdpOpen.value = true },
                             if (!connected) Toast.makeText(this, "Sesi belum tersambung.".tr(store.lang), Toast.LENGTH_SHORT).show()
                             else runCatching { pickFile.launch(arrayOf("*/*")) }
                                 .onFailure { Toast.makeText(this, "Tidak ada pemilih berkas di HP ini.".tr(store.lang), Toast.LENGTH_LONG).show() }
                         },
+                        rdp = { rdpOpen.value = true },
                         padKbm = {
                             val next = PadKbm.nextMode(store.int(P.PAD_KBM, PadKbm.MODE_AUTO))
                             store.set(P.PAD_KBM, next)
