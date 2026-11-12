@@ -1,5 +1,5 @@
 import Foundation
-import GoogleWebRTC
+import WebRTC
 
 /// Pembungkus WebRTC yang dipakai host DAN klien: membuat peer connection
 /// unified-plan, jalur ICE dari `/turn-ice`, kanal data "input"/"pointer",

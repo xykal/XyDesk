@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-import GoogleWebRTC
+import WebRTC
 import XyDeskCore
 
 /// Sesi host macOS: menerima permintaan `pair` dari klien (Android/Web/klien

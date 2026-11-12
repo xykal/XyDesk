@@ -1,5 +1,5 @@
 import SwiftUI
-import GoogleWebRTC
+import WebRTC
 
 /// Pembungkus RTCMTLVideoView (render Metal WebRTC) untuk SwiftUI.
 struct RemoteVideoView: NSViewRepresentable {

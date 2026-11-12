@@ -1,5 +1,5 @@
 import SwiftUI
-import GoogleWebRTC
+import WebRTC
 import XyDeskCore
 
 /// XyDesk Mac Client — kendali PC lain (Windows/macOS host) dari Mac.
