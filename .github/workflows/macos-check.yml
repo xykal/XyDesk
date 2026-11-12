@@ -1,0 +1,39 @@
+name: Build macOS (Swift)
+
+# Gerbang verifikasi paket Swift macOS (host + klien). Manual saja (macOS
+# runner mahal di kuota) — jalankan setiap kali menyentuh `macos/**`.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-check
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: swift build (XyDeskMac)
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Validasi operator workflow
+        shell: bash
+        run: |
+          if [ "$GITHUB_ACTOR" != "xykal" ]; then
+            echo "::error::Workflow XyDesk hanya boleh dijalankan oleh xykal atau token pemilik repo."
+            exit 1
+          fi
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Swift build (debug)
+        run: swift build --package-path macos/XyDeskMac -c debug
+      - name: Cek produk eksekutabel
+        run: |
+          set -euo pipefail
+          bin=".build/debug"
+          for f in XyDeskMacHost XyDeskMacClient; do
+            test -f "macos/XyDeskMac/$bin/$f" || { echo "::error::$f tidak terbangun"; exit 1; }
+            echo "OK $f"
+          done
