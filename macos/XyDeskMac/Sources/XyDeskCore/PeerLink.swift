@@ -23,7 +23,7 @@ public final class PeerLink: NSObject {
 
     public override init() {
         RTCInitializeSSL()
-        factory = RTCPeerConnectionFactory(delegate: nil, encoderFactory: nil, decoderFactory: nil)
+        factory = RTCPeerConnectionFactory(encoderFactory: nil, decoderFactory: nil)
         super.init()
     }
 
@@ -111,7 +111,7 @@ public final class PeerLink: NSObject {
     }
 
     public func addRemoteCandidate(_ c: SignalMessage.Candidate) {
-        let cand = RTCIceCandidate(sdp: c.candidate, sdpMid: c.sdpMid, sdpMLineIndex: Int32(c.sdpMLineIndex ?? 0))
+        let cand = RTCIceCandidate(sdpMLineIndex: Int32(c.sdpMLineIndex ?? 0), sdpMid: c.sdpMid, sdp: c.candidate)
         if remoteDescriptionSet {
             pc?.add(cand)
         } else {
@@ -198,5 +198,5 @@ extension PeerLink: RTCDataChannelDelegate {
         }
     }
 
-    public func dataChannel(_ dataChannel: RTCDataChannel, didChangeBufferedAmount amount: UInt32) {}
+    public func dataChannel(_ dataChannel: RTCDataChannel, didChangeBufferedAmount amount: UInt32, from previousAmount: UInt32) {}
 }

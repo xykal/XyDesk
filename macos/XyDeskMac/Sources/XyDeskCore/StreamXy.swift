@@ -75,7 +75,8 @@ public enum StreamXy {
         return d
     }
 
-    public static let clipboardReq = Data([clipboardReq])
+    /// Paket minta clipboard (padanan `StreamXy.clipboardReq()` di Android).
+    public static let clipboardReqData = Data([clipboardReq])
 
     public static func quality(_ preset: UInt8) -> Data {
         Data([quality, preset])
@@ -146,7 +147,7 @@ public enum StreamXy {
         case scroll where d.count >= 5:
             return .scroll(dx: d.le16(1), dy: d.le16(3))
         case key where d.count >= 4:
-            return .key(vk: d.le16(1), down: d[3] != 0)
+            return .key(vk: UInt16(bitPattern: d.le16(1)), down: d[3] != 0)
         case text where d.count >= 2:
             return .text(String(data: d.dropFirst(), encoding: .utf8) ?? "")
         case displaySelect where d.count >= 2:
@@ -158,16 +159,16 @@ public enum StreamXy {
         case quality where d.count >= 2:
             return .quality(d[1])
         case bitrate where d.count >= 3:
-            return .bitrate(d.le16(1))
+            return .bitrate(UInt16(bitPattern: d.le16(1)))
         case resolution where d.count >= 2:
             return .resolution(d[1])
         case gamepad where d.count >= 13:
-            return .gamepad(buttons: d.le16(1), lt: d[3], rt: d[4],
+            return .gamepad(buttons: UInt16(bitPattern: d.le16(1)), lt: d[3], rt: d[4],
                             lx: d.le16(5), ly: d.le16(7), rx: d.le16(9), ry: d.le16(11))
         case fps where d.count >= 2:
             return .fps(d[1])
         case virtualDisplay where d.count >= 7:
-            return .virtualDisplay(width: d.le16(1), height: d.le16(3),
+            return .virtualDisplay(width: UInt16(bitPattern: d.le16(1)), height: UInt16(bitPattern: d.le16(3)),
                                    refreshHz: d[5], count: d[6])
         default:
             return nil
