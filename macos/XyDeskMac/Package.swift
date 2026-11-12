@@ -12,22 +12,22 @@ let package = Package(
         .executable(name: "XyDeskMacClient", targets: ["XyDeskClient"]),
     ],
     dependencies: [
-        // Distribusi biner WebRTC (xcframework). Bila repo ini berpindah,
-        // pasang xcframework WebRTC manual dan ganti target linkage — lihat README.
-        .package(url: "https://github.com/Overtake/GoogleWebRTC", branch: "master"),
+        // Distribusi biner WebRTC (xcframework) dari stasel/WebRTC — kanonis,
+        // dipakai luas. (Overtake/GoogleWebRTC menghilang 2026-11; sudah diganti.)
+        .package(url: "https://github.com/stasel/WebRTC", branch: "latest"),
     ],
     targets: [
         .target(
             name: "XyDeskCore",
-            dependencies: [.product(name: "GoogleWebRTC", package: "GoogleWebRTC")]
+            dependencies: [.product(name: "WebRTC", package: "WebRTC")]
         ),
         .executableTarget(
             name: "XyDeskHost",
-            dependencies: ["XyDeskCore", .product(name: "GoogleWebRTC", package: "GoogleWebRTC")]
+            dependencies: ["XyDeskCore", .product(name: "WebRTC", package: "WebRTC")]
         ),
         .executableTarget(
             name: "XyDeskClient",
-            dependencies: ["XyDeskCore", .product(name: "GoogleWebRTC", package: "GoogleWebRTC")]
+            dependencies: ["XyDeskCore", .product(name: "WebRTC", package: "WebRTC")]
         ),
     ]
 )

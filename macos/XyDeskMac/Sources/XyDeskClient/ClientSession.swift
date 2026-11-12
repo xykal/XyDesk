@@ -1,6 +1,6 @@
 import Foundation
 import AppKit
-import GoogleWebRTC
+import WebRTC
 import XyDeskCore
 
 /// Sesi klien — cermin alur `web/src/rtc.ts` (start → signal-token → ws →

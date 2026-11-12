@@ -27,7 +27,7 @@ swift run XyDeskMacHost
 swift run XyDeskMacClient
 ```
 
-Dependensi WebRTC: `GoogleWebRTC` (distribusi biner xcframework via SPM).
+Dependensi WebRTC: `WebRTC` (distribusi biner xcframework via SPM).
 Bila repo dependensi berpindah/berhenti: pasang `WebRTC.xcframework` manual
 lalu ganti `dependencies` pada `Package.swift` — API yang dipakai hanya
 `RTCPeerConnectionFactory`, `RTCPeerConnection`, `RTCDataChannel`,
