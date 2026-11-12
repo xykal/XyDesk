@@ -1,0 +1,23 @@
+# Gateway RDP darurat XyDesk — guacd + jembatan WebSocket.
+# Jalankan di VPS kecil (1 vCPU/512MB cukup untuk beberapa sesi):
+#   GATEWAY_SECRET=$(openssl rand -hex 32) docker compose up -d
+# Lalu taruh di belakang reverse proxy TLS (wss://), lihat README.md.
+services:
+  guacd:
+    image: guacamole/guacd:1.5.5
+    restart: unless-stopped
+    expose:
+      - "4822"
+  bridge:
+    build: ./bridge
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      GATEWAY_SECRET: "${GATEWAY_SECRET:?isi GATEWAY_SECRET}"
+      GUACD_HOST: guacd
+      GUACD_PORT: "4822"
+      MAX_SESSIONS: "${MAX_SESSIONS:-8}"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - guacd
