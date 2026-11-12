@@ -12,7 +12,7 @@ final class CaptureEngine: NSObject, SCStreamOutput, SCStreamDelegate {
 
     func start(width: Int = 1920, height: Int = 1080, fps: Int = 30,
                displayIndex: Int = 0, completion: @escaping (String?) -> Void) {
-        SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true) { [weak self] content, error in
+        SCShareableContent.getExcludingDesktopWindows(false, onScreenWindowsOnly: true) { [weak self] content, error in
             guard let self else { return }
             if let error {
                 completion("Izin perekaman layar diperlukan: \(error.localizedDescription)")

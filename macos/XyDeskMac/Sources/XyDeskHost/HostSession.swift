@@ -45,7 +45,7 @@ final class HostSession: NSObject, CaptureEngineCoordinatorDelegate {
             link.onIceCandidate = { [weak self] c in
                 var m = SignalMessage(type: "ice")
                 m.to = self?.activeClient
-                m.candidate = .init(candidate: c.sdp, sdpMid: c.sdpMid, sdpMLineIndex: Int(c.sdpMLineIndex))
+                m.candidate = SignalMessage.Candidate(candidate: c.sdp, sdpMid: c.sdpMid, sdpMLineIndex: Int(c.sdpMLineIndex))
                 self?.signaling.send(m)
             }
             link.onInput = { data in
@@ -98,7 +98,7 @@ final class HostSession: NSObject, CaptureEngineCoordinatorDelegate {
                 guard let self, let answer else { return }
                 var out = SignalMessage(type: "answer")
                 out.to = m.from ?? self.activeClient
-                out.sdp = .init(type: answer.type.rawValue == "answer" ? "answer" : "answer", sdp: answer.sdp)
+                out.sdp = SignalMessage.Sdp(type: "answer", sdp: answer.sdp)
                 self.signaling.send(out)
             }
 
@@ -143,18 +143,4 @@ final class HostSession: NSObject, CaptureEngineCoordinatorDelegate {
     }
 }
 
-/// Penyimpanan JWT akun (Keychain). Sementara diisi manual dari web;
-/// lihat README untuk alur OAuth penuh.
-enum TokenStore {
-    private static let key = "xydesk.jwt"
-
-    static var jwt: String? {
-        get {
-            if let d = UserDefaults.standard.string(forKey: key), !d.isEmpty { return d }
-            return nil
-        }
-        set {
-            UserDefaults.standard.set(newValue ?? "", forKey: key)
-        }
-    }
-}
+// TokenStore dipindah ke XyDeskCore/TokenStore.swift (dipakai Host + Klien).

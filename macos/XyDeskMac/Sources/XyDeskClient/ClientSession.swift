@@ -44,7 +44,7 @@ final class ClientSession: NSObject {
                 self.link.onIceCandidate = { [weak self] c in
                     var m = SignalMessage(type: "ice")
                     m.to = self?.hostId
-                    m.candidate = .init(candidate: c.sdp, sdpMid: c.sdpMid, sdpMLineIndex: Int(c.sdpMLineIndex))
+                    m.candidate = SignalMessage.Candidate(candidate: c.sdp, sdpMid: c.sdpMid, sdpMLineIndex: Int(c.sdpMLineIndex))
                     self?.signaling?.send(m)
                 }
                 self.link.onVideoTrack = { [weak self] track in
