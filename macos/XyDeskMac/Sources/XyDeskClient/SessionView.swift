@@ -7,7 +7,6 @@ struct RemoteVideoView: NSViewRepresentable {
 
     func makeNSView(context: Context) -> RTCMTLNSVideoView {
         let view = RTCMTLNSVideoView(frame: .zero)
-        view.videoContentMode = .resizeAspect
         return view
     }
 

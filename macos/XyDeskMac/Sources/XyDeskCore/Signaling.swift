@@ -64,12 +64,16 @@ public struct SignalMessage: Codable {
     public struct Sdp: Codable {
         public var type: String
         public var sdp: String
+        public init(type: String, sdp: String) { self.type = type; self.sdp = sdp }
     }
 
     public struct Candidate: Codable {
         public var candidate: String
         public var sdpMid: String?
         public var sdpMLineIndex: Int?
+        public init(candidate: String, sdpMid: String?, sdpMLineIndex: Int?) {
+            self.candidate = candidate; self.sdpMid = sdpMid; self.sdpMLineIndex = sdpMLineIndex
+        }
     }
 
     public init(type: String) { self.type = type }
