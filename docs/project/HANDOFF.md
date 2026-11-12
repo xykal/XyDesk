@@ -233,16 +233,15 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   (kemungkinan: versi repack pihak ketiga yang beredar, peringatan sistem
   Android, atau konten server). Jangan tambah deteksi anti-crack sebab
   justru memicu false positive lagi.
-- [ ] **Koneksi RDP — sisa: gateway langsung saja.** Versi web sudah
+- [ ] **Koneksi RDP — gateway darurat sudah dikodekan (`gateway/`), sisa:
+  deploy ke VPS pemilik (butuh keputusan: domain + `GATEWAY_SECRET`). Versi web sudah
   digabung (tab "RDP" di panel sesi; host membuka mstsc via kanal data
   "rdp" end-to-end). Sisi APK juga sudah digabung (tombol RDP di rail +
   `RdpSheet.kt` + kanal `rdp` di `RtcSession.kt`) — **terverifikasi
   Build #207** (11/11 job hijau; artefak `XyDesk-Android-APK` per-ABI;
   error compile awal diperbaiki PR #241). Uji jalan nyata di HP menyusul
   bila pemilik memasang artefak Build #207. FreeRDP tidak ada
-  di APK (0 hit) — kanal "rdp" memang jalurnya. Untuk koneksi RDP langsung
-  dari browser tanpa PC perantara, butuh gateway (guacd) di server —
-  menunggu keputusan pemilik.
+  di APK (0 hit) — kanal "rdp" memang jalurnya.
 - [x] **UI aplikasi tidak responsif** — beres 2026-11-11 (PR #238 + PR poles lanjutan):
   web (gap hero, ikon vs judul, footer, overflow 9/9) + Android (dua lebar
   mati terakhir jadi `widthIn`). Pemilik melaporkan

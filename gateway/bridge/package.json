@@ -1,0 +1,20 @@
+{
+  "name": "xydesk-rdp-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jembatan RDP darurat: browser -> WebSocket -> guacd -> RDP target. Tanpa PC perantara.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "mint": "node mint.js",
+    "test": "node --test test/"
+  },
+  "dependencies": {
+    "guacamole-lite": "^1.2.0",
+    "guacamole-common-js": "^1.5.0",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
