@@ -111,7 +111,7 @@ public final class PeerLink: NSObject {
     }
 
     public func addRemoteCandidate(_ c: SignalMessage.Candidate) {
-        let cand = RTCIceCandidate(sdpMLineIndex: Int32(c.sdpMLineIndex ?? 0), sdpMid: c.sdpMid, sdp: c.candidate)
+        let cand = RTCIceCandidate(sdp: c.candidate, sdpMLineIndex: Int32(c.sdpMLineIndex ?? 0), sdpMid: c.sdpMid)
         if remoteDescriptionSet {
             pc?.add(cand)
         } else {
