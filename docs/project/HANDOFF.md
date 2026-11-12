@@ -46,7 +46,7 @@ Gradle, belum bukti HP).
   pernah ada di host — tidak perlu dikerjakan.)
 - [x] **Paket UI/UX ala StarDesk — terverifikasi 2026-11-12 (Build #207/#208
   11/11 hijau; cargo check 0 + fmt 0; npm 195/195 + build hijau; gerbang
-  `Build macOS (Swift)` ditambahkan).** Rincian historis:
+  `Build macOS (Swift)` ditambahkan; **swift build hijau Run #6** — dua eksekutabel terbangun).** Rincian historis:
   Semua kode sudah termerge TANPA build: QR pairing Android (#224),
   device-quirks + capabilities (#225), super screen dari aplikasi (#226),
   Mode Klien unified host+client (#227; splash exe sudah ada sejak awal),

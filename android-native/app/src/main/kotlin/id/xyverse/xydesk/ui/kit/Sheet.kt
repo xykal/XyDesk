@@ -8,6 +8,10 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -35,14 +39,20 @@ fun XySheet(visible: Boolean, onDismiss: () -> Unit, content: @Composable Column
     }
     AnimatedVisibility(visible, enter = slideInVertically { it }, exit = slideOutVertically { it }, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
+            // Tinggi dibatasi ~92% layar dan isi bisa di-scroll: di HP pendek
+            // (mis. Redmi A2 Go) saat keyboard muncul, isi lembar tidak lagi
+            // terpotong tanpa jalan keluar — tampilan popup jadi "retak".
+            val maxH = LocalConfiguration.current.screenHeightDp.dp * 0.92f
             Column(
-                Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = Xy.radiusL, topEnd = Xy.radiusL)).background(Xy.bg)
+                Modifier.fillMaxWidth().heightIn(max = maxH).clip(RoundedCornerShape(topStart = Xy.radiusL, topEnd = Xy.radiusL)).background(Xy.bg)
                     .clickable(remember { MutableInteractionSource() }, null) {}
                     .safeDrawingPadding().padding(Xy.pad),
             ) {
                 Box(Modifier.align(Alignment.CenterHorizontally).height(4.dp).fillMaxWidth(0.12f).clip(RoundedCornerShape(Xy.pill)).background(Xy.line))
                 Spacer(Modifier.height(16.dp))
-                content()
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    content()
+                }
             }
         }
     }
