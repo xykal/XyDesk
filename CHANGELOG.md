@@ -24,6 +24,8 @@ Kebijakan rilis:
 
 ## [Belum terbit]
 
+- **Sampul berita yang rusak diperbaiki + dua lebar mati Android dilunakkan.** Kartu berita "Layar hitam di laptop dua GPU" menampilkan gambar rusak sebab `changelog-670.jpg` tidak pernah ada di server; `changelog-661.jpg` (artikel 6.6.1) bernasib sama. Keduanya kini dibuat (banner 3D glossy sesuai aturan `news/README.md`) dan `v6712.jpg` (duplikat byte-kembar yang tak dirujuk siapa pun) dibersihkan. Di Android: panel setelan sesi `width(256.dp)` dan tombol aksi `States.kt` `width(200.dp)` menjadi `widthIn` — tampilan di layar normal identik, layar sempit tidak lagi terpotong.
+
 - **Landing web dipoles lebih hidup.** Cahaya aurora perlahan di hero, ilustrasi melayang halus, tombol utama berpendar & terangkat saat hover, kartu fitur/berita terangkat dengan rambut gradien ungu, sampul berita membesar pelan, strip statistik jadi bilah kaca, judul seksi beraksen bar gradien, pita unduh lebih kaya, dan garis gradien di puncak footer. Semua animasi dimatikan otomatis untuk pengguna `prefers-reduced-motion`. Pintasan alat baru `web/e2e/overflow_check.mjs` menjaga tidak ada geser samping di 360/768/1440px (9/9 lulus).
 
 - **Landing web responsif: ruang mati, ikon menimpa judul, dan footer sempit dibereskan.** Audit visual multi-viewport (360/768/1440, tool baru `web/e2e/layout_audit.mjs`) menemukan: `hero-art` dipaksa `min-height: 380px` oleh aturan yang saling tabrak dengan `device.css` (gap kosong ~150px di HP), ikon fitur 3D menimpa judul di layar ≤400px, tautan "Lihat semua →" patah dua baris, dan kolom footer 3× diperas di 360px. Kini hero rapat, ikon mengecil + redup di belakang teks, footer menumpuk rapi satu kolom di HP, padding seksi dikecilkan (tinggi halaman 5690→5145px di 360px).

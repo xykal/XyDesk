@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -162,7 +164,7 @@ fun SessionToolbar(
     ) {
         AnimatedVisibility(!hidden && settingsOpen, enter = slideInHorizontally { it / 2 } + fadeIn(), exit = slideOutHorizontally { it / 2 } + fadeOut()) {
             Column(
-                Modifier.width(256.dp)
+                Modifier.widthIn(max = 256.dp).fillMaxWidth()
                     .shadow(12.dp, RoundedCornerShape(Xy.radiusL), ambientColor = Color(0x1A000000), spotColor = Color(0x227C3AED))
                     .clip(RoundedCornerShape(Xy.radiusL))
                     .background(kPanelBg)

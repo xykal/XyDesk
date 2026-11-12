@@ -241,7 +241,9 @@ spec proporsi: [`docs/ILUSTRASI-ASSETS.md`](../ILUSTRASI-ASSETS.md).
   di APK (0 hit) — kanal "rdp" memang jalurnya. Untuk koneksi RDP langsung
   dari browser tanpa PC perantara, butuh gateway (guacd) di server —
   menunggu keputusan pemilik.
-- [ ] **UI aplikasi belum responsif di semua layar** — pemilik melaporkan
+- [x] **UI aplikasi tidak responsif** — beres 2026-11-11 (PR #238 + PR poles lanjutan):
+  web (gap hero, ikon vs judul, footer, overflow 9/9) + Android (dua lebar
+  mati terakhir jadi `widthIn`). Pemilik melaporkan
   2026-11-06. Web landing SUDAH dibereskan (lihat changelog: gap hero-art,
   ikon fitur menimpa judul, footer sempit — diverifikasi via screenshot
   360/768/1440 dengan `web/e2e/layout_audit.mjs`). Sisi Android: audit
